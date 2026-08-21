@@ -5,187 +5,92 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>MAGI Web</title>
 <style>
-:root{--bg:#07111f;--panel:#0d1b2d;--text:#f5f7fb;--muted:#9eb0c7;--blue:#2f80ed;--red:#d9485f;--green:#28a06b;--yellow:#d8a83d;--line:#203652}
-*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#10243e 0,#07111f 45%,#050b13 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;min-height:100vh}.wrap{max-width:900px;margin:auto;padding:22px 14px 50px}.kicker{font-size:12px;letter-spacing:.16em;color:#7fa2cc}.free{display:inline-block;margin-left:6px;padding:4px 8px;border:1px solid #31577d;border-radius:999px;color:#b9ddff;font-size:10px}.privacy{margin-top:8px;font-size:11px;color:#7f94ad}.privacy b{color:#b9d8f7}h1{margin:6px 0 4px;font-size:34px}.sub{color:var(--muted);font-size:14px;line-height:1.65}.grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.persona,.card,.answer,.final,.signals,.history{background:rgba(13,27,45,.95);border:1px solid var(--line);border-radius:16px}.persona{padding:14px;min-height:120px}.persona h3{margin:5px 0;font-size:15px}.persona p{margin:0;color:var(--muted);font-size:12px;line-height:1.55}.blue{border-top:3px solid var(--blue)}.red{border-top:3px solid var(--red)}.green{border-top:3px solid var(--green)}.card{padding:14px}label{font-size:13px;color:#bad0e9}textarea{width:100%;min-height:125px;margin-top:8px;border-radius:13px;border:1px solid #294665;background:#081521;color:#fff;padding:13px;font:inherit;font-size:16px;resize:vertical;outline:none}textarea:focus{border-color:#5f8fca;box-shadow:0 0 0 3px rgba(47,128,237,.12)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}button{border:0;border-radius:11px;padding:12px 15px;font-weight:700;font-size:14px;cursor:pointer}.primary{background:#f3f6fb;color:#07111f}.secondary{background:#142942;color:#cce0f5;border:1px solid #294665}.status{font-size:12px;color:#8ea5bf;margin-top:9px;line-height:1.5}.response{display:none}.response.show{display:block}.signals{padding:13px;margin-top:12px}.signalsTitle,.sectionTitle{font-size:11px;letter-spacing:.14em;color:#88a9ca;margin-bottom:9px}.signalRow{display:flex;gap:7px;flex-wrap:wrap}.chip{background:#0a1726;border:1px solid #294158;border-radius:999px;padding:6px 9px;font-size:11px;color:#c4d5e7}.answer{padding:15px;margin:10px 0;border-top:1px solid var(--line)}.answer.blue{border-left:4px solid var(--blue)}.answer.red{border-left:4px solid var(--red)}.answer.green{border-left:4px solid var(--green)}.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.name{font-weight:800}.badge{font-size:11px;background:#12263f;color:#c9dbed;border-radius:999px;padding:5px 8px;white-space:nowrap}.answer p{color:#d9e4ef;line-height:1.75;font-size:14px;margin:10px 0 0}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.mini{background:#091725;border:1px solid #20364d;border-radius:11px;padding:9px}.mini b{display:block;font-size:10px;letter-spacing:.08em;color:#82a5c6;margin-bottom:5px}.mini span{font-size:12px;color:#c9d7e6;line-height:1.45}.final{padding:16px;margin-top:14px;background:linear-gradient(135deg,#0d2036,#101722)}.title{font-size:12px;letter-spacing:.15em;color:#8fafcf}.verdict{font-size:24px;font-weight:900;margin:7px 0}.votes{display:flex;gap:8px;flex-wrap:wrap}.vote{background:#0a1624;border:1px solid #263b54;border-radius:999px;padding:7px 10px;font-size:12px}.note{font-size:12px;color:#a7b8ca;line-height:1.65;margin-top:14px}.history{padding:13px;margin-top:14px}.historyItem{border-top:1px solid #1f344b;padding:9px 0;font-size:12px;color:#b8c9db;line-height:1.45}.historyItem:first-of-type{border-top:0}.historyItem button{padding:5px 8px;font-size:10px;margin-left:6px}.muted{color:#758aa1}.confidence{font-size:11px;color:#8ea6bf;margin-top:5px}@media(max-width:640px){.grid{grid-template-columns:1fr}.persona{min-height:auto}h1{font-size:29px}.meta{grid-template-columns:1fr}.verdict{font-size:22px}}
+:root{--bg:#06101d;--panel:#0b1929;--panel2:#0e2034;--text:#f6f8fb;--muted:#9db0c5;--blue:#3f86ff;--red:#e44d63;--green:#37b579;--yellow:#e2b63f;--line:#23405d;--white:#edf4fb}
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:radial-gradient(circle at 50% -10%,#16304e 0,#071422 35%,#040a11 100%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif;min-height:100vh}.wrap{max-width:940px;margin:auto;padding:18px 14px 54px}.kicker{font-size:11px;letter-spacing:.18em;color:#87a8ca}.free{display:inline-block;margin-left:6px;padding:4px 8px;border:1px solid #335c82;border-radius:999px;color:#c6e1ff;font-size:9px;letter-spacing:.08em}.hero{padding:16px 2px 6px}.hero h1{font-size:42px;letter-spacing:.07em;margin:8px 0 2px}.hero .jp{font-size:15px;font-weight:700;color:#d5e3f1}.hero p{color:var(--muted);font-size:13px;line-height:1.75;margin:10px 0}.statement{margin:14px 0 18px;padding:13px 15px;border:1px solid #2e506f;border-radius:14px;background:linear-gradient(90deg,rgba(25,61,98,.72),rgba(11,26,43,.85));font-size:13px;line-height:1.65}.statement b{color:#fff}.section{margin-top:18px}.sectionHead{display:flex;justify-content:space-between;gap:10px;align-items:end;margin-bottom:10px}.sectionHead h2{margin:0;font-size:19px;letter-spacing:.04em}.sectionHead span{font-size:10px;letter-spacing:.12em;color:#7fa0c1}.personaGrid,.flowGrid,.pillarGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.persona,.flow,.pillar,.card,.answer,.final,.signals,.history{background:rgba(11,25,41,.96);border:1px solid var(--line);border-radius:16px}.persona{padding:15px;position:relative;overflow:hidden;min-height:178px}.persona:after{content:"";position:absolute;right:-28px;bottom:-35px;width:110px;height:110px;border-radius:50%;opacity:.12;background:currentColor}.persona .num{font-size:11px;letter-spacing:.16em;opacity:.75}.persona h3{font-size:18px;margin:6px 0 0}.persona .role{font-size:11px;color:#c5d5e5;margin:2px 0 10px}.persona p{font-size:12px;line-height:1.6;color:#a9bdcf;margin:0}.persona ul{padding-left:17px;margin:10px 0 0;color:#d8e4ef;font-size:11px;line-height:1.6}.blue{color:var(--blue);border-top:3px solid var(--blue)}.red{color:var(--red);border-top:3px solid var(--red)}.green{color:var(--green);border-top:3px solid var(--green)}.persona h3,.persona .role,.persona p,.persona li{color:inherit}.persona p,.persona li{color:#c8d5e2}.flowGrid{grid-template-columns:repeat(4,1fr)}.flow{padding:14px;min-height:128px}.flow .step{font-size:22px;font-weight:900;color:#8eb8e4}.flow h3{font-size:13px;margin:4px 0 7px}.flow p{font-size:11px;line-height:1.6;color:#9eb1c4;margin:0}.pillar{padding:14px;min-height:142px}.pillar b{font-size:14px}.pillar p{font-size:11px;line-height:1.65;color:#a8bacd}.triangle{font-size:30px;line-height:1;margin-bottom:8px}.navJump{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0}.navJump a{text-decoration:none;color:#d9e9f8;border:1px solid #31516e;background:#0b1a2a;border-radius:999px;padding:7px 10px;font-size:10px}.privacy{font-size:11px;color:#8298ae;margin-top:8px}.privacy b{color:#bdd8f3}.card{padding:14px;margin-top:10px}label{font-size:13px;color:#c6d8e9}textarea{width:100%;min-height:132px;margin-top:8px;border-radius:13px;border:1px solid #2a4b69;background:#071521;color:#fff;padding:13px;font:inherit;font-size:16px;resize:vertical;outline:none}textarea:focus{border-color:#5f96cf;box-shadow:0 0 0 3px rgba(63,134,255,.12)}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}button{border:0;border-radius:11px;padding:12px 15px;font-weight:700;font-size:13px;cursor:pointer}.primary{background:#f3f7fb;color:#07111f}.secondary{background:#142b43;color:#d4e8fb;border:1px solid #2b4e70}.status{font-size:11px;color:#8ea7bf;margin-top:9px;line-height:1.5}.response{display:none}.response.show{display:block}.signals{padding:13px;margin-top:12px}.signalsTitle,.sectionTitle{font-size:10px;letter-spacing:.15em;color:#8cb0d2;margin-bottom:9px}.signalRow{display:flex;gap:7px;flex-wrap:wrap}.chip{background:#091827;border:1px solid #2a465e;border-radius:999px;padding:6px 9px;font-size:10px;color:#c7d7e6}.answer{padding:15px;margin:10px 0;border-top:1px solid var(--line)}.answer.blue{border-left:4px solid var(--blue)}.answer.red{border-left:4px solid var(--red)}.answer.green{border-left:4px solid var(--green)}.top{display:flex;justify-content:space-between;gap:10px;align-items:center}.name{font-weight:800;color:#fff}.badge{font-size:11px;background:#12263f;color:#d7e6f5;border-radius:999px;padding:5px 8px;white-space:nowrap}.answer p{color:#d9e4ef;line-height:1.75;font-size:13px;margin:10px 0 0}.meta{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}.mini{background:#081522;border:1px solid #203a52;border-radius:11px;padding:9px}.mini b{display:block;font-size:9px;letter-spacing:.08em;color:#83a9cc;margin-bottom:5px}.mini span{font-size:11px;color:#cddae7;line-height:1.5}.confidence{font-size:10px;color:#8ea8c0;margin-top:4px}.final{padding:17px;margin-top:14px;background:linear-gradient(135deg,#0d2138,#101722);border-color:#365574}.title{font-size:11px;letter-spacing:.16em;color:#93b8da}.verdict{font-size:25px;font-weight:900;margin:8px 0}.votes{display:flex;gap:8px;flex-wrap:wrap}.vote{background:#091624;border:1px solid #2a4058;border-radius:999px;padding:7px 10px;font-size:11px}.note{font-size:11px;color:#a7b9cb;line-height:1.7;margin-top:13px}.humanDecision{margin-top:13px;padding-top:13px;border-top:1px solid #29425c;font-size:11px;color:#d2deea}.history{padding:13px;margin-top:14px}.historyItem{border-top:1px solid #1f344b;padding:9px 0;font-size:11px;color:#b8c9db;line-height:1.5}.historyItem:first-of-type{border-top:0}.historyItem button{padding:5px 8px;font-size:9px;margin-left:6px}.muted{color:#758aa1}.footerMessage{margin-top:22px;padding:16px;border-top:1px solid #2b435a;border-bottom:1px solid #2b435a;text-align:center;font-size:12px;line-height:1.7;color:#b6c7d7}.footerMessage b{color:#fff}
+@media(max-width:700px){.personaGrid,.pillarGrid{grid-template-columns:1fr}.flowGrid{grid-template-columns:1fr 1fr}.hero h1{font-size:36px}.persona{min-height:auto}.meta{grid-template-columns:1fr}.verdict{font-size:22px}}@media(max-width:430px){.flowGrid{grid-template-columns:1fr}.wrap{padding-left:12px;padding-right:12px}}
 </style>
 </head>
 <body>
 <div class="wrap">
-  <div class="kicker">MAGI WEB / FREE CORE <span class="free">NO PAID API</span></div>
-  <h1>MAGI</h1>
-  <div class="sub">質問文の数値・役割・戦術・固定化リスク・チーム影響を分けて読み、3人格がそれぞれ別の基準で審議します。</div>
-  <div class="privacy"><b>完全無料構成：</b>外部AI APIは使いません。判定はブラウザ内だけで実行し、質問内容を外部送信しません。</div>
+  <section class="hero">
+    <div class="kicker">MAGI WEB / FREE CORE <span class="free">NO PAID API</span></div>
+    <h1>MAGI</h1>
+    <div class="jp">丸岡中野球部の未来を支える、3つの人格による判断支援システム</div>
+    <p>データ・戦術・人の3つの視点を分けて審議し、ひとつの答えを押しつけるのではなく、判断材料を提示します。</p>
+    <div class="statement"><b>MAGIは「決めるシステム」ではなく「考えるシステム」。</b><br>最終決定は、いつでも指導者・選手・チームの手にあります。</div>
+    <div class="navJump"><a href="#personas">3人格</a><a href="#flow">仕組み</a><a href="#values">大切にすること</a><a href="#judge">審議する</a></div>
+    <div class="privacy"><b>完全無料構成：</b>外部AI APIは使いません。判定はブラウザ内だけで実行し、質問内容は外部送信しません。</div>
+  </section>
 
-  <div class="grid">
-    <div class="persona blue"><small>01 / ANALYSIS</small><h3>MELCHIOR-1</h3><p>「数字は嘘をつかない」。数値・記録・再現性を優先し、材料不足なら無理に断定しません。</p></div>
-    <div class="persona red"><small>02 / STRATEGY</small><h3>BALTHASAR-2</h3><p>勝つための一手を演算。起用・打順・継投・代替案・固定化リスクを判断します。</p></div>
-    <div class="persona green"><small>03 / EVALUATION</small><h3>CASPER-3</h3><p>成長・役割負担・関係性・自発性・チーム全体への影響を判断します。</p></div>
-  </div>
-
-  <div class="card">
-    <label for="q">MAGIに審議させる</label>
-    <textarea id="q" placeholder="例：大久保陽翔を1番打者で固定するべきか？ 直近5試合で打率.350、出塁率.480。走力はチーム上位だが、固定による負担も気になる。"></textarea>
-    <div class="actions">
-      <button class="primary" onclick="runMagi()">審議開始</button>
-      <button class="secondary" onclick="sample()">サンプル質問</button>
-      <button class="secondary" onclick="clearAll()">クリア</button>
+  <section id="personas" class="section">
+    <div class="sectionHead"><h2>3つの人格</h2><span>DATA × STRATEGY × HUMAN</span></div>
+    <div class="personaGrid">
+      <div class="persona blue"><div class="num">01 / ANALYSIS</div><h3>MELCHIOR</h3><div class="role">データ解析担当</div><p>「数字は嘘をつかない」。記録と再現性から、事実の強さを測る。</p><ul><li>打撃・投手データ</li><li>起用・出場傾向</li><li>比較と検証</li></ul></div>
+      <div class="persona red"><div class="num">02 / STRATEGY</div><h3>BALTHASAR</h3><div class="role">戦術演算担当</div><p>状況を読み、勝つための一手と、その代替案まで考える。</p><ul><li>打順・起用・継投</li><li>相手との相性</li><li>変更条件とリスク</li></ul></div>
+      <div class="persona green"><div class="num">03 / EVALUATION</div><h3>CASPER</h3><div class="role">選手評価担当</div><p>人の可能性、成長、信頼、役割負担を見て未来を考える。</p><ul><li>成長と責任感</li><li>チームへの影響</li><li>自発性と役割分担</li></ul></div>
     </div>
-    <div id="status" class="status">FREE CORE v0.3 — 判定保留の過剰発生を修正</div>
-  </div>
+  </section>
 
-  <div id="response" class="response">
-    <div class="signals"><div class="signalsTitle">INPUT ANALYSIS</div><div id="signalRow" class="signalRow"></div></div>
+  <section id="flow" class="section">
+    <div class="sectionHead"><h2>MAGIの仕組み</h2><span>データが、未来をつくる</span></div>
+    <div class="flowGrid">
+      <div class="flow"><div class="step">01</div><h3>データ収集</h3><p>試合・練習・記録・観察から、判断の材料を集める。</p></div>
+      <div class="flow"><div class="step">02</div><h3>分析・審議</h3><p>3人格が同じ質問を別々の評価軸で見る。</p></div>
+      <div class="flow"><div class="step">03</div><h3>提案・可視化</h3><p>賛成だけでなく、反対・保留・懸念も残して提示する。</p></div>
+      <div class="flow"><div class="step">04</div><h3>決定・実行</h3><p>最終的に決めるのは人。MAGIは判断材料を支える。</p></div>
+    </div>
+  </section>
 
-    <div class="answer blue"><div class="top"><div><div class="name">MELCHIOR-1</div><div id="mConf" class="confidence"></div></div><div id="mVote" class="badge"></div></div><p id="mText"></p><div class="meta"><div class="mini"><b>最大の根拠</b><span id="mBasis"></span></div><div class="mini"><b>懸念点</b><span id="mConcern"></span></div></div></div>
+  <section id="values" class="section">
+    <div class="sectionHead"><h2>MAGIが大切にしていること</h2><span>データだけじゃない、心を見る</span></div>
+    <div class="pillarGrid">
+      <div class="pillar"><div class="triangle" style="color:var(--blue)">▲</div><b>データの力</b><p>客観的な数字で現状を正しく把握し、印象だけに流されない。</p></div>
+      <div class="pillar"><div class="triangle" style="color:var(--red)">▲</div><b>戦略の力</b><p>一つの正解に固定せず、状況に応じた最適解と代替案を持つ。</p></div>
+      <div class="pillar"><div class="triangle" style="color:var(--green)">▲</div><b>人の力</b><p>勝敗だけでなく、成長・責任・信頼・チーム全体の未来を見る。</p></div>
+    </div>
+  </section>
 
-    <div class="answer red"><div class="top"><div><div class="name">BALTHASAR-2</div><div id="bConf" class="confidence"></div></div><div id="bVote" class="badge"></div></div><p id="bText"></p><div class="meta"><div class="mini"><b>戦術上の利点</b><span id="bBasis"></span></div><div class="mini"><b>代替・リスク</b><span id="bConcern"></span></div></div></div>
+  <section id="judge" class="section">
+    <div class="sectionHead"><h2>MAGIに審議させる</h2><span>FREE CORE v0.4</span></div>
+    <div class="card">
+      <label for="q">質問と、分かる範囲の材料を入力</label>
+      <textarea id="q" placeholder="例：大久保陽翔を1番打者で固定するべきか？ 直近5試合で打率.350、出塁率.480。走力はチーム上位だが、固定による負担も気になる。"></textarea>
+      <div class="actions"><button class="primary" onclick="runMagi()">審議開始</button><button class="secondary" onclick="sample()">サンプル質問</button><button class="secondary" onclick="clearAll()">クリア</button></div>
+      <div id="status" class="status">FREE CORE v0.4 — 3人格独立審議 / 完全無料</div>
+    </div>
 
-    <div class="answer green"><div class="top"><div><div class="name">CASPER-3</div><div id="cConf" class="confidence"></div></div><div id="cVote" class="badge"></div></div><p id="cText"></p><div class="meta"><div class="mini"><b>人・チームへの効果</b><span id="cBasis"></span></div><div class="mini"><b>懸念点</b><span id="cConcern"></span></div></div></div>
-
-    <div class="final"><div class="title">MAGI FINAL DECISION</div><div id="verdict" class="verdict"></div><div class="votes"><div id="v1" class="vote"></div><div id="v2" class="vote"></div><div id="v3" class="vote"></div></div><div id="reason" class="note"></div><div id="next" class="note"></div></div>
-  </div>
+    <div id="response" class="response">
+      <div class="signals"><div class="signalsTitle">INPUT ANALYSIS</div><div id="signalRow" class="signalRow"></div></div>
+      <div class="answer blue"><div class="top"><div><div class="name">MELCHIOR-1</div><div id="mConf" class="confidence"></div></div><div id="mVote" class="badge"></div></div><p id="mText"></p><div class="meta"><div class="mini"><b>最大の根拠</b><span id="mBasis"></span></div><div class="mini"><b>懸念点</b><span id="mConcern"></span></div></div></div>
+      <div class="answer red"><div class="top"><div><div class="name">BALTHASAR-2</div><div id="bConf" class="confidence"></div></div><div id="bVote" class="badge"></div></div><p id="bText"></p><div class="meta"><div class="mini"><b>戦術上の利点</b><span id="bBasis"></span></div><div class="mini"><b>代替・リスク</b><span id="bConcern"></span></div></div></div>
+      <div class="answer green"><div class="top"><div><div class="name">CASPER-3</div><div id="cConf" class="confidence"></div></div><div id="cVote" class="badge"></div></div><p id="cText"></p><div class="meta"><div class="mini"><b>人・チームへの効果</b><span id="cBasis"></span></div><div class="mini"><b>懸念点</b><span id="cConcern"></span></div></div></div>
+      <div class="final"><div class="title">MAGI FINAL DECISION</div><div id="verdict" class="verdict"></div><div class="votes"><div id="v1" class="vote"></div><div id="v2" class="vote"></div><div id="v3" class="vote"></div></div><div id="reason" class="note"></div><div id="next" class="note"></div><div class="humanDecision">最終決定：指導者・選手・チーム</div></div>
+    </div>
+  </section>
 
   <div class="history"><div class="sectionTitle">LOCAL HISTORY</div><div id="historyList" class="muted">まだ審議履歴はありません。</div></div>
+  <div class="footerMessage"><b>データは過去を映す鏡。審議は未来への羅針盤。</b><br>MAGIは、試合の勝利だけでなく、その先の成長まで見据えます。</div>
 </div>
-
 <script>
-const $=id=>document.getElementById(id);
-const V={yes:'🟢 ◎ 賛成',cond:'🔵 ○ 条件付き賛成',hold:'🟡 △ 判断保留',no:'🔴 ✕ 反対'};
-const K={
- data:['打率','出塁率','長打率','ops','防御率','era','whip','成績','数字','データ','記録','試合','打席','投球回','奪三振','四球','死球','失策','盗塁','球数','被安打','得点','失点','勝率','走力'],
- tactic:['打順','1番','2番','3番','4番','5番','6番','7番','8番','9番','起用','先発','継投','クローザー','抑え','投手','捕手','守備','代打','代走','バント','盗塁','配球','采配','ポジション'],
- human:['主将','キャプテン','副主将','成長','気持ち','関係','負担','責任','声掛け','チーム','信頼','自発','役割','雰囲気','モチベーション','リーダー'],
- fixed:['固定','絶対','必ず','全試合','常に','外さない','専任','限定'],
- trial:['試す','試験','期間限定','数試合','様子を見る','併用','競争','ローテーション','条件付き','見直し'],
- risk:['怪我','故障','疲労','負担','不調','連敗','失策','エラー','四球','崩れる','低下','不安','遅刻','欠場','懸念'],
- positive:['好調','改善','成長','安定','成功','勝利','高い','良い','有効','強い','上昇','上位','得意','適性'],
- negative:['不調','低い','悪い','失敗','敗戦','不安定','弱い','低下','問題','懸念','苦手']
-};
-const has=(q,arr)=>arr.some(x=>q.includes(x));
-const hits=(q,arr)=>arr.filter(x=>q.includes(x));
-const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-function analyze(q){
- const s=q.toLowerCase();
- const nums=(q.match(/(?:\d+(?:\.\d+)?%?|\.\d+)/g)||[]);
- const dataHits=hits(s,K.data), tacticHits=hits(s,K.tactic), humanHits=hits(s,K.human);
- const fixed=hits(s,K.fixed), trial=hits(s,K.trial), risk=hits(s,K.risk), pos=hits(s,K.positive), neg=hits(s,K.negative);
- const namedRole=has(s,['主将','キャプテン','副主将','クローザー','抑え','先発','1番','2番','捕手','投手']);
- const topic=dataHits.length>=tacticHits.length&&dataHits.length>=humanHits.length?'データ中心':tacticHits.length>=humanHits.length?'戦術中心':'人・組織中心';
- let evidence=20 + Math.min(nums.length*14,42) + Math.min(dataHits.length*5,20) + (q.length>30?7:0) + (q.length>70?5:0);
- if(q.length<10)evidence-=15;
- return {q,s,nums,dataHits,tacticHits,humanHits,fixed,trial,risk,pos,neg,namedRole,topic,evidence:clamp(evidence,10,95)};
-}
-function rateVote(score,relevant,evidence){
- if(!relevant && evidence<45) return 'hold';
- if(score>=3.5) return 'yes';
- if(score>=0.2) return 'cond';
- if(score<=-3.5) return 'no';
- if(relevant) return 'cond';
- return 'hold';
-}
-function melchior(x){
- const relevant=x.dataHits.length>0||x.nums.length>0;
- let score=0;
- score += Math.min(x.nums.length,4)*1.15;
- score += Math.min(x.dataHits.length,4)*0.45;
- score += Math.min(x.pos.length,2)*0.65;
- score -= Math.min(x.neg.length,2)*0.65;
- if(x.fixed.length) score-=0.9;
- if(x.risk.length) score-=0.35;
- if(x.trial.length) score+=0.45;
- if(relevant && x.nums.length===0) score-=0.8;
- const conf=clamp(Math.round(x.evidence+(x.nums.length?8:0)),25,96);
- const vote=rateVote(score,relevant,conf);
- const basis=x.nums.length?`数値情報を${x.nums.length}件検出。少なくとも印象だけではなく、比較可能な材料があります。`:(relevant?'数値項目は示されていますが、具体値が不足しています。':'この質問は主に戦術・役割の問題で、数値だけでは決められません。');
- const concern=x.fixed.length?'固定運用は、調子や対戦条件が変わった時に再評価できる仕組みが必要です。':(x.nums.length?'対象期間や比較相手が不明だと数値を過大評価する恐れがあります。':'客観データが少ないため、MELCHIOR単独では強い断定を避けます。');
- const text=vote==='yes'?'数値面では支持できます。ただし固定を無条件に続けるのではなく、一定期間ごとに再検証する前提です。':vote==='cond'?'データ上は方向性を支持できますが、期間・比較対象・役割変更後の数値確認を条件にします。':vote==='no'?'現在の数値材料では支持しにくい判断です。固定化より再検証を優先します。':'客観材料がまだ足りません。MELCHIORは無理に結論を作らず、追加データ待ちとします。';
- return {vote,conf,basis,concern,text};
-}
-function balthasar(x){
- const relevant=x.tacticHits.length>0||x.namedRole;
- let score=0;
- score += Math.min(x.tacticHits.length,4)*0.75;
- score += x.namedRole?0.7:0;
- score += Math.min(x.pos.length,2)*0.5;
- score -= Math.min(x.neg.length,2)*0.45;
- if(x.fixed.length)score-=0.8;
- if(x.trial.length)score+=0.8;
- if(x.risk.length)score-=0.25;
- if(x.nums.length>=2)score+=0.7;
- const conf=clamp(42+x.tacticHits.length*9+(x.namedRole?8:0)+(x.nums.length?6:0),30,94);
- const vote=rateVote(score,relevant,conf);
- const basis=relevant?'役割・起用・打順として具体的な戦術テーマがあるため、条件付きでも実戦的な判断が可能です。':'勝敗への直接的な戦術条件が少なく、戦術評価の比重は下がります。';
- const concern=x.fixed.length?'「固定」は相手や試合展開に応じた変更余地を奪います。解除条件を先に決めるべきです。':'代替案を1つ残しておけば、試合展開に応じて修正できます。';
- const text=vote==='yes'?'戦術として積極的に採用可能です。ただし相手や試合展開に応じた解除条件は残します。':vote==='cond'?'戦術としては成立します。固定ではなく「基本方針＋変更条件」で運用するのが最も実戦的です。':vote==='no'?'戦術上のリスクが利点を上回ります。別案を優先すべきです。':'戦術テーマが曖昧です。役割や狙いを具体化してから再審議します。';
- return {vote,conf,basis,concern,text};
-}
-function casper(x){
- const relevant=x.humanHits.length>0||has(x.s,['キャプテン','主将','副主将','負担','チーム','役割']);
- let score=0;
- score += Math.min(x.humanHits.length,4)*0.65;
- score += Math.min(x.pos.length,2)*0.45;
- score -= Math.min(x.neg.length,2)*0.4;
- if(x.fixed.length)score-=0.65;
- if(x.risk.length)score-=0.7;
- if(x.trial.length)score+=0.7;
- if(has(x.s,['複数','副主将','分担','併用']))score+=0.55;
- const conf=clamp(40+x.humanHits.length*9+(relevant?6:0)+(qDetail(x.q)?5:0),30,92);
- const vote=rateVote(score,relevant,conf);
- const basis=relevant?'本人だけでなく、周囲の自発性・役割分担・負担まで評価できる質問です。':'人間関係や成長への情報が少ないため、CASPERの判断材料は限定的です。';
- const concern=x.risk.length?'負担や懸念が明示されています。本人への集中と周囲の受け身化を観察する必要があります。':(x.fixed.length?'固定化で周囲が役割を失わないか確認が必要です。':'運用後に本人と周囲の変化を観察する必要があります。');
- const text=vote==='yes'?'人・チーム面でも支持できます。ただし役割を一人に集中させず、周囲が動ける余白を残します。':vote==='cond'?'方向性には賛成です。ただし本人の負担と周囲の自発性を定期的に確認することを条件にします。':vote==='no'?'本人またはチームへの負担が大きく、現状案は支持しません。役割分散を優先します。':'人・チーム面の情報が不足しています。本人の反応や周囲の動きを確認して再審議します。';
- return {vote,conf,basis,concern,text};
-}
+const $=id=>document.getElementById(id);const V={yes:'🟢 ◎ 賛成',cond:'🔵 ○ 条件付き賛成',hold:'🟡 △ 判断保留',no:'🔴 ✕ 反対'};
+const K={data:['打率','出塁率','長打率','ops','防御率','era','whip','成績','数字','データ','記録','試合','打席','投球回','奪三振','四球','死球','失策','盗塁','球数','被安打','得点','失点','勝率','走力'],tactic:['打順','1番','2番','3番','4番','5番','6番','7番','8番','9番','起用','先発','継投','クローザー','抑え','投手','捕手','守備','代打','代走','バント','盗塁','配球','采配','ポジション'],human:['主将','キャプテン','副主将','成長','気持ち','関係','負担','責任','声掛け','チーム','信頼','自発','役割','雰囲気','モチベーション','リーダー'],fixed:['固定','絶対','必ず','全試合','常に','外さない','専任','限定'],trial:['試す','試験','期間限定','数試合','様子を見る','併用','競争','ローテーション','条件付き','見直し'],risk:['怪我','故障','疲労','負担','不調','連敗','失策','エラー','四球','崩れる','低下','不安','遅刻','欠場','懸念'],positive:['好調','改善','成長','安定','成功','勝利','高い','良い','有効','強い','上昇','上位','得意','適性'],negative:['不調','低い','悪い','失敗','敗戦','不安定','弱い','低下','問題','懸念','苦手']};
+const has=(q,a)=>a.some(x=>q.includes(x)),hits=(q,a)=>a.filter(x=>q.includes(x)),clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
+function analyze(q){const s=q.toLowerCase(),nums=q.match(/(?:\d+(?:\.\d+)?%?|\.\d+)/g)||[],dataHits=hits(s,K.data),tacticHits=hits(s,K.tactic),humanHits=hits(s,K.human),fixed=hits(s,K.fixed),trial=hits(s,K.trial),risk=hits(s,K.risk),pos=hits(s,K.positive),neg=hits(s,K.negative);const namedRole=has(s,['主将','キャプテン','副主将','クローザー','抑え','先発','1番','2番','捕手','投手']);const topic=dataHits.length>=tacticHits.length&&dataHits.length>=humanHits.length?'データ中心':tacticHits.length>=humanHits.length?'戦術中心':'人・組織中心';let evidence=20+Math.min(nums.length*14,42)+Math.min(dataHits.length*5,20)+(q.length>30?7:0)+(q.length>70?5:0);if(q.length<10)evidence-=15;return{q,s,nums,dataHits,tacticHits,humanHits,fixed,trial,risk,pos,neg,namedRole,topic,evidence:clamp(evidence,10,95)}}
+function rateVote(score,relevant,evidence){if(!relevant&&evidence<45)return'hold';if(score>=3.5)return'yes';if(score>=.2)return'cond';if(score<=-3.5)return'no';if(relevant)return'cond';return'hold'}
+function melchior(x){const relevant=x.dataHits.length>0||x.nums.length>0;let score=0;score+=Math.min(x.nums.length,4)*1.15+Math.min(x.dataHits.length,4)*.45+Math.min(x.pos.length,2)*.65-Math.min(x.neg.length,2)*.65;if(x.fixed.length)score-=.9;if(x.risk.length)score-=.35;if(x.trial.length)score+=.45;if(relevant&&x.nums.length===0)score-=.8;const conf=clamp(Math.round(x.evidence+(x.nums.length?8:0)),25,96),vote=rateVote(score,relevant,conf);const basis=x.nums.length?`数値情報を${x.nums.length}件検出。印象だけではなく比較可能な材料があります。`:(relevant?'数値項目は示されていますが具体値が不足しています。':'この質問は主に戦術・役割の問題で、数値だけでは決められません。');const concern=x.fixed.length?'固定運用は、調子や対戦条件が変わった時に再評価できる仕組みが必要です。':(x.nums.length?'対象期間や比較相手が不明だと数値を過大評価する恐れがあります。':'客観データが少ないため強い断定を避けます。');const text=vote==='yes'?'数値面では支持できます。ただし無条件固定ではなく、一定期間ごとの再検証が前提です。':vote==='cond'?'データ上は方向性を支持できますが、期間・比較対象・役割変更後の数値確認を条件にします。':vote==='no'?'現在の数値材料では支持しにくい判断です。固定化より再検証を優先します。':'客観材料がまだ足りません。追加データ待ちとします。';return{vote,conf,basis,concern,text}}
+function balthasar(x){const relevant=x.tacticHits.length>0||x.namedRole;let score=0;score+=Math.min(x.tacticHits.length,4)*.75+(x.namedRole?.7:0)+Math.min(x.pos.length,2)*.5-Math.min(x.neg.length,2)*.45;if(x.fixed.length)score-=.8;if(x.trial.length)score+=.8;if(x.risk.length)score-=.25;if(x.nums.length>=2)score+=.7;const conf=clamp(42+x.tacticHits.length*9+(x.namedRole?8:0)+(x.nums.length?6:0),30,94),vote=rateVote(score,relevant,conf);const basis=relevant?'役割・起用・打順として具体的な戦術テーマがあり、実戦的な判断が可能です。':'勝敗への直接的な戦術条件が少なく、戦術評価の比重は下がります。';const concern=x.fixed.length?'固定は相手や試合展開に応じた変更余地を奪います。解除条件を先に決めるべきです。':'代替案を1つ残しておけば、試合展開に応じて修正できます。';const text=vote==='yes'?'戦術として積極的に採用可能です。ただし相手や試合展開に応じた解除条件は残します。':vote==='cond'?'戦術としては成立します。「基本方針＋変更条件」で運用するのが実戦的です。':vote==='no'?'戦術上のリスクが利点を上回ります。別案を優先すべきです。':'戦術テーマが曖昧です。役割や狙いを具体化して再審議します。';return{vote,conf,basis,concern,text}}
+function casper(x){const relevant=x.humanHits.length>0||has(x.s,['キャプテン','主将','副主将','負担','チーム','役割']);let score=0;score+=Math.min(x.humanHits.length,4)*.65+Math.min(x.pos.length,2)*.45-Math.min(x.neg.length,2)*.4;if(x.fixed.length)score-=.65;if(x.risk.length)score-=.7;if(x.trial.length)score+=.7;if(has(x.s,['複数','副主将','分担','併用']))score+=.55;const conf=clamp(40+x.humanHits.length*9+(relevant?6:0)+(qDetail(x.q)?5:0),30,92),vote=rateVote(score,relevant,conf);const basis=relevant?'本人だけでなく、周囲の自発性・役割分担・負担まで評価できる質問です。':'人間関係や成長への情報が少なく、判断材料は限定的です。';const concern=x.risk.length?'負担や懸念が明示されています。本人への集中と周囲の受け身化を観察する必要があります。':(x.fixed.length?'固定化で周囲が役割を失わないか確認が必要です。':'運用後に本人と周囲の変化を観察する必要があります。');const text=vote==='yes'?'人・チーム面でも支持できます。ただし役割を一人に集中させず、周囲が動ける余白を残します。':vote==='cond'?'方向性には賛成です。ただし本人の負担と周囲の自発性を定期的に確認することを条件にします。':vote==='no'?'本人またはチームへの負担が大きく、現状案は支持しません。役割分散を優先します。':'人・チーム面の情報が不足しています。本人の反応や周囲の動きを確認して再審議します。';return{vote,conf,basis,concern,text}}
 function qDetail(q){return q.length>45||/[、。]/.test(q)}
-function finalDecision(r,x){
- const arr=[r.m.vote,r.b.vote,r.c.vote];
- const count=k=>arr.filter(v=>v===k).length;
- let vote='cond';
- if(count('no')>=2)vote='no';
- else if(count('yes')>=2)vote='yes';
- else if(count('hold')===3)vote='hold';
- else if(count('hold')===2){
-   const decisive=arr.find(v=>v!=='hold');
-   vote=decisive==='no'?'hold':'cond';
- }else if(count('hold')===1){
-   if(count('no')===1&&count('yes')===1)vote='hold';
-   else if(count('no')===1&&count('cond')===1)vote='hold';
-   else vote='cond';
- }else if(count('no')>=1&&count('yes')>=1)vote='cond';
- else if(count('no')>=1&&count('cond')>=2)vote='cond';
- else if(count('yes')>=1&&count('cond')>=1)vote='cond';
- const avg=Math.round((r.m.conf+r.b.conf+r.c.conf)/3);
- const reason=vote==='yes'?'三人格の多数が積極的に支持。実行し、解除条件を決めて結果を追跡します。':vote==='cond'?'方向性は支持。人格間の慎重論を残し、条件設定・再評価を前提に運用します。':vote==='no'?'複数人格で懸念が優勢。現状案は採用せず、代替案を再審議します。':'意見の衝突または材料不足が大きいため、現時点では最終決定を保留します。';
- const next=x.nums.length? 'NEXT：この数値が何試合・何打席・どの相手を対象にしたものかを加えると精度が上がります。':'NEXT：直近3〜5試合の数字、比較対象、成功条件のいずれか1つを加えると精度が上がります。';
- return {vote,avg,reason,next};
-}
-function setPersona(prefix,p){
- $(prefix+'Vote').textContent=V[p.vote];$(prefix+'Conf').textContent='判定確度 '+p.conf+'%';$(prefix+'Text').textContent=p.text;$(prefix+'Basis').textContent=p.basis;$(prefix+'Concern').textContent=p.concern;
-}
-function renderSignals(x){
- const chips=[`主題：${x.topic}`,`数値：${x.nums.length}件`,`戦術語：${x.tacticHits.length}件`,`人・組織語：${x.humanHits.length}件`];
- if(x.fixed.length)chips.push('固定化リスク');if(x.risk.length)chips.push('負担・懸念あり');if(x.trial.length)chips.push('試験運用あり');
- $('signalRow').innerHTML=chips.map(t=>`<span class="chip">${t}</span>`).join('');
-}
-function runMagi(){
- const q=$('q').value.trim();if(!q){$('status').textContent='質問を入力してください。';return}
- const x=analyze(q),m=melchior(x),b=balthasar(x),c=casper(x),f=finalDecision({m,b,c},x);
- renderSignals(x);setPersona('m',m);setPersona('b',b);setPersona('c',c);
- $('v1').textContent='MELCHIOR '+V[m.vote];$('v2').textContent='BALTHASAR '+V[b.vote];$('v3').textContent='CASPER '+V[c.vote];$('verdict').textContent=V[f.vote];$('reason').textContent=`総合確度 ${f.avg}%｜${f.reason}`;$('next').textContent=f.next;
- $('status').textContent='MAGI SYSTEM 審議完了 — FREE CORE v0.3';$('response').classList.add('show');saveHistory(q,f.vote);$('response').scrollIntoView({behavior:'smooth',block:'start'});
-}
+function finalDecision(r,x){const arr=[r.m.vote,r.b.vote,r.c.vote],count=k=>arr.filter(v=>v===k).length;let vote='cond';if(count('no')>=2)vote='no';else if(count('yes')>=2)vote='yes';else if(count('hold')===3)vote='hold';else if(count('hold')===2){const decisive=arr.find(v=>v!=='hold');vote=decisive==='no'?'hold':'cond'}else if(count('hold')===1){if(count('no')===1&&count('yes')===1)vote='hold';else if(count('no')===1&&count('cond')===1)vote='hold';else vote='cond'}else if(count('no')>=1&&count('yes')>=1)vote='cond';else if(count('no')>=1&&count('cond')>=2)vote='cond';else if(count('yes')>=1&&count('cond')>=1)vote='cond';const avg=Math.round((r.m.conf+r.b.conf+r.c.conf)/3);const reason=vote==='yes'?'三人格の多数が積極的に支持。実行し、解除条件を決めて結果を追跡します。':vote==='cond'?'方向性は支持。人格間の慎重論を残し、条件設定・再評価を前提に運用します。':vote==='no'?'複数人格で懸念が優勢。現状案は採用せず、代替案を再審議します。':'意見の衝突または材料不足が大きいため、現時点では最終決定を保留します。';const next=x.nums.length?'NEXT：この数値が何試合・何打席・どの相手を対象にしたものかを加えると精度が上がります。':'NEXT：直近3〜5試合の数字、比較対象、成功条件のいずれか1つを加えると精度が上がります。';return{vote,avg,reason,next}}
+function setPersona(prefix,p){$(prefix+'Vote').textContent=V[p.vote];$(prefix+'Conf').textContent='判定確度 '+p.conf+'%';$(prefix+'Text').textContent=p.text;$(prefix+'Basis').textContent=p.basis;$(prefix+'Concern').textContent=p.concern}
+function renderSignals(x){const chips=[`主題：${x.topic}`,`数値：${x.nums.length}件`,`戦術語：${x.tacticHits.length}件`,`人・組織語：${x.humanHits.length}件`];if(x.fixed.length)chips.push('固定化リスク');if(x.risk.length)chips.push('負担・懸念あり');if(x.trial.length)chips.push('試験運用あり');$('signalRow').innerHTML=chips.map(t=>`<span class="chip">${t}</span>`).join('')}
+function runMagi(){const q=$('q').value.trim();if(!q){$('status').textContent='質問を入力してください。';return}const x=analyze(q),m=melchior(x),b=balthasar(x),c=casper(x),f=finalDecision({m,b,c},x);renderSignals(x);setPersona('m',m);setPersona('b',b);setPersona('c',c);$('v1').textContent='MELCHIOR '+V[m.vote];$('v2').textContent='BALTHASAR '+V[b.vote];$('v3').textContent='CASPER '+V[c.vote];$('verdict').textContent=V[f.vote];$('reason').textContent=`総合確度 ${f.avg}%｜${f.reason}`;$('next').textContent=f.next;$('status').textContent='MAGI SYSTEM 審議完了 — FREE CORE v0.4';$('response').classList.add('show');saveHistory(q,f.vote);$('response').scrollIntoView({behavior:'smooth',block:'start'})}
 function sample(){$('q').value='大久保陽翔を1番打者で固定するべきか？ 直近5試合で打率.350、出塁率.480。走力はチーム上位だが、固定による負担も気になる。'}
-function clearAll(){$('q').value='';$('response').classList.remove('show');$('status').textContent='FREE CORE v0.3 — 判定保留の過剰発生を修正'}
-function saveHistory(q,vote){
- let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV3')||'[]')}catch(e){}h.unshift({q,vote,t:Date.now()});h=h.slice(0,8);localStorage.setItem('magiHistoryV3',JSON.stringify(h));renderHistory();
-}
-function renderHistory(){
- let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV3')||'[]')}catch(e){}if(!h.length){$('historyList').innerHTML='まだ審議履歴はありません。';return}
- $('historyList').innerHTML=h.map((x,i)=>`<div class="historyItem">${V[x.vote]}　${escapeHtml(x.q)} <button class="secondary" onclick="reuse(${i})">再審議</button></div>`).join('');
-}
-function reuse(i){let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV3')||'[]')}catch(e){}if(!h[i])return;$('q').value=h[i].q;window.scrollTo({top:0,behavior:'smooth'});}
-function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
-renderHistory();
+function clearAll(){$('q').value='';$('response').classList.remove('show');$('status').textContent='FREE CORE v0.4 — 3人格独立審議 / 完全無料'}
+function saveHistory(q,vote){let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV4')||'[]')}catch(e){}h.unshift({q,vote,t:Date.now()});h=h.slice(0,8);localStorage.setItem('magiHistoryV4',JSON.stringify(h));renderHistory()}
+function renderHistory(){let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV4')||'[]')}catch(e){}if(!h.length){$('historyList').innerHTML='まだ審議履歴はありません。';return}$('historyList').innerHTML=h.map((x,i)=>`<div class="historyItem">${V[x.vote]}　${escapeHtml(x.q)} <button class="secondary" onclick="reuse(${i})">再審議</button></div>`).join('')}
+function reuse(i){let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV4')||'[]')}catch(e){}if(!h[i])return;$('q').value=h[i].q;document.getElementById('judge').scrollIntoView({behavior:'smooth'})}
+function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}renderHistory();
 </script>
 </body>
 </html>
