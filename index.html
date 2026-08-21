@@ -13,24 +13,24 @@
 <div class="wrap">
   <div class="kicker">MAGI WEB / FREE CORE <span class="free">NO PAID API</span></div>
   <h1>MAGI</h1>
-  <div class="sub">質問文に含まれる事実・数値・役割・固定化リスクなどを読み分け、MELCHIOR・BALTHASAR・CASPERが別々の評価軸で審議します。</div>
-  <div class="privacy"><b>完全無料構成：</b>外部AI APIを使用せず、この端末のブラウザ内だけで判定します。質問内容は外部へ送信しません。</div>
+  <div class="sub">質問文の数値・役割・戦術・固定化リスク・チーム影響を分けて読み、3人格がそれぞれ別の基準で審議します。</div>
+  <div class="privacy"><b>完全無料構成：</b>外部AI APIは使いません。判定はブラウザ内だけで実行し、質問内容を外部送信しません。</div>
 
   <div class="grid">
-    <div class="persona blue"><small>01 / ANALYSIS</small><h3>MELCHIOR-1</h3><p>「数字は嘘をつかない」。数値・記録・事実・再現性・材料不足を厳しく判定。</p></div>
-    <div class="persona red"><small>02 / STRATEGY</small><h3>BALTHASAR-2</h3><p>勝つための一手を演算。起用・打順・継投・代替案・固定化リスクを評価。</p></div>
-    <div class="persona green"><small>03 / EVALUATION</small><h3>CASPER-3</h3><p>成長・役割負担・関係性・自発性・チーム全体への影響を評価。</p></div>
+    <div class="persona blue"><small>01 / ANALYSIS</small><h3>MELCHIOR-1</h3><p>「数字は嘘をつかない」。数値・記録・再現性を優先し、材料不足なら無理に断定しません。</p></div>
+    <div class="persona red"><small>02 / STRATEGY</small><h3>BALTHASAR-2</h3><p>勝つための一手を演算。起用・打順・継投・代替案・固定化リスクを判断します。</p></div>
+    <div class="persona green"><small>03 / EVALUATION</small><h3>CASPER-3</h3><p>成長・役割負担・関係性・自発性・チーム全体への影響を判断します。</p></div>
   </div>
 
   <div class="card">
     <label for="q">MAGIに審議させる</label>
-    <textarea id="q" placeholder="例：大久保陽翔を1番打者で固定するべきか？ 直近5試合で打率.350、出塁率.480。"></textarea>
+    <textarea id="q" placeholder="例：大久保陽翔を1番打者で固定するべきか？ 直近5試合で打率.350、出塁率.480。走力はチーム上位だが、固定による負担も気になる。"></textarea>
     <div class="actions">
       <button class="primary" onclick="runMagi()">審議開始</button>
       <button class="secondary" onclick="sample()">サンプル質問</button>
       <button class="secondary" onclick="clearAll()">クリア</button>
     </div>
-    <div id="status" class="status">FREE CORE v0.2 — ローカル三人格審議エンジン</div>
+    <div id="status" class="status">FREE CORE v0.3 — 判定保留の過剰発生を修正</div>
   </div>
 
   <div id="response" class="response">
@@ -52,117 +52,138 @@
 const $=id=>document.getElementById(id);
 const V={yes:'🟢 ◎ 賛成',cond:'🔵 ○ 条件付き賛成',hold:'🟡 △ 判断保留',no:'🔴 ✕ 反対'};
 const K={
- data:['打率','出塁率','長打率','ops','防御率','era','whip','成績','数字','データ','記録','試合','打席','投球回','奪三振','四球','死球','失策','盗塁','球数','被安打','得点','失点','勝率'],
+ data:['打率','出塁率','長打率','ops','防御率','era','whip','成績','数字','データ','記録','試合','打席','投球回','奪三振','四球','死球','失策','盗塁','球数','被安打','得点','失点','勝率','走力'],
  tactic:['打順','1番','2番','3番','4番','5番','6番','7番','8番','9番','起用','先発','継投','クローザー','抑え','投手','捕手','守備','代打','代走','バント','盗塁','配球','采配','ポジション'],
  human:['主将','キャプテン','副主将','成長','気持ち','関係','負担','責任','声掛け','チーム','信頼','自発','役割','雰囲気','モチベーション','リーダー'],
  fixed:['固定','絶対','必ず','全試合','常に','外さない','専任','限定'],
- trial:['試す','試験','期間限定','数試合','様子を見る','併用','競争','ローテーション','条件付き'],
- risk:['怪我','故障','疲労','負担','不調','連敗','失策','エラー','四球','崩れる','低下','不安','遅刻','欠場'],
- positive:['好調','改善','成長','安定','成功','勝利','高い','良い','有効','強い','上昇'],
- negative:['不調','低い','悪い','失敗','敗戦','不安定','弱い','低下','問題','懸念']
+ trial:['試す','試験','期間限定','数試合','様子を見る','併用','競争','ローテーション','条件付き','見直し'],
+ risk:['怪我','故障','疲労','負担','不調','連敗','失策','エラー','四球','崩れる','低下','不安','遅刻','欠場','懸念'],
+ positive:['好調','改善','成長','安定','成功','勝利','高い','良い','有効','強い','上昇','上位','得意','適性'],
+ negative:['不調','低い','悪い','失敗','敗戦','不安定','弱い','低下','問題','懸念','苦手']
 };
 const has=(q,arr)=>arr.some(x=>q.includes(x));
 const hits=(q,arr)=>arr.filter(x=>q.includes(x));
 const clamp=(n,a,b)=>Math.max(a,Math.min(b,n));
-function signals(q){
+function analyze(q){
  const s=q.toLowerCase();
  const nums=(q.match(/(?:\d+(?:\.\d+)?%?|\.\d+)/g)||[]);
  const dataHits=hits(s,K.data), tacticHits=hits(s,K.tactic), humanHits=hits(s,K.human);
- const fixed=hits(s,K.fixed), trial=hits(s,K.trial), risk=hits(s,K.risk);
- const pos=hits(s,K.positive), neg=hits(s,K.negative);
+ const fixed=hits(s,K.fixed), trial=hits(s,K.trial), risk=hits(s,K.risk), pos=hits(s,K.positive), neg=hits(s,K.negative);
+ const namedRole=has(s,['主将','キャプテン','副主将','クローザー','抑え','先発','1番','2番','捕手','投手']);
  const topic=dataHits.length>=tacticHits.length&&dataHits.length>=humanHits.length?'データ中心':tacticHits.length>=humanHits.length?'戦術中心':'人・組織中心';
- let suff=25+Math.min(nums.length*12,36)+Math.min(dataHits.length*5,20)+(q.length>35?8:0)+(q.length>80?6:0);
- if(q.length<12)suff-=20;
- return {q,s,nums,dataHits,tacticHits,humanHits,fixed,trial,risk,pos,neg,topic,suff:clamp(suff,10,95)};
+ let evidence=20 + Math.min(nums.length*14,42) + Math.min(dataHits.length*5,20) + (q.length>30?7:0) + (q.length>70?5:0);
+ if(q.length<10)evidence-=15;
+ return {q,s,nums,dataHits,tacticHits,humanHits,fixed,trial,risk,pos,neg,namedRole,topic,evidence:clamp(evidence,10,95)};
 }
-function voteFrom(score,confidence){
- if(confidence<35&&Math.abs(score)<3)return 'hold';
- if(score>=4)return 'yes';
- if(score>=1)return 'cond';
- if(score<=-4)return 'no';
+function rateVote(score,relevant,evidence){
+ if(!relevant && evidence<45) return 'hold';
+ if(score>=3.5) return 'yes';
+ if(score>=0.2) return 'cond';
+ if(score<=-3.5) return 'no';
+ if(relevant) return 'cond';
  return 'hold';
 }
 function melchior(x){
+ const relevant=x.dataHits.length>0||x.nums.length>0;
  let score=0;
- score+=Math.min(x.nums.length,3)*1.4;
- score+=Math.min(x.dataHits.length,3)*.7;
- score+=Math.min(x.pos.length,2)*.8;
- score-=Math.min(x.neg.length,2)*.8;
- score-=x.fixed.length?1.4:0;
- if(x.trial.length)score+=.7;
- if(x.risk.length)score-=.7;
- if(x.nums.length===0&&x.dataHits.length>0)score-=1.1;
- const conf=clamp(Math.round(x.suff+(x.nums.length?8:0)),20,96);
- const vote=voteFrom(score,conf);
- const basis=x.nums.length?`質問内に数値情報が${x.nums.length}件あり、比較・検証の材料があります。`:`数値材料は少なく、現在は質問文に含まれる事実表現を中心に判断しています。`;
- const concern=x.fixed.length?`「${x.fixed[0]}」のような固定運用は、成績変動を無視する危険があります。`:(x.suff<50?'判断材料が不足しています。直近成績や比較対象が必要です。':'単発の結果を継続傾向と誤認しないことが必要です。');
- let text=vote==='yes'?'客観材料は採用を支持する方向です。':vote==='cond'?'方向性は支持できますが、数値による継続確認を条件にします。':vote==='no'?'現時点の材料では採用リスクの方が大きいと見ます。':'材料不足または優位差が小さく、断定を避けます。';
- text+=` MELCHIORは印象より再現性を優先し、同じ条件で結果が続くかを重視します。`;
- return {vote,conf,text,basis,concern};
+ score += Math.min(x.nums.length,4)*1.15;
+ score += Math.min(x.dataHits.length,4)*0.45;
+ score += Math.min(x.pos.length,2)*0.65;
+ score -= Math.min(x.neg.length,2)*0.65;
+ if(x.fixed.length) score-=0.9;
+ if(x.risk.length) score-=0.35;
+ if(x.trial.length) score+=0.45;
+ if(relevant && x.nums.length===0) score-=0.8;
+ const conf=clamp(Math.round(x.evidence+(x.nums.length?8:0)),25,96);
+ const vote=rateVote(score,relevant,conf);
+ const basis=x.nums.length?`数値情報を${x.nums.length}件検出。少なくとも印象だけではなく、比較可能な材料があります。`:(relevant?'数値項目は示されていますが、具体値が不足しています。':'この質問は主に戦術・役割の問題で、数値だけでは決められません。');
+ const concern=x.fixed.length?'固定運用は、調子や対戦条件が変わった時に再評価できる仕組みが必要です。':(x.nums.length?'対象期間や比較相手が不明だと数値を過大評価する恐れがあります。':'客観データが少ないため、MELCHIOR単独では強い断定を避けます。');
+ const text=vote==='yes'?'数値面では支持できます。ただし固定を無条件に続けるのではなく、一定期間ごとに再検証する前提です。':vote==='cond'?'データ上は方向性を支持できますが、期間・比較対象・役割変更後の数値確認を条件にします。':vote==='no'?'現在の数値材料では支持しにくい判断です。固定化より再検証を優先します。':'客観材料がまだ足りません。MELCHIORは無理に結論を作らず、追加データ待ちとします。';
+ return {vote,conf,basis,concern,text};
 }
 function balthasar(x){
+ const relevant=x.tacticHits.length>0||x.namedRole;
  let score=0;
- score+=Math.min(x.tacticHits.length,4)*.9;
- score+=Math.min(x.pos.length,2)*.6;
- score-=Math.min(x.neg.length,2)*.7;
- score-=x.fixed.length?1.8:0;
- score+=x.trial.length?1.5:0;
- score-=Math.min(x.risk.length,2)*.5;
- if(x.tacticHits.length===0)score-=.4;
- const conf=clamp(Math.round(48+x.tacticHits.length*7+x.trial.length*5+x.nums.length*3-(x.q.length<12?18:0)),20,94);
- const vote=voteFrom(score,conf);
- const basis=x.tacticHits.length?`戦術語「${x.tacticHits.slice(0,3).join('・')}」を検出。役割と勝ち筋を具体化できます。`:`明確な戦術条件が少ないため、運用方法から逆算して判断しています。`;
- const concern=x.fixed.length?`固定化すると相手・調子・試合展開への対応力が落ちます。`:(x.trial.length?'試験運用の終了条件と評価基準を先に決める必要があります。':'代替案を持たずに一本化すると修正が遅れます。');
- let text=vote==='yes'?'勝利への道筋として採用価値があります。':vote==='cond'?'戦術として成立しますが、条件付き運用が適切です。':vote==='no'?'戦術上の柔軟性を失うため現案には反対します。':'勝ち筋と代替案の情報が足りず、保留が妥当です。';
- text+=` BALTHASARは「採用するか」だけでなく、崩れた時にどう切り替えるかまで評価します。`;
- return {vote,conf,text,basis,concern};
+ score += Math.min(x.tacticHits.length,4)*0.75;
+ score += x.namedRole?0.7:0;
+ score += Math.min(x.pos.length,2)*0.5;
+ score -= Math.min(x.neg.length,2)*0.45;
+ if(x.fixed.length)score-=0.8;
+ if(x.trial.length)score+=0.8;
+ if(x.risk.length)score-=0.25;
+ if(x.nums.length>=2)score+=0.7;
+ const conf=clamp(42+x.tacticHits.length*9+(x.namedRole?8:0)+(x.nums.length?6:0),30,94);
+ const vote=rateVote(score,relevant,conf);
+ const basis=relevant?'役割・起用・打順として具体的な戦術テーマがあるため、条件付きでも実戦的な判断が可能です。':'勝敗への直接的な戦術条件が少なく、戦術評価の比重は下がります。';
+ const concern=x.fixed.length?'「固定」は相手や試合展開に応じた変更余地を奪います。解除条件を先に決めるべきです。':'代替案を1つ残しておけば、試合展開に応じて修正できます。';
+ const text=vote==='yes'?'戦術として積極的に採用可能です。ただし相手や試合展開に応じた解除条件は残します。':vote==='cond'?'戦術としては成立します。固定ではなく「基本方針＋変更条件」で運用するのが最も実戦的です。':vote==='no'?'戦術上のリスクが利点を上回ります。別案を優先すべきです。':'戦術テーマが曖昧です。役割や狙いを具体化してから再審議します。';
+ return {vote,conf,basis,concern,text};
 }
 function casper(x){
+ const relevant=x.humanHits.length>0||has(x.s,['キャプテン','主将','副主将','負担','チーム','役割']);
  let score=0;
- score+=Math.min(x.humanHits.length,4)*.9;
- score+=Math.min(x.pos.length,2)*.6;
- score-=Math.min(x.neg.length,2)*.5;
- score-=x.fixed.length?1.7:0;
- score+=x.trial.length?.9:0;
- score-=Math.min(x.risk.length,2)*.9;
- const conf=clamp(Math.round(46+x.humanHits.length*7+x.q.length/15+(x.risk.length?5:0)),20,93);
- const vote=voteFrom(score,conf);
- const basis=x.humanHits.length?`「${x.humanHits.slice(0,3).join('・')}」が論点に含まれ、人とチームへの影響を評価できます。`:`人間関係や成長に関する情報が少ないため、長期影響は慎重に見ます。`;
- const concern=x.fixed.length?`役割の固定は本人への負担集中や周囲の受け身化を招く可能性があります。`:(x.risk.length?`負担・不調などの兆候を無視すると、短期の成果が長期の成長を損ねます。`:'本人だけでなく周囲がどう動くかを継続観察する必要があります。');
- let text=vote==='yes'?'本人とチーム双方に前向きな効果が期待できます。':vote==='cond'?'方向性には賛成ですが、人への負担を観察する条件が必要です。':vote==='no'?'人とチームへの悪影響が勝る可能性があり反対します。':'成長や関係性の材料が足りず、今は保留します。';
- text+=` CASPERは勝敗だけでなく、自発性・信頼・役割の偏りまで含めて判断します。`;
- return {vote,conf,text,basis,concern};
+ score += Math.min(x.humanHits.length,4)*0.65;
+ score += Math.min(x.pos.length,2)*0.45;
+ score -= Math.min(x.neg.length,2)*0.4;
+ if(x.fixed.length)score-=0.65;
+ if(x.risk.length)score-=0.7;
+ if(x.trial.length)score+=0.7;
+ if(has(x.s,['複数','副主将','分担','併用']))score+=0.55;
+ const conf=clamp(40+x.humanHits.length*9+(relevant?6:0)+(qDetail(x.q)?5:0),30,92);
+ const vote=rateVote(score,relevant,conf);
+ const basis=relevant?'本人だけでなく、周囲の自発性・役割分担・負担まで評価できる質問です。':'人間関係や成長への情報が少ないため、CASPERの判断材料は限定的です。';
+ const concern=x.risk.length?'負担や懸念が明示されています。本人への集中と周囲の受け身化を観察する必要があります。':(x.fixed.length?'固定化で周囲が役割を失わないか確認が必要です。':'運用後に本人と周囲の変化を観察する必要があります。');
+ const text=vote==='yes'?'人・チーム面でも支持できます。ただし役割を一人に集中させず、周囲が動ける余白を残します。':vote==='cond'?'方向性には賛成です。ただし本人の負担と周囲の自発性を定期的に確認することを条件にします。':vote==='no'?'本人またはチームへの負担が大きく、現状案は支持しません。役割分散を優先します。':'人・チーム面の情報が不足しています。本人の反応や周囲の動きを確認して再審議します。';
+ return {vote,conf,basis,concern,text};
 }
-function finalDecision(rs,x){
- const c={yes:0,cond:0,hold:0,no:0};rs.forEach(r=>c[r.vote]++);
- let vote='hold';
- if(c.no>=2)vote='no';else if(c.yes>=2)vote='yes';else if(c.hold>=2)vote='hold';else if(c.yes+c.cond>=2)vote='cond';else if(c.no+c.hold>=2)vote='hold';else vote='cond';
- const avg=Math.round(rs.reduce((a,b)=>a+b.conf,0)/3);
- const split=new Set(rs.map(r=>r.vote)).size;
- let reason=vote==='yes'?'三賢人の多数が支持。実行後の検証を前提に採用可能。':vote==='cond'?'方向性は支持。ただし固定化せず、条件と見直し基準を設定して運用。':vote==='no'?'懸念が優位。現案は採用せず、代替案を再審議。':'意見が割れている、または材料不足。追加情報を得て再審議。';
- if(split===3)reason+=' 三者の評価軸が分かれているため、最終判断の確度は低めです。';
- const next=x.nums.length===0?'NEXT：直近3〜5試合の数字、比較対象、役割変更後に何を成功とするかを追加すると精度が上がります。':x.fixed.length?'NEXT：固定ではなく「何試合試すか」「どの数値で見直すか」を決めて再審議してください。':'NEXT：実行後の結果を同じ条件で記録し、再審議で前回判定との差を確認してください。';
+function qDetail(q){return q.length>45||/[、。]/.test(q)}
+function finalDecision(r,x){
+ const arr=[r.m.vote,r.b.vote,r.c.vote];
+ const count=k=>arr.filter(v=>v===k).length;
+ let vote='cond';
+ if(count('no')>=2)vote='no';
+ else if(count('yes')>=2)vote='yes';
+ else if(count('hold')===3)vote='hold';
+ else if(count('hold')===2){
+   const decisive=arr.find(v=>v!=='hold');
+   vote=decisive==='no'?'hold':'cond';
+ }else if(count('hold')===1){
+   if(count('no')===1&&count('yes')===1)vote='hold';
+   else if(count('no')===1&&count('cond')===1)vote='hold';
+   else vote='cond';
+ }else if(count('no')>=1&&count('yes')>=1)vote='cond';
+ else if(count('no')>=1&&count('cond')>=2)vote='cond';
+ else if(count('yes')>=1&&count('cond')>=1)vote='cond';
+ const avg=Math.round((r.m.conf+r.b.conf+r.c.conf)/3);
+ const reason=vote==='yes'?'三人格の多数が積極的に支持。実行し、解除条件を決めて結果を追跡します。':vote==='cond'?'方向性は支持。人格間の慎重論を残し、条件設定・再評価を前提に運用します。':vote==='no'?'複数人格で懸念が優勢。現状案は採用せず、代替案を再審議します。':'意見の衝突または材料不足が大きいため、現時点では最終決定を保留します。';
+ const next=x.nums.length? 'NEXT：この数値が何試合・何打席・どの相手を対象にしたものかを加えると精度が上がります。':'NEXT：直近3〜5試合の数字、比較対象、成功条件のいずれか1つを加えると精度が上がります。';
  return {vote,avg,reason,next};
 }
+function setPersona(prefix,p){
+ $(prefix+'Vote').textContent=V[p.vote];$(prefix+'Conf').textContent='判定確度 '+p.conf+'%';$(prefix+'Text').textContent=p.text;$(prefix+'Basis').textContent=p.basis;$(prefix+'Concern').textContent=p.concern;
+}
 function renderSignals(x){
- const chips=[`論点：${x.topic}`,`数値：${x.nums.length}件`,`材料充足度：${x.suff}%`];
- if(x.fixed.length)chips.push('固定化リスクあり');
- if(x.trial.length)chips.push('試験運用の余地あり');
- if(x.risk.length)chips.push(`リスク語：${x.risk.length}件`);
- $('signalRow').innerHTML=chips.map(v=>`<span class="chip">${v}</span>`).join('');
+ const chips=[`主題：${x.topic}`,`数値：${x.nums.length}件`,`戦術語：${x.tacticHits.length}件`,`人・組織語：${x.humanHits.length}件`];
+ if(x.fixed.length)chips.push('固定化リスク');if(x.risk.length)chips.push('負担・懸念あり');if(x.trial.length)chips.push('試験運用あり');
+ $('signalRow').innerHTML=chips.map(t=>`<span class="chip">${t}</span>`).join('');
 }
 function runMagi(){
  const q=$('q').value.trim();if(!q){$('status').textContent='質問を入力してください。';return}
- const x=signals(q),m=melchior(x),b=balthasar(x),c=casper(x),f=finalDecision([m,b,c],x);
- renderSignals(x);
- [['m',m],['b',b],['c',c]].forEach(([p,r])=>{$(p+'Vote').textContent=V[r.vote];$(p+'Conf').textContent=`判定確度 ${r.conf}%`;$(p+'Text').textContent=r.text;$(p+'Basis').textContent=r.basis;$(p+'Concern').textContent=r.concern;});
- $('v1').textContent='MELCHIOR '+V[m.vote];$('v2').textContent='BALTHASAR '+V[b.vote];$('v3').textContent='CASPER '+V[c.vote];$('verdict').textContent=V[f.vote];$('reason').textContent=`総合確度 ${f.avg}%｜${f.reason}`;$('next').textContent=f.next;$('status').textContent='MAGI SYSTEM 審議完了 — 外部送信なし';$('response').classList.add('show');saveHistory(q,V[f.vote]);$('response').scrollIntoView({behavior:'smooth',block:'start'});
+ const x=analyze(q),m=melchior(x),b=balthasar(x),c=casper(x),f=finalDecision({m,b,c},x);
+ renderSignals(x);setPersona('m',m);setPersona('b',b);setPersona('c',c);
+ $('v1').textContent='MELCHIOR '+V[m.vote];$('v2').textContent='BALTHASAR '+V[b.vote];$('v3').textContent='CASPER '+V[c.vote];$('verdict').textContent=V[f.vote];$('reason').textContent=`総合確度 ${f.avg}%｜${f.reason}`;$('next').textContent=f.next;
+ $('status').textContent='MAGI SYSTEM 審議完了 — FREE CORE v0.3';$('response').classList.add('show');saveHistory(q,f.vote);$('response').scrollIntoView({behavior:'smooth',block:'start'});
 }
 function sample(){$('q').value='大久保陽翔を1番打者で固定するべきか？ 直近5試合で打率.350、出塁率.480。走力はチーム上位だが、固定による負担も気になる。'}
-function clearAll(){$('q').value='';$('response').classList.remove('show');$('status').textContent='FREE CORE v0.2 — ローカル三人格審議エンジン'}
-function saveHistory(q,v){try{let h=JSON.parse(localStorage.getItem('magiHistory')||'[]');h.unshift({q,v,t:Date.now()});h=h.slice(0,8);localStorage.setItem('magiHistory',JSON.stringify(h));renderHistory()}catch(e){}}
-function renderHistory(){try{const h=JSON.parse(localStorage.getItem('magiHistory')||'[]');if(!h.length){$('historyList').textContent='まだ審議履歴はありません。';return}$('historyList').innerHTML=h.map((x,i)=>`<div class="historyItem">${x.v}　${escapeHtml(x.q).slice(0,70)}${x.q.length>70?'…':''}<button class="secondary" onclick="reuse(${i})">再審議</button></div>`).join('')}catch(e){}}
-function reuse(i){try{const h=JSON.parse(localStorage.getItem('magiHistory')||'[]');if(h[i]){$('q').value=h[i].q;window.scrollTo({top:0,behavior:'smooth'})}}catch(e){}}
+function clearAll(){$('q').value='';$('response').classList.remove('show');$('status').textContent='FREE CORE v0.3 — 判定保留の過剰発生を修正'}
+function saveHistory(q,vote){
+ let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV3')||'[]')}catch(e){}h.unshift({q,vote,t:Date.now()});h=h.slice(0,8);localStorage.setItem('magiHistoryV3',JSON.stringify(h));renderHistory();
+}
+function renderHistory(){
+ let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV3')||'[]')}catch(e){}if(!h.length){$('historyList').innerHTML='まだ審議履歴はありません。';return}
+ $('historyList').innerHTML=h.map((x,i)=>`<div class="historyItem">${V[x.vote]}　${escapeHtml(x.q)} <button class="secondary" onclick="reuse(${i})">再審議</button></div>`).join('');
+}
+function reuse(i){let h=[];try{h=JSON.parse(localStorage.getItem('magiHistoryV3')||'[]')}catch(e){}if(!h[i])return;$('q').value=h[i].q;window.scrollTo({top:0,behavior:'smooth'});}
 function escapeHtml(s){return s.replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]))}
 renderHistory();
 </script>
