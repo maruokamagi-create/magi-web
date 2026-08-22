@@ -9,6 +9,19 @@
   .answer .voteIcon{width:30px;height:30px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;box-shadow:0 2px 5px rgba(0,0,0,.20);font-size:20px;font-weight:900;line-height:1;color:#fff}
   .answer .voteIcon.yes{background:#18b94f}.answer .voteIcon.cond{background:#1877e8}.answer .voteIcon.hold{background:#f0b718;color:#3b2b00}.answer .voteIcon.no{background:#d73745}
   .answer .voteText{line-height:1.1;font-size:12px;font-weight:900}
+
+  /* Tablet / iPad: keep each sage name and its vote visually together. */
+  @media(min-width:600px) and (max-width:1180px){
+    .answer .top{display:flex;align-items:flex-start;justify-content:flex-start;gap:14px;min-height:auto;padding-bottom:10px}
+    .answer .top>div:first-child{width:auto;flex:0 1 auto;max-width:68%}
+    .answer .name{font-size:18px;line-height:1.2;white-space:nowrap}
+    .answer .roleSmall{font-size:12px;margin-top:4px}
+    .answer .confidence{font-size:12px;margin-top:2px}
+    .answer .badge{position:static;right:auto;bottom:auto;margin-top:0;gap:7px;padding:6px 10px;min-height:40px;align-self:flex-start}
+    .answer .voteIcon{width:30px;height:30px;font-size:20px}
+    .answer .voteText{font-size:12px}
+  }
+
   @media(max-width:430px){
     .answer .top{min-height:78px}
     .answer .name{font-size:15px;letter-spacing:-.02em;white-space:nowrap}
