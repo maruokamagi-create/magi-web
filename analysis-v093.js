@@ -1,11 +1,13 @@
 (()=>{
 const _searchDataEvidence=searchDataEvidence;
 const _melchior=melchior;
+const _scanDrive=scanDrive;
 const POSITIONS=['投手','捕手','一塁手','二塁手','三塁手','遊撃手','左翼手','中堅手','右翼手'];
 const POS_ALIAS={'ピッチャー':'投手','キャッチャー':'捕手','ファースト':'一塁手','セカンド':'二塁手','サード':'三塁手','ショート':'遊撃手','レフト':'左翼手','センター':'中堅手','ライト':'右翼手'};
 const normPos=v=>POS_ALIAS[String(v||'').trim()]||String(v||'').trim();
 const countBy=rows=>{const m={};for(const r of rows)m[r.position]=(m[r.position]||0)+1;return m};
 const ranked=m=>Object.entries(m).sort((a,b)=>b[1]-a[1]||a[0].localeCompare(b[0],'ja'));
+let pendingAutoRun='';
 function positionPreferenceAnalysis(){
   const src=dataRecords.filter(r=>/希望ポジション/.test(r.fileName||''));
   if(!src.length)return null;
@@ -66,10 +68,35 @@ renderEvidence=function(e){
   const a=e.positionAnalysis?`\n\n【自動集計】\n${e.positionAnalysis.summary}\n【懸念】\n${e.positionAnalysis.concerns}`:'';
   box.innerHTML='<b>DATA HUB 関連データ</b>\n'+escapeHtml(e.text+a);
 };
+scanDrive=async function(){
+  await _scanDrive();
+  if(pendingAutoRun){
+    const q=pendingAutoRun;pendingAutoRun='';$('q').value=q;updateRoute();
+    setTimeout(()=>runMagi(),50);
+  }
+};
 runMagi=function(){
   const q=$('q').value.trim();if(!q){$('status').textContent='相談内容を入力してください。';return}
   const route=routeQuestion(q);if(route.type==='advanced'){$('status').textContent='高度相談向けの内容です。引継ぎパネルを開きました。';openAdvanced();return}
-  const evidence=searchDataEvidence(q),x=analyze(q),m=melchior(x,evidence),b=balthasar(x),c=casper(x),a=evidence&&evidence.positionAnalysis;
+  let evidence=searchDataEvidence(q);
+  if(route.type==='data'&&!evidence){
+    if(!driveToken){
+      pendingAutoRun=q;
+      $('status').textContent='DATA HUBの実データが必要です。Google Driveへ接続し、索引化完了後に自動で審議します。';
+      connectDrive(false);
+      return;
+    }
+    const ds=$('driveState').textContent||'';
+    if(/読み込|索引化中|確認中|探索中|一覧化/.test(ds)&&!/自動索引化。/.test(ds)){
+      pendingAutoRun=q;
+      $('status').textContent='Google Driveを索引化中です。完了後に自動で審議します。';
+      return;
+    }
+    $('status').textContent='DATA HUBに関連する実データを確認できませんでした。「参照なし」のまま審議は実行しません。Driveを再読込してから再実行してください。';
+    $('datahub').scrollIntoView({behavior:'smooth',block:'start'});
+    return;
+  }
+  const x=analyze(q),m=melchior(x,evidence),b=balthasar(x),c=casper(x),a=evidence&&evidence.positionAnalysis;
   if(a){
     b.vote='cond';b.conf=Math.max(b.conf,84);b.text=`戦術面では、希望が多いポジションをそのまま固定するより、競合が大きい二塁手・投手は役割を分け、薄い外野中央などに第2候補を準備する方が安全です。`;
     b.basis=`${a.summary}`;b.concern=`希望順位は起用順位ではありません。実戦守備、送球、走力、投手・捕手との兼務負担を重ねて配置する必要があります。`;
@@ -83,7 +110,7 @@ runMagi=function(){
   $('next').textContent=a?'NEXT：希望ポジションに実戦成績・守備経験・走力・投手/捕手の兼務負担を重ね、各守備位置の第1候補・第2候補を作成します。':f.next;
   $('caseQuestion').textContent=q;const hub=evidence?`${evidence.count}件参照<br>参照ファイル：${escapeHtml(evidence.files.join('、'))}`:'参照なし';
   $('caseMeta').innerHTML=`審議日：${meta.date}<br>審議案件番号：${meta.number}<br>DATA HUB：${hub}`;
-  $('status').textContent='MAGI SYSTEM 審議完了 — FREE CORE v0.9.3';$('response').classList.add('show');saveHistory(q,f.key);$('response').scrollIntoView({behavior:'smooth',block:'start'});
+  $('status').textContent='MAGI SYSTEM 審議完了 — FREE CORE v0.9.4';$('response').classList.add('show');saveHistory(q,f.key);$('response').scrollIntoView({behavior:'smooth',block:'start'});
 };
-for(const el of document.querySelectorAll('.sectionHead span,.status'))if(el.textContent.includes('v0.9.1'))el.textContent=el.textContent.replace(/v0\.9\.1/g,'v0.9.3');
+for(const el of document.querySelectorAll('.sectionHead span,.status'))if(/v0\.9\.[123]/.test(el.textContent))el.textContent=el.textContent.replace(/v0\.9\.[123]/g,'v0.9.4');
 })();
