@@ -1,1 +1,1 @@
-{"rewrites":[{"source":"/","destination":"/app-v095.html"}]}
+{"rewrites":[{"source":"/","destination":"/app-v096.html"}],"headers":[{"source":"/","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/app-v096.html","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/analysis-v093.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]}]}
