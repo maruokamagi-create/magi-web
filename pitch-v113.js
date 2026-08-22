@@ -1,0 +1,50 @@
+(()=>{
+const oldSearch=searchDataEvidence,oldMel=melchior,oldBal=balthasar,oldCas=casper,oldRender=renderEvidence;
+let pitchCtx=null;
+const norm=s=>String(s??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）【】]/g,'');
+const v=(r,i)=>String((r.values||[])[i]??'').trim();
+const num=x=>{const n=Number(String(x??'').replace(/,/g,'').trim());return Number.isFinite(n)?n:0};
+const dateVal=s=>{const m=String(s||'').match(/(20\d{2})\/(\d{1,2})\/(\d{1,2})/);return m?new Date(+m[1],+m[2]-1,+m[3]).getTime():0};
+const outs=x=>{const s=String(x??'').trim(),m=s.match(/^(\d+)(?:\.(\d))?$/);if(!m)return 0;const w=+m[1],f=m[2]?+m[2]:0;return w*3+(f===1||f===2?f:0)};
+const ipText=o=>`${Math.floor(o/3)}.${o%3}`;
+const f2=x=>Number(x).toFixed(2);
+const pc=x=>`${(x*100).toFixed(1)}%`;
+function makePitch(q){
+  if(!/投手|投球|防御率|WHIP|whip|奪三振|被安打|自責|先発|リリーフ/.test(q))return null;
+  const all=dataRecords.filter(r=>(r.fileName||'')==='投手詳細2026-2027.csv');if(!all.length)return null;
+  const nq=norm(q),names=[...new Set(all.map(r=>v(r,6)).filter(Boolean))];
+  const player=names.filter(n=>nq.includes(norm(n))).sort((a,b)=>norm(b).length-norm(a).length)[0]||'';
+  let rows=player?all.filter(r=>norm(v(r,6))===norm(player)):all.slice();
+  rows=rows.map(r=>({r,t:dateVal(v(r,0)),k:r.rowNumber||0})).sort((a,b)=>b.t-a.t||b.k-a.k).map(x=>x.r);
+  if(/最近|直近/.test(q))rows=rows.slice(0,5);if(!rows.length)return null;
+  const S=i=>rows.reduce((a,r)=>a+num(v(r,i)),0);
+  const O=rows.reduce((a,r)=>a+outs(v(r,11)),0),IP=O/3,H=S(16),R=S(17),ER=S(18),BB=S(19),K=S(20),HBP=S(21),P=S(13),BALL=S(14),STR=S(15),W=S(8),L=S(9),SV=S(10);
+  const starts=rows.filter(r=>/先発/.test(v(r,5))).length,reliefs=rows.filter(r=>/リリーフ/.test(v(r,5))).length;
+  const era=IP?ER*7/IP:0,whip=IP?(H+BB)/IP:0,kbb=BB?K/BB:K,bb7=IP?BB*7/IP:0,hbp7=IP?HBP*7/IP:0,bbhbp7=IP?(BB+HBP)*7/IP:0,k7=IP?K*7/IP:0,strikeRate=P?STR/P:0,ppi=IP?P/IP:0;
+  const starterRows=rows.filter(r=>/先発/.test(v(r,5))),starterOuts=starterRows.reduce((a,r)=>a+outs(v(r,11)),0),avgStartIP=starterRows.length?(starterOuts/3)/starterRows.length:0;
+  const latest=rows[0];
+  const summary=`${player?player+'の':''}${/最近|直近/.test(q)?`直近${rows.length}登板`:`全${rows.length}登板`}：${starts}先発${reliefs?`・${reliefs}救援`:''}・${ipText(O)}回・${W}勝${L}敗${SV?`・${SV}セーブ`:''}・防御率${f2(era)}・WHIP${f2(whip)}・被安打${H}・奪三振${K}・与四球${BB}・与死球${HBP}・失点${R}・自責${ER}・${P}球・ストライク率${pc(strikeRate)}・K/BB${f2(kbb)}`;
+  const positives=[];const concerns=[];
+  if(starts>=2)positives.push(`${starts}試合の先発実績がある`);
+  if(era<=3.00)positives.push(`7回制換算の防御率${f2(era)}`);
+  if(whip<=1.30)positives.push(`WHIP${f2(whip)}で走者を抑えている`);
+  if(kbb>=2)positives.push(`K/BB${f2(kbb)}で奪三振と四球のバランスが良い`);
+  if(avgStartIP>=4.5)positives.push(`先発平均${f2(avgStartIP)}回`);
+  if(latest&&/先発/.test(v(latest,5)))positives.push(`最新先発は${v(latest,11)}回・自責${v(latest,18)}・奪三振${v(latest,20)}`);
+  if(bbhbp7>=3.5)concerns.push(`与四死球は7回換算${f2(bbhbp7)}で継続確認が必要`);
+  if(strikeRate<.60)concerns.push(`ストライク率${pc(strikeRate)}は制球の再現性を確認したい`);
+  if(rows.length<5)concerns.push(`${rows.length}登板で母数はまだ小さい`);
+  const outing=rows.map(r=>`${v(r,0)} ${v(r,2)} vs ${v(r,3)}：${v(r,5)} ${v(r,11)}回／自責${v(r,18)}／K${v(r,20)}／BB${v(r,19)}／${v(r,13)}球／WHIP${v(r,22)}`).join('\n');
+  return{player,rows,files:['投手詳細2026-2027.csv'],summary,outing,starts,reliefs,O,IP,H,R,ER,BB,K,HBP,P,BALL,STR,W,L,SV,era,whip,kbb,bb7,hbp7,bbhbp7,k7,strikeRate,ppi,avgStartIP,positives,concerns,latest,source:'投手詳細2026-2027.csv'};
+}
+searchDataEvidence=function(q){
+  const p=makePitch(q);pitchCtx=p;
+  if(p)return{count:p.rows.length,files:p.files,summary:p.summary,text:p.outing,pitchAnalysis:p};
+  return oldSearch(q);
+};
+melchior=function(x,e){const p=oldMel(x,e),r=e&&e.pitchAnalysis;if(!r)return p;const starter=/先発/.test(x.q||'');p.vote=starter&&r.starts>=2&&r.era<=3.5&&r.whip<=1.5?'cond':'hold';p.conf=Math.max(p.conf,94);p.text=`DATA HUBの投手CSVを列位置まで確認して再集計しました。${r.summary}。${starter?'先発起用の判断では、防御率・WHIP・奪三振/四球・先発での投球回を重視します。':'この実数値を投手評価の基準にします。'}`;p.basis=`プラス：${r.positives.join('／')||'明確なプラス材料なし'}。参照：投手詳細2026-2027.csv`;p.concern=`懸念：${r.concerns.join('／')||'大きな懸念なし'}。`;return p};
+balthasar=function(x){const p=oldBal(x),r=pitchCtx;if(!r||!/先発/.test(x.q||''))return p;const strong=r.starts>=2&&r.era<=3.0&&r.whip<=1.35&&r.avgStartIP>=4.0;p.vote=strong?'yes':'cond';p.conf=Math.max(p.conf,strong?91:85);p.text=strong?`戦術面では先発起用に賛成です。${r.starts}先発で防御率${f2(r.era)}、WHIP${f2(r.whip)}、先発平均${f2(r.avgStartIP)}回。試合序盤から中盤を任せる根拠があります。`:`先発起用は条件付きで継続する価値があります。投球回と走者管理を基準に、試合ごとの安定性を確認します。`;p.basis=`先発の優先項目を「失点抑制→走者管理→イニング消化」と置くと、防御率${f2(r.era)}・WHIP${f2(r.whip)}・${r.K}奪三振・${r.BB}与四球が判断材料です。`;p.concern=`${r.concerns.join('／')||'大きな懸念なし'}。次回も球数だけでなく、ストライク率と与四死球の推移を再判定材料にします。`;return p};
+casper=function(x){const p=oldCas(x),r=pitchCtx;if(!r||!/先発/.test(x.q||''))return p;p.vote='hold';p.conf=Math.max(p.conf,70);const catchers=[...new Set(r.rows.filter(z=>/先発/.test(v(z,5))).map(z=>v(z,4)).filter(Boolean))];p.text=`成績上の先発適性は確認できますが、登板間の回復状態、本人の負担感、試合中のコミュニケーションまでは投手CSVだけでは分かりません。人の面は判断保留とします。`;p.basis=`先発実績は確認済み。${catchers.length?`今回の先発記録では捕手は${catchers.join('・')}。` : ''}ただし体調や役割理解は別途確認が必要です。`;p.concern=`好成績だけで固定せず、登板後の状態と次回登板までの回復、捕手との組み合わせも確認します。`;return p};
+renderEvidence=function(e){if(!(e&&e.pitchAnalysis))return oldRender(e);const r=e.pitchAnalysis,box=$('dataEvidence');box.classList.add('show');box.innerHTML='<b>DATA HUB 関連データ</b>\n'+escapeHtml(r.outing)+'\n\n<b>【投手自動集計】</b>\n'+escapeHtml(r.summary)+'\n<b>【先発適性チェック】</b>\n先発平均 '+f2(r.avgStartIP)+'回 ／ K/7 '+f2(r.k7)+' ／ 与四球/7 '+f2(r.bb7)+' ／ 与四死球/7 '+f2(r.bbhbp7)+' ／ 1回あたり球数 '+f2(r.ppi)+'\nプラス：'+escapeHtml(r.positives.join('／')||'なし')+'\n懸念：'+escapeHtml(r.concerns.join('／')||'なし')+'\n<b>【参照ファイル】</b>\n投手詳細2026-2027.csv'};
+window.MAGI_PITCH_ENGINE=true;
+})();
