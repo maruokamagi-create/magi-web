@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>MAGI Drive診断</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#06111f;color:#f5f8fc;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:760px;margin:auto;padding:24px 16px 60px}h1{font-size:30px;margin:0 0 8px}.sub{color:#9eb3ca;line-height:1.7}.card{margin-top:18px;padding:16px;border:1px solid #315371;border-radius:16px;background:#0a1d31}.row{display:grid;gap:10px}.label{font-size:12px;color:#93abc4;letter-spacing:.08em}input{width:100%;padding:13px;border-radius:11px;border:1px solid #315371;background:#061522;color:#fff;font-size:15px}button{margin-top:12px;border:0;border-radius:12px;padding:13px 16px;font-size:15px;font-weight:800;background:#f4f7fb;color:#07111e}.secondary{background:#17324d;color:#e8f3ff;border:1px solid #315371;margin-left:8px}.state{margin-top:14px;padding:12px;border-radius:11px;border-left:4px solid #18a76f;background:#071827;line-height:1.7;font-size:14px}.log{margin-top:12px;max-height:420px;overflow:auto;border:1px solid #294965;border-radius:11px;background:#04101b}.item{padding:9px 10px;border-top:1px solid #17334b;font-size:12px;line-height:1.5}.item:first-child{border-top:0}.folder{color:#8ec7ff}.file{color:#fff}.bad{color:#ff9a9a}.ok{color:#7ee1ad}.small{font-size:11px;color:#8ea4ba;margin-top:12px}
+</style>
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body><div class="wrap">
+<h1>MAGI Drive診断</h1>
+<div class="sub">本体を壊さず、ROOTフォルダの下位階層までGoogle Drive APIで取得できるかだけを確認します。</div>
+<div class="card"><div class="row"><div><div class="label">ROOT FOLDER ID</div><input id="root" value="1lMvyDzhk0qM5VqS5eTf4Eka_GUZWfgqP"></div></div>
+<button onclick="connect()">Google Drive接続して診断</button><button class="secondary" onclick="run()">再診断</button>
+<div id="state" class="state">未接続</div><div id="log" class="log"></div><div class="small">読み取り専用。データをサーバーへ保存しません。</div></div></div>
+<script>
+const CLIENT_ID='696975161068-gogaeculat8ugi714vju2jbgpqff8qqc.apps.googleusercontent.com';
+const FOLDER='application/vnd.google-apps.folder';let token='';const $=id=>document.getElementById(id);
+function state(t){$('state').textContent=t}function log(t,c=''){const d=document.createElement('div');d.className='item '+c;d.textContent=t;$('log').appendChild(d)}
+function connect(){if(!(window.google&&google.accounts&&google.accounts.oauth2)){state('Google認証ライブラリを読み込み中です。数秒後にもう一度押してください。');return}const tc=google.accounts.oauth2.initTokenClient({client_id:CLIENT_ID,scope:'https://www.googleapis.com/auth/drive.readonly',callback:async r=>{if(r.error){state('認証エラー：'+r.error);return}token=r.access_token;await run()}});tc.requestAccessToken({prompt:'consent'})}
+async function api(url){if(!token)throw new Error('未接続です');const r=await fetch(url,{headers:{Authorization:'Bearer '+token}});if(!r.ok)throw new Error('Drive API '+r.status+': '+(await r.text()).slice(0,180));return r.json()}
+async function children(id){const q=encodeURIComponent(`'${id}' in parents and trashed=false`),fields=encodeURIComponent('nextPageToken,files(id,name,mimeType,parents)');let page='',out=[];do{const j=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true${page?'&pageToken='+encodeURIComponent(page):''}`);out.push(...(j.files||[]));page=j.nextPageToken||''}while(page&&out.length<5000);return out}
+async function recursive(root){const out=[],q=[{id:root,path:'ROOT',depth:0}],seen=new Set();while(q.length&&out.length<500){const cur=q.shift();if(seen.has(cur.id)||cur.depth>7)continue;seen.add(cur.id);const list=await children(cur.id);log(`階層${cur.depth} ${cur.path} → ${list.length}件`,list.length?'ok':'');for(const src of list){const f={...src,path:cur.path+'/'+src.name};out.push(f);if(f.mimeType===FOLDER)q.push({id:f.id,path:f.path,depth:cur.depth+1})}}return out}
+async function allFiles(){const q=encodeURIComponent('trashed=false'),fields=encodeURIComponent('nextPageToken,files(id,name,mimeType,parents)');let page='',out=[];do{const j=await api(`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&spaces=drive&corpora=user&supportsAllDrives=true&includeItemsFromAllDrives=true${page?'&pageToken='+encodeURIComponent(page):''}`);out.push(...(j.files||[]));page=j.nextPageToken||'';state(`全Drive一覧を確認中：${out.length}件`)}while(page&&out.length<5000);return out}
+function fromAll(root,all){const map=new Map();for(const f of all)for(const p of(f.parents||[])){if(!map.has(p))map.set(p,[]);map.get(p).push(f)}const out=[],q=[{id:root,path:'ROOT',depth:0}],seen=new Set();while(q.length&&out.length<500){const cur=q.shift();if(seen.has(cur.id)||cur.depth>7)continue;seen.add(cur.id);for(const src of(map.get(cur.id)||[])){const f={...src,path:cur.path+'/'+src.name};out.push(f);if(f.mimeType===FOLDER)q.push({id:f.id,path:f.path,depth:cur.depth+1})}}return out}
+async function run(){if(!token){state('先に「Google Drive接続して診断」を押してください。');return}const root=$('root').value.trim();$('log').innerHTML='';try{state('通常の再帰検索を実行中…');let out=await recursive(root);let files=out.filter(f=>f.mimeType!==FOLDER);log(`通常検索結果：合計${out.length}件 / ファイル${files.length}件`,'ok');if(!files.length){log('下位ファイルが0件なので、全Drive一覧＋親ID方式へ切替','bad');const all=await allFiles();log(`アクセス可能なDrive項目：${all.length}件`);const alt=fromAll(root,all);if(alt.length>out.length)out=alt;files=out.filter(f=>f.mimeType!==FOLDER);log(`代替検索結果：合計${out.length}件 / ファイル${files.length}件`,files.length?'ok':'bad')}state(`診断完了：${out.length}件、うちファイル${files.length}件`);for(const f of out.slice(0,120))log(`${f.mimeType===FOLDER?'📁':'📄'} ${f.path}`,f.mimeType===FOLDER?'folder':'file')}catch(e){state('診断失敗：'+e.message);log(e.message,'bad')}}
+</script></body></html>
