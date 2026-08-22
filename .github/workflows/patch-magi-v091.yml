@@ -1,0 +1,56 @@
+name: Patch MAGI v0.9.1
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'PATCH_MAGI_V091'
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch Drive scan and OAuth flow
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          p = Path('index.html')
+          s = p.read_text(encoding='utf-8')
+
+          if 'async function listAllDriveFiles()' not in s:
+              old_list = "async function listChildren(folderId){const q=encodeURIComponent(`'${folderId}' in parents and trashed=false`),fields=encodeURIComponent('files(id,name,mimeType,modifiedTime,size,webViewLink,parents)');const url=`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&supportsAllDrives=true&includeItemsFromAllDrives=true`;return (await (await driveFetch(url)).json()).files||[]}"
+              new_list = """async function listChildren(folderId){const q=encodeURIComponent(`'${folderId}' in parents and trashed=false`),fields=encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,size,webViewLink,parents)');let pageToken='',all=[];do{const url=`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken?'&pageToken='+encodeURIComponent(pageToken):''}`;const j=await (await driveFetch(url)).json();all.push(...(j.files||[]));pageToken=j.nextPageToken||''}while(pageToken&&all.length<5000);return all}
+async function listAllDriveFiles(){const q=encodeURIComponent('trashed=false'),fields=encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,size,webViewLink,parents)');let pageToken='',all=[];do{setDriveState(`Google Drive：階層を確認中… ${all.length}件`,'ready');const url=`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&spaces=drive&corpora=user&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken?'&pageToken='+encodeURIComponent(pageToken):''}`;const j=await (await driveFetch(url)).json();all.push(...(j.files||[]));pageToken=j.nextPageToken||''}while(pageToken&&all.length<5000);return all}
+async function buildIndexFromAllFiles(root){const all=await listAllDriveFiles(),children=new Map();for(const f of all){for(const p of (f.parents||[])){if(!children.has(p))children.set(p,[]);children.get(p).push(f)}}const out=[],queue=[{id:root,path:'ROOT',depth:0}],seen=new Set();while(queue.length&&out.length<500){const cur=queue.shift();if(seen.has(cur.id)||cur.depth>7)continue;seen.add(cur.id);for(const src of (children.get(cur.id)||[])){const f={...src,path:cur.path+'/'+src.name};out.push(f);if(f.mimeType==='application/vnd.google-apps.folder')queue.push({id:f.id,path:f.path,depth:cur.depth+1});if(out.length>=500)break}}return out}"""
+              if old_list not in s:
+                  raise SystemExit('listChildren signature not found')
+              s = s.replace(old_list, new_list, 1)
+
+              pattern = r"async function scanDrive\(\)\{.*?\}\nfunction isImportable"
+              new_scan = """async function scanDrive(){const root=$('driveRootId').value.trim();if(!driveToken){setDriveState('Google Drive未接続です。「Google Drive接続」を押してください。','error');return}if(!root){setDriveState('ROOT FOLDER IDを入力してください。','error');return}try{driveIndex=[];dataRecords=dataRecords.filter(r=>r.source!=='drive');importedDriveFiles.clear();setDriveState('Google Drive：チームフォルダの階層を確認中…','ready');const queue=[{id:root,path:'ROOT',depth:0}];const seen=new Set();while(queue.length&&driveIndex.length<500){const cur=queue.shift();if(seen.has(cur.id)||cur.depth>7)continue;seen.add(cur.id);const children=await listChildren(cur.id);for(const f of children){f.path=cur.path+'/'+f.name;driveIndex.push(f);if(f.mimeType==='application/vnd.google-apps.folder')queue.push({id:f.id,path:f.path,depth:cur.depth+1});if(driveIndex.length>=500)break}}let nonFolders=driveIndex.filter(f=>f.mimeType!=='application/vnd.google-apps.folder').length;if(nonFolders===0&&driveIndex.length>0){setDriveState(`Google Drive：直下${driveIndex.length}件を確認。下位階層を別方式で探索中…`,'ready');const fallback=await buildIndexFromAllFiles(root);if(fallback.length>driveIndex.length){driveIndex=fallback;nonFolders=driveIndex.filter(f=>f.mimeType!=='application/vnd.google-apps.folder').length}}renderDriveFiles();const targets=driveIndex.filter(f=>isImportable(f));let failed=0;for(let i=0;i<targets.length;i++){setDriveState(`Google Drive：${driveIndex.length}件を一覧化。対応ファイルを自動索引化中 ${i+1}/${targets.length}…`,'ready');try{await importDriveFile(targets[i].id,true)}catch(e){failed++}}renderDriveFiles();const rows=dataRecords.filter(r=>r.source==='drive').length;setDriveState(`Google Drive接続済み：${driveIndex.length}件を一覧化、${importedDriveFiles.size}ファイル・${rows}行を自動索引化${failed?`（${failed}件は取込失敗）`:''}。画像・PDFは一覧のみです。`,'ready')}catch(err){setDriveState('Drive読込失敗：'+err.message,'error')}}
+function isImportable"""
+              s, n = re.subn(pattern, new_scan, s, count=1, flags=re.S)
+              if n != 1:
+                  raise SystemExit('scanDrive function not found')
+
+          s = s.replace("tokenClient.requestAccessToken({prompt:'consent'})", "tokenClient.requestAccessToken({prompt:''})")
+          s = s.replace('FREE CORE v0.9', 'FREE CORE v0.9.1')
+          s = s.replace('接続後、Sheets・Excel・CSV・JSON・TXT・Google Docsを自動索引化します。画像・PDFは一覧のみです。', '接続後、Sheets・Excel・CSV・JSON・TXT・Google Docsを自動索引化します。通常は既存の許可を再利用し、必要な時だけGoogleが再認証を求めます。画像・PDFは一覧のみです。')
+          p.write_text(s, encoding='utf-8')
+          PY
+      - name: Commit patch and cleanup
+        shell: bash
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git rm -f PATCH_MAGI_V091 .github/workflows/patch-magi-v091.yml
+          git commit -m "Improve Drive scan and OAuth reconnect v0.9.1"
+          git push
