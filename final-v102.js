@@ -7,10 +7,10 @@
   .final .verdict::before{display:inline-block;margin-right:.35em;font-size:.70em;line-height:1;vertical-align:.08em;font-weight:900;letter-spacing:.03em}
   .final .votes{margin-top:8px;gap:8px}.final .vote{font-size:11px;padding:7px 10px;border-color:#355674;background:#061426}
   .final .note{font-size:12px;line-height:1.75;color:#cbd9e7}.final .humanDecision{font-size:12px;line-height:1.7;color:#eef5fb}
-  .final.decision-yes{border-top-color:#20c779}.final.decision-yes .verdict{border-bottom-color:rgba(32,199,121,.55)}.final.decision-yes .verdict::before{content:'🟢 ◎'}
-  .final.decision-cond{border-top-color:#2f86ff}.final.decision-cond .verdict{border-bottom-color:rgba(47,134,255,.58)}.final.decision-cond .verdict::before{content:'🔵 ○'}
-  .final.decision-hold{border-top-color:#f2b91d}.final.decision-hold .verdict{border-bottom-color:rgba(242,185,29,.58)}.final.decision-hold .verdict::before{content:'🟡 △'}
-  .final.decision-no{border-top-color:#e04452}.final.decision-no .verdict{border-bottom-color:rgba(224,68,82,.58)}.final.decision-no .verdict::before{content:'🔴 ×'}
+  .final.decision-yes{border-top-color:#20c779}.final.decision-yes .verdict{border-bottom-color:rgba(32,199,121,.55)}.final.decision-yes .verdict::before{content:'🟢'}
+  .final.decision-cond{border-top-color:#2f86ff}.final.decision-cond .verdict{border-bottom-color:rgba(47,134,255,.58)}.final.decision-cond .verdict::before{content:'🔵'}
+  .final.decision-hold{border-top-color:#f2b91d}.final.decision-hold .verdict{border-bottom-color:rgba(242,185,29,.58)}.final.decision-hold .verdict::before{content:'🟡'}
+  .final.decision-no{border-top-color:#e04452}.final.decision-no .verdict{border-bottom-color:rgba(224,68,82,.58)}.final.decision-no .verdict::before{content:'🔴'}
   @media(max-width:430px){.final{padding:19px 14px 18px}.final .verdict{font-size:29px;padding-bottom:8px}.final .verdict::before{font-size:.68em;margin-right:.3em}.final .title{font-size:11px}.final .vote{font-size:11px;padding:7px 9px}.final .note,.final .humanDecision{font-size:12px}}
   `;
   const old=document.getElementById('magi-final-v102-style');if(old)old.remove();
