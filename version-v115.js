@@ -1,0 +1,1 @@
+(()=>{window.MAGI_ACTIVE_VERSION='0.10.15';window.MAGI_PITCH_VERSION='1.0';const mark=()=>{for(const el of document.querySelectorAll('.sectionHead span,.status')){el.textContent=el.textContent.replace(/v0\.10\.[0-9]+/g,'v0.10.15').replace(/v0\.9\.[0-9]+/g,'v0.10.15')}};const oldClear=clearAll;clearAll=function(){oldClear();mark()};mark();})();
