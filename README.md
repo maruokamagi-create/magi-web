@@ -1,2 +1,1 @@
-# magi-web
-MAGI Web Prototype
+# MAGI Web
