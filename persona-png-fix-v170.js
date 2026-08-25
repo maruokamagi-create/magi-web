@@ -1,19 +1,37 @@
 (()=>{
-  const V='170';
+  const V='171';
   const portraits=[
     {file:'melchior',alt:'MELCHIOR'},
     {file:'balthasar',alt:'BALTHASAR'},
     {file:'casper',alt:'CASPER'}
   ];
 
-  if(!document.getElementById('magi-persona-png-fix-v170-style')){
+  if(!document.getElementById('magi-persona-png-fix-v171-style')){
     const st=document.createElement('style');
-    st.id='magi-persona-png-fix-v170-style';
+    st.id='magi-persona-png-fix-v171-style';
     st.textContent=`
       .personaGrid .personaPortrait{
         display:block!important;
         visibility:visible!important;
         opacity:1!important;
+        width:131px!important;
+        height:163px!important;
+        max-width:40%!important;
+        margin:8px 4px 0 0!important;
+      }
+      @media(min-width:431px) and (max-width:899px){
+        .personaGrid .personaPortrait{
+          width:151px!important;
+          height:189px!important;
+          max-width:38%!important;
+        }
+      }
+      @media(min-width:900px){
+        .personaGrid .personaPortrait{
+          width:137px!important;
+          height:171px!important;
+          max-width:40%!important;
+        }
       }
     `;
     document.head.appendChild(st);
