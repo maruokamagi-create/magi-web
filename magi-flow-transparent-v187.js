@@ -1,0 +1,1 @@
+window.MAGI_FLOW_DATA='data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAABGIAAAV6CAYAAABo...';
