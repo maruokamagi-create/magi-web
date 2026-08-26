@@ -1,4 +1,4 @@
-import { callGemini, readBody, requirePost, sendJson } from './_gemini.js';
+import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
 
 const schema = {
@@ -22,14 +22,19 @@ const schema = {
   required: ['persona','phase','facts','analysis','prediction','confidence','judgment','primaryReason','warnings','dataConflict','reviewRequested','reviewReason','changedFromPrimary','changeReason']
 };
 
+function validCase(body) {
+  const q = String(body?.case?.question || '').trim();
+  return q.length >= 2 && q.length <= 12000;
+}
+
 export default async function handler(req, res) {
-  if (!requirePost(req, res)) return;
+  if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
     const body = await readBody(req);
     const persona = String(body?.persona || '').toLowerCase();
     const phase = body?.phase === 'SECOND' ? 'SECOND' : 'PRIMARY';
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
-    if (!body?.case?.question) return sendJson(res, 400, { error: 'CASE is required' });
+    if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
     const payload = phase === 'PRIMARY'
       ? { phase, case: body.case }
@@ -50,8 +55,14 @@ export default async function handler(req, res) {
     // Server enforces identity/phase rather than trusting generated labels.
     result.persona = persona.toUpperCase();
     result.phase = phase;
+    if (phase === 'PRIMARY') {
+      result.changedFromPrimary = false;
+      result.changeReason = '';
+    }
     return sendJson(res, 200, result);
   } catch (error) {
-    return sendJson(res, 500, { error: error?.message || 'Persona execution failed' });
+    const status = error?.message === 'Request body too large' ? 413 : 500;
+    console.error('[MAGI persona]', error?.message || error);
+    return sendJson(res, status, { error: status === 413 ? 'Request body too large' : 'Persona execution failed' });
   }
 }
