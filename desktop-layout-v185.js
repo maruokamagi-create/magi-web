@@ -1,5 +1,10 @@
 (()=>{
   const css=`
+  @media(min-width:721px) and (max-width:899px){
+    .personaGrid,.hubGrid{grid-template-columns:1fr}
+    .flowGrid,.criteriaGrid{grid-template-columns:repeat(2,1fr)}
+    .persona p,.persona li,.flow p{font-size:14px}
+  }
   @media(min-width:900px){
     .wrap{width:min(100%,1280px);max-width:none;padding:24px clamp(20px,2.2vw,32px) 72px}
     .hero{padding-left:8px;padding-right:8px}.hero .jp{font-size:18px}.hero p{font-size:16px;max-width:1040px}
