@@ -1,8 +1,9 @@
 // MAGI v1 server-only Gemini REST helper.
 // GEMINI_API_KEY is required. GEMINI_MODEL is optional; a vetted default is used.
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-3.7-flash';
-const DEFAULT_FALLBACK_MODEL = 'gemini-3.6-flash';
+const DEFAULT_MODEL = 'gemini-3.6-flash';
+const DEFAULT_FALLBACK_MODEL = 'gemini-2.5-flash';
+const DEFAULT_LAST_RESORT_MODEL = 'gemini-2.5-flash-lite';
 const MAX_BODY_BYTES = 220_000;
 const GEMINI_TIMEOUT_MS = 25_000;
 const RATE_WINDOW_MS = 60_000;
@@ -122,6 +123,10 @@ export function getGeminiFallbackModel() {
   return String(process.env.GEMINI_FALLBACK_MODEL || DEFAULT_FALLBACK_MODEL).trim();
 }
 
+export function getGeminiLastResortModel() {
+  return String(process.env.GEMINI_LAST_RESORT_MODEL || DEFAULT_LAST_RESORT_MODEL).trim();
+}
+
 export async function checkGeminiConfiguration() {
   const apiKey = process.env.GEMINI_API_KEY;
   const model = getGeminiModel();
@@ -191,31 +196,46 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
   }
 }
 
-export async function callGemini({ systemInstruction, userPayload, responseSchema }) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const primaryModel = getGeminiModel();
-  const fallbackModel = getGeminiFallbackModel();
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
+async function tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, retries }) {
   let lastError;
-
-  // One short retry on transient capacity/rate/server failures.
-  for (let attempt = 0; attempt < 2; attempt++) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await callGeminiModel({ model: primaryModel, apiKey, systemInstruction, userPayload, responseSchema });
+      return await callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
     } catch (error) {
       lastError = error;
-      if (!isRetryableError(error) || attempt === 1) break;
-      await sleep(800 + Math.floor(Math.random() * 500));
+      if (!isRetryableError(error) || attempt === retries) break;
+      await sleep(700 + Math.floor(Math.random() * 500));
     }
   }
+  throw lastError;
+}
 
-  // If the newest model is temporarily saturated, fail over to a stable Flash model.
-  if (fallbackModel && fallbackModel !== primaryModel && isRetryableError(lastError)) {
+export async function callGemini({ systemInstruction, userPayload, responseSchema }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  const models = [
+    getGeminiModel(),
+    getGeminiFallbackModel(),
+    getGeminiLastResortModel()
+  ].filter((model, index, arr) => model && arr.indexOf(model) === index);
+
+  let lastError;
+  for (let index = 0; index < models.length; index++) {
+    const model = models[index];
     try {
-      return await callGeminiModel({ model: fallbackModel, apiKey, systemInstruction, userPayload, responseSchema });
+      return await tryModel({
+        model,
+        apiKey,
+        systemInstruction,
+        userPayload,
+        responseSchema,
+        retries: index === 0 ? 1 : 0
+      });
     } catch (error) {
       lastError = error;
+      if (!isRetryableError(error)) break;
+      console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
     }
   }
 
