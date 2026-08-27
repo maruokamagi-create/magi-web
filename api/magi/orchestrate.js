@@ -22,24 +22,8 @@ const crossSchema = {
   required: ['agreement','disagreement','domainConflicts','warnings','informationGaps','challenges']
 };
 
-const finalSchema = {
-  type: 'OBJECT',
-  properties: {
-    status: { type: 'STRING', enum: ['MAGI_CONSENSUS','MAGI_MAJORITY','MAGI_DEADLOCK','INSUFFICIENT_EVIDENCE','MAGI_REVIEW_REQUIRED'] },
-    vote: { type: 'STRING' },
-    recommendation: { type: 'STRING' },
-    confidence: { type: 'STRING', enum: ['HIGH','MEDIUM','LOW'] },
-    majorReasons: { type: 'ARRAY', items: { type: 'STRING' } },
-    minorityOpinion: { type: 'STRING' },
-    warnings: { type: 'ARRAY', items: { type: 'STRING' } },
-    prediction: { type: 'ARRAY', items: { type: 'STRING' } },
-    reviewReason: { type: 'STRING' },
-    reDeliberationConditions: { type: 'ARRAY', items: { type: 'STRING' } }
-  },
-  required: ['status','vote','recommendation','confidence','majorReasons','minorityOpinion','warnings','prediction','reviewReason','reDeliberationConditions']
-};
-
 const VALID = new Set(['GREEN','BLUE','YELLOW','RED']);
+const CONFIDENCE_ORDER = { LOW: 0, MEDIUM: 1, HIGH: 2 };
 
 function validCase(body) {
   const q = String(body?.case?.question || '').trim();
@@ -75,6 +59,64 @@ function deterministicFinal(second) {
   return { status: 'MAGI_DEADLOCK', vote: '1-1-1' };
 }
 
+function compactUnique(values, limit = 6) {
+  const out = [];
+  for (const value of values || []) {
+    const text = String(value || '').trim();
+    if (!text || out.includes(text)) continue;
+    out.push(text);
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+function lowestConfidence(list) {
+  const values = list.map(x => String(x?.confidence || 'LOW').toUpperCase());
+  return values.sort((a,b)=>(CONFIDENCE_ORDER[a] ?? 0) - (CONFIDENCE_ORDER[b] ?? 0))[0] || 'LOW';
+}
+
+function buildFinalResult(second, cross) {
+  const list = normalizeSecond(second);
+  const enforced = deterministicFinal(second);
+  if (!enforced.status) return null;
+
+  const majorReasons = compactUnique(list.map(x => x?.primaryReason));
+  const warnings = compactUnique([
+    ...(cross?.warnings || []),
+    ...list.flatMap(x => Array.isArray(x?.warnings) ? x.warnings : [])
+  ]);
+  const prediction = compactUnique(list.flatMap(x => Array.isArray(x?.prediction) ? x.prediction : []));
+  const informationGaps = compactUnique(cross?.informationGaps || []);
+  const reDeliberationConditions = compactUnique([...informationGaps, ...warnings], 5);
+
+  const judgments = list.map(x => String(x?.judgment || '').toUpperCase());
+  const counts = judgments.reduce((m,x)=>(m[x]=(m[x]||0)+1,m),{});
+  const majorityJudgment = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
+  const minority = list.find(x => String(x?.judgment || '').toUpperCase() !== majorityJudgment);
+
+  let recommendation = '三賢人の二次判定を基に判断する。';
+  if (enforced.status === 'MAGI_REVIEW_REQUIRED') recommendation = '重大警告を確認し、追加確認後に再審議する。';
+  else if (enforced.status === 'MAGI_DEADLOCK') recommendation = '結論を強制せず、追加情報を取得して再審議する。';
+  else if (enforced.status === 'INSUFFICIENT_EVIDENCE') recommendation = '現時点では判断材料不足。必要情報を追加して再審議する。';
+  else if (majorityJudgment === 'GREEN') recommendation = '賛成判断を採用する。';
+  else if (majorityJudgment === 'BLUE') recommendation = '条件付きで採用し、条件を確認しながら運用する。';
+  else if (majorityJudgment === 'RED') recommendation = '現時点では採用しない。';
+  else if (majorityJudgment === 'YELLOW') recommendation = '判断を保留し、追加情報を取得する。';
+
+  return {
+    status: enforced.status,
+    vote: enforced.vote,
+    recommendation,
+    confidence: lowestConfidence(list),
+    majorReasons,
+    minorityOpinion: minority ? `${minority.persona || 'MINORITY'}: ${minority.primaryReason || minority.changeReason || '少数意見あり'}` : '',
+    warnings,
+    prediction,
+    reviewReason: enforced.reviewReason || '',
+    reDeliberationConditions
+  };
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -98,31 +140,11 @@ export default async function handler(req, res) {
 
     if (body.phase === 'FINAL') {
       if (!body.primary || !body.second) return sendJson(res, 400, { error: 'Primary and second judgments are required' });
-      const result = await callGemini({
-        systemInstruction: ORCHESTRATOR,
-        userPayload: {
-          phase: 'FINAL',
-          case: body.case,
-          lockedPrimaryJudgments: body.primary,
-          crossExamination: body.crossExamination || null,
-          secondJudgments: body.second,
-          instruction: 'Explain the final protocol result; do not invent a fourth opinion. Vote status is enforced by the server.'
-        },
-        responseSchema: finalSchema
-      });
 
-      const enforced = deterministicFinal(body.second);
-      if (!enforced.status) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
-      result.status = enforced.status;
-      result.vote = enforced.vote;
-      if (enforced.status === 'MAGI_REVIEW_REQUIRED') {
-        result.reviewReason = enforced.reviewReason || result.reviewReason || 'MAGI review required';
-        result.recommendation = '重大警告を確認し、追加確認後に再審議する。';
-      } else if (enforced.status === 'MAGI_DEADLOCK') {
-        result.recommendation = '結論を強制せず、追加情報を取得して再審議する。';
-      } else if (enforced.status === 'INSUFFICIENT_EVIDENCE') {
-        result.recommendation = '現時点では判断材料不足。必要情報を追加して再審議する。';
-      }
+      // FINAL is intentionally deterministic and local. This removes the eighth Gemini call,
+      // prevents the UI from hanging at 88%, and preserves the server-enforced voting protocol.
+      const result = buildFinalResult(body.second, body.crossExamination || null);
+      if (!result) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
       return sendJson(res, 200, result);
     }
 
