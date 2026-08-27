@@ -1,20 +1,24 @@
 (()=>{
   'use strict';
   const PORTRAITS={
-    'MELCHIOR-1':'/portraits/melchior.png?v=193',
-    'BALTHASAR-2':'/portraits/balthasar.png?v=193',
-    'CASPER-3':'/portraits/casper.png?v=193',
-    'MAGI CONTROL':'/magi-official-symbol-v125.svg?v=193'
+    'MELCHIOR-1':'/portraits/melchior.png?v=194',
+    'BALTHASAR-2':'/portraits/balthasar.png?v=194',
+    'CASPER-3':'/portraits/casper.png?v=194',
+    'MAGI CONTROL':'/magi-official-symbol-v125.svg?v=194'
   };
   function injectCss(){
-    if(document.getElementById('magi-result-layout-v193-style'))return;
+    if(document.getElementById('magi-result-layout-v194-style'))return;
     const st=document.createElement('style');
-    st.id='magi-result-layout-v193-style';
+    st.id='magi-result-layout-v194-style';
     st.textContent=`
       .response.magiResultReordered{margin-top:14px!important;padding:0!important;width:100%!important;max-width:none!important}
       .magiResultBundle{width:100%;max-width:none;margin:0;padding:0;display:block}
       .magiResultBundle>*{box-sizing:border-box;max-width:none!important}
-      .magiResultBundle .reportHeader{width:100%!important;max-width:none!important;margin:0 0 14px!important;border-radius:16px!important;border-bottom:5px solid #cf1f2e!important;opacity:1!important}
+      .magiResultBundle .reportHeader{width:100%!important;max-width:none!important;margin:0 0 14px!important;padding:14px 18px!important;border-radius:14px!important;border-bottom:4px solid #cf1f2e!important;opacity:1!important}
+      .magiResultBundle .reportTitle,.magiResultBundle .reportSub{display:none!important}
+      .magiResultBundle .reportTop{display:flex!important;justify-content:flex-end!important;align-items:flex-start!important;min-height:0!important;margin:0!important}
+      .magiResultBundle .caseMeta{font-size:10px!important;line-height:1.5!important;min-width:0!important;width:auto!important;max-width:300px!important;padding:7px 10px!important;border-radius:9px!important;margin:0!important}
+      .magiResultBundle .caseQuestion{font-size:18px!important;line-height:1.5!important;margin:8px 0 0!important;font-weight:900!important}
       .magiResultBundle .final{width:100%!important;margin:0 0 14px!important;border-radius:16px!important;border-top:4px solid #4db8d8!important;box-shadow:0 8px 24px rgba(0,0,0,.16)}
       .magiResultBundle .answerWrap{width:100%!important;margin:0 0 14px!important;padding:12px!important;border-radius:16px!important;background:#f7f9fc!important}
       .magiResultBundle .answer{width:100%!important;max-width:none!important;margin:0 0 12px!important}
@@ -35,6 +39,10 @@
         .magiResultBundle .answerWrap{padding:8px!important}
         .magiResultBundle .final,.magiResultBundle .reportHeader{margin-bottom:10px!important}
         .magiResultOrderTitle{margin-top:12px}
+        .magiResultBundle .reportHeader{padding:12px!important}
+        .magiResultBundle .reportTop{justify-content:flex-start!important}
+        .magiResultBundle .caseMeta{max-width:100%!important;width:100%!important;font-size:10px!important}
+        .magiResultBundle .caseQuestion{font-size:16px!important;margin-top:9px!important}
       }
       @media(max-width:430px){
         .magiExchange{padding-left:44px!important}.magiSpeakerAvatar{width:34px;height:34px}
@@ -60,25 +68,17 @@
     const header=response.querySelector('.reportHeader');
     const protocol=document.getElementById('engineProtocol');
     if(!final||!answers||!header)return;
-
     response.dataset.magiResultOrderDone='1';
     response.classList.add('magiResultReordered');
-
     const signals=document.querySelector('.signals');
     if(signals&&signals.parentNode&&response.parentNode===signals.parentNode)signals.parentNode.insertBefore(response,signals);
-
     const bundle=document.createElement('div');
-    bundle.id='magiResultBundle';
-    bundle.className='magiResultBundle';
-    response.insertBefore(bundle,response.firstChild);
-
-    /* Reading order: CASE INFO -> FINAL -> 3 WISE MEN -> DELIBERATION */
-    bundle.appendChild(makeTitle('案件情報','magiCaseInfoTitle'));
+    bundle.id='magiResultBundle';bundle.className='magiResultBundle';response.insertBefore(bundle,response.firstChild);
+    bundle.appendChild(makeTitle('審議案件','magiCaseInfoTitle'));
     bundle.appendChild(header);
     bundle.appendChild(final);
     bundle.appendChild(makeTitle('3賢人の判定','magiThreeWiseTitle'));
     bundle.appendChild(answers);
-
     if(protocol){
       bundle.appendChild(makeTitle('審議のやり取り・検証','magiReasonTitle'));
       bundle.appendChild(protocol);
@@ -86,7 +86,6 @@
       if(live&&live.parentNode!==protocol)protocol.appendChild(live);
       if(live)live.classList.add('magiCollapsed');
     }
-
     decorateTranscript();
   }
   function watch(){
