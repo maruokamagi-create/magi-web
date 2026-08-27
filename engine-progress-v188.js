@@ -1,0 +1,33 @@
+(()=>{
+  'use strict';
+  const ID='magiDeliberationProgress';
+  let timer=null,startAt=0,lastPct=0;
+  const stageFromStatus=(text)=>{
+    const t=String(text||'');
+    if(/完了/.test(t))return{pct:100,label:'審議完了',step:'FINAL DECISION'};
+    if(/エラー|失敗/.test(t))return{pct:lastPct||15,label:'審議を停止しました',step:'ERROR'};
+    if(/相互検証/.test(t))return{pct:62,label:'相互検証中',step:'CROSS EXAMINATION'};
+    if(/一次独立判定/.test(t))return{pct:28,label:'三賢人が独立判定中',step:'INDEPENDENT JUDGMENT'};
+    if(/接続を確認/.test(t))return{pct:10,label:'審議環境を確認中',step:'PREPARATION'};
+    if(/審議中/.test(t))return{pct:18,label:'審議を開始しました',step:'CASE / EVIDENCE'};
+    return null;
+  };
+  const fmt=(s)=>{s=Math.max(0,Math.floor(s));const m=Math.floor(s/60),r=s%60;return m?`${m}分${String(r).padStart(2,'0')}秒`:`${r}秒`};
+  function ensure(){
+    let box=document.getElementById(ID);if(box)return box;
+    const status=document.getElementById('status');if(!status)return null;
+    box=document.createElement('div');box.id=ID;box.className='magiProgress hidden';
+    box.innerHTML=`<div class="magiProgressTop"><div class="magiProgressState"><span class="magiPulse" aria-hidden="true"></span><span id="magiProgressLabel">審議準備中</span></div><div class="magiProgressPct" id="magiProgressPct">0%</div></div><div class="magiProgressTrack"><div class="magiProgressBar" id="magiProgressBar"></div></div><div class="magiProgressMeta"><span id="magiProgressStep">CASE</span><span>経過 <b id="magiElapsed">0秒</b></span></div><div class="magiProgressNote">進捗率は処理段階から算出した目安です。</div>`;
+    status.parentNode.insertBefore(box,status);
+    return box;
+  }
+  function injectCss(){if(document.getElementById('magi-progress-v188-style'))return;const st=document.createElement('style');st.id='magi-progress-v188-style';st.textContent=`
+    .magiProgress{margin:12px 0 8px;padding:13px 14px;border:1px solid #315574;border-radius:13px;background:linear-gradient(135deg,#071827,#0b2444);color:#eaf4ff;box-shadow:inset 0 0 0 1px rgba(77,184,216,.08)}
+    .magiProgress.hidden{display:none}.magiProgressTop,.magiProgressMeta{display:flex;align-items:center;justify-content:space-between;gap:10px}.magiProgressState{display:flex;align-items:center;gap:9px;font-size:13px;font-weight:900}.magiProgressPct{font-size:18px;font-weight:900;font-variant-numeric:tabular-nums;color:#bfeeff}.magiPulse{width:11px;height:11px;border-radius:50%;background:#4db8d8;box-shadow:0 0 0 0 rgba(77,184,216,.7);animation:magiPulse 1.15s infinite}.magiProgressTrack{height:9px;border-radius:999px;background:#06121f;border:1px solid #294868;overflow:hidden;margin:11px 0 8px}.magiProgressBar{height:100%;width:0;border-radius:999px;background:linear-gradient(90deg,#4db8d8,#7ec8ff);transition:width .55s ease}.magiProgressMeta{font-size:10px;letter-spacing:.08em;color:#9fbbd4}.magiProgressMeta b{color:#dff4ff;font-variant-numeric:tabular-nums}.magiProgressNote{margin-top:7px;font-size:9px;color:#708aa2}.magiProgress.done .magiPulse{animation:none;background:#37b579;box-shadow:0 0 0 4px rgba(55,181,121,.13)}.magiProgress.error .magiPulse{animation:none;background:#e44d63;box-shadow:0 0 0 4px rgba(228,77,99,.13)}
+    @keyframes magiPulse{0%{box-shadow:0 0 0 0 rgba(77,184,216,.7);opacity:1}70%{box-shadow:0 0 0 9px rgba(77,184,216,0);opacity:.72}100%{box-shadow:0 0 0 0 rgba(77,184,216,0);opacity:1}}
+    @media(max-width:430px){.magiProgress{padding:12px}.magiProgressState{font-size:12px}.magiProgressPct{font-size:17px}}
+  `;document.head.appendChild(st)}
+  function setProgress(s){const box=ensure();if(!box||!s)return;injectCss();box.classList.remove('hidden','done','error');if(/ERROR/.test(s.step))box.classList.add('error');if(s.pct===100)box.classList.add('done');lastPct=Math.max(lastPct,s.pct);const pct=s.pct===100?100:Math.max(lastPct,s.pct);document.getElementById('magiProgressLabel').textContent=s.label;document.getElementById('magiProgressPct').textContent=`${pct}%`;document.getElementById('magiProgressBar').style.width=`${pct}%`;document.getElementById('magiProgressStep').textContent=s.step;if(!startAt&&pct<100){startAt=Date.now();timer=setInterval(()=>{const e=document.getElementById('magiElapsed');if(e&&startAt)e.textContent=fmt((Date.now()-startAt)/1000)},1000)}if(pct===100||/ERROR/.test(s.step)){if(timer){clearInterval(timer);timer=null}if(startAt){const e=document.getElementById('magiElapsed');if(e)e.textContent=fmt((Date.now()-startAt)/1000)}}}
+  function observe(){const status=document.getElementById('status');if(!status)return false;ensure();const sync=()=>{const s=stageFromStatus(status.textContent);if(s)setProgress(s)};new MutationObserver(sync).observe(status,{childList:true,subtree:true,characterData:true});sync();const btn=[...document.querySelectorAll('button')].find(b=>/MAGI実行|審議中/.test(b.textContent));if(btn)new MutationObserver(()=>{if(/審議中/.test(btn.textContent)){lastPct=0;startAt=0;setProgress({pct:18,label:'審議を開始しました',step:'CASE / EVIDENCE'})}}).observe(btn,{childList:true,subtree:true,characterData:true});return true}
+  let tries=0;const boot=setInterval(()=>{tries++;injectCss();if(observe()||tries>80)clearInterval(boot)},250);
+})();
