@@ -41,14 +41,14 @@ export default async function handler(req, res) {
       ? {
           phase,
           case: body.case,
-          instruction: 'Give the independent judgment and include one concise publicStatement in natural Japanese that can be shown to users as your spoken position. Do not expose hidden chain-of-thought.'
+          instruction: 'Give the independent judgment. Write primaryReason and publicStatement in natural spoken Japanese, as if you were saying it aloud in a baseball meeting to coaches and parents. Keep it concrete, easy to understand, and recognizably in this persona voice. Avoid bureaucratic AI/report wording. publicStatement should usually be 1–3 short sentences. Do not expose hidden chain-of-thought.'
         }
       : {
           phase,
           case: body.case,
           ownPrimaryJudgment: body.primarySelf || null,
           crossExamination: body.crossExamination || null,
-          instruction: 'Rejudge independently. Respond directly to the challenges in publicStatement, then state whether the judgment changed. Change only if a concrete new reason from the cross examination warrants it; never change merely to join a majority. Do not expose hidden chain-of-thought.'
+          instruction: 'Rejudge independently. In publicStatement, answer the challenge like a real spoken exchange first, then say plainly whether your judgment changed and why. Use natural baseball language understandable to both experienced people and parents. Keep it concise and human, not report-like. Change only if a concrete new reason from the cross examination warrants it; never change merely to join a majority. Do not expose hidden chain-of-thought.'
         };
 
     const result = await callGemini({
@@ -57,7 +57,6 @@ export default async function handler(req, res) {
       responseSchema: schema
     });
 
-    // Server enforces identity/phase rather than trusting generated labels.
     result.persona = persona.toUpperCase();
     result.phase = phase;
     if (phase === 'PRIMARY') {
