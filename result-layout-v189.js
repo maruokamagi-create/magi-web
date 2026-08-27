@@ -1,10 +1,10 @@
 (()=>{
   'use strict';
   const PORTRAITS={
-    'MELCHIOR-1':'/portraits/melchior.png?v=189',
-    'BALTHASAR-2':'/portraits/balthasar.png?v=189',
-    'CASPER-3':'/portraits/casper.png?v=189',
-    'MAGI CONTROL':'/magi-official-symbol-v125.svg?v=189'
+    'MELCHIOR-1':'/portraits/melchior.png?v=190',
+    'BALTHASAR-2':'/portraits/balthasar.png?v=190',
+    'CASPER-3':'/portraits/casper.png?v=190',
+    'MAGI CONTROL':'/magi-official-symbol-v125.svg?v=190'
   };
   function injectCss(){if(document.getElementById('magi-result-layout-v189-style'))return;const st=document.createElement('style');st.id='magi-result-layout-v189-style';st.textContent=`
     .magiResultOrderTitle{font-size:11px;letter-spacing:.14em;font-weight:900;color:#8db0d1;margin:13px 14px 8px}
@@ -28,21 +28,21 @@
   }
   function addSectionTitle(before,text,id){if(!before||document.getElementById(id))return;const d=document.createElement('div');d.id=id;d.className='magiResultOrderTitle';d.textContent=text;before.parentNode.insertBefore(d,before)}
   function reorder(){
-    const response=document.getElementById('response');if(!response)return;
-    const header=response.querySelector('.reportHeader');
-    const final=response.querySelector('.final');
-    const answers=response.querySelector('.answerWrap');
-    const protocol=document.getElementById('engineProtocol');
+    const response=document.getElementById('response');if(!response||response.dataset.magiResultOrderDone==='1')return;
+    const header=response.querySelector('.reportHeader');const final=response.querySelector('.final');const answers=response.querySelector('.answerWrap');const protocol=document.getElementById('engineProtocol');
     if(!header||!final||!answers)return;
-    response.classList.add('magiResultReordered');
-    header.insertAdjacentElement('afterend',final);
-    final.insertAdjacentElement('afterend',answers);
-    if(protocol)answers.insertAdjacentElement('afterend',protocol);
-    addSectionTitle(answers,'3賢人の判定','magiThreeWiseTitle');
-    if(protocol)addSectionTitle(protocol,'なぜこの結論になったか','magiReasonTitle');
-    if(protocol){const live=document.getElementById('magiLiveTranscript');if(live){protocol.appendChild(live);live.classList.add('magiCollapsed')}}
+    /* Guard BEFORE DOM moves. MutationObserver sees these moves synchronously later. */
+    response.dataset.magiResultOrderDone='1';response.classList.add('magiResultReordered');
+    header.insertAdjacentElement('afterend',final);final.insertAdjacentElement('afterend',answers);if(protocol)answers.insertAdjacentElement('afterend',protocol);
+    addSectionTitle(answers,'3賢人の判定','magiThreeWiseTitle');if(protocol)addSectionTitle(protocol,'なぜこの結論になったか','magiReasonTitle');
+    if(protocol){const live=document.getElementById('magiLiveTranscript');if(live&&live.parentNode!==protocol)protocol.appendChild(live);if(live)live.classList.add('magiCollapsed')}
     decorateTranscript();
   }
-  function watch(){injectCss();const root=document.body;new MutationObserver(()=>{decorateTranscript();const status=document.getElementById('status');if(status&&/正式審議完了|審議完了/.test(status.textContent))reorder();}).observe(root,{childList:true,subtree:true,characterData:true});const status=document.getElementById('status');if(status&&/正式審議完了|審議完了/.test(status.textContent))reorder();return true}
-  let n=0;const boot=setInterval(()=>{n++;if(document.body&&watch()||n>80)clearInterval(boot)},250);
+  function watch(){
+    injectCss();const root=document.body;let scheduled=false;
+    const sync=()=>{scheduled=false;decorateTranscript();const status=document.getElementById('status');if(status&&/正式審議完了|審議完了/.test(status.textContent))reorder()};
+    const observer=new MutationObserver(()=>{if(scheduled)return;scheduled=true;requestAnimationFrame(sync)});
+    observer.observe(root,{childList:true,subtree:true,characterData:true});sync();return true;
+  }
+  let n=0;const boot=setInterval(()=>{n++;if((document.body&&watch())||n>80)clearInterval(boot)},250);
 })();
