@@ -1,11 +1,11 @@
 // MAGI v1 server-only Gemini REST helper.
 // GEMINI_API_KEY is required. GEMINI_MODEL is optional; a vetted default is used.
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-3.6-flash';
-const DEFAULT_FALLBACK_MODEL = 'gemini-2.5-flash';
-const DEFAULT_LAST_RESORT_MODEL = 'gemini-2.5-flash-lite';
+const DEFAULT_MODEL = 'gemini-3.5-flash';
+const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
-const GEMINI_TIMEOUT_MS = 25_000;
+const GEMINI_TIMEOUT_MS = 30_000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
@@ -108,11 +108,20 @@ function sleep(ms) {
 }
 
 function isRetryableStatus(status) {
-  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function isModelUnavailableMessage(message) {
+  const text = String(message || '').toLowerCase();
+  return text.includes('no longer available') || text.includes('not found') || text.includes('unsupported') || text.includes('not available to new users');
 }
 
 function isRetryableError(error) {
   return error?.retryable === true || error?.message === 'Gemini request timed out';
+}
+
+function shouldTryNextModel(error) {
+  return isRetryableError(error) || isModelUnavailableMessage(error?.message);
 }
 
 export function getGeminiModel() {
@@ -234,7 +243,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
     } catch (error) {
       lastError = error;
-      if (!isRetryableError(error)) break;
+      if (!shouldTryNextModel(error)) break;
       console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
     }
   }
