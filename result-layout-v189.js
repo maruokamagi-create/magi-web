@@ -1,27 +1,28 @@
 (()=>{
   'use strict';
   const PORTRAITS={
-    'MELCHIOR-1':'/portraits/melchior.png?v=192',
-    'BALTHASAR-2':'/portraits/balthasar.png?v=192',
-    'CASPER-3':'/portraits/casper.png?v=192',
-    'MAGI CONTROL':'/magi-official-symbol-v125.svg?v=192'
+    'MELCHIOR-1':'/portraits/melchior.png?v=193',
+    'BALTHASAR-2':'/portraits/balthasar.png?v=193',
+    'CASPER-3':'/portraits/casper.png?v=193',
+    'MAGI CONTROL':'/magi-official-symbol-v125.svg?v=193'
   };
   function injectCss(){
-    if(document.getElementById('magi-result-layout-v192-style'))return;
+    if(document.getElementById('magi-result-layout-v193-style'))return;
     const st=document.createElement('style');
-    st.id='magi-result-layout-v192-style';
+    st.id='magi-result-layout-v193-style';
     st.textContent=`
       .response.magiResultReordered{margin-top:14px!important;padding:0!important;width:100%!important;max-width:none!important}
       .magiResultBundle{width:100%;max-width:none;margin:0;padding:0;display:block}
       .magiResultBundle>*{box-sizing:border-box;max-width:none!important}
+      .magiResultBundle .reportHeader{width:100%!important;max-width:none!important;margin:0 0 14px!important;border-radius:16px!important;border-bottom:5px solid #cf1f2e!important;opacity:1!important}
       .magiResultBundle .final{width:100%!important;margin:0 0 14px!important;border-radius:16px!important;border-top:4px solid #4db8d8!important;box-shadow:0 8px 24px rgba(0,0,0,.16)}
       .magiResultBundle .answerWrap{width:100%!important;margin:0 0 14px!important;padding:12px!important;border-radius:16px!important;background:#f7f9fc!important}
       .magiResultBundle .answer{width:100%!important;max-width:none!important;margin:0 0 12px!important}
       .magiResultBundle .answer:last-child{margin-bottom:0!important}
       .magiResultBundle #engineProtocol{width:100%!important;max-width:none!important;margin:0 0 14px!important;padding:0!important}
       .magiResultBundle #magiLiveTranscript{width:100%!important;max-width:none!important;margin:10px 0 0!important}
-      .magiResultBundle .reportHeader{width:100%!important;max-width:none!important;margin:0!important;border-radius:16px!important;border-bottom:0!important;opacity:.9}
       .magiResultOrderTitle{width:100%;font-size:12px;letter-spacing:.14em;font-weight:900;color:#8db0d1;margin:16px 0 9px;padding:0 4px}
+      .magiResultBundle>.magiResultOrderTitle:first-child{margin-top:0}
       .magiExchange{position:relative;padding-left:48px!important;min-height:43px}
       .magiSpeakerAvatar{position:absolute;left:0;top:9px;width:38px;height:38px;border-radius:50%;object-fit:cover;object-position:center top;background:#0b2135;border:1px solid #315574;box-shadow:0 3px 10px rgba(0,0,0,.25)}
       .magiSpeakerAvatar.control{object-fit:contain;padding:6px;background:#06121f}
@@ -32,7 +33,7 @@
       .magiLiveTitle{display:none!important}
       @media(max-width:720px){
         .magiResultBundle .answerWrap{padding:8px!important}
-        .magiResultBundle .final{margin-bottom:10px!important}
+        .magiResultBundle .final,.magiResultBundle .reportHeader{margin-bottom:10px!important}
         .magiResultOrderTitle{margin-top:12px}
       }
       @media(max-width:430px){
@@ -58,7 +59,7 @@
     const answers=response.querySelector('.answerWrap');
     const header=response.querySelector('.reportHeader');
     const protocol=document.getElementById('engineProtocol');
-    if(!final||!answers)return;
+    if(!final||!answers||!header)return;
 
     response.dataset.magiResultOrderDone='1';
     response.classList.add('magiResultReordered');
@@ -71,6 +72,9 @@
     bundle.className='magiResultBundle';
     response.insertBefore(bundle,response.firstChild);
 
+    /* Reading order: CASE INFO -> FINAL -> 3 WISE MEN -> DELIBERATION */
+    bundle.appendChild(makeTitle('案件情報','magiCaseInfoTitle'));
+    bundle.appendChild(header);
     bundle.appendChild(final);
     bundle.appendChild(makeTitle('3賢人の判定','magiThreeWiseTitle'));
     bundle.appendChild(answers);
@@ -81,11 +85,6 @@
       const live=document.getElementById('magiLiveTranscript');
       if(live&&live.parentNode!==protocol)protocol.appendChild(live);
       if(live)live.classList.add('magiCollapsed');
-    }
-
-    if(header){
-      bundle.appendChild(makeTitle('案件情報','magiCaseInfoTitle'));
-      bundle.appendChild(header);
     }
 
     decorateTranscript();
