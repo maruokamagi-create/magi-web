@@ -2,6 +2,7 @@
 // GEMINI_API_KEY is required. GEMINI_MODEL is optional; a vetted default is used.
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.7-flash';
+const DEFAULT_FALLBACK_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
 const GEMINI_TIMEOUT_MS = 25_000;
 const RATE_WINDOW_MS = 60_000;
@@ -101,8 +102,24 @@ function extractText(data) {
     .trim();
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status) {
+  return status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
+function isRetryableError(error) {
+  return error?.retryable === true || error?.message === 'Gemini request timed out';
+}
+
 export function getGeminiModel() {
   return String(process.env.GEMINI_MODEL || DEFAULT_MODEL).trim();
+}
+
+export function getGeminiFallbackModel() {
+  return String(process.env.GEMINI_FALLBACK_MODEL || DEFAULT_FALLBACK_MODEL).trim();
 }
 
 export async function checkGeminiConfiguration() {
@@ -126,11 +143,7 @@ export async function checkGeminiConfiguration() {
   }
 }
 
-export async function callGemini({ systemInstruction, userPayload, responseSchema }) {
-  const apiKey = process.env.GEMINI_API_KEY;
-  const model = getGeminiModel();
-  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
-
+async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
   try {
@@ -148,7 +161,6 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema,
-          temperature: 0.2,
           maxOutputTokens: 2400
         }
       })
@@ -159,6 +171,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       const message = data?.error?.message || `Gemini API error ${response.status}`;
       const err = new Error(message);
       err.status = response.status;
+      err.retryable = isRetryableStatus(response.status);
       throw err;
     }
 
@@ -167,9 +180,44 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
     try { return JSON.parse(text); }
     catch { throw new Error('Gemini returned invalid structured JSON'); }
   } catch (error) {
-    if (error?.name === 'AbortError') throw new Error('Gemini request timed out');
+    if (error?.name === 'AbortError') {
+      const err = new Error('Gemini request timed out');
+      err.retryable = true;
+      throw err;
+    }
     throw error;
   } finally {
     clearTimeout(timer);
   }
+}
+
+export async function callGemini({ systemInstruction, userPayload, responseSchema }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const primaryModel = getGeminiModel();
+  const fallbackModel = getGeminiFallbackModel();
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
+
+  let lastError;
+
+  // One short retry on transient capacity/rate/server failures.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await callGeminiModel({ model: primaryModel, apiKey, systemInstruction, userPayload, responseSchema });
+    } catch (error) {
+      lastError = error;
+      if (!isRetryableError(error) || attempt === 1) break;
+      await sleep(800 + Math.floor(Math.random() * 500));
+    }
+  }
+
+  // If the newest model is temporarily saturated, fail over to a stable Flash model.
+  if (fallbackModel && fallbackModel !== primaryModel && isRetryableError(lastError)) {
+    try {
+      return await callGeminiModel({ model: fallbackModel, apiKey, systemInstruction, userPayload, responseSchema });
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw lastError || new Error('Gemini request failed');
 }
