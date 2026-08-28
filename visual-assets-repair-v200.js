@@ -1,7 +1,8 @@
 (()=>{
   'use strict';
-  const VERSION='200';
+  const VERSION='201';
   const portraits=['melchior','balthasar','casper'];
+  let done=false;
 
   const ensureStyle=()=>{
     if(document.getElementById('magi-visual-assets-repair-style')) return;
@@ -23,80 +24,80 @@
   };
 
   const repair=()=>{
-    ensureStyle();
-    let ok=true;
+    if(done) return true;
     const hero=document.querySelector('.hero');
     const h1=hero&&hero.querySelector('h1');
-    if(!hero||!h1){ok=false;} else {
-      let row=h1.closest('.magiTitleRow');
-      if(!row){
-        row=document.createElement('div');
-        row.className='magiTitleRow';
-        h1.parentNode.insertBefore(row,h1);
-        row.appendChild(h1);
-      }
-      let lock=row.querySelector('.magiBrandLockup');
-      if(!lock){
-        lock=document.createElement('div');
-        lock.className='magiBrandLockup';
-        row.appendChild(lock);
-      }
-      let logo=lock.querySelector('.magiBrandSymbol');
-      if(!logo){
-        logo=document.createElement('img');
-        logo.className='magiBrandSymbol';
-        logo.alt='MAGI 公式3色シンボル';
-        lock.prepend(logo);
-      }
-      logo.src='/magi-official-symbol-v125.svg?v='+VERSION;
-      let copy=lock.querySelector('.magiBrandCopy');
-      if(!copy){
-        copy=document.createElement('div');
-        copy.className='magiBrandCopy';
-        copy.innerHTML='<div class="magiBrandEn">Maruoka Advanced Game Intelligence</div><div class="magiBrandCatch">知りたいことから、伝えたいことまで。</div>';
-        lock.appendChild(copy);
-      }
-    }
-
     const grid=document.querySelector('.personaGrid');
     const cards=grid?[...grid.querySelectorAll('.persona')].slice(0,3):[];
-    if(cards.length<3){ok=false;} else {
-      cards.forEach((card,i)=>{
-        let top=card.querySelector('.personaTop');
-        if(!top){
-          const first=card.firstElementChild;
-          top=document.createElement('div');
-          top.className='personaTop';
-          const meta=document.createElement('div');
-          meta.className='personaMeta';
-          while(card.firstChild && card.firstChild!==first?.nextSibling){break;}
-          // Preserve all existing text: wrap the heading block only when possible.
-          const num=card.querySelector('.num');
-          const h3=card.querySelector('h3');
-          const role=card.querySelector('.role');
-          [num,h3,role].forEach(n=>{if(n)meta.appendChild(n)});
-          top.appendChild(meta);
-          card.insertBefore(top,card.firstChild);
-        }
-        let img=top.querySelector('.personaPortrait');
-        if(!img){
-          img=document.createElement('img');
-          img.className='personaPortrait';
-          top.appendChild(img);
-        }
-        img.alt=portraits[i].toUpperCase();
-        img.src='/portraits/'+portraits[i]+'.png?v='+VERSION;
-      });
+    if(!hero||!h1||cards.length<3) return false;
+
+    ensureStyle();
+
+    h1.classList.add('magiMainTitle');
+    let row=h1.closest('.magiTitleRow');
+    if(!row){
+      row=document.createElement('div');
+      row.className='magiTitleRow';
+      h1.parentNode.insertBefore(row,h1);
+      row.appendChild(h1);
     }
-    return ok;
+    let lock=row.querySelector('.magiBrandLockup');
+    if(!lock){
+      lock=document.createElement('div');
+      lock.className='magiBrandLockup';
+      row.appendChild(lock);
+    }
+    let logo=lock.querySelector('.magiBrandSymbol');
+    if(!logo){
+      logo=document.createElement('img');
+      logo.className='magiBrandSymbol';
+      logo.alt='MAGI 公式3色シンボル';
+      lock.prepend(logo);
+    }
+    if(!logo.getAttribute('src')||!logo.getAttribute('src').includes('/magi-official-symbol-v125.svg')){
+      logo.src='/magi-official-symbol-v125.svg?v='+VERSION;
+    }
+    let copy=lock.querySelector('.magiBrandCopy');
+    if(!copy){
+      copy=document.createElement('div');
+      copy.className='magiBrandCopy';
+      copy.innerHTML='<div class="magiBrandEn">Maruoka Advanced Game Intelligence</div><div class="magiBrandCatch">知りたいことから、伝えたいことまで。</div>';
+      lock.appendChild(copy);
+    }
+
+    cards.forEach((card,i)=>{
+      let top=card.querySelector('.personaTop');
+      if(!top){
+        top=document.createElement('div');
+        top.className='personaTop';
+        const meta=document.createElement('div');
+        meta.className='personaMeta';
+        const num=card.querySelector('.num');
+        const h3=card.querySelector('h3');
+        const role=card.querySelector('.role');
+        [num,h3,role].forEach(n=>{if(n)meta.appendChild(n)});
+        top.appendChild(meta);
+        card.insertBefore(top,card.firstChild);
+      }
+      let img=top.querySelector('.personaPortrait');
+      if(!img){
+        img=document.createElement('img');
+        img.className='personaPortrait';
+        top.appendChild(img);
+      }
+      img.alt=portraits[i].toUpperCase();
+      const wanted='/portraits/'+portraits[i]+'.png?v='+VERSION;
+      if(!img.getAttribute('src')||!img.getAttribute('src').includes('/portraits/'+portraits[i]+'.png')) img.src=wanted;
+    });
+
+    done=true;
+    return true;
   };
 
-  let tries=0;
-  const timer=setInterval(()=>{
-    repair();
-    tries++;
-    if(tries>=120) clearInterval(timer);
-  },100);
-  repair();
-  window.addEventListener('load',repair,{once:true});
+  if(repair()) return;
+  const observer=new MutationObserver(()=>{
+    if(repair()) observer.disconnect();
+  });
+  observer.observe(document.documentElement,{subtree:true,childList:true});
+  window.setTimeout(()=>observer.disconnect(),10000);
 })();
