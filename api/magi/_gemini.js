@@ -116,8 +116,13 @@ function isModelUnavailableMessage(message) {
   return text.includes('no longer available') || text.includes('not found') || text.includes('unsupported') || text.includes('not available to new users');
 }
 
+function isTransientOutputMessage(message) {
+  const text = String(message || '').toLowerCase();
+  return text.includes('returned no text') || text.includes('invalid structured json');
+}
+
 function isRetryableError(error) {
-  return error?.retryable === true || error?.message === 'Gemini request timed out';
+  return error?.retryable === true || error?.message === 'Gemini request timed out' || isTransientOutputMessage(error?.message);
 }
 
 function shouldTryNextModel(error) {
@@ -190,9 +195,17 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
     }
 
     const text = extractText(data);
-    if (!text) throw new Error('Gemini returned no text');
+    if (!text) {
+      const err = new Error('Gemini returned no text');
+      err.retryable = true;
+      throw err;
+    }
     try { return JSON.parse(text); }
-    catch { throw new Error('Gemini returned invalid structured JSON'); }
+    catch {
+      const err = new Error('Gemini returned invalid structured JSON');
+      err.retryable = true;
+      throw err;
+    }
   } catch (error) {
     if (error?.name === 'AbortError') {
       const err = new Error('Gemini request timed out');
