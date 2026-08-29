@@ -61,13 +61,18 @@
     $('caseMeta').innerHTML=`審議日：${date}<br>審議案件番号：${esc(caseData.id)}<br>DATA HUB：${hub}<br>ENGINE：Gemini v1.0`;
   }
   function renderPersona(prefix,p){
-    const j=judgment(p.judgment);setPersona(prefix,{vote:j.key,conf:0,text:p.primaryReason||join(p.analysis),basis:join([...list(p.facts),...list(p.analysis)]),concern:join(p.warnings)});$(prefix+'Conf').textContent=`判定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;return j;
+    const j=judgment(p.judgment);
+    const spoken=p.publicStatement||p.primaryReason||join(p.analysis);
+    const evidenceBits=[...list(p.facts),...list(p.analysis)];
+    setPersona(prefix,{vote:j.key,conf:0,text:spoken,basis:join(evidenceBits),concern:join(p.warnings)});
+    $(prefix+'Conf').textContent=`判定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;
+    return j;
   }
   function renderCross(cross,primary,second){
     const box=ensureProtocol();const live=ensureLive();const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${v.changedFromPrimary?'変更（'+(v.changeReason||'理由記載なし')+'）':'維持'}`);
     [...box.querySelectorAll('.protocolBlock')].forEach(n=>n.remove());
     live.insertAdjacentHTML('afterend',`
-      <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">一次独立判定</div><div class="protocolPhase">FIRST JUDGMENT / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(judgment(v.judgment).label)}｜確度 ${esc(C[v.confidence]||v.confidence)}<br>${esc(v.primaryReason)}</div>`).join('')}</div></div>
+      <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">一次独立判定</div><div class="protocolPhase">FIRST JUDGMENT / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(judgment(v.judgment).label)}｜確度 ${esc(C[v.confidence]||v.confidence)}<br>${esc(v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
       <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">相互検証</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
       <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">二次判定</div><div class="protocolPhase">SECOND JUDGMENT</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
   }
@@ -97,8 +102,19 @@
       });
       const m=renderPersona('m',result.second.melchior),b=renderPersona('b',result.second.balthasar),c=renderPersona('c',result.second.casper);
       $('v1').textContent=`MELCHIOR ${m.label}`;$('v2').textContent=`BALTHASAR ${b.label}`;$('v3').textContent=`CASPER ${c.label}`;renderCross(result.crossExamination,result.primary,result.second);
-      const label=finalLabel(result.final,result.second);$('verdict').textContent=label;$('reason').textContent=`${result.final.recommendation||''}${list(result.final.majorReasons).length?'｜'+join(result.final.majorReasons):''}`;
-      $('next').style.display='block';$('next').textContent=list(result.final.reDeliberationConditions).length?`再審議条件：${join(result.final.reDeliberationConditions)}`:(result.final.reviewReason||'少数意見を保存し、状況変化時に再審議します。');
+      const label=finalLabel(result.final,result.second);
+      $('verdict').textContent=label;
+      const reasons=list(result.final.majorReasons);
+      const mainReason=reasons[0]||'';
+      $('reason').textContent=result.final.recommendation?`${result.final.recommendation}${mainReason?' '+mainReason:''}`:(mainReason||'三賢人の判定を確認してください。');
+      $('next').style.display='block';
+      if(list(result.final.reDeliberationConditions).length){
+        $('next').textContent=`判断が変わる条件：${join(result.final.reDeliberationConditions)}`;
+      }else if(result.final.minorityOpinion){
+        $('next').textContent=`少数意見：${result.final.minorityOpinion}`;
+      }else{
+        $('next').textContent=result.final.reviewReason||'状況が変われば、もう一度審議します。';
+      }
       caseMeta(evidence,result.case);setStatus(`MAGI正式審議完了 — ${h.model} / ${result.engineVersion}`);saveHistory(q,historyKey(label));$('response').scrollIntoView({behavior:'smooth',block:'start'});
     }catch(error){
       console.error('[MAGI engine UI]',error);protocol.insertAdjacentHTML('beforeend',`<div class="engineError"><b>正式審議を完了できませんでした。</b><br>${esc(error?.message||error)}<br>完了済みの公開審議ログは上に残しています。ローカル判定への自動切替は行っていません。</div>`);setStatus('MAGI正式審議エラー — 完了済みの審議ログを保持しました。');
