@@ -12,15 +12,11 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
 
-// MAGI consistency policy:
-// The same CASE/EVIDENCE should be judged under the same model and the lowest
-// practical sampling randomness. In strict mode MAGI does not silently switch
-// models, because a model change can change judgment.
-//
-// Consistency Lock v2 adds a project-shared Vercel Runtime Cache. The first
-// successful result for an identical canonical input becomes the reusable result
-// for subsequent users while that cache entry remains valid.
-const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'strict').trim().toLowerCase();
+// Canonical cache now provides cross-user consistency, so resilience is preferred
+// over failing the whole deliberation when the primary model has a transient error.
+// A fallback result is stored under the same canonical input key and is therefore
+// reused exactly on later identical requests.
+const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'off').trim().toLowerCase();
 
 export function sendJson(res, status, body) {
   res.statusCode = status;
@@ -154,7 +150,7 @@ export function getGeminiLastResortModel() {
 }
 
 export function getConsistencyMode() {
-  return CONSISTENCY_LOCK === 'off' ? 'off' : 'strict';
+  return CONSISTENCY_LOCK === 'strict' ? 'strict' : 'canonical';
 }
 
 export async function checkGeminiConfiguration() {
@@ -244,7 +240,6 @@ async function tryModel({ model, apiKey, systemInstruction, userPayload, respons
     } catch (error) {
       lastError = error;
       if (!isRetryableError(error) || attempt === retries) break;
-      // Fixed retry delay avoids introducing needless execution variability.
       await sleep(900);
     }
   }
@@ -260,10 +255,10 @@ async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, us
     return cached;
   }
 
-  console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint}`);
+  console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint} model=${model}`);
   const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, retries });
   const stored = await writeCanonicalResult(key, result);
-  console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint}`);
+  console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint} model=${model}`);
   return result;
 }
 
@@ -297,7 +292,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   }
 
   if (strict && lastError) {
-    console.warn(`[MAGI CONSISTENCY LOCK] Primary model failed; fallback suppressed to avoid judgment drift: ${lastError?.message || lastError}`);
+    console.warn(`[MAGI CONSISTENCY LOCK] Primary model failed; fallback suppressed: ${lastError?.message || lastError}`);
   }
   throw lastError || new Error('Gemini request failed');
 }
