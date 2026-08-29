@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { getCache } from '@vercel/functions';
 
-const CACHE_VERSION = 'magi-canonical-v2';
+const CACHE_VERSION = 'magi-canonical-v3';
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 60; // 60 days
 
 function normalizeString(value) {
@@ -22,10 +22,13 @@ function stableStringify(value) {
   return JSON.stringify(stableValue(value));
 }
 
-export function buildCanonicalKey({ model, systemInstruction, userPayload, responseSchema }) {
+// Canonical identity intentionally does NOT include the runtime model that happened
+// to answer. The requested CASE/EVIDENCE + MAGI rules define the canonical result.
+// This lets MAGI recover through a fallback model on the first successful run, then
+// return that exact stored result to every later user under the same conditions.
+export function buildCanonicalKey({ systemInstruction, userPayload, responseSchema }) {
   const material = stableStringify({
     cacheVersion: CACHE_VERSION,
-    model,
     systemInstruction,
     userPayload,
     responseSchema
