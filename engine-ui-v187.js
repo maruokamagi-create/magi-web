@@ -57,7 +57,7 @@
   function setBusy(on){const b=button();if(!b)return;b.disabled=on;b.classList.toggle('magiRunning',on);b.textContent=on?'審議中…':'MAGI実行'}
   function caseMeta(evidence,caseData){
     const d=new Date(),date=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
-    const hub=evidence?`${evidence.count}件参照<br>参照ファイル：${esc(evidence.files.join('、'))}`:'参照なし';
+    const hub=evidence?`関連記録：${evidence.count}件<br>審議資料：${evidence.files.length}ファイル<br>使用資料：${esc(evidence.files.join('、'))}`:'参照なし';
     $('caseMeta').innerHTML=`審議日：${date}<br>審議案件番号：${esc(caseData.id)}<br>DATA HUB：${hub}<br>ENGINE：Gemini v1.0`;
   }
   function renderPersona(prefix,p){
@@ -106,7 +106,8 @@
       $('verdict').textContent=label;
       const reasons=list(result.final.majorReasons);
       const mainReason=reasons[0]||'';
-      $('reason').textContent=result.final.recommendation?`${result.final.recommendation}${mainReason?' '+mainReason:''}`:(mainReason||'三賢人の判定を確認してください。');
+      const neutralOnly=['INSUFFICIENT_EVIDENCE','MAGI_DEADLOCK','MAGI_REVIEW_REQUIRED'].includes(result.final.status);
+      $('reason').textContent=result.final.recommendation?(neutralOnly?result.final.recommendation:`${result.final.recommendation}${mainReason?' '+mainReason:''}`):(mainReason||'三賢人の判定を確認してください。');
       $('next').style.display='block';
       if(list(result.final.reDeliberationConditions).length){
         $('next').textContent=`判断が変わる条件：${join(result.final.reDeliberationConditions)}`;
