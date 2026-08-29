@@ -1,5 +1,7 @@
 // MAGI v1 server-only Gemini REST helper.
 // GEMINI_API_KEY is required. GEMINI_MODEL is optional; a vetted default is used.
+import { buildCanonicalKey, canonicalFingerprint, readCanonicalResult, writeCanonicalResult } from './_canonical-cache.js';
+
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
@@ -12,9 +14,12 @@ const buckets = new Map();
 
 // MAGI consistency policy:
 // The same CASE/EVIDENCE should be judged under the same model and the lowest
-// practical sampling randomness. This is not a persistent cross-instance cache;
-// it is a model-level consistency lock. If strict consistency is enabled (default),
-// MAGI does not silently switch models, because a model change can change judgment.
+// practical sampling randomness. In strict mode MAGI does not silently switch
+// models, because a model change can change judgment.
+//
+// Consistency Lock v2 adds a project-shared Vercel Runtime Cache. The first
+// successful result for an identical canonical input becomes the reusable result
+// for subsequent users while that cache entry remains valid.
 const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'strict').trim().toLowerCase();
 
 export function sendJson(res, status, body) {
@@ -165,7 +170,7 @@ export async function checkGeminiConfiguration() {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return { ok: false, model, reason: data?.error?.message || `Gemini model check failed (${response.status})` };
-    return { ok: true, model, displayName: data?.displayName || model, consistencyMode: getConsistencyMode() };
+    return { ok: true, model, displayName: data?.displayName || model, consistencyMode: getConsistencyMode(), canonicalCache: true };
   } catch (error) {
     return { ok: false, model, reason: error?.name === 'AbortError' ? 'Gemini model check timed out' : (error?.message || 'Gemini model check failed') };
   } finally {
@@ -246,6 +251,22 @@ async function tryModel({ model, apiKey, systemInstruction, userPayload, respons
   throw lastError;
 }
 
+async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema, retries }) {
+  const key = buildCanonicalKey({ model, systemInstruction, userPayload, responseSchema });
+  const fingerprint = canonicalFingerprint(key);
+  const cached = await readCanonicalResult(key);
+  if (cached !== null) {
+    console.info(`[MAGI CANONICAL CACHE] HIT ${fingerprint}`);
+    return cached;
+  }
+
+  console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint}`);
+  const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, retries });
+  const stored = await writeCanonicalResult(key, result);
+  console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint}`);
+  return result;
+}
+
 export async function callGemini({ systemInstruction, userPayload, responseSchema }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
@@ -260,7 +281,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   for (let index = 0; index < models.length; index++) {
     const model = models[index];
     try {
-      return await tryModel({
+      return await getOrCreateCanonicalResult({
         model,
         apiKey,
         systemInstruction,
