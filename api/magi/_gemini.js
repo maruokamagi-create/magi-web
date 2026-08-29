@@ -10,6 +10,13 @@ const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
 
+// MAGI consistency policy:
+// The same CASE/EVIDENCE should be judged under the same model and the lowest
+// practical sampling randomness. This is not a persistent cross-instance cache;
+// it is a model-level consistency lock. If strict consistency is enabled (default),
+// MAGI does not silently switch models, because a model change can change judgment.
+const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'strict').trim().toLowerCase();
+
 export function sendJson(res, status, body) {
   res.statusCode = status;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
@@ -141,6 +148,10 @@ export function getGeminiLastResortModel() {
   return String(process.env.GEMINI_LAST_RESORT_MODEL || DEFAULT_LAST_RESORT_MODEL).trim();
 }
 
+export function getConsistencyMode() {
+  return CONSISTENCY_LOCK === 'off' ? 'off' : 'strict';
+}
+
 export async function checkGeminiConfiguration() {
   const apiKey = process.env.GEMINI_API_KEY;
   const model = getGeminiModel();
@@ -154,7 +165,7 @@ export async function checkGeminiConfiguration() {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return { ok: false, model, reason: data?.error?.message || `Gemini model check failed (${response.status})` };
-    return { ok: true, model, displayName: data?.displayName || model };
+    return { ok: true, model, displayName: data?.displayName || model, consistencyMode: getConsistencyMode() };
   } catch (error) {
     return { ok: false, model, reason: error?.name === 'AbortError' ? 'Gemini model check timed out' : (error?.message || 'Gemini model check failed') };
   } finally {
@@ -180,7 +191,9 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema,
-          maxOutputTokens: 2400
+          maxOutputTokens: 2400,
+          temperature: 0,
+          topP: 1
         }
       })
     });
@@ -226,7 +239,8 @@ async function tryModel({ model, apiKey, systemInstruction, userPayload, respons
     } catch (error) {
       lastError = error;
       if (!isRetryableError(error) || attempt === retries) break;
-      await sleep(700 + Math.floor(Math.random() * 500));
+      // Fixed retry delay avoids introducing needless execution variability.
+      await sleep(900);
     }
   }
   throw lastError;
@@ -236,11 +250,11 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
-  const models = [
-    getGeminiModel(),
-    getGeminiFallbackModel(),
-    getGeminiLastResortModel()
-  ].filter((model, index, arr) => model && arr.indexOf(model) === index);
+  const strict = getConsistencyMode() === 'strict';
+  const models = strict
+    ? [getGeminiModel()]
+    : [getGeminiModel(), getGeminiFallbackModel(), getGeminiLastResortModel()]
+        .filter((model, index, arr) => model && arr.indexOf(model) === index);
 
   let lastError;
   for (let index = 0; index < models.length; index++) {
@@ -256,10 +270,13 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
     } catch (error) {
       lastError = error;
-      if (!shouldTryNextModel(error)) break;
+      if (strict || !shouldTryNextModel(error)) break;
       console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
     }
   }
 
+  if (strict && lastError) {
+    console.warn(`[MAGI CONSISTENCY LOCK] Primary model failed; fallback suppressed to avoid judgment drift: ${lastError?.message || lastError}`);
+  }
   throw lastError || new Error('Gemini request failed');
 }
