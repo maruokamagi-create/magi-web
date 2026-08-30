@@ -129,7 +129,7 @@ export function canonicalizeKnownNameText(value) {
   for (const [surname, officials] of surnameMap.entries()) {
     if (officials.length !== 1) continue;
     const official = officials[0];
-    const re = new RegExp(`${escapeRegExp(surname)}(?=(君|選手|投手|捕手|選手会|さん))`, 'g');
+    const re = new RegExp(`${escapeRegExp(surname)}(?=(君|選手|投手|捕手|さん))`, 'g');
     text = text.replace(re, official);
   }
   return text;
@@ -139,11 +139,23 @@ export function canonicalizePlayerText(value) {
   return canonicalizeKnownNameText(value);
 }
 
+const PLAYER_ARRAY_KEYS = new Set([
+  'checkedPlayers','candidatePlayers','centerCandidates','recommendedCandidates','alternateCandidates'
+]);
+
 export function canonicalizeKnownNamesData(value) {
   if (Array.isArray(value)) return value.map(canonicalizeKnownNamesData);
   if (value && typeof value === 'object') {
     const out = {};
-    for (const [k,v] of Object.entries(value)) out[k] = canonicalizeKnownNamesData(v);
+    for (const [k,v] of Object.entries(value)) {
+      if (PLAYER_ARRAY_KEYS.has(k) && Array.isArray(v)) {
+        out[k] = canonicalPlayerList(v).names;
+      } else if (k === 'name' && typeof v === 'string') {
+        out[k] = canonicalPlayerNameStrict(v) || canonicalizeKnownNameText(v);
+      } else {
+        out[k] = canonicalizeKnownNamesData(v);
+      }
+    }
     return out;
   }
   if (typeof value === 'string') return canonicalizeKnownNameText(value);
