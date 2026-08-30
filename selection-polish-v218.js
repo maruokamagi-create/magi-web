@@ -92,6 +92,10 @@
     const centers=playerNamesFrom(verdict?.textContent||'');
     if(reason){
       let t=disambiguateDuplicateSurnames(normalizeNames(reason.textContent||''));
+      if(centers.length){
+        const centerClause=new RegExp(`^中心候補：${centers.map(escRe).join('・')}。?\\s*`);
+        t=t.replace(centerClause,'');
+      }
       const m=t.match(/クリーンナップ有力候補：([^。]+)。?/);
       if(m){
         const candidates=playerNamesFrom(m[1]).filter(p=>!centers.includes(p));
