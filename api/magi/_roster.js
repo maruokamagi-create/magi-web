@@ -15,6 +15,7 @@ const escapeRegExp = s => String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 const PLAYER_ALIASES = new Map();
 for (const official of CURRENT_ROSTER) {
   PLAYER_ALIASES.set(official, official);
+  PLAYER_ALIASES.set(official.replace(' ','　'), official);
   PLAYER_ALIASES.set(compact(official), official);
 }
 
@@ -110,26 +111,31 @@ const surnameMap = (() => {
 export function canonicalizeKnownNameText(value) {
   let text = String(value ?? '');
 
-  // Wise Men names are canonicalized before player processing.
+  // Wise Men names are canonicalized first.
   for (const [alias, official] of WISE_ALIASES.entries()) {
     if (alias !== official) text = text.split(alias).join(official);
   }
 
-  // Full player-name variants and missing-space forms -> official name with one ASCII space.
+  // Full player-name variants and missing-space forms -> official name.
   for (const [alias, official] of playerTextAliases) {
     if (alias !== official) text = text.split(alias).join(official);
   }
   for (const official of CURRENT_ROSTER) {
-    const noSpace = official.replace(/\s+/g,'');
-    if (noSpace !== official) text = text.split(noSpace).join(official);
+    const [surname, given] = official.split(' ');
+    const noSpace = surname + given;
+    text = text.split(noSpace).join(official);
+    // Full-width space, tabs, line breaks or repeated spaces between surname/given -> one ASCII space.
+    const spaced = new RegExp(`${escapeRegExp(surname)}[\\s　]+${escapeRegExp(given)}`, 'g');
+    text = text.replace(spaced, official);
   }
 
-  // Unique surnames used as 「○○君／○○選手」 are expanded to the official full name.
-  // Duplicate surnames (currently 大久保) are deliberately not guessed.
+  // If a surname uniquely identifies one current player, never leave it as a surname-only player reference.
+  // Duplicate surnames (currently 大久保) are never guessed.
   for (const [surname, officials] of surnameMap.entries()) {
     if (officials.length !== 1) continue;
     const official = officials[0];
-    const re = new RegExp(`${escapeRegExp(surname)}(?=(君|選手|投手|捕手|さん))`, 'g');
+    const [, given] = official.split(' ');
+    const re = new RegExp(`${escapeRegExp(surname)}(?![\\s　]*${escapeRegExp(given)})`, 'g');
     text = text.replace(re, official);
   }
   return text;
