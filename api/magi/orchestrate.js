@@ -1,5 +1,6 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { ORCHESTRATOR } from './_prompts.js';
+import { canonicalizePlayerData, playerKey } from './_roster.js';
 
 const crossSchema = {
   type: 'OBJECT',
@@ -95,24 +96,24 @@ function lowestConfidence(list) {
   return values.sort((a,b)=>(CONFIDENCE_ORDER[a] ?? 0) - (CONFIDENCE_ORDER[b] ?? 0))[0] || 'LOW';
 }
 
-const playerKey = s => String(s || '').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
-
 function buildSelectionResult(second, cross) {
-  const entries = Array.isArray(second) ? second.map((v,i)=>[String(i),v]) : Object.entries(second || {});
+  const normalizedSecond = canonicalizePlayerData(second);
+  const normalizedCross = canonicalizePlayerData(cross || {});
+  const entries = Array.isArray(normalizedSecond) ? normalizedSecond.map((v,i)=>[String(i),v]) : Object.entries(normalizedSecond || {});
   if (entries.length !== 3) return null;
 
   const critical = entries.find(([,x]) => x?.reviewRequested === true && String(x?.reviewReason || '').trim());
   const dataConflict = entries.find(([,x]) => String(x?.persona || '').toUpperCase().startsWith('MELCHIOR') && x?.dataConflict === true);
   if (critical || dataConflict) {
-    return {
+    return canonicalizePlayerData({
       mode: 'SELECTION', status: 'SELECTION_REVIEW_REQUIRED', recommendation: '候補を確定せず、未解決の確認事項を解消して再審議する。',
       centerCandidates: [], recommendedCandidates: [], alternateCandidates: [], candidateSupport: [],
       personaSelections: Object.fromEntries(entries.map(([k,v])=>[k, Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),
       confidence: lowestConfidence(entries.map(([,v])=>v)), majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
-      warnings: compactUnique([...(cross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]),
-      reDeliberationConditions: compactUnique([...(cross?.informationGaps||[]), ...(cross?.warnings||[])],5),
+      warnings: compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]),
+      reDeliberationConditions: compactUnique([...(normalizedCross?.informationGaps||[]), ...(normalizedCross?.warnings||[])],5),
       reviewReason: String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.')
-    };
+    });
   }
 
   const map = new Map();
@@ -143,12 +144,12 @@ function buildSelectionResult(second, cross) {
   const centerCandidates = maxSupport >= 2 ? ranked.filter(x=>x.support===maxSupport).map(x=>x.name) : [];
   const recommendedCandidates = ranked.slice(0,3).map(x=>x.name);
   const alternateCandidates = ranked.slice(3).map(x=>x.name);
-  const centerText = centerCandidates.length ? `中心候補：${centerCandidates.join('・')}。` : '3賢者の中心候補はまだ一本化していない。';
+  const centerText = centerCandidates.length ? `中心候補：${centerCandidates.join('・')}。` : '3賢人の中心候補はまだ一本化していない。';
   const recommendedText = recommendedCandidates.length ? `推奨候補群：${recommendedCandidates.join('・')}。` : '候補を確定できない。';
 
-  const warnings = compactUnique([...(cross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
-  const informationGaps = compactUnique(cross?.informationGaps || []);
-  return {
+  const warnings = compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
+  const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
+  return canonicalizePlayerData({
     mode: 'SELECTION',
     status: centerCandidates.length ? 'SELECTION_RESULT' : 'SELECTION_SPLIT',
     recommendation: `${centerText}${recommendedText}`,
@@ -162,21 +163,23 @@ function buildSelectionResult(second, cross) {
     warnings,
     reDeliberationConditions: compactUnique([...informationGaps, ...warnings],5),
     reviewReason: ''
-  };
+  });
 }
 
 function buildFinalResult(second, cross) {
-  const list = normalizeSecond(second);
-  const enforced = deterministicFinal(second);
+  const normalizedSecond = canonicalizePlayerData(second);
+  const normalizedCross = canonicalizePlayerData(cross || {});
+  const list = normalizeSecond(normalizedSecond);
+  const enforced = deterministicFinal(normalizedSecond);
   if (!enforced.status) return null;
 
   const majorReasons = compactUnique(list.map(x => x?.primaryReason));
   const warnings = compactUnique([
-    ...(cross?.warnings || []),
+    ...(normalizedCross?.warnings || []),
     ...list.flatMap(x => Array.isArray(x?.warnings) ? x.warnings : [])
   ]);
   const prediction = compactUnique(list.flatMap(x => Array.isArray(x?.prediction) ? x.prediction : []));
-  const informationGaps = compactUnique(cross?.informationGaps || []);
+  const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
   const reDeliberationConditions = compactUnique([...informationGaps, ...warnings], 5);
 
   const judgments = list.map(x => String(x?.judgment || '').toUpperCase());
@@ -193,7 +196,7 @@ function buildFinalResult(second, cross) {
   else if (majorityJudgment === 'RED') recommendation = '現時点では採用しない。';
   else if (majorityJudgment === 'YELLOW') recommendation = '判断を保留し、追加情報を取得する。';
 
-  return {
+  return canonicalizePlayerData({
     mode: 'PROPOSAL',
     status: enforced.status,
     vote: enforced.vote,
@@ -205,7 +208,7 @@ function buildFinalResult(second, cross) {
     prediction,
     reviewReason: enforced.reviewReason || '',
     reDeliberationConditions
-  };
+  });
 }
 
 export default async function handler(req, res) {
@@ -216,20 +219,20 @@ export default async function handler(req, res) {
 
     if (body.phase === 'CROSS_EXAMINATION') {
       if (!body.primary) return sendJson(res, 400, { error: 'Locked primary judgments are required' });
-      const result = await callGemini({
+      const rawResult = await callGemini({
         systemInstruction: ORCHESTRATOR,
         userPayload: {
           phase: 'CROSS_EXAMINATION',
           temporalContext: jstContext(),
-          case: body.case,
-          lockedPrimaryJudgments: body.primary,
+          case: canonicalizePlayerData(body.case),
+          lockedPrimaryJudgments: canonicalizePlayerData(body.primary),
           instruction: isSelectionCase(body.case)
-            ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
-            : 'Do not decide the case. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+            ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+            : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
         },
         responseSchema: crossSchema
       });
-      return sendJson(res, 200, result);
+      return sendJson(res, 200, canonicalizePlayerData(rawResult));
     }
 
     if (body.phase === 'FINAL') {
@@ -238,7 +241,7 @@ export default async function handler(req, res) {
         ? buildSelectionResult(body.second, body.crossExamination || null)
         : buildFinalResult(body.second, body.crossExamination || null);
       if (!result) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
-      return sendJson(res, 200, result);
+      return sendJson(res, 200, canonicalizePlayerData(result));
     }
 
     return sendJson(res, 400, { error: 'Unknown orchestrator phase' });
