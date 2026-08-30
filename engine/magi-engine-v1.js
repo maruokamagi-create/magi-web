@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  const ENGINE_VERSION = '1.0.1';
+  const ENGINE_VERSION = '1.0.2';
   const PERSONAS = ['melchior', 'balthasar', 'casper'];
 
   const deepFreeze = (value) => {
@@ -29,6 +29,7 @@
     return deepFreeze({
       id: input?.id || `MAGI-${Date.now()}`,
       question,
+      mode: String(input?.mode || 'proposal').toLowerCase(),
       objective: String(input?.objective || '').trim(),
       options: Array.isArray(input?.options) ? clone(input.options) : [],
       urgency: input?.urgency || 'normal',
@@ -79,7 +80,6 @@
   }
 
   async function runPrimary(caseData, options) {
-    // Three separate requests are intentional: no persona sees another primary judgment.
     const jobs = PERSONAS.map((persona) => postJSON('/api/magi/persona', {
       phase: 'PRIMARY', persona, case: caseData
     }, options).then((result) => [persona, result]));
@@ -112,7 +112,7 @@
 
   async function deliberate(input, options = {}) {
     const caseData = normalizeCase(input);
-    emit(options, 'onStage', { stage: 'PRIMARY', message: '一次独立判定を開始' });
+    emit(options, 'onStage', { stage: 'PRIMARY', message: caseData.mode === 'selection' ? '一次候補抽出を開始' : '一次独立判定を開始' });
     const primary = await runPrimary(caseData, options);
     const primaryLocked = lockPrimary(primary);
     emit(options, 'onPrimaryLocked', reveal(primaryLocked));
@@ -121,11 +121,11 @@
     const cross = await runCrossExamination(caseData, primaryLocked, options);
     emit(options, 'onCrossComplete', cross);
 
-    emit(options, 'onStage', { stage: 'SECOND', message: '二次判定を開始' });
+    emit(options, 'onStage', { stage: 'SECOND', message: caseData.mode === 'selection' ? '二次候補選定を開始' : '二次判定を開始' });
     const second = await runSecond(caseData, primaryLocked, cross, options);
     emit(options, 'onSecondComplete', second);
 
-    emit(options, 'onStage', { stage: 'FINAL', message: '最終決定を開始' });
+    emit(options, 'onStage', { stage: 'FINAL', message: caseData.mode === 'selection' ? '選択結果を集約' : '最終決定を開始' });
     const final = await finalize(caseData, primaryLocked, cross, second, options);
     emit(options, 'onFinalComplete', final);
 
