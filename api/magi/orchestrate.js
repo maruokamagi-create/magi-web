@@ -30,6 +30,18 @@ function validCase(body) {
   return q.length >= 2 && q.length <= 12000;
 }
 
+function jstContext() {
+  const formatted = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
+    weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(new Date());
+  return {
+    timeZone: 'Asia/Tokyo',
+    currentDateTime: formatted,
+    instruction: '相対時刻・季節表現はこの日本時間を基準にする。現在が夏なら半年後は冬であり、次の夏は約1年後として扱う。'
+  };
+}
+
 function normalizeSecond(second) {
   const list = Array.isArray(second) ? second : Object.values(second || {});
   return list.filter(Boolean).slice(0,3);
@@ -129,9 +141,10 @@ export default async function handler(req, res) {
         systemInstruction: ORCHESTRATOR,
         userPayload: {
           phase: 'CROSS_EXAMINATION',
+          temporalContext: jstContext(),
           case: body.case,
           lockedPrimaryJudgments: body.primary,
-          instruction: 'Do not decide the case. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges.'
+          instruction: 'Do not decide the case. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
         },
         responseSchema: crossSchema
       });
