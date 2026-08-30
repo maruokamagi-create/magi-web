@@ -131,21 +131,60 @@ function buildSelectionResult(second, cross) {
     personaSelections[persona] = unique;
     unique.forEach((name, index) => {
       const key = playerKey(name);
-      const row = map.get(key) || { name, support: 0, rankScore: 0, personas: [] };
+      const row = map.get(key) || {
+        name,
+        support: 0,
+        firstPlaceCount: 0,
+        rankScore: 0,
+        rankTotal: 0,
+        personas: []
+      };
       row.support += 1;
+      row.firstPlaceCount += index === 0 ? 1 : 0;
       row.rankScore += Math.max(1, 6 - index);
+      row.rankTotal += index + 1;
       row.personas.push(persona);
       map.set(key, row);
     });
   }
 
-  const ranked = [...map.values()].sort((a,b)=>b.support-a.support || b.rankScore-a.rankScore || a.name.localeCompare(b.name,'ja'));
-  const maxSupport = ranked[0]?.support || 0;
-  const centerCandidates = maxSupport >= 2 ? ranked.filter(x=>x.support===maxSupport).map(x=>x.name) : [];
-  const recommendedCandidates = ranked.slice(0,3).map(x=>x.name);
-  const alternateCandidates = ranked.slice(3).map(x=>x.name);
-  const centerText = centerCandidates.length ? `中心候補：${centerCandidates.join('・')}。` : '3賢人の中心候補はまだ一本化していない。';
-  const recommendedText = recommendedCandidates.length ? `推奨候補群：${recommendedCandidates.join('・')}。` : '候補を確定できない。';
+  const ranked = [...map.values()]
+    .sort((a,b)=>
+      b.support-a.support ||
+      b.firstPlaceCount-a.firstPlaceCount ||
+      b.rankScore-a.rankScore ||
+      a.rankTotal-b.rankTotal ||
+      a.name.localeCompare(b.name,'ja')
+    )
+    .map((row,index)=>({
+      ...row,
+      overallRank: index + 1,
+      averageRank: row.support ? Number((row.rankTotal / row.support).toFixed(2)) : null
+    }));
+
+  const top = ranked[0] || null;
+  const secondRanked = ranked[1] || null;
+  const centerCandidates = [];
+  if (top && top.support >= 2) {
+    centerCandidates.push(top.name);
+    const nearTie = secondRanked &&
+      secondRanked.support === top.support &&
+      secondRanked.firstPlaceCount === top.firstPlaceCount &&
+      (top.rankScore - secondRanked.rankScore) <= 1;
+    if (nearTie) centerCandidates.push(secondRanked.name);
+  }
+
+  let recommendedLimit = Math.min(3, ranked.length);
+  if (ranked.length >= 4 && ranked[3].support >= 2) recommendedLimit = 4;
+  const recommendedCandidates = ranked.slice(0,recommendedLimit).map(x=>x.name);
+  const alternateCandidates = ranked.slice(recommendedLimit).map(x=>x.name);
+
+  const centerText = centerCandidates.length
+    ? `中心候補：${centerCandidates.join('・')}。`
+    : '3賢人の中心候補はまだ一本化していない。';
+  const recommendedText = recommendedCandidates.length
+    ? `クリーンナップ有力候補：${recommendedCandidates.join('・')}。`
+    : '候補を確定できない。';
 
   const warnings = compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
   const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
