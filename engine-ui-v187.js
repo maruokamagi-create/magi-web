@@ -8,6 +8,13 @@
   const join=v=>list(v).join('／')||'特記事項なし';
   const judgment=v=>J[String(v||'').toUpperCase()]||J.YELLOW;
   const button=()=>document.querySelector('button[onclick="runMagi()"]');
+  const candidateText=p=>list(p?.candidatePlayers).join('・')||'候補未確定';
+  const selectionMode=q=>{
+    const s=String(q||'');
+    const domain=/クリーンナップ|中軸|主軸|打線|打順|スタメン|レギュラー|先発|起用|守備位置|ポジション/;
+    const cue=/誰|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番/;
+    return domain.test(s)&&cue.test(s);
+  };
 
   const css=`
   .engineProtocol{background:#f7f9fc;color:#122039;padding:0 14px 14px}
@@ -44,37 +51,52 @@
     if(!text)return;ensureLive();const b=$('magiLiveBody');const d=document.createElement('div');d.className='magiExchange';
     d.innerHTML=`<div class="magiSpeaker">${esc(speaker)}${judge?`<span class="magiJudge">${esc(judge)}</span>`:''}</div><div class="magiSpeech ${kind}">${esc(text)}</div>`;b.appendChild(d);
   }
-  function showPrimary(primary){
-    Object.entries(primary||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.primaryReason,'',judgment(v.judgment).label));
+  function showPrimary(primary,isSelection){
+    Object.entries(primary||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.primaryReason,'',isSelection?`候補：${candidateText(v)}`:judgment(v.judgment).label));
   }
   function showCross(cross){
     const ch=cross?.challenges||{};Object.entries(ch).forEach(([k,arr])=>list(arr).forEach(t=>addExchange(`MAGI CONTROL → ${names[k]||k}`,t,'magiChallenge','相互検証')));
   }
-  function showSecond(second){
-    Object.entries(second||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.changeReason||v.primaryReason,'magiReply',`${judgment(v.judgment).label}${v.changedFromPrimary?'・判定変更':'・判定維持'}`));
+  function showSecond(second,isSelection){
+    Object.entries(second||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.changeReason||v.primaryReason,'magiReply',isSelection?`再選定：${candidateText(v)}`:`${judgment(v.judgment).label}${v.changedFromPrimary?'・判定変更':'・判定維持'}`));
   }
   function setStatus(text){$('status').textContent=text}
   function setBusy(on){const b=button();if(!b)return;b.disabled=on;b.classList.toggle('magiRunning',on);b.textContent=on?'審議中…':'MAGI実行'}
   function caseMeta(evidence,caseData){
     const d=new Date(),date=`${d.getFullYear()}年${d.getMonth()+1}月${d.getDate()}日`;
     const hub=evidence?`${evidence.count}件参照<br>参照ファイル：${esc(evidence.files.join('、'))}`:'参照なし';
-    $('caseMeta').innerHTML=`審議日：${date}<br>審議案件番号：${esc(caseData.id)}<br>DATA HUB：${hub}<br>ENGINE：Gemini v1.0`;
+    const mode=caseData?.mode==='selection'?'選択審議':'賛否審議';
+    $('caseMeta').innerHTML=`審議日：${date}<br>審議案件番号：${esc(caseData.id)}<br>審議方式：${mode}<br>DATA HUB：${hub}<br>ENGINE：Gemini v1.0`;
   }
-  function renderPersona(prefix,p){
+  function renderPersona(prefix,p,isSelection){
     const j=judgment(p.judgment);
     const spoken=p.publicStatement||p.primaryReason||join(p.analysis);
     const evidenceBits=[...list(p.facts),...list(p.analysis)];
-    setPersona(prefix,{vote:j.key,conf:0,text:spoken,basis:join(evidenceBits),concern:join(p.warnings)});
-    $(prefix+'Conf').textContent=`判定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;
+    setPersona(prefix,{vote:isSelection?'cond':j.key,conf:0,text:spoken,basis:join(evidenceBits),concern:join(p.warnings)});
+    if(isSelection){
+      $(prefix+'Vote').textContent=`候補：${candidateText(p)}`;
+      $(prefix+'Conf').textContent=`選定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;
+    }else{
+      $(prefix+'Conf').textContent=`判定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;
+    }
     return j;
   }
-  function renderCross(cross,primary,second){
-    const box=ensureProtocol();const live=ensureLive();const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${v.changedFromPrimary?'変更（'+(v.changeReason||'理由記載なし')+'）':'維持'}`);
+  function renderCross(cross,primary,second,isSelection){
+    const box=ensureProtocol();const live=ensureLive();
     [...box.querySelectorAll('.protocolBlock')].forEach(n=>n.remove());
-    live.insertAdjacentHTML('afterend',`
-      <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">一次独立判定</div><div class="protocolPhase">FIRST JUDGMENT / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(judgment(v.judgment).label)}｜確度 ${esc(C[v.confidence]||v.confidence)}<br>${esc(v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
-      <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">相互検証</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
-      <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">二次判定</div><div class="protocolPhase">SECOND JUDGMENT</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
+    if(isSelection){
+      const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${candidateText(v)}${v.candidateBasis?'｜'+v.candidateBasis:''}`);
+      live.insertAdjacentHTML('afterend',`
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">一次候補抽出</div><div class="protocolPhase">INDEPENDENT SELECTION / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>候補：${esc(candidateText(v))}<br>${esc(v.candidateBasis||v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">候補相互検証</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">二次候補選定</div><div class="protocolPhase">SECOND SELECTION</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
+    }else{
+      const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${v.changedFromPrimary?'変更（'+(v.changeReason||'理由記載なし')+'）':'維持'}`);
+      live.insertAdjacentHTML('afterend',`
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">一次独立判定</div><div class="protocolPhase">FIRST JUDGMENT / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(judgment(v.judgment).label)}｜確度 ${esc(C[v.confidence]||v.confidence)}<br>${esc(v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">相互検証</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">二次判定</div><div class="protocolPhase">SECOND JUDGMENT</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
+    }
   }
   function finalLabel(final,second){
     if(final.status==='MAGI_REVIEW_REQUIRED')return'MAGI再確認要求';if(final.status==='MAGI_DEADLOCK')return'審議不一致（再審議）';if(final.status==='INSUFFICIENT_EVIDENCE')return'判断材料不足';
@@ -88,34 +110,52 @@
     const q=$('q').value.trim();if(!q){setStatus('相談内容を入力してください。');return}
     const route=routeQuestion(q);if(route.type==='advanced'){setStatus('高度相談向けの内容です。引継ぎパネルを開きました。');openAdvanced();return}
     if(!window.MAGI_ENGINE_V1){setStatus('正式審議エンジンを読み込めませんでした。');return}
+    const isSelection=selectionMode(q);
     const evidence=searchDataEvidence(q),x=analyze(q),protocol=ensureProtocol();
-    protocol.innerHTML='';protocol.classList.remove('hidden');resetLive();renderEvidence(evidence);renderSignals(x,{...route,label:'Gemini正式3賢人審議'},evidence);
+    protocol.innerHTML='';protocol.classList.remove('hidden');resetLive();renderEvidence(evidence);renderSignals(x,{...route,label:isSelection?'Gemini正式3賢人選択審議':'Gemini正式3賢人審議'},evidence);
     $('caseQuestion').textContent=q;$('response').classList.add('show');setBusy(true);
+    const finalTitle=document.querySelector('.final .title');if(finalTitle)finalTitle.textContent=isSelection?'《MAGI》選択審議結果':'《MAGI》総合判定';
     try{
-      setStatus('Gemini接続を確認中…');const h=await health();setStatus(`一次独立判定を実行中…（${h.model}）`);
-      const result=await MAGI_ENGINE_V1.deliberate({question:q,objective:'3賢人による意思決定支援',evidence:evidence?{count:evidence.count,files:evidence.files,text:evidence.text}:null},{
-        onPrimaryLocked:primary=>{showPrimary(primary);setStatus('一次判定を公開。相互検証を実行中…')},
-        onCrossComplete:cross=>{showCross(cross);setStatus('相互検証を公開。二次判定を実行中…')},
-        onSecondComplete:second=>{showSecond(second);setStatus('二次判定を公開。最終決定を実行中…')},
-        onStage:s=>{if(s.stage==='FINAL')setStatus('最終決定を実行中…')},
+      setStatus('Gemini接続を確認中…');const h=await health();setStatus(isSelection?`全員確認後、一次候補抽出を実行中…（${h.model}）`:`一次独立判定を実行中…（${h.model}）`);
+      const result=await MAGI_ENGINE_V1.deliberate({question:q,mode:isSelection?'selection':'proposal',objective:isSelection?'3賢人による候補比較・選択支援':'3賢人による意思決定支援',evidence:evidence?{count:evidence.count,files:evidence.files,text:evidence.text}:null},{
+        onPrimaryLocked:primary=>{showPrimary(primary,isSelection);setStatus(isSelection?'一次候補を公開。候補相互検証を実行中…':'一次判定を公開。相互検証を実行中…')},
+        onCrossComplete:cross=>{showCross(cross);setStatus(isSelection?'候補相互検証を公開。二次候補選定を実行中…':'相互検証を公開。二次判定を実行中…')},
+        onSecondComplete:second=>{showSecond(second,isSelection);setStatus(isSelection?'二次候補を公開。選択結果を集約中…':'二次判定を公開。最終決定を実行中…')},
+        onStage:s=>{if(s.stage==='FINAL')setStatus(isSelection?'選択結果を集約中…':'最終決定を実行中…')},
         onRetry:r=>setStatus(`一時エラーを検出。再試行中…（${r.attempt}/3）`)
       });
-      const m=renderPersona('m',result.second.melchior),b=renderPersona('b',result.second.balthasar),c=renderPersona('c',result.second.casper);
-      $('v1').textContent=`MELCHIOR ${m.label}`;$('v2').textContent=`BALTHASAR ${b.label}`;$('v3').textContent=`CASPER ${c.label}`;renderCross(result.crossExamination,result.primary,result.second);
-      const label=finalLabel(result.final,result.second);
-      $('verdict').textContent=label;
-      const reasons=list(result.final.majorReasons);
-      const mainReason=reasons[0]||'';
-      $('reason').textContent=result.final.recommendation?`${result.final.recommendation}${mainReason?' '+mainReason:''}`:(mainReason||'三賢人の判定を確認してください。');
-      $('next').style.display='block';
-      if(list(result.final.reDeliberationConditions).length){
-        $('next').textContent=`判断が変わる条件：${join(result.final.reDeliberationConditions)}`;
-      }else if(result.final.minorityOpinion){
-        $('next').textContent=`少数意見：${result.final.minorityOpinion}`;
+      const m=renderPersona('m',result.second.melchior,isSelection),b=renderPersona('b',result.second.balthasar,isSelection),c=renderPersona('c',result.second.casper,isSelection);
+      renderCross(result.crossExamination,result.primary,result.second,isSelection);
+      if(isSelection){
+        $('v1').textContent=`MELCHIOR候補 ${candidateText(result.second.melchior)}`;
+        $('v2').textContent=`BALTHASAR候補 ${candidateText(result.second.balthasar)}`;
+        $('v3').textContent=`CASPER候補 ${candidateText(result.second.casper)}`;
+        if(result.final.status==='SELECTION_REVIEW_REQUIRED'){
+          $('verdict').textContent='候補確定保留';
+          $('reason').textContent=result.final.reviewReason||result.final.recommendation||'確認事項を解消して再審議します。';
+        }else{
+          const center=list(result.final.centerCandidates),recommended=list(result.final.recommendedCandidates);
+          $('verdict').textContent=center.length?`中心候補：${center.join('・')}`:'候補比較継続';
+          $('reason').textContent=result.final.recommendation||(recommended.length?`推奨候補群：${recommended.join('・')}`:'3賢者の候補を比較してください。');
+        }
+        $('next').style.display='block';
+        const alt=list(result.final.alternateCandidates),conds=list(result.final.reDeliberationConditions);
+        const bits=[];if(alt.length)bits.push(`次点・追加候補：${alt.join('・')}`);if(conds.length)bits.push(`再検討条件：${conds.join('／')}`);
+        $('next').textContent=bits.join('　')||'今後の試合データや役割変化に応じて再選定します。';
+        caseMeta(evidence,result.case);setStatus(`MAGI選択審議完了 — ${h.model} / ${result.engineVersion}`);saveHistory(q,'selection');
       }else{
-        $('next').textContent=result.final.reviewReason||'状況が変われば、もう一度審議します。';
+        $('v1').textContent=`MELCHIOR ${m.label}`;$('v2').textContent=`BALTHASAR ${b.label}`;$('v3').textContent=`CASPER ${c.label}`;
+        const label=finalLabel(result.final,result.second);
+        $('verdict').textContent=label;
+        const reasons=list(result.final.majorReasons);const mainReason=reasons[0]||'';
+        $('reason').textContent=result.final.recommendation?`${result.final.recommendation}${mainReason?' '+mainReason:''}`:(mainReason||'三賢人の判定を確認してください。');
+        $('next').style.display='block';
+        if(list(result.final.reDeliberationConditions).length){$('next').textContent=`判断が変わる条件：${join(result.final.reDeliberationConditions)}`}
+        else if(result.final.minorityOpinion){$('next').textContent=`少数意見：${result.final.minorityOpinion}`}
+        else{$('next').textContent=result.final.reviewReason||'状況が変われば、もう一度審議します。'}
+        caseMeta(evidence,result.case);setStatus(`MAGI正式審議完了 — ${h.model} / ${result.engineVersion}`);saveHistory(q,historyKey(label));
       }
-      caseMeta(evidence,result.case);setStatus(`MAGI正式審議完了 — ${h.model} / ${result.engineVersion}`);saveHistory(q,historyKey(label));$('response').scrollIntoView({behavior:'smooth',block:'start'});
+      $('response').scrollIntoView({behavior:'smooth',block:'start'});
     }catch(error){
       console.error('[MAGI engine UI]',error);protocol.insertAdjacentHTML('beforeend',`<div class="engineError"><b>正式審議を完了できませんでした。</b><br>${esc(error?.message||error)}<br>完了済みの公開審議ログは上に残しています。ローカル判定への自動切替は行っていません。</div>`);setStatus('MAGI正式審議エラー — 完了済みの審議ログを保持しました。');
     }finally{setBusy(false)}
