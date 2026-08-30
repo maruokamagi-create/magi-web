@@ -1,7 +1,7 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
 
-const EXPECTED_CURRENT_ROSTER = 14;
+const CURRENT_ROSTER = ['大久保 陽翔','大野 竜暉','井坂 悠聖','坂田 暉馬','嶋田 栄志','武澤 大翔','橋向 結都','中嶋 玲月','吉田 真翔','上村 蓮','大久保 夢翔','長侶 穹','鰐渕 将太','武田 晴琉翔'];
 const schema = {
   type: 'OBJECT',
   properties: {
@@ -36,9 +36,25 @@ function isCandidateCase(body) {
   return /クリーンナップ|中軸|主軸|打線|打順|先発|レギュラー|スタメン|候補|誰を中心|誰を起用/.test(String(body?.case?.question || ''));
 }
 
-function uniquePlayerCount(values) {
-  const key = s => String(s || '').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
-  return new Set((Array.isArray(values) ? values : []).map(key).filter(Boolean)).size;
+const playerKey = s => String(s || '').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
+function rosterStatus(values) {
+  const got = new Set((Array.isArray(values) ? values : []).map(playerKey).filter(Boolean));
+  const missing = CURRENT_ROSTER.filter(p => !got.has(playerKey(p)));
+  const unexpected = [...got].filter(k => !CURRENT_ROSTER.some(p => playerKey(p) === k));
+  return { complete: missing.length === 0, missing, unexpected, checked: CURRENT_ROSTER.length - missing.length };
+}
+
+function jstContext() {
+  const now = new Date();
+  const formatted = new Intl.DateTimeFormat('ja-JP', {
+    timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
+    weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false
+  }).format(now);
+  return {
+    timeZone: 'Asia/Tokyo',
+    currentDateTime: formatted,
+    instruction: 'この日時を審議の基準時点とする。「半年後」「来年」「次の夏」「今季」などは必ずこの基準時点から暦上の期間を計算して表現する。現在が夏なら半年後を夏とは呼ばない。次の夏を指すなら約1年後など、実際の時期に合わせる。'
+  };
 }
 
 export default async function handler(req, res) {
@@ -50,18 +66,27 @@ export default async function handler(req, res) {
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
+    const temporalContext = jstContext();
+    const historyRule = '2026-2027を主評価とするが、2025-2026を軽い参考として切り捨てない。大久保 陽翔・大野 竜暉は旧チームで十分な出場母数と継続的な実戦経験があるため、旧成績を再現性・経験値・役割継続の重要Evidenceとして現在評価へ接続する。特に大久保 陽翔は旧チームから継続して4番を担い、新チームでも基本的に4番を担うチームの柱という役割継続を必ず考慮する。ただし既得権として固定せず、現在の明確なEvidenceがあれば変更を検討する。旧チームで非レギュラーだった選手の小さい母数は現在評価の不利材料にしない。';
+
     const payload = phase === 'PRIMARY'
       ? {
           phase,
+          temporalContext,
+          authoritativeCurrentRoster: CURRENT_ROSTER,
+          historicalWeightingRule: historyRule,
           case: body.case,
-          instruction: 'Give the independent judgment. For any lineup, batting-order, starter, regular, or candidate-selection question: FIRST read the ALL CURRENT TEAM CHECK evidence and put every checked current-team player name into checkedPlayers. Do not shortlist before this check is complete. SECOND, independently choose your own candidatePlayers using only your persona domain; do not copy or anticipate the other Wise Men. candidateBasis must briefly explain the persona-specific selection standard. In publicStatement, name the main candidatePlayers naturally before stating the judgment. Write primaryReason and publicStatement in natural spoken Japanese, as if you were saying it aloud in a baseball meeting to coaches and parents. Keep it concrete, easy to understand, and recognizably in this persona voice. Avoid bureaucratic AI/report wording. publicStatement should usually be 1–3 short sentences. Do not expose hidden chain-of-thought.'
+          instruction: 'Give the independent judgment. For any lineup, batting-order, starter, regular, or candidate-selection question: FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put all 14 names into checkedPlayers. Do not add other names just because they appear in a 2026-2027-labelled reference file. Do not shortlist before this check is complete. SECOND, independently choose your own candidatePlayers using only your persona domain; do not copy or anticipate the other Wise Men. candidateBasis must briefly explain the persona-specific selection standard. Apply historicalWeightingRule: current-team evidence is primary, but substantial old-team evidence and role continuity for 大久保 陽翔 and 大野 竜暉 are meaningful evidence, not a negligible footnote. In publicStatement, name the main candidatePlayers naturally before stating the judgment. Resolve all relative time expressions from temporalContext. Write primaryReason and publicStatement in natural spoken Japanese, as if you were saying it aloud in a baseball meeting to coaches and parents. Keep it concrete, easy to understand, and recognizably in this persona voice. Avoid bureaucratic AI/report wording. publicStatement should usually be 1–3 short sentences. Do not expose hidden chain-of-thought.'
         }
       : {
           phase,
+          temporalContext,
+          authoritativeCurrentRoster: CURRENT_ROSTER,
+          historicalWeightingRule: historyRule,
           case: body.case,
           ownPrimaryJudgment: body.primarySelf || null,
           crossExamination: body.crossExamination || null,
-          instruction: 'Rejudge independently. For candidate-selection cases, checkedPlayers must continue to reflect the full current-team check. candidatePlayers may change only when a concrete evidence-grounded challenge warrants it; do not change merely to join a majority. In publicStatement, answer the challenge like a real spoken exchange first, then say plainly whether your judgment or candidate shortlist changed and why. Use natural baseball language understandable to both experienced people and parents. Keep it concise and human, not report-like. Do not expose hidden chain-of-thought.'
+          instruction: 'Rejudge independently. For candidate-selection cases, checkedPlayers must continue to contain exactly the authoritative 14-player current-team roster. candidatePlayers may change only when a concrete evidence-grounded challenge warrants it; do not change merely to join a majority. Continue to apply historicalWeightingRule and resolve all relative dates from temporalContext. In publicStatement, answer the challenge like a real spoken exchange first, then say plainly whether your judgment or candidate shortlist changed and why. Use natural baseball language understandable to both experienced people and parents. Keep it concise and human, not report-like. Do not expose hidden chain-of-thought.'
         };
 
     const result = await callGemini({
@@ -77,17 +102,21 @@ export default async function handler(req, res) {
       result.changeReason = '';
     }
 
-    if (isCandidateCase(body) && uniquePlayerCount(result.checkedPlayers) < EXPECTED_CURRENT_ROSTER) {
-      const count = uniquePlayerCount(result.checkedPlayers);
-      result.judgment = 'YELLOW';
-      result.confidence = 'LOW';
-      result.reviewRequested = true;
-      result.reviewReason = `現チーム全員チェック未完了（${count}/${EXPECTED_CURRENT_ROSTER}名）。候補抽出前に全員確認が必要。`;
-      result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), result.reviewReason])];
-      result.primaryReason = result.reviewReason;
-      result.publicStatement = `現チーム${EXPECTED_CURRENT_ROSTER}名を全員確認できていません。${count}名だけを見て候補を決めることはしません。`;
-      result.candidatePlayers = [];
-      result.candidateBasis = '全員確認未完了のため候補抽出を中止';
+    if (isCandidateCase(body)) {
+      const rs = rosterStatus(result.checkedPlayers);
+      if (!rs.complete) {
+        result.judgment = 'YELLOW';
+        result.confidence = 'LOW';
+        result.reviewRequested = true;
+        result.reviewReason = `現チーム全員チェック未完了（${rs.checked}/${CURRENT_ROSTER.length}名）。未確認：${rs.missing.join('・') || '確認不能'}。`;
+        result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), result.reviewReason])];
+        result.primaryReason = result.reviewReason;
+        result.publicStatement = `現チーム14名を全員確認できていません。未確認の選手を残したまま候補を決めることはしません。`;
+        result.candidatePlayers = [];
+        result.candidateBasis = '正式14名の全員確認未完了のため候補抽出を中止';
+      } else {
+        result.checkedPlayers = CURRENT_ROSTER.slice();
+      }
     }
 
     return sendJson(res, 200, result);
