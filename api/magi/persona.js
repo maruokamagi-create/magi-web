@@ -1,6 +1,7 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
 
+const EXPECTED_CURRENT_ROSTER = 14;
 const schema = {
   type: 'OBJECT',
   properties: {
@@ -29,6 +30,15 @@ const schema = {
 function validCase(body) {
   const q = String(body?.case?.question || '').trim();
   return q.length >= 2 && q.length <= 12000;
+}
+
+function isCandidateCase(body) {
+  return /クリーンナップ|中軸|主軸|打線|打順|先発|レギュラー|スタメン|候補|誰を中心|誰を起用/.test(String(body?.case?.question || ''));
+}
+
+function uniquePlayerCount(values) {
+  const key = s => String(s || '').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
+  return new Set((Array.isArray(values) ? values : []).map(key).filter(Boolean)).size;
 }
 
 export default async function handler(req, res) {
@@ -66,6 +76,20 @@ export default async function handler(req, res) {
       result.changedFromPrimary = false;
       result.changeReason = '';
     }
+
+    if (isCandidateCase(body) && uniquePlayerCount(result.checkedPlayers) < EXPECTED_CURRENT_ROSTER) {
+      const count = uniquePlayerCount(result.checkedPlayers);
+      result.judgment = 'YELLOW';
+      result.confidence = 'LOW';
+      result.reviewRequested = true;
+      result.reviewReason = `現チーム全員チェック未完了（${count}/${EXPECTED_CURRENT_ROSTER}名）。候補抽出前に全員確認が必要。`;
+      result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), result.reviewReason])];
+      result.primaryReason = result.reviewReason;
+      result.publicStatement = `現チーム${EXPECTED_CURRENT_ROSTER}名を全員確認できていません。${count}名だけを見て候補を決めることはしません。`;
+      result.candidatePlayers = [];
+      result.candidateBasis = '全員確認未完了のため候補抽出を中止';
+    }
+
     return sendJson(res, 200, result);
   } catch (error) {
     const status = error?.message === 'Request body too large' ? 413 : 500;
