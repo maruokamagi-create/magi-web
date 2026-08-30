@@ -30,6 +30,14 @@ function validCase(body) {
   return q.length >= 2 && q.length <= 12000;
 }
 
+function isSelectionCase(caseData) {
+  if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
+  const q = String(caseData?.question || '');
+  const domain = /クリーンナップ|中軸|主軸|打線|打順|スタメン|レギュラー|先発|起用|守備位置|ポジション/;
+  const cue = /誰|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番/;
+  return domain.test(q) && cue.test(q);
+}
+
 function jstContext() {
   const formatted = new Intl.DateTimeFormat('ja-JP', {
     timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -87,6 +95,76 @@ function lowestConfidence(list) {
   return values.sort((a,b)=>(CONFIDENCE_ORDER[a] ?? 0) - (CONFIDENCE_ORDER[b] ?? 0))[0] || 'LOW';
 }
 
+const playerKey = s => String(s || '').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
+
+function buildSelectionResult(second, cross) {
+  const entries = Array.isArray(second) ? second.map((v,i)=>[String(i),v]) : Object.entries(second || {});
+  if (entries.length !== 3) return null;
+
+  const critical = entries.find(([,x]) => x?.reviewRequested === true && String(x?.reviewReason || '').trim());
+  const dataConflict = entries.find(([,x]) => String(x?.persona || '').toUpperCase().startsWith('MELCHIOR') && x?.dataConflict === true);
+  if (critical || dataConflict) {
+    return {
+      mode: 'SELECTION', status: 'SELECTION_REVIEW_REQUIRED', recommendation: '候補を確定せず、未解決の確認事項を解消して再審議する。',
+      centerCandidates: [], recommendedCandidates: [], alternateCandidates: [], candidateSupport: [],
+      personaSelections: Object.fromEntries(entries.map(([k,v])=>[k, Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),
+      confidence: lowestConfidence(entries.map(([,v])=>v)), majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
+      warnings: compactUnique([...(cross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]),
+      reDeliberationConditions: compactUnique([...(cross?.informationGaps||[]), ...(cross?.warnings||[])],5),
+      reviewReason: String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.')
+    };
+  }
+
+  const map = new Map();
+  const personaSelections = {};
+  for (const [persona, v] of entries) {
+    const raw = Array.isArray(v?.candidatePlayers) ? v.candidatePlayers : [];
+    const unique = [];
+    const seen = new Set();
+    for (const name of raw) {
+      const display = String(name || '').trim();
+      const key = playerKey(display);
+      if (!key || seen.has(key)) continue;
+      seen.add(key); unique.push(display);
+    }
+    personaSelections[persona] = unique;
+    unique.forEach((name, index) => {
+      const key = playerKey(name);
+      const row = map.get(key) || { name, support: 0, rankScore: 0, personas: [] };
+      row.support += 1;
+      row.rankScore += Math.max(1, 6 - index);
+      row.personas.push(persona);
+      map.set(key, row);
+    });
+  }
+
+  const ranked = [...map.values()].sort((a,b)=>b.support-a.support || b.rankScore-a.rankScore || a.name.localeCompare(b.name,'ja'));
+  const maxSupport = ranked[0]?.support || 0;
+  const centerCandidates = maxSupport >= 2 ? ranked.filter(x=>x.support===maxSupport).map(x=>x.name) : [];
+  const recommendedCandidates = ranked.slice(0,3).map(x=>x.name);
+  const alternateCandidates = ranked.slice(3).map(x=>x.name);
+  const centerText = centerCandidates.length ? `中心候補：${centerCandidates.join('・')}。` : '3賢者の中心候補はまだ一本化していない。';
+  const recommendedText = recommendedCandidates.length ? `推奨候補群：${recommendedCandidates.join('・')}。` : '候補を確定できない。';
+
+  const warnings = compactUnique([...(cross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
+  const informationGaps = compactUnique(cross?.informationGaps || []);
+  return {
+    mode: 'SELECTION',
+    status: centerCandidates.length ? 'SELECTION_RESULT' : 'SELECTION_SPLIT',
+    recommendation: `${centerText}${recommendedText}`,
+    centerCandidates,
+    recommendedCandidates,
+    alternateCandidates,
+    candidateSupport: ranked,
+    personaSelections,
+    confidence: lowestConfidence(entries.map(([,v])=>v)),
+    majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
+    warnings,
+    reDeliberationConditions: compactUnique([...informationGaps, ...warnings],5),
+    reviewReason: ''
+  };
+}
+
 function buildFinalResult(second, cross) {
   const list = normalizeSecond(second);
   const enforced = deterministicFinal(second);
@@ -116,6 +194,7 @@ function buildFinalResult(second, cross) {
   else if (majorityJudgment === 'YELLOW') recommendation = '判断を保留し、追加情報を取得する。';
 
   return {
+    mode: 'PROPOSAL',
     status: enforced.status,
     vote: enforced.vote,
     recommendation,
@@ -144,7 +223,9 @@ export default async function handler(req, res) {
           temporalContext: jstContext(),
           case: body.case,
           lockedPrimaryJudgments: body.primary,
-          instruction: 'Do not decide the case. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+          instruction: isSelectionCase(body.case)
+            ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+            : 'Do not decide the case. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
         },
         responseSchema: crossSchema
       });
@@ -153,10 +234,9 @@ export default async function handler(req, res) {
 
     if (body.phase === 'FINAL') {
       if (!body.primary || !body.second) return sendJson(res, 400, { error: 'Primary and second judgments are required' });
-
-      // FINAL is intentionally deterministic and local. This removes the eighth Gemini call,
-      // prevents the UI from hanging at 88%, and preserves the server-enforced voting protocol.
-      const result = buildFinalResult(body.second, body.crossExamination || null);
+      const result = isSelectionCase(body.case)
+        ? buildSelectionResult(body.second, body.crossExamination || null)
+        : buildFinalResult(body.second, body.crossExamination || null);
       if (!result) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
       return sendJson(res, 200, result);
     }
