@@ -1,21 +1,45 @@
 (()=>{
-'use strict';
-const oldSearch=window.searchDataEvidence;
-const norm=s=>String(s||'').normalize('NFKC').toLowerCase();
-const clean=s=>norm(s).replace(/[\s　・･_\-\/()（）\[\]【】]/g,'');
-const NAME_COLS=['選手名','投手名','氏名','名前','選手'];
-const seasonOf=r=>{const s=norm(`${r?.fileName||''} ${r?.sheetName||''} ${r?.searchable||''}`);if(/2025\s*[-–—_. /]?\s*2026|旧チーム/.test(s))return'2025-2026';if(/2026\s*[-–—_. /]?\s*2027|新チーム|現チーム/.test(s))return'2026-2027';return''};
-const topicOf=q=>{const s=norm(q);if(/クリーンナップ|中軸|主軸|打線|打順|何番|打者|打撃|打率|安打|出塁|長打|ops|打点|三振|四球/.test(s))return'batting';if(/投手|ピッチャー|先発|継投|抑え|防御率|奪三振|投球/.test(s))return'pitching';if(/守備|失策|エラー|守備率|ポジション/.test(s))return'fielding';return'general'};
-function colIndex(r,names){const cs=r.columns||[],want=names.map(clean);for(let i=0;i<cs.length;i++){const c=clean(cs[i]);if(want.includes(c))return i}for(let i=0;i<cs.length;i++){const c=clean(cs[i]);if(want.some(x=>x&&c.includes(x)))return i}return-1}
-function rowPlayer(r){const i=colIndex(r,NAME_COLS);return i>=0?String((r.values||[])[i]||'').trim():''}
-function players(rows){const m=new Map();for(const r of rows){const p=rowPlayer(r);if(!p||/選手名|投手名|氏名/.test(p)||p.length>18)continue;const k=clean(p);if(k&&!m.has(k))m.set(k,p)}return[...m.values()]}
-function score(r,t){const s=norm(`${r.fileName||''} ${r.sheetName||''} ${r.searchable||''} ${(r.columns||[]).join(' ')}`),y=seasonOf(r);let n=y==='2026-2027'?22:y==='2025-2026'?20:0;if(t==='batting'){if(/打撃|打者|打席|打数|安打|打率|出塁率|長打率|ops|打点|三振|四球/.test(s))n+=55;if(/通算成績|成績一覧|個人成績|打撃詳細|試合記録/.test(s))n+=32;if(/希望ポジション|ポジション希望/.test(s))n-=100}else if(t==='pitching'){if(/投手|投球回|防御率|奪三振|被安打|与四球|自責点|球数/.test(s))n+=50;if(/投手詳細|投手成績|通算成績/.test(s))n+=28}else if(t==='fielding'){if(/守備|守備率|失策|エラー|刺殺|補殺/.test(s))n+=45}else if(/成績|選手|チーム|練習|記録|評価/.test(s))n+=12;return n}
-function choosePlayerRows(pool,t){const ps=players(pool),out=[];for(const p of ps){const np=clean(p),mine=pool.filter(r=>clean(rowPlayer(r))===np||(!rowPlayer(r)&&clean((r.values||[]).join(' ')).includes(np))).map(r=>({r,n:score(r,t)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n);const cur=mine.filter(x=>seasonOf(x.r)==='2026-2027'),hist=mine.filter(x=>seasonOf(x.r)==='2025-2026'),other=mine.filter(x=>!seasonOf(x.r));cur.slice(0,3).forEach(x=>out.push(x.r));hist.slice(0,3).forEach(x=>out.push(x.r));other.slice(0,1).forEach(x=>out.push(x.r))}return[...new Set(out)]}
-function pack(rows,layers,missing=[]){rows=rows.slice(0,96);if(!rows.length)return null;const files=[...new Set(rows.map(r=>r.fileName).filter(Boolean))],seasons=[...new Set(rows.map(seasonOf).filter(Boolean))],ps=players(rows);const header=`【EVIDENCE PACK】\n対象年度：${seasons.join('・')||'不明'}\n対象選手：${ps.join('・')||'選手名抽出不能'}\n評価原則：直近成績だけでなく、旧チーム実績・現在成績・打席/登板などの母数・実戦経験を分けて比較する。1試合だけを全体実績として扱わない。`;
-return{count:rows.length,files,seasons,players:ps,evidenceLayers:layers,missingEvidence:missing,summary:`関連記録${rows.length}件・${files.length}ファイル。${seasons.join('・')||'年度不明'}を横断。${missing.length?'不足:'+missing.join('、'):'CURRENTとHISTORYを併用。'}`,text:header+'\n'+rows.map(r=>`[${seasonOf(r)||'年度不明'} / ${rowPlayer(r)||'選手不明'} / ${r.fileName}${r.sheetName?' / '+r.sheetName:''}] ${r.display}`).join('\n')+(missing.length?`\n【不足情報】${missing.join('。')}。不足を無視して特定選手を断定しないこと。`:'' )}}
-function build(q,rows,t){const ranked=rows.map(r=>({r,n:score(r,t)})).filter(x=>x.n>0).sort((a,b)=>b.n-a.n),cur=ranked.filter(x=>seasonOf(x.r)==='2026-2027'),hist=ranked.filter(x=>seasonOf(x.r)==='2025-2026'),other=ranked.filter(x=>!seasonOf(x.r)),missing=[];
-if(t==='batting'){const pool=[...cur.map(x=>x.r),...hist.map(x=>x.r)],balanced=choosePlayerRows(pool,t);other.slice(0,6).forEach(x=>balanced.push(x.r));if(!cur.length)missing.push('2026-2027の現在打撃成績が読み込まれていない');if(!hist.length)missing.push('2025-2026旧チームの打撃実績が読み込まれていない');return pack([...new Set(balanced)],['CURRENT FORM','2025-2026 HISTORY','SAMPLE SIZE','GAME EXPERIENCE'],missing)}
-const chosen=[];const add=(a,n)=>a.slice(0,n).forEach(x=>{if(!chosen.includes(x.r))chosen.push(x.r)});if(t==='pitching'){add(cur,28);add(hist,28);add(other,6);if(!hist.length)missing.push('2025-2026旧チームの投手実績が読み込まれていない');return pack(chosen,['CURRENT FORM','2025-2026 HISTORY','WORKLOAD / EXPERIENCE'],missing)}if(t==='fielding'){add(cur,24);add(hist,22);add(other,8);return pack(chosen,['CURRENT','HISTORY','ROLE / EXPERIENCE'],missing)}add(cur,22);add(hist,20);add(other,10);return pack(chosen,['CURRENT','HISTORY','CONTEXT'],missing)}
-window.searchDataEvidence=function(q){let direct=null;try{if(typeof oldSearch==='function')direct=oldSearch(q)}catch(e){}const records=(typeof dataRecords!=='undefined'?dataRecords:window.dataRecords)||[],rows=records.filter(r=>r&&r.source==='drive');if(!rows.length)return direct;const t=topicOf(q),e=build(String(q||''),rows,t);if(e){console.info('[MAGI Evidence v3]',t,e.seasons,e.files,e.players,e.missingEvidence);return e}return direct};
-window.MAGI_DRIVE_EVIDENCE_V194=true;window.MAGI_EVIDENCE_ENGINE='player-cross-season-v3';
+  'use strict';
+  const oldSearch=window.searchDataEvidence;
+  function pack(rows){
+    const top=rows.slice(0,24);
+    if(!top.length)return null;
+    const files=[...new Set(top.map(r=>r.fileName))];
+    return{
+      count:top.length,
+      files,
+      summary:`${files.length}ファイルから関連行${top.length}件を抽出（${files.join('、')}）。`,
+      text:top.map(r=>`[${r.fileName}${r.sheetName?' / '+r.sheetName:''}] ${r.display}`).join('\n')
+    };
+  }
+  function scoreFallback(q,r){
+    const s=(r.searchable||'').toLowerCase();
+    const f=(r.fileName||'').toLowerCase();
+    let score=0;
+    const current=/新チーム|現状|今|現在|2026[-./]?2027/i.test(q);
+    if(current){
+      if(/2026[-_. ]?2027|2026年|2026\.0?8|202608|新チーム/.test(s))score+=16;
+      if(/team.?report|練習記録|practice|希望ポジション|ポジション|成績|一覧|選手|チーム/.test(s))score+=8;
+      if(/2025[-_. ]?2026|旧チーム/.test(s))score-=12;
+    }
+    if(/課題|問題|懸念|現状|重要/.test(q)&&/課題|懸念|評価|成績|練習|記録|役割|主将|キャプテン|チーム/.test(s))score+=6;
+    if(/google\s*drive|drive|資料|参照/.test(q.toLowerCase()))score+=r.source==='drive'?5:0;
+    if(/\.txt$|\.csv$|\.xlsx?$|\.xlsm$|\.json$/i.test(f))score+=2;
+    return score;
+  }
+  window.searchDataEvidence=function(q){
+    let direct=null;
+    try{if(typeof oldSearch==='function')direct=oldSearch(q)}catch(e){console.warn('[MAGI Drive evidence] direct search failed',e)}
+    if(direct)return direct;
+    if(!Array.isArray(window.dataRecords)&&typeof dataRecords==='undefined')return null;
+    const records=(typeof dataRecords!=='undefined'?dataRecords:window.dataRecords)||[];
+    const driveRows=records.filter(r=>r&&r.source==='drive');
+    if(!driveRows.length)return null;
+    if(!/google\s*drive|drive|資料|参照|新チーム|現状|課題|チーム/i.test(String(q||'')))return null;
+    const ranked=driveRows.map(r=>({r,score:scoreFallback(String(q||''),r)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score).map(x=>x.r);
+    const evidence=pack(ranked.length?ranked:driveRows);
+    if(evidence)console.info('[MAGI Drive evidence] fallback evidence selected',evidence.count,evidence.files);
+    return evidence;
+  };
+  window.MAGI_DRIVE_EVIDENCE_V194=true;
 })();

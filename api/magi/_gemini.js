@@ -1,7 +1,5 @@
 // MAGI v1 server-only Gemini REST helper.
 // GEMINI_API_KEY is required. GEMINI_MODEL is optional; a vetted default is used.
-import { buildCanonicalKey, canonicalFingerprint, readCanonicalResult, writeCanonicalResult } from './_canonical-cache.js';
-
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
@@ -11,12 +9,6 @@ const GEMINI_TIMEOUT_MS = 30_000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
-
-// Canonical cache now provides cross-user consistency, so resilience is preferred
-// over failing the whole deliberation when the primary model has a transient error.
-// A fallback result is stored under the same canonical input key and is therefore
-// reused exactly on later identical requests.
-const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'off').trim().toLowerCase();
 
 export function sendJson(res, status, body) {
   res.statusCode = status;
@@ -149,10 +141,6 @@ export function getGeminiLastResortModel() {
   return String(process.env.GEMINI_LAST_RESORT_MODEL || DEFAULT_LAST_RESORT_MODEL).trim();
 }
 
-export function getConsistencyMode() {
-  return CONSISTENCY_LOCK === 'strict' ? 'strict' : 'canonical';
-}
-
 export async function checkGeminiConfiguration() {
   const apiKey = process.env.GEMINI_API_KEY;
   const model = getGeminiModel();
@@ -166,7 +154,7 @@ export async function checkGeminiConfiguration() {
     });
     const data = await response.json().catch(() => ({}));
     if (!response.ok) return { ok: false, model, reason: data?.error?.message || `Gemini model check failed (${response.status})` };
-    return { ok: true, model, displayName: data?.displayName || model, consistencyMode: getConsistencyMode(), canonicalCache: true };
+    return { ok: true, model, displayName: data?.displayName || model };
   } catch (error) {
     return { ok: false, model, reason: error?.name === 'AbortError' ? 'Gemini model check timed out' : (error?.message || 'Gemini model check failed') };
   } finally {
@@ -192,9 +180,7 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
         generationConfig: {
           responseMimeType: 'application/json',
           responseSchema,
-          maxOutputTokens: 2400,
-          temperature: 0,
-          topP: 1
+          maxOutputTokens: 2400
         }
       })
     });
@@ -240,43 +226,27 @@ async function tryModel({ model, apiKey, systemInstruction, userPayload, respons
     } catch (error) {
       lastError = error;
       if (!isRetryableError(error) || attempt === retries) break;
-      await sleep(900);
+      await sleep(700 + Math.floor(Math.random() * 500));
     }
   }
   throw lastError;
-}
-
-async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema, retries }) {
-  const key = buildCanonicalKey({ model, systemInstruction, userPayload, responseSchema });
-  const fingerprint = canonicalFingerprint(key);
-  const cached = await readCanonicalResult(key);
-  if (cached !== null) {
-    console.info(`[MAGI CANONICAL CACHE] HIT ${fingerprint}`);
-    return cached;
-  }
-
-  console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint} model=${model}`);
-  const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, retries });
-  const stored = await writeCanonicalResult(key, result);
-  console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint} model=${model}`);
-  return result;
 }
 
 export async function callGemini({ systemInstruction, userPayload, responseSchema }) {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
-  const strict = getConsistencyMode() === 'strict';
-  const models = strict
-    ? [getGeminiModel()]
-    : [getGeminiModel(), getGeminiFallbackModel(), getGeminiLastResortModel()]
-        .filter((model, index, arr) => model && arr.indexOf(model) === index);
+  const models = [
+    getGeminiModel(),
+    getGeminiFallbackModel(),
+    getGeminiLastResortModel()
+  ].filter((model, index, arr) => model && arr.indexOf(model) === index);
 
   let lastError;
   for (let index = 0; index < models.length; index++) {
     const model = models[index];
     try {
-      return await getOrCreateCanonicalResult({
+      return await tryModel({
         model,
         apiKey,
         systemInstruction,
@@ -286,13 +256,10 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
     } catch (error) {
       lastError = error;
-      if (strict || !shouldTryNextModel(error)) break;
+      if (!shouldTryNextModel(error)) break;
       console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
     }
   }
 
-  if (strict && lastError) {
-    console.warn(`[MAGI CONSISTENCY LOCK] Primary model failed; fallback suppressed: ${lastError?.message || lastError}`);
-  }
   throw lastError || new Error('Gemini request failed');
 }
