@@ -69,12 +69,24 @@
   function compactCondition(raw){
     const s=normalizeNames(String(raw||'').trim());
     if(!s)return'';
-    if(/小標本|サンプル|試合数|打席数/.test(s)) return '現チームの試合数・打席数が増えたとき';
-    if(/対戦相手|相手投手|レベル|公式戦/.test(s)) return '対戦レベルが上がった後の成績を確認できたとき';
-    if(/大久保 陽翔/.test(s)&&/低下|不振|状態|波|変化/.test(s)) return '大久保 陽翔の打撃状態がさらに変化したとき';
+    if(/小標本|サンプル|試合数|打席数|母数/.test(s)) return '現チームの試合数・打席数が増えたとき';
+    if(/対戦相手|相手投手|対戦レベル|公式戦|レベルが上/.test(s)) return '対戦レベルが上がった後の成績を確認できたとき';
+    if(/大久保 陽翔/.test(s)&&/低下|不振|状態|波|変化|ムラ|調子/.test(s)) return '大久保 陽翔の打撃状態がさらに変化したとき';
     if(/再現|継続|好成績|数値/.test(s)) return '現在の好成績が継続・再現できるか確認できたとき';
     const first=s.split(/[。]/)[0].trim();
     return first.length>52?first.slice(0,50)+'…':first;
+  }
+
+  function semanticConditionsFromPage(){
+    const root=document.getElementById('magiResultBundle')||document.getElementById('response');
+    const s=normalizeNames(root?.innerText||'');
+    const out=[];
+    const add=v=>{if(v&&!out.includes(v)&&out.length<3)out.push(v)};
+    if(/小標本|サンプル|試合数|打席数|母数|序盤/.test(s)) add('現チームの試合数・打席数が増えたとき');
+    if(/対戦相手|相手投手|対戦レベル|公式戦|レベルが上/.test(s)) add('対戦レベルが上がった後の成績を確認できたとき');
+    if((/大久保 陽翔.{0,60}(低下|不振|状態|波|変化|ムラ|調子)/s.test(s))||(/(低下|不振|状態|波|変化|ムラ|調子).{0,60}大久保 陽翔/s.test(s))) add('大久保 陽翔の打撃状態がさらに変化したとき');
+    if(/再現|継続して.*成績|好成績.*継続|数値変化|データ推移/.test(s)) add('現在の好成績が継続・再現できるか確認できたとき');
+    return out;
   }
 
   function polishFinal(){
@@ -118,7 +130,11 @@
           if(c&&!compact.includes(c))compact.push(c);
           if(compact.length>=3)break;
         }
-        const numbered=compact.map((x,i)=>`${['①','②','③'][i]} ${x}`).join('　');
+        for(const c of semanticConditionsFromPage()){
+          if(c&&!compact.includes(c))compact.push(c);
+          if(compact.length>=3)break;
+        }
+        const numbered=compact.slice(0,3).map((x,i)=>`${['①','②','③'][i]} ${x}`).join('　');
         t=[prefix,numbered?`${marker}${numbered}`:''].filter(Boolean).join('　');
       }
       if(t!==next.textContent) next.textContent=t;
