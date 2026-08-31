@@ -6,7 +6,7 @@ const seasons=[['2025-2026',/2025\s*[-–—_. /]?\s*2026|旧チーム/],['2026-
 const idx=(r,a)=>{const c=r.columns||[],w=a.map(n);for(let i=0;i<c.length;i++)if(w.includes(n(c[i])))return i;for(let i=0;i<c.length;i++)if(w.some(x=>x&&n(c[i]).includes(x)))return i;return-1};
 const player=r=>{const i=idx(r,nameCols);return i<0?'':String((r.values||[])[i]??'').trim()};
 const season=r=>{const s=`${r.fileName||''} ${r.sheetName||''} ${r.searchable||''}`;for(const [y,re] of seasons)if(re.test(s))return y;return'年度不明'};
-const pitching=r=>/投手|投球|登板|投球回|防御率|奪三振|与四球|与死球|自責点|被安打|球数/i.test(`${r.fileName||''} ${r.sheetName||''} ${(r.columns||[]).join(' ')}`);
+const pitching=r=>/^投手詳細(?:2025-2026|2026-2027)\.csv$/i.test(String(r.fileName||'').trim());
 const target=(q,rows)=>{const z=n(q),a=[];for(const r of rows){const p=player(r),k=n(p);if(p&&k&&z.includes(k)&&!a.some(x=>n(x)===k))a.push(p)}return a};
 function specificPitching(q,rows){
  if(!/投手|ピッチャー|先発|継投|抑え|クローザー|防御率|奪三振|投球/i.test(q))return null;
@@ -18,10 +18,19 @@ function specificPitching(q,rows){
  return{rows:picked,text:lines.join('\n')};
 }
 function install(){
- if(window.MAGI_PITCH_EVIDENCE_FIX==='v223'||typeof window.searchDataEvidence!=='function')return false;
+ if(window.MAGI_PITCH_EVIDENCE_FIX==='v226'||typeof window.searchDataEvidence!=='function')return false;
  const prev=window.searchDataEvidence;
- window.searchDataEvidence=function(q){const base=prev(q),rows=((typeof dataRecords!=='undefined'?dataRecords:window.dataRecords)||[]).filter(r=>r&&r.source==='drive'),p=specificPitching(String(q||''),rows);if(!p)return base;const e=base&&typeof base==='object'?base:{};e.text=p.text+(e.text?'\n\n'+e.text:'');e.summary=`対象選手の年度別投手成績を優先取得（${p.rows.length}行）。 `+String(e.summary||'');e.count=(Number(e.count)||0)+p.rows.length;e.evidenceLayers=[...new Set(['PLAYER-SPECIFIC PITCHING','2025-2026 HISTORY','2026-2027 CURRENT',...(e.evidenceLayers||[])])];return e};
- window.MAGI_PITCH_EVIDENCE_FIX='v223';return true;
+ window.searchDataEvidence=function(q){
+  q=String(q||'');
+  const isPitchQuestion=/投手|ピッチャー|先発|継投|抑え|クローザー|防御率|奪三振|投球/i.test(q);
+  if(!isPitchQuestion)return prev(q);
+  const rows=((typeof dataRecords!=='undefined'?dataRecords:window.dataRecords)||[]).filter(r=>r&&r.source==='drive'&&pitching(r));
+  const p=specificPitching(q,rows);
+  if(!p)return{count:0,files:[...new Set(rows.map(r=>r.fileName).filter(Boolean))],seasons:[],players:[],evidenceLayers:['PITCHING ONLY'],missingEvidence:['質問中の対象投手を投手詳細CSVから特定できない'],summary:'投手質問のため打撃・守備データを除外。対象投手の投手行を特定できませんでした。',text:'【投手専用 EVIDENCE】\n打撃・守備・通算打撃成績は除外。対象投手の投手成績行を取得できず、推測で補完しない。'};
+  const files=[...new Set(p.rows.map(r=>r.fileName).filter(Boolean))],ys=[...new Set(p.rows.map(season))],ps=[...new Set(p.rows.map(player).filter(Boolean))];
+  return{count:p.rows.length,files,seasons:ys,players:ps,evidenceLayers:['PITCHING ONLY','PLAYER-SPECIFIC PITCHING','2025-2026 HISTORY','2026-2027 CURRENT'],missingEvidence:[],summary:`投手質問として打撃・守備を除外し、投手詳細CSV ${files.length}ファイル・${p.rows.length}行だけを取得。`,text:p.text};
+ };
+ window.MAGI_PITCH_EVIDENCE_FIX='v226';return true;
 }
 let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>120)clearInterval(timer)},100);
 const replacements=[[/試合は明日から始まるんだぞ。?/g,'将来の育成は必要だ。だが、今の勝利につながる具体策はどこにある？'],[/試合は明日なんだぞ。?/g,'今の勝利につながる具体策を示せ。']];
