@@ -1,9 +1,9 @@
 (()=>{
 'use strict';
-if(window.MAGI_DRIVE_RESILIENCE_V224)return;
+if(window.MAGI_DRIVE_RESILIENCE_V225)return;
 const IMPORTANT=[
   {name:'丸岡中軟式野球部_通算成績一覧2025-2026.xlsm',label:'2025-2026旧チーム通算成績'},
-  {name:'投手詳細2025-2026.csv.csv',label:'2025-2026旧チーム投手成績',encoding:'shift_jis'},
+  {name:'投手詳細2025-2026.csv',label:'2025-2026旧チーム投手成績',encoding:'shift_jis',id:'1thxQXAdswckPVdmXdvRXPeuVAfDtskUB'},
   {name:'投手詳細2026-2027.csv',label:'2026-2027現チーム投手成績',encoding:'shift_jis'}
 ];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
@@ -104,6 +104,6 @@ setInterval(async()=>{
     if(r.recovered.length)setStatus(`Google Drive接続済み。重要データを自動再取得しました：${r.recovered.map(x=>x.name).join('、')}。`,'ready');
   }finally{bgBusy=false}
 },60000);
-window.MAGI_DRIVE_RESILIENCE_V224=true;
+window.MAGI_DRIVE_RESILIENCE_V225=true;
 window.MAGI_DRIVE_IMPORT_GUARD='important-file-retry-v1';
 })();
