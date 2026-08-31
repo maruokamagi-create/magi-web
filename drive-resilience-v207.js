@@ -1,8 +1,10 @@
 (()=>{
 'use strict';
-if(window.MAGI_DRIVE_RESILIENCE_V207)return;
+if(window.MAGI_DRIVE_RESILIENCE_V224)return;
 const IMPORTANT=[
-  {name:'丸岡中軟式野球部_通算成績一覧2025-2026.xlsm',label:'2025-2026旧チーム通算成績'}
+  {name:'丸岡中軟式野球部_通算成績一覧2025-2026.xlsm',label:'2025-2026旧チーム通算成績'},
+  {name:'投手詳細2025-2026.csv.csv',label:'2025-2026旧チーム投手成績',encoding:'shift_jis'},
+  {name:'投手詳細2026-2027.csv',label:'2026-2027現チーム投手成績',encoding:'shift_jis'}
 ];
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const qEscape=s=>String(s||'').replace(/\\/g,'\\\\').replace(/'/g,"\\'");
@@ -18,13 +20,33 @@ async function directFind(name){
   const r=await driveFetch(url),j=await r.json();
   return Array.isArray(j.files)?j.files:[];
 }
+function decodeCsvBuffer(buffer,preferred){
+  const bytes=new Uint8Array(buffer);
+  if(preferred==='shift_jis')return new TextDecoder('shift_jis').decode(bytes);
+  const utf8=new TextDecoder('utf-8').decode(bytes);
+  if(!utf8.includes('\uFFFD'))return utf8;
+  try{return new TextDecoder('shift_jis').decode(bytes)}catch(e){return utf8}
+}
+async function importCsvSafely(f,encoding){
+  if(typeof driveFetch!=='function'||typeof addTableRecords!=='function'||typeof parseCsv!=='function')return false;
+  const r=await driveFetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(f.id)}?alt=media&supportsAllDrives=true`);
+  const text=decodeCsvBuffer(await r.arrayBuffer(),encoding);
+  if(typeof dataRecords!=='undefined')dataRecords=dataRecords.filter(x=>!(x&&x.source==='drive'&&x.fileId===f.id));
+  const before=typeof dataRecords!=='undefined'?dataRecords.length:0;
+  addTableRecords(f.name,'CSV',parseCsv(text),'drive');
+  if(typeof dataRecords!=='undefined')for(let i=before;i<dataRecords.length;i++)dataRecords[i].fileId=f.id;
+  if(typeof importedDriveFiles!=='undefined')importedDriveFiles.add(f.id);
+  return true;
+}
 async function attachAndImport(f){
   try{
     if(typeof driveIndex!=='undefined'&&Array.isArray(driveIndex)&&!driveIndex.some(x=>x&&x.id===f.id)){
       driveIndex.push({...f,path:`ROOT/(再取得)/${f.name}`});
     }
     if(typeof importedDriveFiles!=='undefined'&&importedDriveFiles.has(f.id))return true;
-    if(typeof importDriveFile==='function')await importDriveFile(f.id,true);
+    const important=IMPORTANT.find(x=>x.name===f.name);
+    if(important&&/\.csv(?:\.csv)?$/i.test(f.name))await importCsvSafely(f,important.encoding);
+    else if(typeof importDriveFile==='function')await importDriveFile(f.id,true);
     if(typeof renderDriveFiles==='function')renderDriveFiles();
     return typeof importedDriveFiles!=='undefined'?importedDriveFiles.has(f.id):true;
   }catch(e){console.warn('[MAGI Drive resilience] import failed',f&&f.name,e);return false}
@@ -82,6 +104,6 @@ setInterval(async()=>{
     if(r.recovered.length)setStatus(`Google Drive接続済み。重要データを自動再取得しました：${r.recovered.map(x=>x.name).join('、')}。`,'ready');
   }finally{bgBusy=false}
 },60000);
-window.MAGI_DRIVE_RESILIENCE_V207=true;
+window.MAGI_DRIVE_RESILIENCE_V224=true;
 window.MAGI_DRIVE_IMPORT_GUARD='important-file-retry-v1';
 })();
