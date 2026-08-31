@@ -30,7 +30,7 @@ function specificPitching(q,rows){
  if(!/投手|ピッチャー|先発|継投|抑え|クローザー|防御率|奪三振|投球/i.test(q))return null;
  const ps=target(q,rows);if(!ps.length)return null;const keys=new Set(ps.map(n)),picked=[],seen=new Set();
  for(const r of rows){if(!keys.has(n(player(r))))continue;const k=`${r.fileName||''}|${r.rowNumber||''}|${r.display||''}`;if(!seen.has(k)){seen.add(k);picked.push(r)}}
- const lines=['【CANONICAL PITCHING TOTALS｜7回制｜プログラム集計】','以下はCSVの各登板をアウト数へ変換して合計した確定値。三賢人はこの数値を変更・再計算・推測してはならない。'];
+ const lines=['【CANONICAL PITCHING TOTALS｜7回制｜プログラム集計】','以下はCSVの各登板をアウト数へ変換して合計した確定値。三賢人はこの数値を変更・再計算・推測してはならない。',`【審議範囲固定】質問で名指しされた対象投手は ${ps.join('・')} のみ。他選手との比較・代替候補の提示・他選手を除外した理由の追及は、質問で明示的に求められた場合を除き禁止する。`,`【健康情報の制限】肩・肘の状態、疲労蓄積、故障リスク、コンディション、将来選手が潰れる等は、この投手CSVから確認できない。事実として断定せず、必要なら「健康・疲労データがなく取得不能」と明記する。一般論を対象選手の事実へすり替えない。`];
  const totals={};const missing=[];
  for(const [y] of seasons){
   const rr=picked.filter(r=>season(r)===y);lines.push(`【${y}：${ps.join('・')}】`);
@@ -44,7 +44,7 @@ function specificPitching(q,rows){
 }
 function install(){
  if(typeof window.searchDataEvidence!=='function')return false;
- if(window.searchDataEvidence.__magiPitchIsolation==='v230')return true;
+ if(window.searchDataEvidence.__magiPitchIsolation==='v231')return true;
  const prev=window.searchDataEvidence;
  window.searchDataEvidence=function(q){
   q=String(q||'');
@@ -56,8 +56,8 @@ function install(){
   const files=[...new Set(p.rows.map(r=>r.fileName).filter(Boolean))],ys=[...new Set(p.rows.map(season))],ps=[...new Set(p.rows.map(player).filter(Boolean))];
   return{count:p.rows.length,files,seasons:ys,players:ps,evidenceLayers:['PITCHING ONLY','PLAYER-SPECIFIC PITCHING','2025-2026 HISTORY','2026-2027 CURRENT'],missingEvidence:p.missing||[],canonicalPitchingTotals:p.totals,summary:`投手質問として打撃・守備を除外し、投手詳細CSV ${files.length}ファイル・${p.rows.length}行だけを取得。`,text:p.text};
  };
- window.searchDataEvidence.__magiPitchIsolation='v230';
- window.MAGI_PITCH_EVIDENCE_FIX='v230';return true;
+ window.searchDataEvidence.__magiPitchIsolation='v231';
+ window.MAGI_PITCH_EVIDENCE_FIX='v231';return true;
 }
 let tries=0;const timer=setInterval(()=>{tries++;install();if(tries>180)clearInterval(timer)},100);
 const replacements=[
