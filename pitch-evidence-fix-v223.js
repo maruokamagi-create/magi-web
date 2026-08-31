@@ -30,7 +30,7 @@ function specificPitching(q,rows){
  if(!/投手|ピッチャー|先発|継投|抑え|クローザー|防御率|奪三振|投球/i.test(q))return null;
  const ps=target(q,rows);if(!ps.length)return null;const keys=new Set(ps.map(n)),picked=[],seen=new Set();
  for(const r of rows){if(!keys.has(n(player(r))))continue;const k=`${r.fileName||''}|${r.rowNumber||''}|${r.display||''}`;if(!seen.has(k)){seen.add(k);picked.push(r)}}
- const lines=['【CANONICAL PITCHING TOTALS｜7回制｜プログラム集計】','以下はCSVの各登板をアウト数へ変換して合計した確定値。三賢人はこの数値を変更・再計算・推測してはならない。',`【審議範囲固定】質問で名指しされた対象投手は ${ps.join('・')} のみ。他選手との比較・代替候補の提示・他選手を除外した理由の追及は、質問で明示的に求められた場合を除き禁止する。`,`【健康情報の制限】肩・肘の状態、疲労蓄積、故障リスク、コンディション、将来選手が潰れる等は、この投手CSVから確認できない。事実として断定せず、必要なら「健康・疲労データがなく取得不能」と明記する。一般論を対象選手の事実へすり替えない。`];
+ const lines=['【CANONICAL PITCHING TOTALS｜7回制｜プログラム集計】','以下はCSVの各登板をアウト数へ変換して合計した確定値。三賢人はこの数値を変更・再計算・推測してはならない。',`【審議範囲固定】質問で名指しされた対象投手は ${ps.join('・')} のみ。他選手との比較・代替候補の提示・他選手を除外した理由の追及は、質問で明示的に求められた場合を除き禁止する。`,`【健康情報の制限】肩・肘の状態、疲労蓄積、故障リスク、コンディション、将来選手が潰れる等は、この投手CSVから確認できない。事実として断定せず、必要なら「健康・疲労データがなく取得不能」と明記する。一般論を対象選手の事実へすり替えない。`,`【二段階判定】「シーズンを通じた完全固定」と「期限・登板条件を設けた暫定起用」を必ず分けて判定する。現年度の母数不足だけを理由に両方を一括で判断保留にしてはならない。旧年度の実績は適性の根拠として評価し、現年度の少数データは再現性の限界として扱う。`,`【三人格の独立責任】MELCHIOR-1は数値の信頼性と母数を監査し、完全固定の証拠充足を判定する。BALTHASAR-2は勝つための運用を担当し、完全固定に反対でも暫定クローザー、登板条件、解除条件を具体化して独立判定する。CASPER-3は捕手兼任という役割構造と投手層育成を評価し、健康状態を捏造せず、役割分散・再評価時期を示して独立判定する。三者は同じ理由・同じ文章・全員一律保留を避ける。`,`【結論要件】最終判断は「完全固定の可否」「当面の起用法」「再評価条件」の3点を明示する。数字が取得できている場合、健康データだけが取得不能であることを理由に総合判定を『判断材料不足』へ丸めない。`];
  const totals={};const missing=[];
  for(const [y] of seasons){
   const rr=picked.filter(r=>season(r)===y);lines.push(`【${y}：${ps.join('・')}】`);
@@ -44,7 +44,7 @@ function specificPitching(q,rows){
 }
 function install(){
  if(typeof window.searchDataEvidence!=='function')return false;
- if(window.searchDataEvidence.__magiPitchIsolation==='v231')return true;
+ if(window.searchDataEvidence.__magiPitchIsolation==='v232')return true;
  const prev=window.searchDataEvidence;
  window.searchDataEvidence=function(q){
   q=String(q||'');
@@ -56,8 +56,8 @@ function install(){
   const files=[...new Set(p.rows.map(r=>r.fileName).filter(Boolean))],ys=[...new Set(p.rows.map(season))],ps=[...new Set(p.rows.map(player).filter(Boolean))];
   return{count:p.rows.length,files,seasons:ys,players:ps,evidenceLayers:['PITCHING ONLY','PLAYER-SPECIFIC PITCHING','2025-2026 HISTORY','2026-2027 CURRENT'],missingEvidence:p.missing||[],canonicalPitchingTotals:p.totals,summary:`投手質問として打撃・守備を除外し、投手詳細CSV ${files.length}ファイル・${p.rows.length}行だけを取得。`,text:p.text};
  };
- window.searchDataEvidence.__magiPitchIsolation='v231';
- window.MAGI_PITCH_EVIDENCE_FIX='v231';return true;
+ window.searchDataEvidence.__magiPitchIsolation='v232';
+ window.MAGI_PITCH_EVIDENCE_FIX='v232';return true;
 }
 let tries=0;const timer=setInterval(()=>{tries++;install();if(tries>180)clearInterval(timer)},100);
 const replacements=[
