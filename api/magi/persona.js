@@ -60,6 +60,26 @@ function rosterStatus(values) {
   };
 }
 
+function normalizeConditionalJudgment(result, selectionMode) {
+  if (selectionMode || String(result?.judgment || '').toUpperCase() !== 'YELLOW') return result;
+  const text = [
+    result?.publicStatement,
+    result?.primaryReason,
+    result?.candidateBasis,
+    result?.changeReason,
+    ...(Array.isArray(result?.analysis) ? result.analysis : [])
+  ].map(v => String(v || '')).join(' ');
+  const supportsConditionalAction =
+    /条件(?:を|付き|つき|付け|つけ).{0,24}(?:暫定|期限|起用|採用|運用|賛成)/.test(text) ||
+    /(?:暫定|期限付き|当面).{0,20}(?:起用|採用|運用|任せ|送り出|賛成)/.test(text) ||
+    /(?:なら|であれば).{0,16}(?:賛成|起用でき|採用でき|任せられ)/.test(text);
+  if (supportsConditionalAction) {
+    result.judgment = 'BLUE';
+    result.warnings = [...new Set(Array.isArray(result.warnings) ? result.warnings : [])];
+  }
+  return result;
+}
+
 function jstContext() {
   const now = new Date();
   const formatted = new Intl.DateTimeFormat('ja-JP', {
@@ -117,7 +137,7 @@ export default async function handler(req, res) {
       userPayload: payload,
       responseSchema: schema
     });
-    const result = canonicalizePlayerData(rawResult);
+    const result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
 
     result.persona = persona.toUpperCase();
     result.phase = phase;
