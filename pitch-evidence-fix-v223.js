@@ -18,7 +18,8 @@ function specificPitching(q,rows){
  return{rows:picked,text:lines.join('\n')};
 }
 function install(){
- if(window.MAGI_PITCH_EVIDENCE_FIX==='v226'||typeof window.searchDataEvidence!=='function')return false;
+ if(typeof window.searchDataEvidence!=='function')return false;
+ if(window.searchDataEvidence.__magiPitchIsolation==='v227')return true;
  const prev=window.searchDataEvidence;
  window.searchDataEvidence=function(q){
   q=String(q||'');
@@ -30,9 +31,10 @@ function install(){
   const files=[...new Set(p.rows.map(r=>r.fileName).filter(Boolean))],ys=[...new Set(p.rows.map(season))],ps=[...new Set(p.rows.map(player).filter(Boolean))];
   return{count:p.rows.length,files,seasons:ys,players:ps,evidenceLayers:['PITCHING ONLY','PLAYER-SPECIFIC PITCHING','2025-2026 HISTORY','2026-2027 CURRENT'],missingEvidence:[],summary:`投手質問として打撃・守備を除外し、投手詳細CSV ${files.length}ファイル・${p.rows.length}行だけを取得。`,text:p.text};
  };
- window.MAGI_PITCH_EVIDENCE_FIX='v226';return true;
+ window.searchDataEvidence.__magiPitchIsolation='v227';
+ window.MAGI_PITCH_EVIDENCE_FIX='v227';return true;
 }
-let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>120)clearInterval(timer)},100);
+let tries=0;const timer=setInterval(()=>{tries++;install();if(tries>180)clearInterval(timer)},100);
 const replacements=[[/試合は明日から始まるんだぞ。?/g,'将来の育成は必要だ。だが、今の勝利につながる具体策はどこにある？'],[/試合は明日なんだぞ。?/g,'今の勝利につながる具体策を示せ。']];
 const rewrite=root=>{const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let x;while(x=w.nextNode()){let v=x.nodeValue;for(const [a,b] of replacements)v=v.replace(a,b);if(v!==x.nodeValue)x.nodeValue=v}};
 new MutationObserver(ms=>{for(const m of ms)for(const x of m.addedNodes){if(x.nodeType===3){let v=x.nodeValue;for(const [a,b] of replacements)v=v.replace(a,b);x.nodeValue=v}else if(x.nodeType===1)rewrite(x)}}).observe(document.documentElement,{childList:true,subtree:true});
