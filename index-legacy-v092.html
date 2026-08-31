@@ -42,7 +42,7 @@
 <div class="hubPanel"><div class="hubTitle">端末データ</div><div class="hubText">CSV・JSON・Excel（xls/xlsx/xlsm）を端末から読み込み、検索・集計材料として使います。ファイルは外部送信しません。</div><label class="fileLabel">ファイルを読み込む<input id="localFile" type="file" accept=".csv,.json,.xls,.xlsx,.xlsm,text/csv,application/json"></label><div id="localDataState" class="dataState">端末データ：未読込</div></div>
 <div class="drivePanel"><div class="hubTitle">Google Drive</div><div class="hubText">読み取り専用OAuthでチームフォルダを参照します。接続後、Sheets・Excel・CSV・JSON・TXT・Google Docsを自動索引化します。初回に選んだGoogleアカウントはこの端末だけに記憶し、次回接続時はそのアカウントを優先します。画像・PDFは一覧のみです。</div>
 <div class="settingGrid"><div><div class="fieldLabel">GOOGLE OAUTH CLIENT ID</div><input id="googleClientId" value="696975161068-gogaeculat8ugi714vju2jbgpqff8qqc.apps.googleusercontent.com" placeholder="xxxxxxxx.apps.googleusercontent.com"></div><div><div class="fieldLabel">ROOT FOLDER ID</div><input id="driveRootId" value="1lMvyDzhk0qM5VqS5eTf4Eka_GUZWfgqP"></div></div>
-<div class="actions"><button class="secondary" onclick="saveDriveSettings()">設定保存</button><button id="connectDriveBtn" class="primary" onclick="connectDrive(false)">Google Drive接続</button><button id="reauthBtn" class="secondary hidden" onclick="connectDrive(true)">再認証</button><button class="secondary" onclick="scanDrive()">フォルダ再読込</button><button class="secondary" onclick="forgetDriveAccount()">アカウント変更</button><button class="danger" onclick="disconnectDrive(false)">切断</button></div>
+<div class="actions"><button class="secondary" onclick="saveDriveSettings()">設定保存</button><button id="connectDriveBtn" class="primary" onclick="connectDrive(false)">Google Drive接続</button><button id="reauthBtn" class="secondary hidden" onclick="connectDrive(true)">再認証</button><button id="reloadDriveBtn" type="button" class="secondary" onclick="reloadDriveFolder(event)">フォルダ再読込</button><button class="secondary" onclick="forgetDriveAccount()">アカウント変更</button><button class="danger" onclick="disconnectDrive(false)">切断</button></div>
 <div id="driveAccountState" class="dataState">接続アカウント：未記憶（初回のみ選択）</div><div id="driveState" class="driveState">Google Drive：OAuth Client ID設定済み。未接続です。</div><div id="driveFiles" class="driveFiles hidden"></div></div>
 </div></section>
 
@@ -132,6 +132,27 @@ async function listChildren(folderId){const q=encodeURIComponent(`'${folderId}' 
 async function recursiveDrive(root){const out=[],queue=[{id:root,path:'ROOT',depth:0}],seen=new Set();while(queue.length&&out.length<500){const cur=queue.shift();if(seen.has(cur.id)||cur.depth>8)continue;seen.add(cur.id);const list=await listChildren(cur.id);for(const src of list){const f={...src,path:cur.path+'/'+src.name};out.push(f);if(f.mimeType===FOLDER_MIME)queue.push({id:f.id,path:f.path,depth:cur.depth+1});if(out.length>=500)break}}return out}
 async function listAllDriveFiles(){const q=encodeURIComponent('trashed=false'),fields=encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,size,webViewLink,parents)');let pageToken='',all=[];do{setDriveState(`Google Drive：下位階層を別方式で確認中… ${all.length}件`,'ready');const url=`https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&spaces=drive&corpora=user&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken?'&pageToken='+encodeURIComponent(pageToken):''}`;const j=await (await driveFetch(url)).json();all.push(...(j.files||[]));pageToken=j.nextPageToken||''}while(pageToken&&all.length<5000);return all}
 function buildIndexFromAllFiles(root,all){const map=new Map();for(const f of all)for(const p of(f.parents||[])){if(!map.has(p))map.set(p,[]);map.get(p).push(f)}const out=[],queue=[{id:root,path:'ROOT',depth:0}],seen=new Set();while(queue.length&&out.length<500){const cur=queue.shift();if(seen.has(cur.id)||cur.depth>8)continue;seen.add(cur.id);for(const src of(map.get(cur.id)||[])){const f={...src,path:cur.path+'/'+src.name};out.push(f);if(f.mimeType===FOLDER_MIME)queue.push({id:f.id,path:f.path,depth:cur.depth+1});if(out.length>=500)break}}return out}
+async function reloadDriveFolder(event){
+ if(event){event.preventDefault();event.stopPropagation()}
+ closeDriveOAuthPopup();
+ window.MAGI_LAST_DRIVE_ACTION={type:'folder-reload',at:new Date().toISOString(),oauthAllowed:false};
+ if(!driveToken){
+  setDriveConnectState(false);
+  $('reauthBtn').classList.remove('hidden');
+  setDriveState('Google Drive未接続です。フォルダ再読込から認証画面は開きません。「Google Drive接続」または「再認証」を押してください。','error');
+  return;
+ }
+ const reloadBtn=$('reloadDriveBtn'),previousOpen=window.open,blockedOpen=()=>null;
+ if(reloadBtn)reloadBtn.disabled=true;
+ try{
+  window.open=blockedOpen;
+  setDriveState('Google Drive：認証画面を開かず、フォルダだけ再読み込みしています…','ready');
+  await window.scanDrive();
+ }finally{
+  try{if(window.open===blockedOpen)window.open=previousOpen}catch(e){}
+  if(reloadBtn)reloadBtn.disabled=false;
+ }
+}
 async function scanDrive(){const root=$('driveRootId').value.trim();if(!driveToken){setDriveState('Google Drive未接続です。「Google Drive接続」を押してください。','error');return}if(!root){setDriveState('ROOT FOLDER IDを入力してください。','error');return}try{driveIndex=[];dataRecords=dataRecords.filter(r=>r.source!=='drive');importedDriveFiles.clear();setDriveState('Google Drive：チームフォルダの階層を確認中…','ready');driveIndex=await recursiveDrive(root);let nonFolders=driveIndex.filter(f=>f.mimeType!==FOLDER_MIME).length;if(nonFolders===0&&driveIndex.length>0){setDriveState(`Google Drive：直下${driveIndex.length}件を確認。下位階層を別方式で探索中…`,'ready');const all=await listAllDriveFiles(),fallback=buildIndexFromAllFiles(root,all);if(fallback.length>driveIndex.length)driveIndex=fallback}renderDriveFiles();const targets=driveIndex.filter(isImportable);let failed=0;for(let i=0;i<targets.length;i++){setDriveState(`Google Drive：${driveIndex.length}件を一覧化。対応ファイルを自動索引化中 ${i+1}/${targets.length}…`,'ready');try{await importDriveFile(targets[i].id,true)}catch(e){failed++}}renderDriveFiles();const rows=dataRecords.filter(r=>r.source==='drive').length,files=driveIndex.filter(f=>f.mimeType!==FOLDER_MIME).length;setDriveState(`Google Drive接続済み：${driveIndex.length}件（ファイル${files}件）を一覧化、${importedDriveFiles.size}ファイル・${rows}行を自動索引化${failed?`（${failed}件は取込失敗）`:''}。画像・PDFは一覧のみです。`,'ready')}catch(err){setDriveState('Drive読込失敗：'+err.message,'error')}}
 function isImportable(f){return ['application/vnd.google-apps.spreadsheet','application/vnd.google-apps.document','text/csv','application/json','text/plain','application/vnd.openxmlformats-officedocument.spreadsheetml.sheet','application/vnd.ms-excel','application/vnd.ms-excel.sheet.macroEnabled.12'].includes(f.mimeType)||/\.(csv|json|txt|xls|xlsx|xlsm)$/i.test(f.name)}
 function renderDriveFiles(){const box=$('driveFiles');box.classList.remove('hidden');const files=driveIndex.filter(f=>f.mimeType!==FOLDER_MIME);if(!files.length){box.innerHTML='<div class="driveFile">対象ファイルがありません。</div>';return}box.innerHTML=files.slice(0,150).map(f=>`<div class="driveFile"><div><b>${escapeHtml(f.name)}</b><br>${escapeHtml(f.path||'')}</div>${isImportable(f)?(importedDriveFiles.has(f.id)?'<span>索引済み</span>':`<button class="secondary miniBtn" onclick="importDriveFile('${f.id}')">再試行</button>`):'<span>一覧のみ</span>'}</div>`).join('')}
