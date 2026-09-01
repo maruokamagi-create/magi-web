@@ -13,7 +13,8 @@ async function boot(){
   await load('/stats-report-v260.js?v=267');
   await load('/pitch-report-v253.js?v=267');
   await load('/best-order-evidence-v268.js?v=268');
-  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v268';
+  await load('/best-order-report-v269.js?v=269');
+  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v269';
 }
 boot();
 })();
