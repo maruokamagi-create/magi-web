@@ -10,8 +10,8 @@ async function boot(){
   if(window.MAGI_CANDIDATE_PRIORITY!=='v220')await load('/evidence-candidate-priority-v212.js?v=224');
   if(window.MAGI_NUMERIC_EVIDENCE_GUARD!=='v220')await load('/numeric-evidence-guard-v220.js?v=224');
   await load('/numeric-integrity-v239.js?v=239');
-  await load('/stats-report-v247.js?v=247');
-  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v247';
+  await load('/stats-report-v248.js?v=248');
+  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v248';
 }
 boot();
 })();
