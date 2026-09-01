@@ -133,7 +133,7 @@ function mediaAction(file){
  if(importedDriveFiles.has(file.id))return '<span>索引済み</span>';
  if(s?.kind==='working')return `<span>${esc(s.label)}</span>`;
  if(s?.kind==='ocr')return `<button class="secondary miniBtn" onclick="MAGI_MEDIA_IMPORT('${file.id}',true)">${esc(s.label)}</button>`;
- if(isPdf(file))return `<button class="secondary miniBtn" onclick="MAGI_MEDIA_IMPORT('${file.id}',false)">PDF読取</button>`;
+ if(isPdf(file))return `<button class="secondary miniBtn" onclick="MAGI_MEDIA_IMPORT('${file.id}',true)">PDF読取</button>`;
  if(isImage(file))return `<button class="secondary miniBtn" onclick="MAGI_MEDIA_IMPORT('${file.id}',true)">無料OCR</button>`;
  return '<span>未解析</span>';
 }
@@ -167,7 +167,7 @@ const originalScan=window.scanDrive;
 window.MAGI_MEDIA_IMPORT=importMediaById;
 window.renderDriveFiles=renderFiles;
 window.importDriveFile=async function(id,silent=false){
- const file=driveIndex.find(x=>x.id===id);return isMedia(file)?importMediaById(id,isPdf(file)?false:true):originalImport(id,silent);
+ const file=driveIndex.find(x=>x.id===id);return isMedia(file)?importMediaById(id,true):originalImport(id,silent);
 };
 window.scanDrive=async function(...args){
  const result=await originalScan.apply(this,args);
