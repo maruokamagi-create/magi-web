@@ -12,7 +12,8 @@ async function boot(){
   await load('/numeric-integrity-v239.js?v=239');
   await load('/stats-report-v260.js?v=267');
   await load('/pitch-report-v253.js?v=267');
-  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v260';
+  await load('/best-order-evidence-v268.js?v=268');
+  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v268';
 }
 boot();
 })();
