@@ -11,8 +11,8 @@ async function boot(){
   if(window.MAGI_NUMERIC_EVIDENCE_GUARD!=='v220')await load('/numeric-evidence-guard-v220.js?v=224');
   await load('/numeric-integrity-v239.js?v=239');
   await load('/stats-report-v249.js?v=249');
-  await load('/pitch-report-v250.js?v=250');
-  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v250';
+  await load('/pitch-report-v251.js?v=251');
+  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v251';
 }
 boot();
 })();
