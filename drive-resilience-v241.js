@@ -105,6 +105,7 @@ const originalScan=window.scanDrive;
 if(typeof originalScan==='function'){
   window.scanDrive=async function(){
     await originalScan.apply(this,arguments);
+    setStatus(`Google Drive：全体の読み込み完了。重要データ${IMPORTANT.length}件を最終確認中…`,'ready');
     return ensureImportant(3,true);
   };
 }
