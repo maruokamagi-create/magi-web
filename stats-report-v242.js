@@ -86,7 +86,7 @@ function collect(q){
  const all=rows(),target=findTarget(q,all);
  if(!target)return{error:'対象選手をDrive資料から特定できませんでした。選手名をフルネームで入力してください。'};
  const wanted=explicitSeason(q),np=n(target);
- let mine=all.filter(r=>n(player(r))===np&&season(r)&&raw(r,['打率','avg'])!==''&&!/打撃詳細|投手詳細/i.test(`${r.fileName||''} ${r.sheetName||''}`));
+ let mine=all.filter(r=>n(player(r))===np&&season(r)&&METRICS.some(m=>raw(r,m.aliases)!=='')&&!/打撃詳細|投手詳細/i.test(`${r.fileName||''} ${r.sheetName||''}`));
  if(wanted)mine=mine.filter(r=>season(r)===wanted);
  if(!mine.length)return{error:`${target}の${wanted||'通算'}打撃成績をDrive正本から取得できませんでした。`};
  const ys=[...new Set(mine.map(season))].sort();
