@@ -130,7 +130,7 @@ async function importMediaById(id,forceOcr=false){
 }
 function mediaAction(file){
  const s=state.get(file.id);
- if(importedDriveFiles.has(file.id))return '<span>内容を利用可能</span>';
+ if(importedDriveFiles.has(file.id))return '<span>索引済み</span>';
  if(s?.kind==='working')return `<span>${esc(s.label)}</span>`;
  if(s?.kind==='ocr')return `<button class="secondary miniBtn" onclick="MAGI_MEDIA_IMPORT('${file.id}',true)">${esc(s.label)}</button>`;
  if(isPdf(file))return `<button class="secondary miniBtn" onclick="MAGI_MEDIA_IMPORT('${file.id}',false)">PDF読取</button>`;
@@ -141,7 +141,7 @@ function renderFiles(){
  const box=document.getElementById('driveFiles');if(!box)return;
  box.classList.remove('hidden');const files=driveIndex.filter(f=>f.mimeType!==FOLDER_MIME);
  if(!files.length){box.innerHTML='<div class="driveFile">対象ファイルがありません。</div>';return}
- box.innerHTML=files.slice(0,150).map(f=>`<div class="driveFile"><div><b>${esc(f.name)}</b><br>${esc(f.path||'')}</div>${isMedia(f)?mediaAction(f):(isImportable(f)?(importedDriveFiles.has(f.id)?'<span>内容を利用可能</span>':`<button class="secondary miniBtn" onclick="importDriveFile('${f.id}')">再試行</button>`):'<span>未解析</span>')}</div>`).join('');
+ box.innerHTML=files.slice(0,150).map(f=>`<div class="driveFile"><div><b>${esc(f.name)}</b><br>${esc(f.path||'')}</div>${isMedia(f)?mediaAction(f):(isImportable(f)?(importedDriveFiles.has(f.id)?'<span>索引済み</span>':`<button class="secondary miniBtn" onclick="importDriveFile('${f.id}')">再試行</button>`):'<span>未解析</span>')}</div>`).join('');
 }
 async function restoreCached(){
  for(const file of driveIndex.filter(isMedia)){
@@ -158,7 +158,7 @@ async function autoPdf(){
 }
 function updateLegend(){
  const legend=document.getElementById('driveLegend');if(!legend)return;
- legend.innerHTML='<b>ファイルの利用状態</b><div class="driveLegendRow"><span class="driveLegendTag indexed">内容を利用可能</span><span>表・文章・PDF文字・OCR結果をMAGIの質問と審議に使えます。</span></div><div class="driveLegendRow"><span class="driveLegendTag listed">未解析</span><span>画像は「無料OCR」、PDFは「PDF読取」を押すと端末内で解析します。</span></div>';
+ legend.innerHTML='<b>ファイルの利用状態</b><div class="driveLegendRow"><span class="driveLegendTag indexed">索引済み</span><span>表・文章・PDF文字・OCR結果をMAGIの質問と審議に使えます。</span></div><div class="driveLegendRow"><span class="driveLegendTag listed">未解析</span><span>画像は「無料OCR」、PDFは「PDF読取」を押すと端末内で解析します。</span></div>';
  const intro=document.querySelector('.drivePanel .hubText');
  if(intro&&/画像・PDFは一覧のみ/.test(intro.textContent))intro.textContent=intro.textContent.replace('画像・PDFは一覧のみです。','PDFは文字を抽出し、画像・スキャンPDFは端末内の無料OCRで読み取れます。');
 }
