@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.MAGI_STATS_REPORT_V260)return;
-const VERSION='v260';
+if(window.MAGI_STATS_REPORT_V261)return;
+const VERSION='v261';
 const NAME_ALIASES=['選手名','氏名','名前','選手'];
 const METRICS=[
  {key:'games',label:'試合',aliases:['出場試合数','出場試合','試合数','出場数','games','game','試合'],kind:'int'},
@@ -17,6 +17,8 @@ const METRICS=[
  {key:'sb',label:'盗塁',aliases:['盗塁','sb'],kind:'int'},
  {key:'bb',label:'四球',aliases:['四球','bb'],kind:'int'},
  {key:'hbp',label:'死球',aliases:['死球','hbp'],kind:'int'},
+ {key:'sh',label:'犠打',aliases:['犠打','犠牲バント','sh'],kind:'int'},
+ {key:'sf',label:'犠飛',aliases:['犠飛','犠牲フライ','sf'],kind:'int'},
  {key:'so',label:'三振',aliases:['三振','so','k'],kind:'int'},
  {key:'avg',label:'打率',aliases:['打率','avg'],kind:'rate'},
  {key:'obp',label:'出塁率',aliases:['出塁率','obp'],kind:'rate'},
@@ -90,7 +92,7 @@ function compositeRecord(candidates,y){
  return{values,sources,sourceFiles,sourceSheets,baseRow:base,rispRow:risp};
 }
 const BREAKDOWN_METRICS=[
- {key:'games',label:'試合'},{key:'pa',label:'打席'},{key:'ab',label:'打数'},{key:'h',label:'安打'},{key:'runs',label:'得点'},{key:'rbi',label:'打点'},{key:'bb',label:'四球'},{key:'hbp',label:'死球'},{key:'so',label:'三振'},{key:'sb',label:'盗塁'},{key:'avg',label:'打率'},{key:'obp',label:'出塁率'},{key:'slg',label:'長打率'},{key:'ops',label:'OPS'}
+ {key:'games',label:'試合'},{key:'pa',label:'打席'},{key:'ab',label:'打数'},{key:'h',label:'安打'},{key:'runs',label:'得点'},{key:'rbi',label:'打点'},{key:'bb',label:'四球'},{key:'hbp',label:'死球'},{key:'sh',label:'犠打'},{key:'sf',label:'犠飛'},{key:'so',label:'三振'},{key:'sb',label:'盗塁'},{key:'avg',label:'打率'},{key:'obp',label:'出塁率'},{key:'slg',label:'長打率'},{key:'ops',label:'OPS'}
 ];
 function nval(v){const x=Number(String(v??'').replace(/,/g,''));return Number.isFinite(x)?x:0}
 function calculatedRates(values){
@@ -331,7 +333,7 @@ function install(){
 }
 window.MAGI_PRINT_STATS_REPORT=printReport;
 window.MAGI_PREVIEW_STATS_REPORT=openPreview;
-window.MAGI_STATS_REPORT_V260=true;
+window.MAGI_STATS_REPORT_V261=true;
 let tries=0;const timer=setInterval(()=>{tries++;install();if(tries>300)clearInterval(timer)},100);
 install();
 })();
