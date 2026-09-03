@@ -1,4 +1,4 @@
-import { callbackUrl, clearOauthCookies, createSession, lineConfigured, oauthCookieNames, parseCookies, redirect, sendJson, sessionCookie } from './_line.js';
+import { callbackUrl, clearOauthCookies, createSession, lineChannelId, lineConfigured, oauthCookieNames, parseCookies, redirect, sendJson, sessionCookie } from './_line.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: 'Method not allowed' });
@@ -29,7 +29,7 @@ export default async function handler(req, res) {
         grant_type: 'authorization_code',
         code,
         redirect_uri: callbackUrl(),
-        client_id: process.env.LINE_CHANNEL_ID,
+        client_id: lineChannelId(),
         client_secret: process.env.LINE_CHANNEL_SECRET
       })
     });
@@ -41,7 +41,7 @@ export default async function handler(req, res) {
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         id_token: tokens.id_token,
-        client_id: process.env.LINE_CHANNEL_ID,
+        client_id: lineChannelId(),
         nonce
       })
     });
