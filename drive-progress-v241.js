@@ -22,6 +22,9 @@ style.textContent=`
 .driveProgress.error{border-color:rgba(255,105,125,.48);background:rgba(54,13,24,.52)}
 .driveProgress.error .driveProgressBar{background:linear-gradient(90deg,#c74762,#ff718a);box-shadow:none}
 .driveProgress.error .driveProgressPercent{color:#ff8da0}
+.driveProgress.idle{border-color:rgba(126,176,255,.24);background:rgba(5,20,35,.52)}
+.driveProgress.idle .driveProgressBar{box-shadow:none}
+.driveProgress.idle .driveProgressPercent{color:#9fb6cc}
 .driveProgressNote{margin-top:7px;color:#8fa9bf;font-size:11px;line-height:1.45}.driveLegend{margin:10px 0 0;padding:10px 12px;border:1px solid #294a69;border-radius:11px;background:#071827;color:#b8cadb;font-size:11px;line-height:1.55}.driveLegend b{display:block;color:#fff;margin-bottom:6px}.driveLegendRow{display:flex;align-items:flex-start;gap:8px;margin-top:4px}.driveLegendTag{flex:0 0 auto;min-width:58px;padding:2px 6px;border-radius:999px;text-align:center;font-size:9px;font-weight:900}.driveLegendTag.indexed{background:#123d2d;color:#7be2ad;border:1px solid #24684b}.driveLegendTag.listed{background:#293340;color:#c8d2dc;border:1px solid #495869}
 @keyframes magiDriveSweep{to{margin-left:100%}}
 @media(max-width:430px){.driveProgress{padding:11px 12px}.driveProgressLabel,.driveProgressPercent{font-size:12px}}
@@ -56,7 +59,7 @@ function render(next,text,mode='active',detail=''){
   clearTimeout(finishTimer);
   value=Math.max(0,Math.min(100,Math.round(next)));
   busy=mode==='active';
-  box.classList.remove('hidden','active','complete','error');
+  box.classList.remove('hidden','active','complete','error','idle');
   box.classList.add(mode);
   label.textContent=text;
   percent.textContent=value+'%';
@@ -65,6 +68,7 @@ function render(next,text,mode='active',detail=''){
   note.textContent=detail||(
     mode==='complete'?'Google Driveの資料を利用できます。':
     mode==='error'?'表示された内容を確認して、もう一度お試しください。':
+    mode==='idle'?'「Google Drive接続」を押すと読み込みを開始します。':
     '処理中はこの画面を閉じずにお待ちください。'
   );
   if(mode==='complete'){
@@ -78,7 +82,11 @@ function begin(kind){
 function infer(text){
   const t=String(text||'').trim();
   if(!t)return;
-  if(/未接続|認証期限|認証エラー|接続できません|読込失敗|取込失敗|失敗：|OAuth Client IDが未入力/.test(t)){
+  if(/OAuth Client ID設定済み。未接続|Google Drive未接続|未接続です/.test(t)){
+    render(0,'Google Drive未接続','idle','「Google Drive接続」を押すと読み込みを開始します。');
+    return;
+  }
+  if(/認証期限|認証エラー|接続できません|読込失敗|取込失敗|失敗：|OAuth Client IDが未入力/.test(t)){
     render(Math.max(value,12),'Google Driveを読み込めませんでした','error',t);
     return;
   }
@@ -116,6 +124,7 @@ if(connect)connect.addEventListener('click',()=>begin('connect'),true);
 if(reauth)reauth.addEventListener('click',()=>begin('connect'),true);
 if(reload)reload.addEventListener('click',()=>begin('reload'),true);
 
+infer(state.textContent);
 window.MAGI_DRIVE_PROGRESS_V241=true;
-window.MAGI_DRIVE_PROGRESS_VERSION='2.0';
+window.MAGI_DRIVE_PROGRESS_VERSION='2.1';
 })();
