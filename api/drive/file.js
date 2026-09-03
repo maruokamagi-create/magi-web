@@ -1,5 +1,6 @@
 import { requireApprovedMember } from './_access.js';
-import { driveServiceConfigured, getDriveFileMetadata, googleDriveFetch } from './_service.js';
+import { canAccessDrivePath } from './_permissions.js';
+import { driveServiceConfigured, getDriveFileMetadata, googleDriveFetch, listMagiDriveTree } from './_service.js';
 
 const SAFE_ID = /^[A-Za-z0-9_-]{10,200}$/;
 
@@ -21,6 +22,13 @@ export default async function handler(req, res) {
     if (!SAFE_ID.test(id)) {
       res.statusCode = 400;
       return res.end('Invalid file id');
+    }
+
+    const tree = await listMagiDriveTree();
+    const indexed = tree.find((file) => file?.id === id);
+    if (!indexed || !canAccessDrivePath(member.role, indexed.path)) {
+      res.statusCode = 403;
+      return res.end('Drive file access denied');
     }
 
     const meta = await getDriveFileMetadata(id);
