@@ -1,4 +1,4 @@
-import { callbackUrl, lineConfigured, randomToken, redirect, sendJson, setOauthCookies } from './_line.js';
+import { callbackUrl, lineChannelId, lineConfigured, randomToken, redirect, sendJson, setOauthCookies } from './_line.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: 'Method not allowed' });
@@ -10,7 +10,7 @@ export default async function handler(req, res) {
 
   const params = new URLSearchParams({
     response_type: 'code',
-    client_id: process.env.LINE_CHANNEL_ID,
+    client_id: lineChannelId(),
     redirect_uri: callbackUrl(),
     state,
     scope: 'openid profile',
