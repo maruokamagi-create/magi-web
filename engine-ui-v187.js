@@ -11,7 +11,7 @@
   const candidateText=p=>list(p?.candidatePlayers).join('・')||'候補未確定';
   const selectionMode=q=>{
     const s=String(q||'');
-    const domain=/クリーンナップ|中軸|主軸|打線|打順|スタメン|レギュラー|先発|起用|守備位置|ポジション/;
+    const domain=/クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション/;
     const cue=/誰|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番/;
     return domain.test(s)&&cue.test(s);
   };
