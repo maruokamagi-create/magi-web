@@ -1,17 +1,6 @@
 import { lineConfigured, readSession, sendJson } from './_line.js';
 import { ensureLineMember, memberStoreConfigured } from './_members.js';
 
-function safeDiagnostic(error) {
-  const details = error?.details;
-  const detailObject = details && typeof details === 'object' && !Array.isArray(details) ? details : {};
-  return {
-    status: Number(error?.status || 0) || null,
-    code: String(detailObject.code || ''),
-    message: String(detailObject.message || (typeof details === 'string' ? details : error?.message || '')),
-    hint: String(detailObject.hint || '')
-  };
-}
-
 export default async function handler(req, res) {
   if (req.method !== 'GET') return sendJson(res, 405, { ok: false, error: 'Method not allowed' });
   if (!lineConfigured()) return sendJson(res, 200, { ok: true, configured: false, authenticated: false });
@@ -62,15 +51,13 @@ export default async function handler(req, res) {
       } : null
     });
   } catch (error) {
-    const diagnostic = safeDiagnostic(error);
     console.error('[LINE member session]', error?.message || error, error?.details || '');
     return sendJson(res, 503, {
       ok: false,
       configured: true,
       authenticated: true,
       memberStoreConfigured: true,
-      error: 'Member registry is unavailable',
-      diagnostic
+      error: 'Member registry is unavailable'
     });
   }
 }
