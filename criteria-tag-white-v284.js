@@ -30,16 +30,22 @@
     }
     @media(max-width:520px){
       .magiCriteriaSection .magiJudgeRow{
-        height:50px!important;
-        min-height:50px!important;
-        padding:0 9px!important;
+        height:40px!important;
+        min-height:40px!important;
+        padding:0 8px!important;
         box-sizing:border-box!important;
       }
+      .magiCriteriaSection .magiJudgeSymbol{
+        width:34px!important;
+        min-width:34px!important;
+        height:34px!important;
+        font-size:30px!important;
+      }
       .magiCriteriaSection .criteriaGrid{
-        gap:6px!important;
+        gap:5px!important;
       }
       .magiCriteriaSection .magiJudgeTag{
-        padding-left:6px!important;
+        padding-left:5px!important;
       }
     }
   `;
