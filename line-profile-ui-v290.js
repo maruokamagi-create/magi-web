@@ -5,6 +5,7 @@
   const roleLabel=(role)=>({admin:'管理者',coach:'顧問・指導者',player:'選手',member:'保護者・その他'}[role]||'保護者・その他');
   const statusLabel=(status)=>({pending:'承認待ち',active:'利用可',disabled:'利用停止'}[status]||status||'');
   const esc=(value)=>String(value??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  let profileState=null;
 
   function styles(){
     if(document.getElementById(STYLE_ID)) return;
@@ -40,7 +41,7 @@
 
   function renderProfile(state){
     const root=document.getElementById('magiAuthGate');
-    if(!root||root.dataset.profileForm==='1') return;
+    if(!root||root.dataset.profileForm==='1') return false;
     root.dataset.profileForm='1';
     const lineName=state.member?.lineDisplayName||state.user?.name||'LINEアカウント';
     const pic=state.member?.pictureUrl||state.user?.picture||'';
@@ -91,6 +92,7 @@
       }
     });
     root.querySelector('[data-profile-logout]').addEventListener('click',()=>location.assign('/api/auth/line/logout'));
+    return true;
   }
 
   async function memberRequest(body=null){
@@ -153,6 +155,7 @@
 
   let panelTimer=0;
   const observer=new MutationObserver(()=>{
+    if(profileState?.authenticated&&profileState?.member?.needsProfile) renderProfile(profileState);
     const panel=document.querySelector('.magiMemberPanel');
     if(panel&&panel.querySelector('.magiMemberList')&&!panel.querySelector('.magiMemberProfileMain')){
       clearTimeout(panelTimer);
@@ -162,11 +165,11 @@
 
   async function init(){
     styles();
-    try{
-      const state=await session();
-      if(state?.authenticated&&state?.member?.needsProfile) renderProfile(state);
-    }catch(_){ }
     observer.observe(document.documentElement,{childList:true,subtree:true});
+    try{
+      profileState=await session();
+      if(profileState?.authenticated&&profileState?.member?.needsProfile) renderProfile(profileState);
+    }catch(_){ }
   }
 
   if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
