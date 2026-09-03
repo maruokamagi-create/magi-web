@@ -1,5 +1,6 @@
 import crypto from 'node:crypto';
 
+// LINE Login production config active.
 const PUBLIC_URL = (process.env.MAGI_PUBLIC_URL || 'https://magi-web.vercel.app').replace(/\/$/, '');
 const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID || '2011407457';
 const STATE_COOKIE = '__Host-magi_line_state';
