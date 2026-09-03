@@ -1,5 +1,5 @@
 import { readSession, sendJson } from '../auth/line/_line.js';
-import { getMemberById, getMemberBySub, listMembers, memberStoreConfigured, updateMember } from '../auth/line/_members.js';
+import { getMemberById, getMemberBySub, listMembers, memberStoreConfigured, presentMember, updateMember } from '../auth/line/_members.js';
 
 async function requireAdmin(req, res) {
   if (!memberStoreConfigured()) {
@@ -40,11 +40,15 @@ export default async function handler(req, res) {
 
       const target = await getMemberById(id);
       if (!target) return sendJson(res, 404, { ok: false, error: 'Member not found' });
+      const shownTarget = presentMember(target);
 
       const nextStatus = body.status ? String(body.status) : target.status;
       const nextRole = body.role ? String(body.role) : target.role;
       if (target.id === admin.id && (nextStatus !== 'active' || nextRole !== 'admin')) {
         return sendJson(res, 400, { ok: false, error: 'You cannot remove your own administrator access' });
+      }
+      if (target.status === 'pending' && nextStatus === 'active' && !shownTarget?.profile_complete) {
+        return sendJson(res, 400, { ok: false, error: '氏名の申請が完了していません' });
       }
 
       const updated = await updateMember(id, { status: nextStatus, role: nextRole });
