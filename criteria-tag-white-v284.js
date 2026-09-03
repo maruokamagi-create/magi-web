@@ -5,16 +5,18 @@
   const style=document.createElement('style');
   style.id=id;
   style.textContent=`
+    .magiCriteriaSection .magiJudgeRow{
+      min-height:64px!important;
+    }
     .magiCriteriaSection .magiJudgeTag{
       color:#f4f7fb!important;
       background:transparent!important;
+      border:0!important;
       border-radius:0!important;
       box-shadow:none!important;
-      border-top:0!important;
-      border-right:0!important;
-      border-bottom:0!important;
       text-shadow:none!important;
       -webkit-text-fill-color:#f4f7fb!important;
+      padding-left:10px!important;
     }
     .magiCriteriaSection .cYes .magiJudgeTag,
     .magiCriteriaSection .cCond .magiJudgeTag,
@@ -23,7 +25,20 @@
       color:#f4f7fb!important;
       -webkit-text-fill-color:#f4f7fb!important;
       background:transparent!important;
+      border:0!important;
       box-shadow:none!important;
+    }
+    @media(max-width:520px){
+      .magiCriteriaSection .magiJudgeRow{
+        min-height:58px!important;
+        padding:0 9px!important;
+      }
+      .magiCriteriaSection .criteriaGrid{
+        gap:6px!important;
+      }
+      .magiCriteriaSection .magiJudgeTag{
+        padding-left:6px!important;
+      }
     }
   `;
   document.head.appendChild(style);
