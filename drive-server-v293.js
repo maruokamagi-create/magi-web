@@ -26,6 +26,17 @@ function styleLegacyDrive(){
   });
 }
 
+function canonicalFileName(name){
+  const s=String(name||'').normalize('NFKC');
+  const dot=s.lastIndexOf('.');
+  const stem=dot>=0?s.slice(0,dot):s;
+  const ext=dot>=0?s.slice(dot).toLowerCase():'';
+  return stem
+    .replace(/\s*[（(]\d+[）)]\s*$/,'')
+    .replace(/(?:\s*[-_]?\s*(?:copy|コピー|複製))\s*$/i,'')
+    .replace(/\s+/g,'')+ext;
+}
+
 function dedupeDriveRecords(){
   const seen=new Set();
   const next=[];
@@ -36,8 +47,8 @@ function dedupeDriveRecords(){
       continue;
     }
     const key=[
-      String(r.fileName||''),
-      String(r.sheetName||''),
+      canonicalFileName(r.fileName),
+      String(r.sheetName||'').normalize('NFKC').trim(),
       String(r.rowNumber??''),
       JSON.stringify(Array.isArray(r.columns)?r.columns:[]),
       JSON.stringify(Array.isArray(r.values)?r.values:[])
@@ -52,6 +63,8 @@ function dedupeDriveRecords(){
   if(removed)dataRecords=next;
   return removed;
 }
+
+window.MAGI_DEDUPE_DRIVE_RECORDS=dedupeDriveRecords;
 
 async function readIndex(){
   const response=await fetch('/api/drive/index',{cache:'no-store',credentials:'same-origin'});
@@ -86,13 +99,14 @@ async function serverImportFile(id,silent=false){
       addTextRecords(f.name,await response.text(),'drive');
     }
     tag();
+    const duplicates=dedupeDriveRecords();
     importedDriveFiles.add(f.id);
     if(!silent){
-      setDriveState(`取込完了：${f.name} ／ ${dataRecords.length-before}行を索引化。`,'ready');
+      setDriveState(`取込完了：${f.name} ／ ${Math.max(0,dataRecords.length-before)}行を索引化${duplicates?`（重複${duplicates}行を除外）`:''}。`,'ready');
       renderDriveFiles();
     }
     try{updateRoute()}catch(_){ }
-    return dataRecords.length-before;
+    return Math.max(0,dataRecords.length-before);
   }catch(error){
     if(!silent)setDriveState(`ファイル取込失敗：${error?.message||error}`,'error');
     throw error;
@@ -119,16 +133,21 @@ async function serverScanDrive(){
     importedDriveFiles.clear();
     renderDriveFiles();
     const targets=driveIndex.filter(f=>typeof isImportable==='function'&&isImportable(f));
-    let failed=0;
+    let failed=0,duplicates=0;
     for(let i=0;i<targets.length;i++){
       setDriveState(`Google Drive：${driveIndex.length}件を一覧化。対応ファイルを自動索引化中 ${i+1}/${targets.length}…`,'ready');
-      try{await serverImportFile(targets[i].id,true)}catch(_){failed++}
+      const before=dataRecords.length;
+      try{
+        await serverImportFile(targets[i].id,true);
+        const expected=Math.max(0,dataRecords.length-before);
+        if(expected===0&&importedDriveFiles.has(targets[i].id))duplicates++;
+      }catch(_){failed++}
     }
-    const duplicates=dedupeDriveRecords();
+    duplicates+=dedupeDriveRecords();
     renderDriveFiles();
     const rows=dataRecords.filter(r=>r&&r.source==='drive').length;
     const files=driveIndex.filter(f=>f&&f.mimeType!==FOLDER_MIME_SERVER).length;
-    setDriveState(`Google Drive読込完了：${driveIndex.length}件（ファイル${files}件）を一覧化、${importedDriveFiles.size}ファイル・${rows}行を自動索引化${duplicates?`（重複${duplicates}行を除外）`:''}${failed?`（${failed}件は取込失敗）`:''}。利用者のGoogleログインは不要です。`,'ready');
+    setDriveState(`Google Drive読込完了：${driveIndex.length}件（ファイル${files}件）を一覧化、${importedDriveFiles.size}ファイル・${rows}行を自動索引化${duplicates?`（重複候補を除外）`:''}${failed?`（${failed}件は取込失敗）`:''}。打撃・投手・守備など全成績で二重計上を防止します。利用者のGoogleログインは不要です。`,'ready');
   }catch(error){
     console.error('[MAGI server Drive UI]',error);
     setDriveState(`Google Drive読込失敗：${error?.message||error}`,'error');
