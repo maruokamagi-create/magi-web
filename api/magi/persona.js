@@ -33,7 +33,7 @@ function validCase(body) {
 }
 
 function isCandidateCase(body) {
-  return /クリーンナップ|中軸|主軸|打線|打順|先発|レギュラー|スタメン|候補|誰を中心|誰を起用/.test(String(body?.case?.question || ''));
+  return /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|先発|レギュラー|スタメン|候補|誰を中心|誰を起用/.test(String(body?.case?.question || ''));
 }
 
 function rosterStatus(values) {
