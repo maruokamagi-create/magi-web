@@ -1,5 +1,6 @@
 import { sendJson } from '../auth/line/_line.js';
 import { requireApprovedMember } from './_access.js';
+import { filterDriveFilesForRole } from './_permissions.js';
 import { driveServiceAccountEmail, driveServiceConfigured, listMagiDriveTree, MAGI_DRIVE_ROOT_ID } from './_service.js';
 
 export default async function handler(req, res) {
@@ -20,12 +21,14 @@ export default async function handler(req, res) {
       });
     }
 
-    const files = await listMagiDriveTree();
+    const allFiles = await listMagiDriveTree({ fresh: true });
+    const files = filterDriveFilesForRole(member.role, allFiles);
     return sendJson(res, 200, {
       ok: true,
       configured: true,
       rootId: MAGI_DRIVE_ROOT_ID,
       serviceAccount: driveServiceAccountEmail(),
+      role: member.role,
       count: files.length,
       files
     });
