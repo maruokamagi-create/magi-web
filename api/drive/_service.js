@@ -5,6 +5,9 @@ const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 let cachedToken = null;
 let cachedUntil = 0;
+let cachedTree = null;
+let cachedTreeAt = 0;
+const TREE_CACHE_MS = 60_000;
 
 function readConfig() {
   let json = null;
@@ -74,14 +77,13 @@ async function accessToken() {
 
 export async function googleDriveFetch(url, options = {}) {
   const token = await accessToken();
-  const response = await fetch(url, {
+  return fetch(url, {
     ...options,
     headers: {
       ...(options.headers || {}),
       Authorization: `Bearer ${token}`
     }
   });
-  return response;
 }
 
 async function listChildren(folderId) {
@@ -105,8 +107,10 @@ async function listChildren(folderId) {
   return all;
 }
 
-export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12 } = {}) {
+export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh = false } = {}) {
   if (!driveServiceConfigured()) throw new Error('drive_service_not_configured');
+  if (!fresh && cachedTree && Date.now() - cachedTreeAt < TREE_CACHE_MS) return cachedTree;
+
   const out = [];
   const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: 'ROOT', depth: 0 }];
   const seen = new Set();
@@ -124,6 +128,8 @@ export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12 } = {})
       if (out.length >= maxItems) break;
     }
   }
+  cachedTree = out;
+  cachedTreeAt = Date.now();
   return out;
 }
 
