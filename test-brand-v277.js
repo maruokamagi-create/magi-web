@@ -50,6 +50,11 @@
       kicker.innerHTML='<span class="magiEnvLabel">MAGI-WEB テスト版 / FREE CORE</span><span class="free">NO PAID AI API</span>';
     }
 
+    const statement=document.querySelector('.hero .statement');
+    if(statement){
+      statement.innerHTML='<b>MAGIは、データ・戦術・選手の視点から、チームの判断を支えるシステムです。</b><br>成績や記録を確認し、3賢人がそれぞれの視点で考え、必要に応じて次の判断につなげます。';
+    }
+
     const authTitle=document.querySelector('.magiAuthBrand strong');
     if(authTitle) authTitle.textContent='MAGI-WEB テスト版';
 
