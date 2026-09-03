@@ -1,6 +1,6 @@
 (async()=>{
   const V='0.11.18', A='168';
-  const extras=['/analysis-v093.js?v=140','/generic-v098.js?v=140','/batfix-v100.js?v=140','/role-v101.js?v=140','/pitch-v113.js?v=140','/final-v102.js?v=140','/final-detail-v103.js?v=140','/layout-v112.js?v=140','/desktop-layout-v185.js?v=186','/engine/magi-engine-v1.js?v=188','/drive-resilience-v241.js?v=241','/drive-progress-v241.js?v=241','/drive-media-index-v257.js?v=259','/drive-evidence-v194.js?v=205','/evidence-summary-v210.js?v=211','/evidence-candidate-priority-v212.js?v=212','/all-player-check-v213.js?v=214','/engine-ui-v187.js?v=195','/auth-config-v271.js?v=271','/auth-gate-v271.js?v=271'];
+  const extras=['/analysis-v093.js?v=140','/generic-v098.js?v=140','/batfix-v100.js?v=140','/role-v101.js?v=140','/pitch-v113.js?v=140','/final-v102.js?v=140','/final-detail-v103.js?v=140','/layout-v112.js?v=140','/desktop-layout-v185.js?v=186','/engine/magi-engine-v1.js?v=188','/drive-resilience-v241.js?v=241','/drive-progress-v241.js?v=241','/drive-media-index-v257.js?v=259','/drive-evidence-v194.js?v=205','/evidence-summary-v210.js?v=211','/evidence-candidate-priority-v212.js?v=212','/all-player-check-v213.js?v=214','/engine-ui-v187.js?v=195','/auth-config-v271.js?v=271','/auth-gate-v271.js?v=286'];
   const load=s=>new Promise(r=>{const x=document.createElement('script');x.src=s;x.onload=r;x.onerror=r;document.head.appendChild(x)});
   const inline=c=>{if(!c||!c.trim())return;const s=document.createElement('script');s.textContent=c;document.body.appendChild(s)};
   const brand=()=>{
