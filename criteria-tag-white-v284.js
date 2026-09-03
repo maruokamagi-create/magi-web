@@ -30,8 +30,10 @@
     }
     @media(max-width:520px){
       .magiCriteriaSection .magiJudgeRow{
-        min-height:58px!important;
+        height:50px!important;
+        min-height:50px!important;
         padding:0 9px!important;
+        box-sizing:border-box!important;
       }
       .magiCriteriaSection .criteriaGrid{
         gap:6px!important;
