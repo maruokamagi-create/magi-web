@@ -26,6 +26,33 @@ function styleLegacyDrive(){
   });
 }
 
+function dedupeDriveRecords(){
+  const seen=new Set();
+  const next=[];
+  let removed=0;
+  for(const r of dataRecords){
+    if(!r||r.source!=='drive'){
+      next.push(r);
+      continue;
+    }
+    const key=[
+      String(r.fileName||''),
+      String(r.sheetName||''),
+      String(r.rowNumber??''),
+      JSON.stringify(Array.isArray(r.columns)?r.columns:[]),
+      JSON.stringify(Array.isArray(r.values)?r.values:[])
+    ].join('\u001f');
+    if(seen.has(key)){
+      removed++;
+      continue;
+    }
+    seen.add(key);
+    next.push(r);
+  }
+  if(removed)dataRecords=next;
+  return removed;
+}
+
 async function readIndex(){
   const response=await fetch('/api/drive/index',{cache:'no-store',credentials:'same-origin'});
   const data=await response.json().catch(()=>({}));
@@ -97,10 +124,11 @@ async function serverScanDrive(){
       setDriveState(`Google Drive：${driveIndex.length}件を一覧化。対応ファイルを自動索引化中 ${i+1}/${targets.length}…`,'ready');
       try{await serverImportFile(targets[i].id,true)}catch(_){failed++}
     }
+    const duplicates=dedupeDriveRecords();
     renderDriveFiles();
     const rows=dataRecords.filter(r=>r&&r.source==='drive').length;
     const files=driveIndex.filter(f=>f&&f.mimeType!==FOLDER_MIME_SERVER).length;
-    setDriveState(`Google Drive読込完了：${driveIndex.length}件（ファイル${files}件）を一覧化、${importedDriveFiles.size}ファイル・${rows}行を自動索引化${failed?`（${failed}件は取込失敗）`:''}。利用者のGoogleログインは不要です。`,'ready');
+    setDriveState(`Google Drive読込完了：${driveIndex.length}件（ファイル${files}件）を一覧化、${importedDriveFiles.size}ファイル・${rows}行を自動索引化${duplicates?`（重複${duplicates}行を除外）`:''}${failed?`（${failed}件は取込失敗）`:''}。利用者のGoogleログインは不要です。`,'ready');
   }catch(error){
     console.error('[MAGI server Drive UI]',error);
     setDriveState(`Google Drive読込失敗：${error?.message||error}`,'error');
