@@ -5,7 +5,6 @@ const PROFILE_PREFIX = 'MAGI_PROFILE:';
 
 const VALID_STATUS = new Set(['pending', 'active', 'disabled']);
 const VALID_ROLE = new Set(['admin', 'coach', 'player', 'member']);
-const REQUESTABLE_ROLE = new Set(['coach', 'player', 'member']);
 
 export function memberStoreConfigured() {
   return Boolean(SUPABASE_URL && SERVICE_KEY);
@@ -166,10 +165,8 @@ export async function ensureLineMember(profile) {
 
 export async function submitOwnProfile(sub, profile = {}) {
   const formalName = clean(profile.formalName, 60);
-  const requestedRole = clean(profile.requestedRole, 20);
   const lineDisplayName = clean(profile.lineDisplayName, 80);
   if (formalName.length < 2) throw new Error('invalid_formal_name');
-  if (!REQUESTABLE_ROLE.has(requestedRole)) throw new Error('invalid_requested_role');
 
   const member = await getMemberBySub(sub);
   if (!member) throw new Error('member_not_found');
@@ -183,7 +180,6 @@ export async function submitOwnProfile(sub, profile = {}) {
     headers: { Prefer: 'return=representation' },
     body: JSON.stringify({
       display_name: encodeIdentity(formalName, lineDisplayName || identity.lineDisplayName),
-      role: requestedRole,
       updated_at: new Date().toISOString()
     })
   });
