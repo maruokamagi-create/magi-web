@@ -1,5 +1,5 @@
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://stqekbjijufefrykksji.supabase.co').replace(/\/$/, '');
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
+const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 const TABLE = 'magi_line_members';
 
 const VALID_STATUS = new Set(['pending', 'active', 'disabled']);
