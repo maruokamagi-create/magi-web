@@ -10,10 +10,20 @@ export function memberStoreConfigured() {
 }
 
 function headers(extra = {}) {
-  return {
+  const base = {
     apikey: SERVICE_KEY,
-    Authorization: `Bearer ${SERVICE_KEY}`,
-    'Content-Type': 'application/json',
+    'Content-Type': 'application/json'
+  };
+
+  // New Supabase secret keys (sb_secret_...) are opaque API keys, not JWTs.
+  // They must be sent in the apikey header only. Legacy service_role keys are
+  // JWTs and still use Authorization: Bearer for PostgREST compatibility.
+  if (!SERVICE_KEY.startsWith('sb_secret_')) {
+    base.Authorization = `Bearer ${SERVICE_KEY}`;
+  }
+
+  return {
+    ...base,
     ...extra
   };
 }
