@@ -1,13 +1,18 @@
 import crypto from 'node:crypto';
 
 const PUBLIC_URL = (process.env.MAGI_PUBLIC_URL || 'https://magi-web.vercel.app').replace(/\/$/, '');
+const LINE_CHANNEL_ID = process.env.LINE_CHANNEL_ID || '2011407457';
 const STATE_COOKIE = '__Host-magi_line_state';
 const NONCE_COOKIE = '__Host-magi_line_nonce';
 const SESSION_COOKIE = '__Host-magi_line_session';
 const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
+export function lineChannelId() {
+  return LINE_CHANNEL_ID;
+}
+
 export function lineConfigured() {
-  return Boolean(process.env.LINE_CHANNEL_ID && process.env.LINE_CHANNEL_SECRET && process.env.MAGI_SESSION_SECRET);
+  return Boolean(LINE_CHANNEL_ID && process.env.LINE_CHANNEL_SECRET);
 }
 
 export function callbackUrl() {
@@ -50,8 +55,16 @@ export function clearOauthCookies(res, extra = []) {
   ]);
 }
 
+function sessionSigningKey() {
+  if (process.env.MAGI_SESSION_SECRET) return process.env.MAGI_SESSION_SECRET;
+  return crypto
+    .createHash('sha256')
+    .update(`magi-session-v1:${process.env.LINE_CHANNEL_SECRET || ''}`)
+    .digest();
+}
+
 function sign(value) {
-  return crypto.createHmac('sha256', process.env.MAGI_SESSION_SECRET).update(value).digest('base64url');
+  return crypto.createHmac('sha256', sessionSigningKey()).update(value).digest('base64url');
 }
 
 export function createSession(profile) {
