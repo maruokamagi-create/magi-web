@@ -15,14 +15,12 @@ export default async function handler(req, res) {
     const body = typeof req.body === 'string' ? JSON.parse(req.body || '{}') : (req.body || {});
     const member = await submitOwnProfile(session.sub, {
       formalName: body.formalName,
-      requestedRole: body.requestedRole,
       lineDisplayName: session.name || ''
     });
     return sendJson(res, 200, { ok: true, member });
   } catch (error) {
     const code = String(error?.message || '');
     if (code === 'invalid_formal_name') return sendJson(res, 400, { ok: false, error: '氏名を正しく入力してください' });
-    if (code === 'invalid_requested_role') return sendJson(res, 400, { ok: false, error: '立場を選択してください' });
     if (code === 'profile_not_editable') return sendJson(res, 409, { ok: false, error: 'この申請情報は変更できません' });
     if (code === 'member_not_found') return sendJson(res, 404, { ok: false, error: '利用者情報が見つかりません' });
     console.error('[LINE profile]', error?.message || error, error?.details || '');
