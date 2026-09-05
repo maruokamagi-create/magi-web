@@ -1,0 +1,1 @@
+Temporary marker for replacing the corrupt 512 icon with the current user-provided MAGI image. Remove after replacement.
