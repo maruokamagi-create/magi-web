@@ -3,6 +3,17 @@ import { canAccessDrivePath } from './_permissions.js';
 import { driveServiceConfigured, getDriveFileMetadata, googleDriveFetch, listMagiDriveTree } from './_service.js';
 
 const SAFE_ID = /^[A-Za-z0-9_-]{10,200}$/;
+const UPSTREAM_TIMEOUT_MS = 15000;
+
+async function driveFetchWithTimeout(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+  try {
+    return await googleDriveFetch(url, { signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -44,7 +55,7 @@ export default async function handler(req, res) {
       url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`;
     }
 
-    const response = await googleDriveFetch(url);
+    const response = await driveFetchWithTimeout(url);
     if (!response.ok) {
       const text = await response.text().catch(() => '');
       console.error('[MAGI server Drive file]', response.status, text.slice(0, 300));
@@ -60,8 +71,9 @@ export default async function handler(req, res) {
     res.setHeader('Content-Length', String(buffer.length));
     res.end(buffer);
   } catch (error) {
-    console.error('[MAGI server Drive file]', error?.message || error, error?.details || '');
-    if (!res.headersSent) res.statusCode = 502;
-    res.end('Google Drive file unavailable');
+    const timedOut = error?.name === 'AbortError';
+    console.error('[MAGI server Drive file]', timedOut ? 'timeout' : (error?.message || error), error?.details || '');
+    if (!res.headersSent) res.statusCode = timedOut ? 504 : 502;
+    res.end(timedOut ? 'Drive file fetch timed out' : 'Google Drive file unavailable');
   }
 }
