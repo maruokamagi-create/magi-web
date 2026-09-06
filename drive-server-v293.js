@@ -66,6 +66,30 @@ function dedupeDriveRecords(){
 
 window.MAGI_DEDUPE_DRIVE_RECORDS=dedupeDriveRecords;
 
+function smartTextScore(s){
+  const text=String(s||'');
+  const replacement=(text.match(/�/g)||[]).length;
+  const mojibake=(text.match(/[\u0080-\u009f]/g)||[]).length;
+  const japanese=(text.match(/[ぁ-んァ-ヶ一-龯々]/g)||[]).length;
+  const known=(text.match(/選手|開催日|打席|打数|安打|打率|打点|得点|出塁率|長打率|守備|相手校/g)||[]).length;
+  return japanese+known*24-replacement*40-mojibake*18;
+}
+
+function decodeBytesSmart(buffer){
+  const bytes=buffer instanceof ArrayBuffer?buffer:buffer?.buffer;
+  let utf8='';
+  let shiftJis='';
+  try{utf8=new TextDecoder('utf-8',{fatal:false}).decode(bytes)}catch(_){ }
+  try{shiftJis=new TextDecoder('shift_jis',{fatal:false}).decode(bytes)}catch(_){ }
+  return smartTextScore(shiftJis)>smartTextScore(utf8)?shiftJis:utf8;
+}
+
+async function responseTextSmart(response){
+  return decodeBytesSmart(await response.arrayBuffer());
+}
+
+window.MAGI_DECODE_TEXT_SMART=decodeBytesSmart;
+
 async function readIndex(){
   const response=await fetch('/api/drive/index',{cache:'no-store',credentials:'same-origin'});
   const data=await response.json().catch(()=>({}));
@@ -88,15 +112,15 @@ async function serverImportFile(id,silent=false){
     if(f.mimeType==='application/vnd.google-apps.spreadsheet'){
       addWorkbookRecords(f.name,await response.arrayBuffer(),'drive');
     }else if(f.mimeType==='application/vnd.google-apps.document'){
-      addTextRecords(f.name,await response.text(),'drive');
+      addTextRecords(f.name,await responseTextSmart(response),'drive');
     }else if(/\.(xls|xlsx|xlsm)$/i.test(f.name)||/spreadsheetml|ms-excel/.test(f.mimeType||'')){
       addWorkbookRecords(f.name,await response.arrayBuffer(),'drive');
     }else if(/json/i.test(f.mimeType||'')||/\.json$/i.test(f.name)){
-      addJsonRecords(f.name,JSON.parse(await response.text()),'drive');
+      addJsonRecords(f.name,JSON.parse(await responseTextSmart(response)),'drive');
     }else if(/csv/i.test(f.mimeType||'')||/\.csv$/i.test(f.name)){
-      addTableRecords(f.name,'CSV',parseCsv(await response.text()),'drive');
+      addTableRecords(f.name,'CSV',parseCsv(await responseTextSmart(response)),'drive');
     }else{
-      addTextRecords(f.name,await response.text(),'drive');
+      addTextRecords(f.name,await responseTextSmart(response),'drive');
     }
     tag();
     const duplicates=dedupeDriveRecords();
