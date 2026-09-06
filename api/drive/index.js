@@ -21,7 +21,9 @@ export default async function handler(req, res) {
       });
     }
 
-    const allFiles = await listMagiDriveTree({ fresh: true });
+    // Use the short-lived server-side tree cache. The browser only needs the
+    // Drive catalogue here; individual file contents are fetched on demand.
+    const allFiles = await listMagiDriveTree();
     const files = filterDriveFilesForRole(member.role, allFiles);
     return sendJson(res, 200, {
       ok: true,
