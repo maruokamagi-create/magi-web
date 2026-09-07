@@ -56,7 +56,7 @@ async function accessToken() {
   const assertion = `${unsigned}.${signature}`;
 
   const body = new URLSearchParams({
-    grant_type: 'urn:ietf:params:oauth-grant-type:jwt-bearer',
+    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
     assertion
   });
   const response = await fetch(TOKEN_URL, {
