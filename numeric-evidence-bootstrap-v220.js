@@ -14,7 +14,7 @@ async function boot(){
   await load('/best-order-evidence-v268.js?v=270');
   await load('/best-order-report-v269.js?v=270');
   await load('/numeric-integrity-v298.js?v=298');
-  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v317';
+  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v298';
 }
 boot();
 })();
