@@ -3,8 +3,9 @@ import { filterDriveFilesForRole } from './_permissions.js';
 import { cacheableDriveFile, driveCacheConfigured, getCachedDriveFile, putCachedDriveFile } from './_cache.js';
 import { driveServiceConfigured, fetchDriveFileContent, listMagiDriveTree } from './_service.js';
 
-const BATCH_LIMIT = 5;
-const FILE_TIMEOUT_MS = 15000;
+export const config = { maxDuration: 60 };
+const BATCH_LIMIT = 3;
+const FILE_TIMEOUT_MS = 8000;
 
 function json(res, status, body) {
   res.statusCode = status;
