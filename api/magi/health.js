@@ -1,5 +1,5 @@
 import { checkGeminiConfiguration, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
-import { routeQuestion } from './_question-router.js';
+import { routeQuestion } from './_question-router-v2.js';
 
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
