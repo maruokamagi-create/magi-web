@@ -10,12 +10,17 @@ const TABLE='magi_drive_file_cache';
 const norm=v=>String(v??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
 const headerKeys=new Set(['背番号','選手名','選手','氏名','打率','出場数','出場試合数','打席','打席数','打数','打点','得点','安打','単打','二塁打','三塁打','本塁打','三振','四球','死球','出塁率','長打率','ops','得点圏','得点圏打率','盗塁','盗塁刺','盗塁率','犠打','犠飛'].map(norm));
 
+function sendJson(res,status,body){
+  res.statusCode=status;
+  res.setHeader('Content-Type','application/json; charset=utf-8');
+  res.setHeader('Cache-Control','private, no-store');
+  return res.end(JSON.stringify(body));
+}
 function headers(){
   const h={apikey:SERVICE_KEY};
   if(!String(SERVICE_KEY).startsWith('sb_secret_'))h.Authorization=`Bearer ${SERVICE_KEY}`;
   return h;
 }
-
 function seasonOf(s){
   const x=String(s||'');
   if(/2025\s*[-–—_. /]?\s*2026/.test(x))return'2025-2026';
@@ -86,7 +91,6 @@ function recordFromSheet(book,rowMeta,sheetName,target){
   }
   return null;
 }
-
 async function cachedMasters(){
   if(!SERVICE_KEY)throw new Error('stats_cache_not_configured');
   const params=new URLSearchParams();
@@ -106,12 +110,12 @@ export default async function handler(req,res){
     const member=await requireApprovedMember(req,res);
     if(!member)return;
     const q=String(req.query?.q||'').trim();
-    if(!q){res.statusCode=400;return res.json({ok:false,error:'query_required'});}
+    if(!q)return sendJson(res,400,{ok:false,error:'query_required'});
     const wanted=wantedSeason(q);
     let rows=(await cachedMasters()).filter(r=>/\.(xlsm|xlsx|xls)$/i.test(String(r.name||''))&&canAccessDrivePath(member.role,String(r.path||'')));
     if(wanted)rows=rows.filter(r=>seasonOf(`${r.name||''} ${r.path||''}`)===wanted);
     rows.sort((a,b)=>seasonOf(`${a.name} ${a.path}`).localeCompare(seasonOf(`${b.name} ${b.path}`)));
-    if(!rows.length){res.statusCode=503;return res.json({ok:false,error:'master_cache_not_ready'});}
+    if(!rows.length)return sendJson(res,503,{ok:false,error:'master_cache_not_ready'});
 
     const parsed=[];
     const names=[];
@@ -124,7 +128,7 @@ export default async function handler(req,res){
     }
     const nq=norm(q);
     const target=[...new Set(names)].filter(n=>norm(n).length>=2&&nq.includes(norm(n))).sort((a,b)=>norm(b).length-norm(a).length)[0]||'';
-    if(!target){res.statusCode=404;return res.json({ok:false,error:'player_not_found'});}
+    if(!target)return sendJson(res,404,{ok:false,error:'player_not_found'});
 
     const records=[];
     for(const {row,book} of parsed){
@@ -133,12 +137,11 @@ export default async function handler(req,res){
         if(rec)records.push(rec);
       }
     }
-    if(!records.length){res.statusCode=404;return res.json({ok:false,error:'stats_not_found',target});}
-    res.setHeader('Cache-Control','private, no-store');
-    return res.status(200).json({ok:true,target,records,seasons:[...new Set(records.map(r=>seasonOf(r.fileName)).filter(Boolean))]});
+    if(!records.length)return sendJson(res,404,{ok:false,error:'stats_not_found',target});
+    return sendJson(res,200,{ok:true,target,records,seasons:[...new Set(records.map(r=>seasonOf(r.fileName)).filter(Boolean))]});
   }catch(e){
     console.error('[MAGI stats server]',e?.message||e);
-    if(!res.headersSent)res.statusCode=500;
-    return res.end(JSON.stringify({ok:false,error:'stats_server_failed'}));
+    if(res.headersSent)return;
+    return sendJson(res,500,{ok:false,error:'stats_server_failed'});
   }
 }
