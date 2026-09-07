@@ -7,7 +7,8 @@ let cachedToken = null;
 let cachedUntil = 0;
 let cachedTree = null;
 let cachedTreeAt = 0;
-const TREE_CACHE_MS = 60_000;
+const TREE_CACHE_MS = 300_000;
+const TREE_SCAN_CONCURRENCY = 6;
 
 function readConfig() {
   let json = null;
@@ -55,7 +56,7 @@ async function accessToken() {
   const assertion = `${unsigned}.${signature}`;
 
   const body = new URLSearchParams({
-    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+    grant_type: 'urn:ietf:params:oauth-grant-type:jwt-bearer',
     assertion
   });
   const response = await fetch(TOKEN_URL, {
@@ -114,20 +115,35 @@ export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh 
   const out = [];
   const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: 'ROOT', depth: 0 }];
   const seen = new Set();
+
   while (queue.length && out.length < maxItems) {
-    const current = queue.shift();
-    if (!current || seen.has(current.id) || current.depth > maxDepth) continue;
-    seen.add(current.id);
-    const children = await listChildren(current.id);
-    for (const source of children) {
-      const item = { ...source, path: `${current.path}/${source.name}` };
-      out.push(item);
-      if (source.mimeType === 'application/vnd.google-apps.folder') {
-        queue.push({ id: source.id, path: item.path, depth: current.depth + 1 });
+    const batch = [];
+    while (queue.length && batch.length < TREE_SCAN_CONCURRENCY) {
+      const current = queue.shift();
+      if (!current || seen.has(current.id) || current.depth > maxDepth) continue;
+      seen.add(current.id);
+      batch.push(current);
+    }
+    if (!batch.length) continue;
+
+    const results = await Promise.all(batch.map(async current => ({
+      current,
+      children: await listChildren(current.id)
+    })));
+
+    for (const { current, children } of results) {
+      for (const source of children) {
+        const item = { ...source, path: `${current.path}/${source.name}` };
+        out.push(item);
+        if (source.mimeType === 'application/vnd.google-apps.folder') {
+          queue.push({ id: source.id, path: item.path, depth: current.depth + 1 });
+        }
+        if (out.length >= maxItems) break;
       }
       if (out.length >= maxItems) break;
     }
   }
+
   cachedTree = out;
   cachedTreeAt = Date.now();
   return out;
