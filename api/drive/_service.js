@@ -162,3 +162,37 @@ export async function getDriveFileMetadata(id) {
   }
   return data;
 }
+
+export async function fetchDriveFileContent(fileOrId, { signal } = {}) {
+  const source = typeof fileOrId === 'string' ? { id: fileOrId } : (fileOrId || {});
+  const meta = source.mimeType ? source : await getDriveFileMetadata(source.id);
+  const id = String(meta.id || source.id || '');
+  if (!id) throw new Error('missing_drive_file_id');
+
+  let url = '';
+  let contentType = 'application/octet-stream';
+  if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+    contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${encodeURIComponent(contentType)}`;
+  } else if (meta.mimeType === 'application/vnd.google-apps.document') {
+    contentType = 'text/plain; charset=utf-8';
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${encodeURIComponent('text/plain')}`;
+  } else {
+    url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`;
+  }
+
+  const response = await googleDriveFetch(url, signal ? { signal } : {});
+  if (!response.ok) {
+    const text = await response.text().catch(() => '');
+    const error = new Error('drive_file_fetch_failed');
+    error.status = response.status;
+    error.details = text.slice(0, 300);
+    throw error;
+  }
+  const buffer = Buffer.from(await response.arrayBuffer());
+  return {
+    buffer,
+    contentType: response.headers.get('content-type') || contentType,
+    meta
+  };
+}
