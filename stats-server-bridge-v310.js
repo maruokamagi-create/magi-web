@@ -140,27 +140,34 @@ async function hydrate(query){
 }
 
 let bridgeFn=null;
+let statsDirectFn=null;
 function install(){
  if(window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP!=='v298')return false;
  if(typeof window.runMagi!=='function'||!window.MAGI_STATS_REPORT_FN)return false;
+ if(!statsDirectFn||statsDirectFn.__magiStatsServerBridgeV311){
+  const candidate=window.MAGI_STATS_REPORT_FN;
+  if(!candidate||candidate.__magiStatsServerBridgeV311)return false;
+  statsDirectFn=candidate;
+ }
  if(bridgeFn&&window.runMagi===bridgeFn)return true;
- const original=window.runMagi;
+ const normalRun=window.runMagi;
+ const directStats=statsDirectFn;
  const wrapped=async function(...args){
   const query=(document.getElementById('q')?.value||'').trim();
   if(isLookup(query)){
    const status=document.getElementById('status');
    if(status)status.textContent='成績照会：全選手共通データを確認しています…';
    await hydrate(query);
+   return directStats.apply(this,args);
   }
-  return original.apply(this,args);
+  return normalRun.apply(this,args);
  };
  wrapped.__magiStatsServerBridgeV311=true;
  bridgeFn=wrapped;
  window.runMagi=wrapped;
- window.MAGI_STATS_REPORT_FN=wrapped;
  if(window.MAGI_NUMERIC_V298_RUN)window.MAGI_NUMERIC_V298_RUN=wrapped;
  window.MAGI_STATS_SERVER_BRIDGE_INSTALLED=true;
- window.MAGI_STATS_SERVER_BRIDGE='v311';
+ window.MAGI_STATS_SERVER_BRIDGE='v311-direct';
  return true;
 }
 let tries=0;
