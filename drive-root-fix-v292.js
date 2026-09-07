@@ -22,7 +22,8 @@
     input.title='MAGI_SYSTEM のルートフォルダ。MAGI-WEBが自動管理します。';
     window.MAGI_TEAM_ROOT_FOLDER_ID=ROOT_ID;
 
-    if(!autoReloaded&&typeof window.scanDrive==='function'){
+    const serverMode=Boolean(window.MAGI_SERVER_DRIVE_MODE)||String(window.MAGI_DRIVE_LAZY_MODE||'')==='v300';
+    if(!serverMode&&!autoReloaded&&typeof window.scanDrive==='function'){
       try{
         if(typeof driveToken!=='undefined'&&driveToken){
           autoReloaded=true;
