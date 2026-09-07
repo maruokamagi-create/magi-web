@@ -1,18 +1,18 @@
 import { requireApprovedMember } from './_access.js';
 import { canAccessDrivePath } from './_permissions.js';
-import { driveServiceConfigured, getDriveFileMetadata, googleDriveFetch, listMagiDriveTree } from './_service.js';
+import { getCachedDriveFile, putCachedDriveFile } from './_cache.js';
+import { driveServiceConfigured, fetchDriveFileContent, listMagiDriveTree } from './_service.js';
 
 const SAFE_ID = /^[A-Za-z0-9_-]{10,200}$/;
 const UPSTREAM_TIMEOUT_MS = 15000;
 
-async function driveFetchWithTimeout(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
-  try {
-    return await googleDriveFetch(url, { signal: controller.signal });
-  } finally {
-    clearTimeout(timer);
-  }
+function sendBuffer(res, buffer, contentType, cacheSource) {
+  res.statusCode = 200;
+  res.setHeader('Cache-Control', 'private, no-store');
+  res.setHeader('Content-Type', contentType || 'application/octet-stream');
+  res.setHeader('Content-Length', String(buffer.length));
+  res.setHeader('X-MAGI-Drive-Cache', cacheSource);
+  res.end(buffer);
 }
 
 export default async function handler(req, res) {
@@ -42,34 +42,22 @@ export default async function handler(req, res) {
       return res.end('Drive file access denied');
     }
 
-    const meta = await getDriveFileMetadata(id);
-    let url = '';
-    let contentType = 'application/octet-stream';
-    if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
-      contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
-      url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${encodeURIComponent(contentType)}`;
-    } else if (meta.mimeType === 'application/vnd.google-apps.document') {
-      contentType = 'text/plain; charset=utf-8';
-      url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${encodeURIComponent('text/plain')}`;
-    } else {
-      url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}?alt=media&supportsAllDrives=true`;
+    const cached = await getCachedDriveFile(indexed).catch(() => null);
+    if (cached?.buffer) return sendBuffer(res, cached.buffer, cached.contentType, 'HIT');
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
+    let fetched;
+    try {
+      fetched = await fetchDriveFileContent(indexed, { signal: controller.signal });
+    } finally {
+      clearTimeout(timer);
     }
 
-    const response = await driveFetchWithTimeout(url);
-    if (!response.ok) {
-      const text = await response.text().catch(() => '');
-      console.error('[MAGI server Drive file]', response.status, text.slice(0, 300));
-      res.statusCode = 502;
-      return res.end('Drive file fetch failed');
-    }
-
-    const buffer = Buffer.from(await response.arrayBuffer());
-    const upstreamType = response.headers.get('content-type');
-    res.statusCode = 200;
-    res.setHeader('Cache-Control', 'private, no-store');
-    res.setHeader('Content-Type', upstreamType || contentType);
-    res.setHeader('Content-Length', String(buffer.length));
-    res.end(buffer);
+    putCachedDriveFile(indexed, fetched.buffer, fetched.contentType).catch(error => {
+      console.warn('[MAGI server Drive cache]', indexed.name, error?.message || error);
+    });
+    return sendBuffer(res, fetched.buffer, fetched.contentType, 'MISS');
   } catch (error) {
     const timedOut = error?.name === 'AbortError';
     console.error('[MAGI server Drive file]', timedOut ? 'timeout' : (error?.message || error), error?.details || '');
