@@ -15,7 +15,7 @@ function apply(){
   window.MAGI_TEAM_ROOT_FOLDER_NAME=ROOT_NAME;
   const panel=document.querySelector('.drivePanel');
   const help=panel?.querySelector('.hubText');
-  if(help)help.textContent=ROOT_NAME+' のフォルダ構成を先に確認し、質問に必要な資料だけをその都度読み込みます。';
+  if(help)help.textContent=ROOT_NAME+' のフォルダ構成を確認し、対応するExcel・CSV・JSON・テキスト等の中身を自動で読み込みます。操作は不要です。';
 }
 
 apply();
