@@ -1,6 +1,6 @@
 import { requireApprovedMember } from './_access.js';
 import { canAccessDrivePath } from './_permissions.js';
-import { getCachedDriveFile, putCachedDriveFile } from './_cache.js';
+import { getCachedDriveFile, getCachedDriveFileById, putCachedDriveFile } from './_cache.js';
 import { driveServiceConfigured, fetchDriveFileContent, listMagiDriveTree } from './_service.js';
 
 const SAFE_ID = /^[A-Za-z0-9_-]{10,200}$/;
@@ -35,6 +35,20 @@ export default async function handler(req, res) {
       return res.end('Invalid file id');
     }
 
+    // Persistent cache is the primary read path. This avoids recursively
+    // scanning the whole Drive tree before returning a file that is already
+    // prepared on the server.
+    const directCached = await getCachedDriveFileById(id).catch(() => null);
+    if (directCached?.buffer) {
+      if (!canAccessDrivePath(member.role, directCached.path)) {
+        res.statusCode = 403;
+        return res.end('Drive file access denied');
+      }
+      return sendBuffer(res, directCached.buffer, directCached.contentType, 'HIT-PERSISTENT');
+    }
+
+    // Cache miss: resolve the file from the Drive catalogue, enforce path
+    // permissions, fetch it once, and populate the persistent cache.
     const tree = await listMagiDriveTree();
     const indexed = tree.find((file) => file?.id === id);
     if (!indexed || !canAccessDrivePath(member.role, indexed.path)) {
