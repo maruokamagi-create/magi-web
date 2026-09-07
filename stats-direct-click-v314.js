@@ -5,6 +5,8 @@ window.MAGI_STATS_DIRECT_CLICK_V314=true;
 
 function isLookup(q){
  q=String(q||'');
+ const pitch=/投手|ピッチャー|投球|登板|防御率|奪三振|与四死球|与四球|WHIP|被安打|自責点|セーブ|投球回|投球数|勝敗|勝利|敗北/i.test(q);
+ if(pitch)return false;
  const stat=/通算|打撃成績|成績|打率|出塁率|長打率|OPS|安打|本塁打|打点|盗塁|三振/i.test(q);
  const request=/出して|教えて|見せて|知りたい|表示|一覧|何|直近|最近|は[？?]?$/i.test(q);
  const decision=/審議|べき|どう思う|評価して|比較して|候補|打順|起用|固定|ベストオーダー|スタメン|クリーンナップ|中軸|主軸/i.test(q);
@@ -31,7 +33,7 @@ document.addEventListener('click',async event=>{
  const query=(document.getElementById('q')?.value||'').trim();
  if(!isLookup(query))return;
 
- // 成績照会は通常の3賢人 onclick に到達させない。
+ // 打撃成績照会だけは通常の3賢人 onclick に到達させない。投手照会は投手専用ルートへ渡す。
  event.preventDefault();
  event.stopPropagation();
  event.stopImmediatePropagation();
