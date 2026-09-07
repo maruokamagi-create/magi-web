@@ -14,21 +14,22 @@ function json(res, status, body) {
 }
 
 async function warmOne(file) {
+  const base = { id: String(file.id || ''), name: String(file.name || '') };
   const cached = await getCachedDriveFile(file).catch(() => null);
-  if (cached) return { ok: true, status: 'hit', name: file.name };
+  if (cached) return { ...base, ok: true, status: 'hit' };
 
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FILE_TIMEOUT_MS);
   try {
     const fetched = await fetchDriveFileContent(file, { signal: controller.signal });
     const stored = await putCachedDriveFile(file, fetched.buffer, fetched.contentType);
-    if (!stored.ok) return { ok: false, status: stored.reason || 'cache_store_failed', name: file.name };
-    return { ok: true, status: 'stored', name: file.name };
+    if (!stored.ok) return { ...base, ok: false, status: stored.reason || 'cache_store_failed' };
+    return { ...base, ok: true, status: 'stored' };
   } catch (error) {
     return {
+      ...base,
       ok: false,
-      status: error?.name === 'AbortError' ? 'timeout' : (error?.message || 'failed'),
-      name: file.name
+      status: error?.name === 'AbortError' ? 'timeout' : (error?.message || 'failed')
     };
   } finally {
     clearTimeout(timer);
@@ -66,7 +67,8 @@ export default async function handler(req, res) {
       hits: results.filter(x => x.ok && x.status === 'hit').length,
       stored: results.filter(x => x.ok && x.status === 'stored').length,
       failed: results.filter(x => !x.ok).length,
-      failures: results.filter(x => !x.ok).map(x => ({ name: x.name, reason: x.status }))
+      results,
+      failures: results.filter(x => !x.ok).map(x => ({ id: x.id, name: x.name, reason: x.status }))
     });
   } catch (error) {
     console.error('[MAGI Drive warm]', error?.message || error, error?.details || '');
