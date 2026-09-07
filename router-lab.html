@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>MAGI Question Router Lab</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:760px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 16px calc(30px + env(safe-area-inset-bottom))}h1{font-size:24px;margin:0 0 6px}.sub{color:#93aec6;font-size:13px;margin-bottom:18px}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:16px;margin-bottom:14px}.badge{display:inline-block;border:1px solid #3e6d90;border-radius:999px;padding:5px 10px;font-size:12px;color:#bfeeff;margin-bottom:10px}textarea{width:100%;min-height:130px;resize:vertical;background:#04131f;color:#fff;border:1px solid #315574;border-radius:14px;padding:14px;font-size:17px;line-height:1.6}button{appearance:none;border:0;border-radius:12px;padding:13px 16px;font-size:15px;font-weight:800;background:#eaf4ff;color:#07111f;cursor:pointer}button.secondary{background:#14334f;color:#eef7ff;border:1px solid #315574}.actions{display:flex;gap:10px;margin-top:12px;flex-wrap:wrap}.presets{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.presets button{font-size:12px;padding:8px 10px}.state{font-size:13px;color:#9fbbd4;margin-top:10px}.route{font-size:28px;font-weight:900;letter-spacing:.02em;margin:4px 0 12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.kv{background:#071827;border:1px solid #254866;border-radius:12px;padding:11px}.kv span{display:block;color:#87a5bf;font-size:11px;margin-bottom:4px}.kv b{font-size:14px;word-break:break-word}.clarify{margin-top:12px;padding:12px;border-radius:12px;background:#15233a;border:1px solid #5b5278}.clarify b{display:block;margin-bottom:5px}.raw{white-space:pre-wrap;word-break:break-word;background:#020b13;border-radius:12px;padding:12px;font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace;color:#a9c5db;max-height:320px;overflow:auto}@media(max-width:520px){.grid{grid-template-columns:1fr}.route{font-size:22px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MAGI Question Router Lab</h1>
+  <div class="sub">Gemini質問理解ルーター単体テスト。MAGI本体の実行処理には接続していません。</div>
+  <section class="card">
+    <div class="badge">ROUTER ONLY</div>
+    <textarea id="q">宮嵜 翔の通算投手成績を教えて</textarea>
+    <div class="actions"><button id="run">Geminiで判定</button><button class="secondary" id="clear">クリア</button></div>
+    <div class="presets" id="presets"></div>
+    <div class="state" id="state">質問の意味だけを判定します。成績表示や3賢人審議は実行しません。</div>
+  </section>
+  <section class="card" id="result" hidden>
+    <div class="badge">RESULT</div>
+    <div class="route" id="route"></div>
+    <div class="grid">
+      <div class="kv"><span>理解した依頼</span><b id="understood"></b></div>
+      <div class="kv"><span>確信度</span><b id="confidence"></b></div>
+      <div class="kv"><span>選手</span><b id="players"></b></div>
+      <div class="kv"><span>領域</span><b id="domains"></b></div>
+      <div class="kv"><span>期間</span><b id="timeScope"></b></div>
+      <div class="kv"><span>3賢人</span><b id="deliberation"></b></div>
+    </div>
+    <div class="clarify" id="clarifyBox" hidden><b>聞き返し</b><span id="clarification"></span></div>
+  </section>
+  <section class="card"><div class="badge">RAW JSON</div><div class="raw" id="raw">—</div></section>
+</div>
+<script>
+const PRESETS=[
+ '宮嵜 翔の通算投手成績を教えて',
+ '宮嵜 翔の成績を教えて',
+ '大野と陽翔ならどっちを4番にする？',
+ '陽翔どう？',
+ '昨日のあれどうだった？',
+ '大野と陽翔の通算打撃成績を比べて',
+ '8月号のTEAM REPORTを見せて',
+ 'asdfgh'
+];
+const $=id=>document.getElementById(id),q=$('q'),state=$('state'),raw=$('raw'),result=$('result');
+for(const text of PRESETS){const b=document.createElement('button');b.className='secondary';b.textContent=text;b.onclick=()=>{q.value=text;q.focus()};$('presets').appendChild(b)}
+$('clear').onclick=()=>{q.value='';result.hidden=true;raw.textContent='—';state.textContent='クリアしました。'};
+$('run').onclick=async()=>{
+ const question=q.value.trim();if(!question){state.textContent='質問を入力してください。';return}
+ const btn=$('run');btn.disabled=true;btn.textContent='判定中…';state.textContent='Geminiが質問の意味を確認しています…';
+ try{
+  const r=await fetch('/api/magi/health',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ROUTE_QUESTION',question})});
+  const data=await r.json();raw.textContent=JSON.stringify(data,null,2);
+  if(!r.ok||!data.ok)throw new Error(data.error||`HTTP ${r.status}`);
+  result.hidden=false;$('route').textContent=data.route||'—';$('understood').textContent=data.understoodRequest||'—';$('confidence').textContent=data.confidence||'—';$('players').textContent=(data.players||[]).join('・')||'—';$('domains').textContent=(data.domains||[]).join(' / ')||'—';$('timeScope').textContent=data.timeScope||'—';$('deliberation').textContent=data.needsDeliberation?'必要':'不要';
+  const show=!!data.needsClarification;$('clarifyBox').hidden=!show;$('clarification').textContent=data.clarificationQuestion||'';state.textContent='判定完了。本体処理は実行していません。';
+ }catch(e){result.hidden=true;state.textContent=`エラー: ${e.message||e}`}
+ finally{btn.disabled=false;btn.textContent='Geminiで判定'}
+};
+</script>
+</body>
+</html>
