@@ -9,13 +9,13 @@
   "theme_color": "#06111f",
   "icons": [
     {
-      "src": "/assets/app-icons/magi-official-large-20260907-192.png?v=large1",
+      "src": "/assets/app-icons/magi-official-large-20260907-v2-192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/assets/app-icons/magi-official-large-20260907-512.webp?v=large1",
+      "src": "/assets/app-icons/magi-official-large-20260907-v2-512.webp",
       "sizes": "512x512",
       "type": "image/webp",
       "purpose": "any"
