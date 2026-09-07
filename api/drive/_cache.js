@@ -49,15 +49,8 @@ export function cacheableDriveFile(file) {
   ].includes(mime) || /\.(csv|json|txt|xls|xlsx|xlsm)$/i.test(name);
 }
 
-export async function getCachedDriveFile(file) {
-  if (!driveCacheConfigured() || !file?.id) return null;
-  const params = new URLSearchParams();
-  params.set('file_id', `eq.${String(file.id)}`);
-  params.set('select', 'file_id,modified_time,name,mime_type,path,content_type,encoding,payload_base64,size_bytes,cached_at');
-  params.set('limit', '1');
-  const rows = await rest(params.toString());
-  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-  if (!row || String(row.modified_time || '') !== String(file.modifiedTime || '')) return null;
+function decodeCachedRow(row) {
+  if (!row) return null;
   try {
     const packed = Buffer.from(String(row.payload_base64 || ''), 'base64');
     const buffer = row.encoding === 'gzip-base64' ? zlib.gunzipSync(packed) : packed;
@@ -65,11 +58,34 @@ export async function getCachedDriveFile(file) {
       buffer,
       contentType: String(row.content_type || 'application/octet-stream'),
       cachedAt: row.cached_at || null,
-      sizeBytes: Number(row.size_bytes || buffer.length)
+      sizeBytes: Number(row.size_bytes || buffer.length),
+      fileId: String(row.file_id || ''),
+      name: String(row.name || ''),
+      mimeType: String(row.mime_type || ''),
+      path: String(row.path || ''),
+      modifiedTime: String(row.modified_time || '')
     };
   } catch (_) {
     return null;
   }
+}
+
+export async function getCachedDriveFileById(id) {
+  if (!driveCacheConfigured() || !id) return null;
+  const params = new URLSearchParams();
+  params.set('file_id', `eq.${String(id)}`);
+  params.set('select', 'file_id,modified_time,name,mime_type,path,content_type,encoding,payload_base64,size_bytes,cached_at');
+  params.set('limit', '1');
+  const rows = await rest(params.toString());
+  const row = Array.isArray(rows) && rows.length ? rows[0] : null;
+  return decodeCachedRow(row);
+}
+
+export async function getCachedDriveFile(file) {
+  if (!driveCacheConfigured() || !file?.id) return null;
+  const cached = await getCachedDriveFileById(file.id);
+  if (!cached || cached.modifiedTime !== String(file.modifiedTime || '')) return null;
+  return cached;
 }
 
 export async function putCachedDriveFile(file, buffer, contentType = 'application/octet-stream') {
