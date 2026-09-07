@@ -10,11 +10,11 @@ async function boot(){
   if(window.MAGI_CANDIDATE_PRIORITY!=='v220')await load('/evidence-candidate-priority-v212.js?v=224');
   if(window.MAGI_NUMERIC_EVIDENCE_GUARD!=='v220')await load('/numeric-evidence-guard-v220.js?v=224');
   await load('/stats-report-v260.js?v=271');
-  await load('/pitch-report-v253.js?v=267');
+  await load('/pitching-direct-report-v317.js?v=317');
   await load('/best-order-evidence-v268.js?v=270');
   await load('/best-order-report-v269.js?v=270');
   await load('/numeric-integrity-v298.js?v=298');
-  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v298';
+  window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP='v317';
 }
 boot();
 })();
