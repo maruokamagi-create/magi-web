@@ -1,6 +1,7 @@
 import crypto from 'node:crypto';
 
-export const MAGI_DRIVE_ROOT_ID = process.env.MAGI_DRIVE_ROOT_ID || '1rPtDYz8BgmP-YVGNfsHcKBNsxxTjxY9I';
+// Initial/common MAGI-WEB Drive scope: 20_TEAM_DATA_チームデータ
+export const MAGI_DRIVE_ROOT_ID = process.env.MAGI_TEAM_DATA_ROOT_ID || '1lIRTMRRMOE0lnIPAFmw9NrCDHSKf_8Hn';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
 let cachedToken = null;
@@ -113,7 +114,7 @@ export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh 
   if (!fresh && cachedTree && Date.now() - cachedTreeAt < TREE_CACHE_MS) return cachedTree;
 
   const out = [];
-  const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: 'ROOT', depth: 0 }];
+  const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: '20_TEAM_DATA_チームデータ', depth: 0 }];
   const seen = new Set();
 
   while (queue.length && out.length < maxItems) {
