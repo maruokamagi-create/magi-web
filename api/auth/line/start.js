@@ -17,5 +17,10 @@ export default async function handler(req, res) {
     nonce
   });
 
+  const ua = String(req.headers?.['user-agent'] || '');
+  const isIos = /iPhone|iPad|iPod/i.test(ua);
+  const isSafari = /Version\/[\d.]+.*Safari\//i.test(ua);
+  if (isIos && !isSafari) params.set('disable_auto_login', 'true');
+
   return redirect(res, `https://access.line.me/oauth2/v2.1/authorize?${params.toString()}`);
 }
