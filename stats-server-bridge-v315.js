@@ -136,14 +136,14 @@ function tableMeta(src,table){
   const bo=ix.battingOrder>=0?Number(String(r[ix.battingOrder]??'').trim()):NaN;
   if(date!==lastDate){lastDate=date;gameNo=1;lastBat=null;lastOpponent=opp}
   else{
-   const reset=Number.isFinite(bo)&&Number.isFinite(lastBat)&&bo<=1&&lastBat>=7;
-   const opponentReset=opp&&lastOpponent&&opp!==lastOpponent&&Number.isFinite(bo)&&bo<=1;
+   const reset=Number.isFinite(bo)&&Number.isFinite(lastBat)&&bo===1&&lastBat>=7;
+   const opponentReset=opp&&lastOpponent&&opp!==lastOpponent&&Number.isFinite(bo)&&bo===1;
    if(reset||opponentReset)gameNo++;
   }
   const key=`${src.season}|${date}|G${gameNo}`;
   rowGame.set(i,key);
   if(!games.has(key))games.set(key,{key,season:src.season,date,rank:dateRank(date),gameNo,src,rowIndex:i});
-  if(Number.isFinite(bo))lastBat=bo;
+  if(Number.isFinite(bo)&&bo>=1)lastBat=bo;
   if(opp)lastOpponent=opp;
  }
  return{src,table,cols,ix,rowGame,games:[...games.values()]};
