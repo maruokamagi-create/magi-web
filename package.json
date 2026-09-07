@@ -1,6 +1,7 @@
 {
   "private": true,
   "dependencies": {
-    "@vercel/functions": "3.9.5"
+    "@vercel/functions": "3.9.5",
+    "xlsx": "0.18.5"
   }
 }
