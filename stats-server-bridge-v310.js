@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.MAGI_STATS_SERVER_BRIDGE_V311)return;
-window.MAGI_STATS_SERVER_BRIDGE_V311=true;
+if(window.MAGI_STATS_SERVER_BRIDGE_V312)return;
+window.MAGI_STATS_SERVER_BRIDGE_V312=true;
 
 const FALLBACK_SOURCES=[
  {season:'2025-2026',id:'1mNRMN8ChOnDolOoIQ9kHCh2mGionaxai',name:'打撃詳細2025-2026.csv',path:''},
@@ -106,12 +106,34 @@ function makeRecord(src,master,columns,values,index,kind){
  const sheetName=kind==='detail'?'打撃詳細':'CSV';
  const rowValues=values.map(v=>String(v??''));
  return{
-  source:'drive',fileId:`magi-stats-v311-${src.season}-${kind}`,fileName,sheetName,rowNumber:index+2,
+  source:'drive',fileId:`magi-stats-v312-${src.season}-${kind}`,fileName,sheetName,rowNumber:index+2,
   columns:columns.slice(),values:rowValues,
   display:rowValues.map((v,i)=>v?`${columns[i]||`列${i+1}`}=${v}`:'').filter(Boolean).join(' | '),
   searchable:`${fileName} ${sheetName} ${columns.join(' ')} ${rowValues.join(' ')}`.toLowerCase(),
-  __magiStatsCompatV311:true,originalFileName:src.name,originalFileId:src.id
+  __magiStatsCompatV312:true,originalFileName:src.name,originalFileId:src.id
  };
+}
+function makeRispRecord(x){
+ const columns=['選手名','得点圏打率'],values=[String(x.target||''),String(x.rispAvg||'')];
+ return{
+  source:'drive',fileId:`magi-risp-v312-${x.season}`,fileName:String(x.fileName||masterName(x.season)),sheetName:'得点圏打率一覧',rowNumber:Number(x.rowNumber||1),
+  columns,values,display:`選手名=${values[0]} | 得点圏打率=${values[1]}`,
+  searchable:`${x.fileName||''} 得点圏打率一覧 ${values.join(' ')}`.toLowerCase(),
+  __magiStatsRispV312:true
+ };
+}
+async function hydrateRisp(query){
+ const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),10000);
+ try{
+  const r=await fetch(`/api/stats/risp?q=${encodeURIComponent(query)}`,{cache:'no-store',credentials:'same-origin',signal:controller.signal});
+  const data=await r.json().catch(()=>null);
+  if(!r.ok||!data?.ok||!Array.isArray(data.records))return 0;
+  dataRecords=dataRecords.filter(r=>!r?.__magiStatsRispV312);
+  for(const x of data.records)dataRecords.push(makeRispRecord(x));
+  window.MAGI_STATS_RISP_LAST={target:data.target||'',records:data.records};
+  return data.records.length;
+ }catch(e){console.warn('[MAGI RISP bridge]',e?.name==='AbortError'?'timeout':e?.message||e);return 0}
+ finally{clearTimeout(timer)}
 }
 async function hydrate(query){
  const wanted=explicitSeason(query),sources=detailSources().filter(s=>!wanted||s.season===wanted);
@@ -121,22 +143,23 @@ async function hydrate(query){
   try{
    const table=await fetchSource(src),hit=rowsForPlayer(query,table);
    if(hit)loaded.push({src,...hit});
-  }catch(e){console.warn('[MAGI stats v311]',src.name,e?.name==='AbortError'?'timeout':e?.message||e)}
+  }catch(e){console.warn('[MAGI stats v312]',src.name,e?.name==='AbortError'?'timeout':e?.message||e)}
  }
  if(!loaded.length)return false;
  try{
-  dataRecords=dataRecords.filter(r=>!r?.__magiStatsCompatV311&&!r?.__magiServerStatsV310);
+  dataRecords=dataRecords.filter(r=>!r?.__magiStatsCompatV311&&!r?.__magiServerStatsV310&&!r?.__magiStatsCompatV312&&!r?.__magiStatsRispV312);
   for(const hit of loaded){
    const master=masterName(hit.src.season);
-   const hasRaw=records().some(r=>r&&r.source==='drive'&&!r.__magiStatsCompatV311&&norm(r.fileName)===norm(hit.src.name));
+   const hasRaw=records().some(r=>r&&r.source==='drive'&&!r.__magiStatsCompatV311&&!r.__magiStatsCompatV312&&norm(r.fileName)===norm(hit.src.name));
    hit.rows.forEach((row,i)=>{
     dataRecords.push(makeRecord(hit.src,master,hit.columns,row,i,'detail'));
     if(!hasRaw)dataRecords.push(makeRecord(hit.src,master,hit.columns,row,i,'raw'));
    });
   }
-  window.MAGI_STATS_SERVER_LAST={target:loaded[0].target,seasons:loaded.map(x=>x.src.season),rows:loaded.reduce((n,x)=>n+x.rows.length,0),source:'server-cached-batting-detail-csv'};
+  await hydrateRisp(query);
+  window.MAGI_STATS_SERVER_LAST={target:loaded[0].target,seasons:loaded.map(x=>x.src.season),rows:loaded.reduce((n,x)=>n+x.rows.length,0),source:'server-cached-batting-detail-csv+master-risp'};
   return true;
- }catch(e){console.warn('[MAGI stats v311] inject',e?.message||e);return false}
+ }catch(e){console.warn('[MAGI stats v312] inject',e?.message||e);return false}
 }
 
 let bridgeFn=null;
@@ -144,9 +167,9 @@ let statsDirectFn=null;
 function install(){
  if(window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP!=='v298')return false;
  if(typeof window.runMagi!=='function'||!window.MAGI_STATS_REPORT_FN)return false;
- if(!statsDirectFn||statsDirectFn.__magiStatsServerBridgeV311){
+ if(!statsDirectFn||statsDirectFn.__magiStatsServerBridgeV311||statsDirectFn.__magiStatsServerBridgeV312){
   const candidate=window.MAGI_STATS_REPORT_FN;
-  if(!candidate||candidate.__magiStatsServerBridgeV311)return false;
+  if(!candidate||candidate.__magiStatsServerBridgeV311||candidate.__magiStatsServerBridgeV312)return false;
   statsDirectFn=candidate;
  }
  if(bridgeFn&&window.runMagi===bridgeFn)return true;
@@ -162,12 +185,12 @@ function install(){
   }
   return normalRun.apply(this,args);
  };
- wrapped.__magiStatsServerBridgeV311=true;
+ wrapped.__magiStatsServerBridgeV312=true;
  bridgeFn=wrapped;
  window.runMagi=wrapped;
  if(window.MAGI_NUMERIC_V298_RUN)window.MAGI_NUMERIC_V298_RUN=wrapped;
  window.MAGI_STATS_SERVER_BRIDGE_INSTALLED=true;
- window.MAGI_STATS_SERVER_BRIDGE='v311-direct';
+ window.MAGI_STATS_SERVER_BRIDGE='v312-direct-risp';
  return true;
 }
 let tries=0;
