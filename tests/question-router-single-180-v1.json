@@ -1,1 +1,30 @@
-PLACEHOLDER
+{
+  "suite": "MAGI Single-Turn Understanding Expansion v1",
+  "version": "single-180-v1",
+  "purpose": "既存89問を残したまま、追加180ケースで単発質問理解を別角度から検証する。最重要事項は、あらゆる質問を理解することと、その質問に的確に回答することである。",
+  "caseCount": 180,
+  "execution": {
+    "page": "/router-single-180-test.html",
+    "batchSizeRecommended": 20,
+    "authoritativeRouter": "/api/magi/_question-router-current.js",
+    "endpoint": "/api/magi/health",
+    "mode": "ROUTE_QUESTION"
+  },
+  "categories": {
+    "BATTING_LOOKUP": 30,
+    "PITCHING_LOOKUP": 30,
+    "PLAYER_COMPARISON": 20,
+    "DELIBERATION": 25,
+    "TEAM_LOOKUP": 15,
+    "DOCUMENT_SEARCH": 12,
+    "GENERAL_QUESTION": 12,
+    "CLARIFY": 30,
+    "UNSUPPORTED": 6
+  },
+  "notes": [
+    "既存router-stress-test.htmlの89問は削除・上書きしない。",
+    "180ケースの具体的な質問文と期待ルートはrouter-single-180-test.html内で決定論的に生成し、ページ自体を回帰資産として保存する。",
+    "危険誤作動（本来CLARIFYなのに実行ルートへ進む）を最優先で検出する。",
+    "不要聞き返し、誤ルート、選手・領域・期間の欠落もFAILとして扱う。"
+  ]
+}
