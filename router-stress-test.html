@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>MAGI Router Stress Test</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:980px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom))}h1{margin:0 0 6px;font-size:24px}.sub{color:#98afc3;font-size:13px;margin-bottom:14px}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin-bottom:12px}.notice{font-size:13px;line-height:1.7;color:#b5c8d9}.actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}button{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:800;background:#edf6ff;color:#07111f}button.secondary{background:#14334f;color:#eef7ff;border:1px solid #315574}button:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#071827;border:1px solid #284966;border-radius:12px;padding:10px}.stat span{display:block;color:#8da8bf;font-size:11px}.stat b{font-size:22px}.danger{color:#ff9898}.warn{color:#ffd58a}.ok{color:#8ce0b4}.progress{height:10px;background:#06101b;border-radius:99px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:#dbefff}.state{margin-top:8px;color:#a7bed2;font-size:12px}.filters{display:flex;gap:8px;flex-wrap:wrap}.filters button{padding:7px 9px;font-size:12px}.list{display:flex;flex-direction:column;gap:8px}.row{border:1px solid #274965;border-radius:12px;padding:10px;background:#071827}.row.fail{border-color:#8b4040}.row.pass{border-color:#2c6a4b}.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.id{font-size:11px;color:#89a4ba}.tag{font-size:10px;border:1px solid #355a78;border-radius:999px;padding:3px 7px;color:#b8d8ee}.verdict{font-weight:900;margin-left:auto}.q{font-size:15px;font-weight:750;margin:8px 0 6px}.meta{font-size:12px;color:#9db4c7;line-height:1.55}.detail{margin-top:6px;font-size:12px;white-space:pre-wrap;color:#bad0e1}.raw{white-space:pre-wrap;word-break:break-word;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:260px;overflow:auto;background:#020b13;border-radius:10px;padding:9px;margin-top:7px}.hidden{display:none}@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}.verdict{margin-left:0}.top{align-items:flex-start}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MAGI Router Stress Test</h1>
+  <div class="sub">質問理解の精度検証専用。MAGI本体の成績表示・審議は実行しません。</div>
+
+  <section class="card">
+    <div class="notice">
+      最重要指標は「危険誤作動」です。これは、本来は聞き返すべき質問を、曖昧なまま実行可能ルートへ進めたケースです。<br>
+      API側のレート制限を超えにくいよう、1件ごとに約3.6秒空けて実行します。全件は数分かかります。
+    </div>
+    <div class="actions">
+      <button id="runAll">全テスト開始</button>
+      <button id="runNext" class="secondary">次の10件</button>
+      <button id="stop" class="secondary">停止</button>
+      <button id="reset" class="secondary">結果リセット</button>
+    </div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="state" id="state">未実行</div>
+  </section>
+
+  <section class="card">
+    <div class="stats">
+      <div class="stat"><span>実行済み</span><b id="done">0</b></div>
+      <div class="stat"><span>PASS</span><b class="ok" id="pass">0</b></div>
+      <div class="stat"><span>危険誤作動</span><b class="danger" id="danger">0</b></div>
+      <div class="stat"><span>不要聞き返し</span><b class="warn" id="overclarify">0</b></div>
+    </div>
+    <div class="stats" style="margin-top:8px">
+      <div class="stat"><span>誤ルート</span><b id="wrongRoute">0</b></div>
+      <div class="stat"><span>その他FAIL</span><b id="otherFail">0</b></div>
+      <div class="stat"><span>総ケース数</span><b id="total">0</b></div>
+      <div class="stat"><span>正解率</span><b id="accuracy">—</b></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="filters" id="filters"></div>
+  </section>
+
+  <section class="card">
+    <div class="list" id="list"></div>
+  </section>
+</div>
+<script>
+const CASES=[
+ {id:'D01',cat:'明確/打撃',q:'宮嵜 翔の通算打撃成績を見せて',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'BATTING',time:'CAREER'}},
+ {id:'D02',cat:'明確/投手',q:'宮嵜 翔の通算投手成績を教えて',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'PITCHING',time:'CAREER'}},
+ {id:'D03',cat:'明確/打撃',q:'大野 竜暉のOPSを知りたい',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'BATTING'}},
+ {id:'D04',cat:'明確/投手',q:'大久保 陽翔の防御率と奪三振を見たい',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'大久保 陽翔',domain:'PITCHING'}},
+ {id:'D05',cat:'明確/打撃',q:'宮村 龍の2025-2026の打撃成績',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'宮村 龍',domain:'BATTING',time:'SPECIFIC_SEASON'}},
+ {id:'D06',cat:'明確/投手',q:'橋向 結都の直近6試合の投手成績',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'橋向 結都',domain:'PITCHING',time:'RECENT_6'}},
+ {id:'D07',cat:'明確/比較',q:'大野 竜暉と大久保 陽翔の通算打撃成績を数字だけ比べて',exp:{route:'PLAYER_COMPARISON',clarify:false,safe:true,players:['大野 竜暉','大久保 陽翔'],domain:'BATTING'}},
+ {id:'D08',cat:'明確/審議',q:'大野 竜暉をクローザー固定すべきか審議して',exp:{route:'DELIBERATION',clarify:false,safe:true,player:'大野 竜暉'}},
+ {id:'D09',cat:'明確/審議',q:'大久保 陽翔と大野 竜暉なら4番はどっちがいい？',exp:{route:'DELIBERATION',clarify:false,safe:true,players:['大久保 陽翔','大野 竜暉']}},
+ {id:'D10',cat:'明確/資料',q:'8月号のTEAM REPORTを見せて',exp:{route:'DOCUMENT_SEARCH',clarify:false,safe:true}},
+ {id:'D11',cat:'明確/チーム',q:'チームの通算勝敗を教えて',exp:{route:'TEAM_LOOKUP',clarify:false,safe:true}},
+ {id:'D12',cat:'明確/一般',q:'MAGIはどういう仕組み？',exp:{route:'GENERAL_QUESTION',clarify:false,safe:true}},
+
+ {id:'A01',cat:'曖昧/領域',q:'宮嵜 翔の成績を教えて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A02',cat:'曖昧/対象',q:'投手成績を教えて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A03',cat:'曖昧/意味',q:'陽翔どう？',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A04',cat:'曖昧/文脈',q:'昨日のあれどうだった？',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A05',cat:'曖昧/同姓',q:'大久保の成績見せて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A06',cat:'曖昧/比較',q:'大野と陽翔を比べて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A07',cat:'曖昧/対象',q:'今季の成績見せて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A08',cat:'曖昧/依頼',q:'宮嵜 翔について教えて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A09',cat:'曖昧/複合',q:'陽翔の成績と起用どう？',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A10',cat:'曖昧/資料',q:'この前のレポート見せて',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A11',cat:'曖昧/短文',q:'それで？',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'A12',cat:'曖昧/意味不明',q:'あれのやつどうなん',exp:{route:'CLARIFY',clarify:true,safe:false}},
+
+ {id:'T01',cat:'表記揺れ',q:'宮崎翔の投手成績を教えて',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'PITCHING'}},
+ {id:'T02',cat:'表記揺れ',q:'宮嵜翔の打撃成績',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'BATTING'}},
+ {id:'T03',cat:'表記揺れ',q:'大野竜暉の通算打撃',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'BATTING',time:'CAREER'}},
+ {id:'T04',cat:'表記揺れ',q:'大久保陽翔のぴっちゃー成績',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'大久保 陽翔',domain:'PITCHING'}},
+ {id:'T05',cat:'表記揺れ',q:'みやざきしょうの投手成績',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'T06',cat:'表記揺れ',q:'おおののOPS',exp:{route:'CLARIFY',clarify:true,safe:false}},
+
+ {id:'C01',cat:'会話/補完',ctx:[{role:'user',text:'宮嵜 翔の成績を教えて'},{role:'assistant',text:'打撃成績と投手成績、どちらを見ますか？'}],q:'投手',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'PITCHING'}},
+ {id:'C02',cat:'会話/補完',ctx:[{role:'user',text:'宮嵜 翔の成績を教えて'},{role:'assistant',text:'打撃成績と投手成績、どちらを見ますか？'}],q:'打撃',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'BATTING'}},
+ {id:'C03',cat:'会話/補完',ctx:[{role:'user',text:'陽翔どう？'},{role:'assistant',text:'大久保 陽翔について、成績を見たいですか、それとも起用や状態を評価してほしいですか？'}],q:'評価して',exp:{route:'DELIBERATION',clarify:false,safe:true,player:'大久保 陽翔'}},
+ {id:'C04',cat:'会話/継続確認',ctx:[{role:'user',text:'陽翔どう？'},{role:'assistant',text:'大久保 陽翔について、成績を見たいですか、それとも起用や状態を評価してほしいですか？'}],q:'成績',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'C05',cat:'会話/補完',ctx:[{role:'user',text:'宮嵜 翔の投手成績を見たい'},{role:'assistant',text:'どの期間を見ますか？'}],q:'通算で',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'PITCHING',time:'CAREER'}},
+ {id:'C06',cat:'会話/訂正',ctx:[{role:'user',text:'大野 竜暉の打撃成績を見せて'},{role:'assistant',text:'大野 竜暉の打撃成績ですね。'}],q:'いや投手の方',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'PITCHING'}},
+ {id:'C07',cat:'会話/指示語',ctx:[{role:'user',text:'大野 竜暉の通算投手成績を教えて'},{role:'assistant',text:'大野 竜暉の通算投手成績を確認します。'}],q:'それでお願い',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'PITCHING',time:'CAREER'}},
+ {id:'C08',cat:'会話/話題変更',ctx:[{role:'user',text:'宮嵜 翔の投手成績'},{role:'assistant',text:'宮嵜 翔の投手成績ですね。'}],q:'やっぱり宮村 龍の打撃成績にして',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'宮村 龍',domain:'BATTING'}},
+ {id:'C09',cat:'会話/不足継続',ctx:[{role:'user',text:'宮嵜 翔の成績'},{role:'assistant',text:'打撃と投手どちらですか？'}],q:'どっちでも',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'C10',cat:'会話/矛盾',ctx:[{role:'user',text:'大野 竜暉の投手成績'},{role:'assistant',text:'投手成績ですね。'}],q:'打撃じゃなく投手。いややっぱ打撃',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'BATTING'}},
+
+ {id:'J01',cat:'照会vs審議',q:'大野 竜暉と大久保 陽翔、打率が高いのはどっち？',exp:{route:'PLAYER_COMPARISON',clarify:false,safe:true,players:['大野 竜暉','大久保 陽翔'],domain:'BATTING'}},
+ {id:'J02',cat:'照会vs審議',q:'大野 竜暉と大久保 陽翔、4番に向くのはどっち？',exp:{route:'DELIBERATION',clarify:false,safe:true,players:['大野 竜暉','大久保 陽翔']}},
+ {id:'J03',cat:'照会vs審議',q:'陽翔の防御率は？',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'大久保 陽翔',domain:'PITCHING'}},
+ {id:'J04',cat:'照会vs審議',q:'陽翔を次の試合で先発させるべき？',exp:{route:'DELIBERATION',clarify:false,safe:true,player:'大久保 陽翔'}},
+ {id:'J05',cat:'照会vs審議',q:'大野 竜暉の打率とOPSを出して。その数字から4番にすべきかも判断して',exp:{route:'DELIBERATION',clarify:false,safe:true,player:'大野 竜暉'}},
+ {id:'J06',cat:'照会vs審議',q:'橋向 結都の投球回と防御率だけ教えて。評価はいらない',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'橋向 結都',domain:'PITCHING'}},
+
+ {id:'S01',cat:'期間',q:'宮嵜 翔の昨シーズンの投手成績',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'PITCHING',time:'PREVIOUS_SEASON'}},
+ {id:'S02',cat:'期間',q:'大野 竜暉の今季の打撃成績',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'BATTING',time:'CURRENT_SEASON'}},
+ {id:'S03',cat:'期間',q:'大久保 陽翔の2026-2027投手成績',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'大久保 陽翔',domain:'PITCHING',time:'SPECIFIC_SEASON'}},
+ {id:'S04',cat:'期間',q:'宮嵜 翔の最近の投手成績',exp:{route:'PITCHING_LOOKUP',clarify:false,safe:true,player:'宮嵜 翔',domain:'PITCHING'}},
+ {id:'S05',cat:'期間',q:'大野 竜暉の直近6試合の打撃',exp:{route:'BATTING_LOOKUP',clarify:false,safe:true,player:'大野 竜暉',domain:'BATTING',time:'RECENT_6'}},
+
+ {id:'X01',cat:'ノイズ',q:'asdfgh',exp:{clarify:true,safe:false}},
+ {id:'X02',cat:'ノイズ',q:'？？？？',exp:{clarify:true,safe:false}},
+ {id:'X03',cat:'ノイズ',q:'なんかあのほら例のやつ',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'X04',cat:'ノイズ',q:'大野のあれをあれして',exp:{route:'CLARIFY',clarify:true,safe:false}},
+ {id:'X05',cat:'対象外',q:'今日の為替レートを教えて',exp:{route:'UNSUPPORTED',clarify:false,safe:false}},
+ {id:'X06',cat:'一般',q:'送りバントのメリットとデメリットは？',exp:{route:'GENERAL_QUESTION',clarify:false,safe:true}},
+ {id:'X07',cat:'資料',q:'近藤先生への提言のファイルを探して',exp:{route:'DOCUMENT_SEARCH',clarify:false,safe:true}},
+ {id:'X08',cat:'チーム',q:'今季チーム何勝何敗？',exp:{route:'TEAM_LOOKUP',clarify:false,safe:true,time:'CURRENT_SEASON'}}
+];
+
+const $=id=>document.getElementById(id), results=new Map();
+let running=false, cursor=0, activeFilter='全部';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+$('total').textContent=CASES.length;
+
+function hasAll(arr, expected){return (expected||[]).every(x=>(arr||[]).includes(x))}
+function evaluate(c,d){
+ const e=c.exp||{}, reasons=[];
+ if(e.route && d.route!==e.route) reasons.push(`route expected=${e.route} actual=${d.route}`);
+ if(typeof e.clarify==='boolean' && !!d.needsClarification!==e.clarify) reasons.push(`clarify expected=${e.clarify} actual=${!!d.needsClarification}`);
+ if(typeof e.safe==='boolean' && !!d.safeToExecute!==e.safe) reasons.push(`safe expected=${e.safe} actual=${!!d.safeToExecute}`);
+ if(e.player && !(d.players||[]).includes(e.player)) reasons.push(`player missing=${e.player}`);
+ if(e.players && !hasAll(d.players,e.players)) reasons.push(`players missing=${e.players.filter(x=>!(d.players||[]).includes(x)).join(',')}`);
+ if(e.domain && !(d.domains||[]).includes(e.domain)) reasons.push(`domain missing=${e.domain}`);
+ if(e.time && d.timeScope!==e.time) reasons.push(`time expected=${e.time} actual=${d.timeScope}`);
+ const dangerous=e.clarify===true && d.route!=='CLARIFY' && d.safeToExecute===true;
+ const overclarify=e.clarify===false && d.route==='CLARIFY';
+ const wrongRoute=!!e.route && e.route!=='CLARIFY' && d.route!==e.route && !overclarify;
+ return {pass:reasons.length===0,dangerous,overclarify,wrongRoute,reasons};
+}
+
+async function runCase(c){
+ const start=performance.now();
+ try{
+  const r=await fetch('/api/magi/health',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ROUTE_QUESTION',question:c.q,context:c.ctx||[]})});
+  const d=await r.json();
+  if(!r.ok||!d.ok) throw new Error(d.error||`HTTP ${r.status}`);
+  const ev=evaluate(c,d);results.set(c.id,{case:c,data:d,ev,ms:Math.round(performance.now()-start)});
+ }catch(err){results.set(c.id,{case:c,error:String(err?.message||err),ev:{pass:false,dangerous:false,overclarify:false,wrongRoute:false,reasons:[String(err?.message||err)]},ms:Math.round(performance.now()-start)});}
+ render();
+}
+
+async function runRange(from,to){
+ if(running)return;running=true;toggleButtons();
+ for(let i=from;i<to&&i<CASES.length;i++){
+  if(!running)break;cursor=i;$('state').textContent=`${i+1}/${CASES.length} 実行中: ${CASES[i].id} ${CASES[i].q}`;
+  await runCase(CASES[i]);cursor=i+1;updateProgress();
+  if(i<to-1&&i<CASES.length-1&&running)await sleep(3600);
+ }
+ running=false;toggleButtons();$('state').textContent=cursor>=CASES.length?'全テスト終了':'停止中 / 次は '+(cursor+1)+'件目';
+}
+$('runAll').onclick=()=>runRange(cursor,CASES.length);
+$('runNext').onclick=()=>runRange(cursor,Math.min(cursor+10,CASES.length));
+$('stop').onclick=()=>{running=false;$('state').textContent='停止要求を受け付けました';toggleButtons()};
+$('reset').onclick=()=>{if(running)return;results.clear();cursor=0;render();updateProgress();$('state').textContent='結果をリセットしました'};
+function toggleButtons(){$('runAll').disabled=running;$('runNext').disabled=running;$('reset').disabled=running;$('stop').disabled=!running}
+
+function updateProgress(){$('bar').style.width=`${Math.round((results.size/CASES.length)*100)}%`}
+function summary(){
+ let pass=0,danger=0,over=0,wrong=0,other=0;
+ for(const r of results.values()){
+  if(r.ev.pass)pass++;
+  else if(r.ev.dangerous)danger++;
+  else if(r.ev.overclarify)over++;
+  else if(r.ev.wrongRoute)wrong++;
+  else other++;
+ }
+ $('done').textContent=results.size;$('pass').textContent=pass;$('danger').textContent=danger;$('overclarify').textContent=over;$('wrongRoute').textContent=wrong;$('otherFail').textContent=other;$('accuracy').textContent=results.size?`${Math.round(pass/results.size*1000)/10}%`:'—';
+}
+function makeFilters(){
+ const cats=['全部','FAILのみ',...new Set(CASES.map(c=>c.cat))];$('filters').innerHTML='';
+ for(const cat of cats){const b=document.createElement('button');b.className=cat===activeFilter?'':'secondary';b.textContent=cat;b.onclick=()=>{activeFilter=cat;makeFilters();renderList()};$('filters').appendChild(b)}
+}
+function visible(c,r){if(activeFilter==='全部')return true;if(activeFilter==='FAILのみ')return r&&!r.ev.pass;return c.cat===activeFilter}
+function renderList(){
+ const list=$('list');list.innerHTML='';
+ for(const c of CASES){const r=results.get(c.id);if(!visible(c,r))continue;
+  const row=document.createElement('div');row.className='row '+(r?(r.ev.pass?'pass':'fail'):'');
+  const verdict=!r?'未実行':r.ev.pass?'PASS':r.ev.dangerous?'危険誤作動':r.ev.overclarify?'不要聞き返し':r.ev.wrongRoute?'誤ルート':'FAIL';
+  const actual=r?.data?`${r.data.route} / ${r.data.confidence||'—'} / safe=${!!r.data.safeToExecute}`:(r?.error?`ERROR ${r.error}`:'—');
+  row.innerHTML=`<div class="top"><span class="id">${c.id}</span><span class="tag">${c.cat}</span><span class="verdict">${verdict}</span></div><div class="q"></div><div class="meta">期待: ${c.exp.route||'任意'} / clarify=${c.exp.clarify??'任意'} / safe=${c.exp.safe??'任意'}<br>実際: ${actual}</div><div class="detail"></div>`;
+  row.querySelector('.q').textContent=c.q;
+  const detail=row.querySelector('.detail');
+  if(r&&!r.ev.pass)detail.textContent=r.ev.reasons.join('\n');
+  if(r?.data){const raw=document.createElement('details');raw.innerHTML='<summary>JSON</summary>';const pre=document.createElement('div');pre.className='raw';pre.textContent=JSON.stringify(r.data,null,2);raw.appendChild(pre);row.appendChild(raw)}
+  list.appendChild(row);
+ }
+}
+function render(){summary();renderList();updateProgress()}
+makeFilters();render();toggleButtons();
+</script>
+</body>
+</html>
