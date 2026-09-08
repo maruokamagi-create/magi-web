@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-const ROUTER_VERSION = 'v2-accuracy-first';
+const ROUTER_VERSION = 'v3-accuracy-grounded';
 const ROUTES = Object.freeze([
   'BATTING_LOOKUP',
   'PITCHING_LOOKUP',
@@ -18,6 +18,20 @@ const CONFIDENCE_SET = new Set(['HIGH','MEDIUM','LOW']);
 const DOMAIN_SET = new Set(['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM','DOCUMENTS','OTHER']);
 const TIME_SCOPE_SET = new Set(['CAREER','CURRENT_SEASON','PREVIOUS_SEASON','SPECIFIC_SEASON','RECENT_6','RECENT','UNSPECIFIED']);
 const EXECUTION_ROUTES = new Set(['BATTING_LOOKUP','PITCHING_LOOKUP','PLAYER_COMPARISON','TEAM_LOOKUP','DOCUMENT_SEARCH','DELIBERATION']);
+const PLAYER_SENSITIVE_ROUTES = new Set(['BATTING_LOOKUP','PITCHING_LOOKUP','PLAYER_COMPARISON','DELIBERATION']);
+
+const uniqueNamePartIndex = (() => {
+  const map = new Map();
+  for (const official of OFFICIAL_PLAYER_REGISTRY) {
+    const [surname, given] = official.split(' ');
+    for (const part of [surname, given]) {
+      if (!part || part.length < 2) continue;
+      if (!map.has(part)) map.set(part, []);
+      map.get(part).push(official);
+    }
+  }
+  return map;
+})();
 
 const ROUTER_SYSTEM = `
 あなたは《MAGI》質問理解ルーター。役割は回答ではなく、ユーザーの自然言語質問の意味を理解し、次に実行すべき処理を1つだけ決めること。
@@ -38,7 +52,9 @@ const ROUTER_SYSTEM = `
 - 「投手成績」は PITCHING_LOOKUP。「打撃成績」は BATTING_LOOKUP。
 - 「成績」だけで打撃/投手を一意に確定できない場合は、勝手に打撃へ寄せず CLARIFY。
 - 「昨日のあれ」「さっきのやつ」「これどう？」等の指示語は suppliedContext だけで一意に解決できるときだけ解決する。解決不能なら CLARIFY。
-- 選手名は officialPlayers を参照する。表記揺れ・軽微な誤字・一意な呼び方は公式名へ正規化してよいが、複数候補があるなら CLARIFY。
+- 選手名は officialPlayers を参照する。正式名・登録済み表記揺れ・会話で確定済みの名前は公式名へ正規化してよい。
+- ただし、ひらがな・音の類似・推測だけから漢字の公式選手名を勝手に確定してはいけない。候補が有力でも、名前の根拠が不足するなら CLARIFY。
+- 姓または名だけの呼称は、その表記が登録選手の中で一意に対応するときだけ補完してよい。複数候補なら CLARIFY。
 - 3賢人審議は route=DELIBERATION のときだけ必要。照会や資料検索では needsDeliberation=false。
 - ユーザーへの最終回答や成績数値は作らない。ここでは質問理解だけ行う。
 
@@ -66,6 +82,9 @@ UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで�
 「大野 竜暉と大久保 陽翔の通算打撃成績を比べて」=> PLAYER_COMPARISON / BATTING / HIGH / needsDeliberation=false
 「大野 竜暉と大久保 陽翔ならどっちを4番にする？」=> DELIBERATION / LINEUP / HIGH / needsDeliberation=true
 「大野 竜暉をクローザー固定すべき？」=> DELIBERATION / PITCHING+TACTICS / HIGH / needsDeliberation=true
+「陽翔の防御率は？」=> PITCHING_LOOKUP / 大久保 陽翔 / HIGH（登録選手中で「陽翔」が一意）
+「陽翔を次の試合で先発させるべき？」=> DELIBERATION / 大久保 陽翔 / HIGH
+「みやざきしょうの投手成績」=> 名前の漢字を音だけで確定せず CLARIFY
 「陽翔どう？」=> CLARIFY
 「昨日のあれどうだった？」=> suppliedContextで一意に解決できなければ CLARIFY
 「チームの通算勝敗を教えて」=> TEAM_LOOKUP / HIGH
@@ -167,19 +186,35 @@ function normalizeResult(raw) {
   };
 }
 
-function firstOfficialPlayerInText(text) {
-  const source = canonicalizeKnownNameText(String(text || ''));
-  const found = OFFICIAL_PLAYER_REGISTRY.filter(name => source.includes(name));
-  return found.length === 1 ? found[0] : null;
+function deterministicPlayersInText(value) {
+  const raw = String(value || '');
+  const canonical = canonicalizeKnownNameText(raw);
+  const found = new Set();
+
+  for (const official of OFFICIAL_PLAYER_REGISTRY) {
+    if (canonical.includes(official)) found.add(official);
+  }
+  for (const [part, officials] of uniqueNamePartIndex.entries()) {
+    if (officials.length === 1 && raw.includes(part)) found.add(officials[0]);
+  }
+  return [...found];
+}
+
+function maybeResolveUniquePlayerFromQuestion(result, rawQuestion) {
+  if (result.players.length || !['BATTING_LOOKUP','PITCHING_LOOKUP','DELIBERATION'].includes(result.modelRoute)) return result;
+  const candidates = deterministicPlayersInText(rawQuestion);
+  if (candidates.length === 1) result.players = [candidates[0]];
+  return result;
 }
 
 function maybeCarryUniquePlayerFromContext(result, suppliedContext) {
-  if (result.players.length || !['BATTING_LOOKUP','PITCHING_LOOKUP'].includes(result.modelRoute)) return result;
+  if (result.players.length || !['BATTING_LOOKUP','PITCHING_LOOKUP','DELIBERATION'].includes(result.modelRoute)) return result;
   const recent = [...suppliedContext].reverse();
   const candidates = [];
   for (const item of recent) {
-    const p = firstOfficialPlayerInText(item?.text);
-    if (p && !candidates.includes(p)) candidates.push(p);
+    for (const p of deterministicPlayersInText(item?.text)) {
+      if (!candidates.includes(p)) candidates.push(p);
+    }
     if (candidates.length > 1) break;
   }
   if (candidates.length === 1) {
@@ -190,7 +225,19 @@ function maybeCarryUniquePlayerFromContext(result, suppliedContext) {
   return result;
 }
 
+function groundedPlayers(rawQuestion, suppliedContext) {
+  const grounded = new Set(deterministicPlayersInText(rawQuestion));
+  for (const item of suppliedContext) {
+    for (const player of deterministicPlayersInText(item?.text)) grounded.add(player);
+  }
+  return grounded;
+}
+
 function defaultClarification(result, issues) {
+  if (issues.includes('PLAYER_NOT_GROUNDED')) {
+    if (result.ungroundedPlayers?.length === 1) return `「${result.ungroundedPlayers[0]}」のことですか？`;
+    return '選手名の解釈を確認したいので、対象の選手名をもう少し具体的に教えてください。';
+  }
   if (issues.includes('PLAYER_REQUIRED')) {
     return result.modelRoute === 'PITCHING_LOOKUP' ? '誰の投手成績を確認しますか？' : '誰の打撃成績を確認しますか？';
   }
@@ -204,14 +251,23 @@ function defaultClarification(result, issues) {
   return '質問の対象や知りたい内容を、もう少し具体的に教えてください。';
 }
 
-function validateAndGate(result, suppliedContext) {
+function validateAndGate(result, suppliedContext, rawQuestion) {
   const issues = [];
+  const grounded = groundedPlayers(rawQuestion, suppliedContext);
 
   if (EXECUTION_ROUTES.has(result.modelRoute) && result.confidence !== 'HIGH') issues.push('CONFIDENCE_NOT_HIGH');
   if (result.unresolvedEntities.length) issues.push('UNRESOLVED_ENTITY');
   if (result.ambiguities.length) issues.push('AMBIGUITY_REMAINS');
   if (result.contextRequired && !result.contextReferences.length) issues.push('CONTEXT_NOT_RESOLVED');
   if (result.timeScope === 'SPECIFIC_SEASON' && !result.specificSeason) issues.push('SPECIFIC_SEASON_REQUIRED');
+
+  if (PLAYER_SENSITIVE_ROUTES.has(result.modelRoute) && result.players.length) {
+    const ungrounded = result.players.filter(player => !grounded.has(player));
+    if (ungrounded.length) {
+      result.ungroundedPlayers = ungrounded;
+      issues.push('PLAYER_NOT_GROUNDED');
+    }
+  }
 
   if (result.modelRoute === 'BATTING_LOOKUP') {
     if (!result.players.length) issues.push('PLAYER_REQUIRED');
@@ -231,7 +287,7 @@ function validateAndGate(result, suppliedContext) {
     result.route = 'CLARIFY';
     result.needsClarification = true;
     result.needsDeliberation = false;
-    if (!result.clarificationQuestion) result.clarificationQuestion = defaultClarification(result, uniqueIssues);
+    if (!result.clarificationQuestion || uniqueIssues.includes('PLAYER_NOT_GROUNDED')) result.clarificationQuestion = defaultClarification(result, uniqueIssues);
   } else {
     result.route = result.modelRoute;
     result.needsClarification = false;
@@ -240,6 +296,7 @@ function validateAndGate(result, suppliedContext) {
   }
 
   result.validationIssues = uniqueIssues;
+  result.groundedPlayers = [...grounded];
   result.safetyStatus = result.route === 'CLARIFY' ? 'NEEDS_CLARIFICATION' : result.route === 'UNSUPPORTED' ? 'UNSUPPORTED' : 'READY';
   result.safeToExecute = result.safetyStatus === 'READY';
   result.contextTurnCount = suppliedContext.length;
@@ -247,7 +304,8 @@ function validateAndGate(result, suppliedContext) {
 }
 
 export async function routeQuestion(questionValue, contextValue = []) {
-  const question = canonicalizeKnownNameText(cleanText(questionValue, 4000));
+  const rawQuestion = cleanText(questionValue, 4000);
+  const question = canonicalizeKnownNameText(rawQuestion);
   if (!question) throw new Error('question is required');
   const suppliedContext = normalizeContext(contextValue);
   const raw = await callGemini({
@@ -257,11 +315,14 @@ export async function routeQuestion(questionValue, contextValue = []) {
       suppliedContext,
       officialPlayers: OFFICIAL_PLAYER_REGISTRY,
       mode: 'ACCURACY_FIRST',
-      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. Otherwise choose CLARIFY.'
+      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
     },
     responseSchema
   });
-  const normalized = maybeCarryUniquePlayerFromContext(normalizeResult(raw), suppliedContext);
-  const gated = validateAndGate(normalized, suppliedContext);
+  const normalized = maybeCarryUniquePlayerFromContext(
+    maybeResolveUniquePlayerFromQuestion(normalizeResult(raw), rawQuestion),
+    suppliedContext
+  );
+  const gated = validateAndGate(normalized, suppliedContext, rawQuestion);
   return { routerVersion: ROUTER_VERSION, ...gated };
 }
