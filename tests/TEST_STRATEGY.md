@@ -190,7 +190,13 @@ MAGI-WEB本体と同じ処理経路で、質問から最終回答まで通す。
 
 ## 実装上の原則
 
-現在の質問ルーターテスト経路は `api/magi/health.js` から `api/magi/_question-router.js` を使用する。
-テスト対象と実装対象の取り違えを防ぐため、テスト画面では実際に返された `routerVersion` を確認できる状態にする。
+現在の質問ルーターテスト経路は `api/magi/health.js` から **`api/magi/_question-router-current.js`** を正式入口として使用する。
+その内部で既存の `api/magi/_question-router.js` を基礎ルーターとして使用し、一般化した曖昧性ガードを適用する。
+
+2026-09-08 時点のテスト用 `routerVersion` は **`v9-understanding-guard`**。
+
+`api/magi/_question-router-v2.js` は現在のブラウザテスト経路の正本ではない。
+
+テスト対象と実装対象の取り違えを防ぐため、各テスト実行ではレスポンスの `routerVersion` を記録する。
 
 MAGI-WEB本体への標準接続は、質問理解テストだけでなく回答品質テストまで通してから行う。
