@@ -8,11 +8,18 @@ function detectOutputFormat(questionValue) {
 }
 
 function stripOutputFormatModifier(questionValue) {
-  return String(questionValue || '')
+  let q = String(questionValue || '')
     .replace(/(?:PDF|ＰＤＦ)(?:形式)?(?:にして|化して|で出して|で見せて|で保存して|で作って|でお願い|で表示して|で出力して|で)?/gi, ' ')
     .replace(/(?:PDF|ＰＤＦ)(?:形式)?/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  // 「打撃成績をPDFで」のような文からPDF指定だけを外すと、
+  // 「打撃成績を」のように目的語助詞だけが末尾に残ることがある。
+  // これは本体意図ではなく、出力形式句を除去した副作用なので末尾だけ正規化する。
+  // 文中の助詞は触らない。
+  q = q.replace(/(?:を|で|に|として|の形で|形式で)$/u, '').trim();
+  return q;
 }
 
 function isExplicitExistingPdfSearch(questionValue) {
