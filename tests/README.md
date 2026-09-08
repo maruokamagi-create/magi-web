@@ -26,8 +26,10 @@
 
 2026-09-08 時点:
 
-- `api/magi/_question-router.js`
-- 補助: `api/magi/_conversation-recovery.js`
+- 正式入口: `api/magi/_question-router-current.js`
+- 基礎ルーター: `api/magi/_question-router.js`
+- 会話補助: `api/magi/_conversation-recovery.js`
+- テスト時 routerVersion: `v9-understanding-guard`
 
 `api/magi/_question-router-v2.js` は現在のブラウザテスト経路の正本ではない。
 
