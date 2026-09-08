@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="robots" content="noindex,nofollow">
+<title>MAGI Answer Quality 30 Test</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:920px;margin:auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom))}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:12px 0}h1{font-size:28px;margin:0 0 10px}.sub,.muted{color:#9db4c7;line-height:1.65}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}button{border:0;border-radius:12px;padding:12px 15px;font-weight:800;background:#edf6ff;color:#07111f}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#071827;border:1px solid #284966;border-radius:12px;padding:10px}.stat span{display:block;color:#8da8bf;font-size:11px}.stat b{font-size:22px}.row{background:#071827;border:1px solid #274965;border-radius:14px;padding:12px;margin:10px 0}.row.pass{border-color:#2c6a4b}.row.fail{border-color:#8b4040}.ok{color:#8ce0b4}.bad{color:#ff9898}.q{font-size:16px;font-weight:800;margin:6px 0}.mono{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;line-height:1.55}.answer{margin-top:8px;line-height:1.65}.top{display:flex;gap:8px;align-items:center}.verdict{margin-left:auto;font-weight:900}.bar{height:10px;border-radius:99px;background:#03101b;overflow:hidden;margin-top:12px}.bar>div{height:100%;background:#d8ecff;width:0}@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}}
+</style>
+</head>
+<body><div class="wrap">
+<h1>MAGI Answer Quality 30 Test</h1>
+<div class="sub">回答品質の拡張試験。正しい値を答えるだけでなく、期間の取り違え・不足情報の捏造・矛盾の黙殺・聞かれていない数字の付け足しを検査します。</div>
+<section class="card"><b>最重要事項</b><div class="muted">①あらゆる質問を理解する　②質問に対して的確に回答する。<br>このページは②を重点検証します。本番データではなく固定Evidenceを使用します。</div><div class="actions"><button id="next">次の10件</button><button id="all">全30件開始</button><button id="reset">結果リセット</button></div><div class="bar"><div id="bar"></div></div><div class="muted" id="progress" style="margin-top:8px">ここまで完了: 0/30</div></section>
+<section class="card"><div class="stats"><div class="stat"><span>実行</span><b id="done">0</b></div><div class="stat"><span>PASS</span><b class="ok" id="pass">0</b></div><div class="stat"><span>FAIL</span><b class="bad" id="fail">0</b></div><div class="stat"><span>API ERROR</span><b id="api">0</b></div></div><div class="muted" style="margin-top:10px">Answer Engine: <span id="ver">未取得</span></div></section>
+<section class="card" id="list"></section>
+</div>
+<script>
+const CASES=[
+{id:'B01',q:'陽翔の今季OPS教えて',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',scope:'今季',batting:{AVG:'.333',OPS:'.812',hits:12,RBI:8}},must:['.812'],mustNot:['.745','.333']},
+{id:'B02',q:'陽翔の通算OPS教えて',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',scope:'通算',batting:{OPS:'.745'}},must:['.745'],mustNot:['.812']},
+{id:'B03',q:'陽翔の打率教えて',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',batting:{AVG:'.333',OPS:'.812'}},must:['.333'],mustNot:['.812']},
+{id:'B04',q:'陽翔の安打と打点教えて',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',batting:{hits:12,RBI:8,AVG:'.333'}},must:['12','8'],mustNot:['.333']},
+{id:'B05',q:'武田晴琉翔のOPS教えて',route:'BATTING_LOOKUP',e:{player:'武田 晴琉翔',batting:{AVG:'.250'}},must:[],mustNot:[],expectRefuse:true},
+{id:'B06',q:'武田晴琉翔の打率とOPS教えて',route:'BATTING_LOOKUP',e:{player:'武田 晴琉翔',batting:{AVG:'.250'}},must:['.250'],mustNot:[],expectRefuse:true},
+{id:'B07',q:'橋向のOPS教えて',route:'BATTING_LOOKUP',e:{player:'橋向 結都',sources:[{name:'集計A',OPS:'.700'},{name:'集計B',OPS:'.730'}]},must:['.700','.730'],mustNot:[],expectConflict:true},
+{id:'B08',q:'陽翔の打点だけ教えて',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',batting:{AVG:'.333',OPS:'.812',hits:12,RBI:8}},must:['8'],mustNot:['.333','.812']},
+{id:'B09',q:'陽翔の安打数だけ',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',batting:{hits:12,RBI:8,OPS:'.812'}},must:['12'],mustNot:['.812']},
+{id:'B10',q:'陽翔の今季OPSだけ見せて',route:'BATTING_LOOKUP',e:{player:'大久保 陽翔',scope:'今季',batting:{AVG:'.333',OPS:'.812',hits:12,RBI:8}},must:['.812'],mustNot:['.333','12安打','8打点']},
+
+{id:'P01',q:'大野竜暉の防御率教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{ERA:'1.69',strikeouts:50,walks:12,innings:'54.0'}},must:['1.69'],mustNot:['50','12']},
+{id:'P02',q:'大野竜暉の奪三振数教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{ERA:'1.69',strikeouts:50,walks:12}},must:['50'],mustNot:['1.69']},
+{id:'P03',q:'大野竜暉の防御率と奪三振教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{ERA:'1.69',strikeouts:50}},must:['1.69','50'],mustNot:[]},
+{id:'P04',q:'大野竜暉のWHIP教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{ERA:'1.69'}},must:[],mustNot:[],expectRefuse:true},
+{id:'P05',q:'橋向の防御率教えて',route:'PITCHING_LOOKUP',e:{player:'橋向 結都',sources:[{name:'集計A',ERA:'2.10'},{name:'集計B',ERA:'2.45'}]},must:['2.10','2.45'],mustNot:[],expectConflict:true},
+{id:'P06',q:'大野竜暉の奪三振だけ教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{ERA:'1.69',strikeouts:50,walks:12}},must:['50'],mustNot:['1.69']},
+{id:'P07',q:'大野竜暉の今季防御率教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',scope:'今季',pitching:{ERA:'2.20'}},must:['2.20'],mustNot:['1.69']},
+{id:'P08',q:'大野竜暉の通算防御率教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',scope:'通算',pitching:{ERA:'1.69'}},must:['1.69'],mustNot:['2.20']},
+{id:'P09',q:'大野竜暉の投球回教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{innings:'54.0',ERA:'1.69'}},must:['54'],mustNot:['1.69']},
+{id:'P10',q:'大野竜暉の奪三振と四球教えて',route:'PITCHING_LOOKUP',e:{player:'大野 竜暉',pitching:{strikeouts:50,walks:12,ERA:'1.69'}},must:['50','12'],mustNot:['1.69']},
+
+{id:'O01',q:'大野竜暉の打撃と投手の両方まとめて',route:'PLAYER_OVERVIEW',e:{player:'大野 竜暉',batting:{AVG:'.302',OPS:'.801'},pitching:{ERA:'1.69',strikeouts:50}},must:['.302','1.69','50'],mustNot:[]},
+{id:'O02',q:'大野竜暉の打撃と投手の両方教えて',route:'PLAYER_OVERVIEW',e:{player:'大野 竜暉',batting:{AVG:'.302',OPS:'.801'}},must:['.302'],mustNot:[],expectRefuse:true},
+{id:'O03',q:'大野竜暉の打撃と投手の両方教えて',route:'PLAYER_OVERVIEW',e:{player:'大野 竜暉',pitching:{ERA:'1.69',strikeouts:50}},must:['1.69'],mustNot:[],expectRefuse:true},
+{id:'O04',q:'大野竜暉の打率・OPS・防御率・奪三振をまとめて',route:'PLAYER_OVERVIEW',e:{player:'大野 竜暉',batting:{AVG:'.302',OPS:'.801'},pitching:{ERA:'1.69',strikeouts:50}},must:['.302','.801','1.69','50'],mustNot:[]},
+{id:'O05',q:'陽翔の打撃と投手をまとめて',route:'PLAYER_OVERVIEW',e:{player:'大久保 陽翔',sources:[{name:'打撃集計A',OPS:'.800'},{name:'打撃集計B',OPS:'.820'}],pitching:{ERA:'3.10'}},must:['.800','.820','3.10'],mustNot:[],expectConflict:true},
+
+{id:'T01',q:'今季何勝何敗？',route:'TEAM_LOOKUP',e:{scope:'今季',teamRecord:{wins:8,losses:3,draws:1}},must:['8勝','3敗'],mustNot:['1分']},
+{id:'T02',q:'今季の勝敗と引き分け全部教えて',route:'TEAM_LOOKUP',e:{scope:'今季',teamRecord:{wins:8,losses:3,draws:1}},must:['8勝','3敗','1分'],mustNot:[]},
+{id:'T03',q:'今季何勝何敗？',route:'TEAM_LOOKUP',e:{scope:'今季',teamRecord:{wins:8}},must:['8勝'],mustNot:[],expectRefuse:true},
+
+{id:'D01',q:'8月号TEAM REPORT見せて',route:'DOCUMENT_SEARCH',e:{documents:[{title:'TEAM REPORT 8月号',status:'FOUND'}]},must:['TEAM REPORT 8月号'],mustNot:[]},
+{id:'D02',q:'9月号TEAM REPORT見せて',route:'DOCUMENT_SEARCH',e:{documents:[]},must:[],mustNot:[],expectRefuse:true}
+];
+const $=id=>document.getElementById(id),sleep=ms=>new Promise(r=>setTimeout(r,ms));let index=0,running=false,stats={p:0,f:0,a:0};
+function esc(s){return String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+function judge(c,d){const errs=[];const a=String(d.answer||'');for(const x of c.must||[])if(!a.includes(x))errs.push(`回答に「${x}」がない`);for(const x of c.mustNot||[])if(a.includes(x))errs.push(`聞かれていない/禁止値「${x}」を含む`);if(/BATTING_LOOKUP|PITCHING_LOOKUP|PLAYER_OVERVIEW|TEAM_LOOKUP|DOCUMENT_SEARCH|ANSWER_FIXTURE/.test(a))errs.push('内部ルート名をユーザー回答に露出');if(c.expectRefuse&&!(d.refusedToInvent===true&&(d.missingInformation||[]).length))errs.push('不足データを作らずに不足として扱えていない');if(c.expectConflict&&!(String(d.confidence).toUpperCase()==='LOW'&&(d.contradictions||[]).length))errs.push('矛盾をLOW confidenceで明示できていない');return errs}
+async function call(c){const r=await fetch('/api/magi/health',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ANSWER_FIXTURE',question:c.q,route:c.route,evidence:c.e})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);return d}
+function paint(){const done=stats.p+stats.f+stats.a;$('done').textContent=done;$('pass').textContent=stats.p;$('fail').textContent=stats.f;$('api').textContent=stats.a;$('progress').textContent=index>=CASES.length?'全30件終了':`ここまで完了: ${index}/30`;$('bar').style.width=`${(index/CASES.length)*100}%`}
+async function runCount(n){if(running||index>=CASES.length)return;running=true;for(const b of [$('next'),$('all')])b.disabled=true;const end=Math.min(index+n,CASES.length);while(index<end){const c=CASES[index];let row=document.createElement('div');row.className='row';$('list').appendChild(row);try{const d=await call(c);$('ver').textContent=d.answerEngineVersion||'?';const errs=judge(c,d),ok=!errs.length;if(ok)stats.p++;else stats.f++;row.className='row '+(ok?'pass':'fail');row.innerHTML=`<div class="top"><b>${c.id}</b><span class="verdict ${ok?'ok':'bad'}">${ok?'PASS':'FAIL'}</span></div><div class="q">${esc(c.q)}</div><div class="mono">route=${esc(c.route)} / confidence=${esc(d.confidence)} / refusedToInvent=${esc(d.refusedToInvent)}</div><div class="answer">${esc(d.answer)}</div>${errs.length?`<div class="bad" style="margin-top:8px">${errs.map(esc).join('<br>')}</div>`:''}`;}catch(e){stats.a++;row.className='row fail';row.innerHTML=`<div class="bad">${c.id} API ERROR: ${esc(e.message||e)}</div>`}index++;paint();await sleep(3600)}running=false;for(const b of [$('next'),$('all')])b.disabled=false}
+$('next').onclick=()=>runCount(10);$('all').onclick=()=>runCount(CASES.length-index);$('reset').onclick=()=>{if(running)return;index=0;stats={p:0,f:0,a:0};$('list').innerHTML='';$('ver').textContent='未取得';paint()};paint();
+</script></body></html>
