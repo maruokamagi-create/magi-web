@@ -80,30 +80,51 @@ M14 比較軸を途中変更:
 
 ---
 
-## ルーター経路確認
+## 2026-09-08 再設計対応
 
-2026-09-08 にコードを再確認。
+最重要事項を正式に二本柱として固定した。
 
-`api/magi/health.js` の `ROUTE_QUESTION` モードは、
+- QUESTION UNDERSTANDING — あらゆる質問を理解する
+- ANSWER QUALITY — 質問に対して的確に回答する
 
-- `api/magi/_question-router.js`
-- `api/magi/_conversation-recovery.js`
+追加した正式テスト資産:
 
-を使用している。
+- `tests/TEST_STRATEGY.md`
+- `tests/ANSWER_QUALITY_PLAN.md`
+- `tests/question-router-conversation-cases-v1.json`
+- `tests/README.md`
 
-したがって、現在のブラウザ質問理解テストの基準ルーターは **`api/magi/_question-router.js`** とする。
+30会話シナリオはブラウザHTMLだけでなく、JSONの回帰テスト資産として保存した。
 
-### 重要な工程上の事故
+---
 
-M27対応中、一時的に `api/magi/_question-router-v2.js` を修正したが、実際の `health.js` テスト経路は `_question-router.js` だった。
+## ルーター経路整理
 
-このため今後は:
+M27対応中、一時的に `api/magi/_question-router-v2.js` を修正したが、実際のブラウザテスト経路は別だった。
 
-- 実際のレスポンスに含まれる `routerVersion` を確認する
-- テスト対象ルーターを文書で固定する
-- 別実装ファイルを修正してもテスト合格扱いにしない
+この事故を再発させないため、正式入口を新設した。
 
-を必須とする。
+2026-09-08 現在:
+
+- 正式入口: **`api/magi/_question-router-current.js`**
+- 基礎ルーター: `api/magi/_question-router.js`
+- 会話補助: `api/magi/_conversation-recovery.js`
+- `api/magi/health.js` は正式入口 `_question-router-current.js` を使用
+- test routerVersion: **`v9-understanding-guard`**
+
+`api/magi/_question-router-v2.js` は現在のブラウザテスト経路の正本ではない。
+
+### v9-understanding-guard で追加した一般ガード
+
+M11専用・M14専用の固有文言ベタ書きではなく、次の一般原則を追加した。
+
+1. **比較軸のない「AとBどっちがいい？」**
+   - 打撃・投手・守備・起用目的等が明示されていなければCLARIFY
+   - 「どっちを4番」「どっちが先発向き」のように目的が明確なら判断へ進める
+
+2. **曖昧な「成績」質問で人物だけを選び直した場合**
+   - 人物が確定しても、打撃/投手が未確定ならCLARIFY継続
+   - 人物を選んだだけでDELIBERATIONへ飛ばさない
 
 ---
 
@@ -112,12 +133,13 @@ M27対応中、一時的に `api/magi/_question-router-v2.js` を修正したが
 ### 質問理解ルーター
 
 - ブラウザ上の独立テスト経路あり
+- 正式テスト入口を `v9-understanding-guard` に一本化
 - MAGI-WEB本体の標準実行経路にはまだ正式接続していない
 
 ### 回答品質テスト
 
-- 体系的な正式テストは未完
-- 次工程で新設する
+- 評価設計を `tests/ANSWER_QUALITY_PLAN.md` として作成済み
+- 実データに対する正式回答テストはこれから
 
 ### End-to-End
 
@@ -128,11 +150,11 @@ M27対応中、一時的に `api/magi/_question-router-v2.js` を修正したが
 
 ## 次の実行順
 
-1. 30会話シナリオを正式テスト資産としてJSON保存
-2. テスト画面に実ルーターバージョンを表示
-3. 30会話テストを再実行し回帰確認
-4. 単発テストを150〜200問以上へ拡張
-5. 回答品質テストを開始
+1. **v9-understanding-guard で30会話テストを再実行**
+2. 結果と routerVersion をこの履歴へ追加
+3. 30会話の回帰が安定したら単発を150〜200問以上へ拡張
+4. 回答品質テスト用の基準データスナップショットを作る
+5. 回答品質テストを実行
 6. End-to-Endテスト
 7. 本体接続判断
 
