@@ -1,0 +1,177 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>MAGI Router Stress Test v2</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:980px;margin:0 auto;padding:calc(18px + env(safe-area-inset-top)) 14px calc(30px + env(safe-area-inset-bottom))}h1{margin:0 0 6px;font-size:24px}.sub{color:#98afc3;font-size:13px;margin-bottom:14px}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin-bottom:12px}.notice{font-size:13px;line-height:1.7;color:#b5c8d9}.actions,.filters{display:flex;gap:9px;flex-wrap:wrap;margin-top:12px}button{appearance:none;border:0;border-radius:12px;padding:12px 14px;font-size:14px;font-weight:800;background:#edf6ff;color:#07111f}button.secondary{background:#14334f;color:#eef7ff;border:1px solid #315574}button:disabled{opacity:.5}.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.stat{background:#071827;border:1px solid #284966;border-radius:12px;padding:10px}.stat span{display:block;color:#8da8bf;font-size:11px}.stat b{font-size:22px}.danger{color:#ff9898}.warn{color:#ffd58a}.ok{color:#8ce0b4}.api{color:#9ec5ff}.progress{height:10px;background:#06101b;border-radius:99px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:#dbefff}.state{margin-top:8px;color:#a7bed2;font-size:12px}.filters button{padding:7px 9px;font-size:12px}.list{display:flex;flex-direction:column;gap:8px}.row{border:1px solid #274965;border-radius:12px;padding:10px;background:#071827}.row.fail{border-color:#8b4040}.row.pass{border-color:#2c6a4b}.row.apierr{border-color:#486d9b}.top{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.id{font-size:11px;color:#89a4ba}.tag{font-size:10px;border:1px solid #355a78;border-radius:999px;padding:3px 7px;color:#b8d8ee}.verdict{font-weight:900;margin-left:auto}.q{font-size:15px;font-weight:750;margin:8px 0 6px}.meta{font-size:12px;color:#9db4c7;line-height:1.55}.detail{margin-top:6px;font-size:12px;white-space:pre-wrap;color:#bad0e1}.raw{white-space:pre-wrap;word-break:break-word;font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace;max-height:260px;overflow:auto;background:#020b13;border-radius:10px;padding:9px;margin-top:7px}@media(max-width:700px){.stats{grid-template-columns:1fr 1fr}.verdict{margin-left:0}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>MAGI Router Stress Test v2</h1>
+  <div class="sub">質問理解の精度検証専用。通信失敗は判定FAILと分離します。</div>
+
+  <section class="card">
+    <div class="notice">
+      最重要指標は「危険誤作動」です。API通信失敗は質問理解の誤りではないため、最大3回まで自動再試行し、それでも失敗した場合だけ「API ERROR」として別集計します。<br>
+      通常ケース間は約3.8秒空けます。
+    </div>
+    <div class="actions">
+      <button id="runAll">全テスト開始</button>
+      <button id="runNext" class="secondary">次の10件</button>
+      <button id="retryApi" class="secondary">APIエラー再実行</button>
+      <button id="stop" class="secondary">停止</button>
+      <button id="reset" class="secondary">結果リセット</button>
+    </div>
+    <div class="progress"><div class="bar" id="bar"></div></div>
+    <div class="state" id="state">テスト定義を読み込み中…</div>
+  </section>
+
+  <section class="card">
+    <div class="stats">
+      <div class="stat"><span>実行済み</span><b id="done">0</b></div>
+      <div class="stat"><span>判定済み</span><b id="evaluated">0</b></div>
+      <div class="stat"><span>PASS</span><b class="ok" id="pass">0</b></div>
+      <div class="stat"><span>API ERROR</span><b class="api" id="apiError">0</b></div>
+    </div>
+    <div class="stats" style="margin-top:8px">
+      <div class="stat"><span>危険誤作動</span><b class="danger" id="danger">0</b></div>
+      <div class="stat"><span>不要聞き返し</span><b class="warn" id="overclarify">0</b></div>
+      <div class="stat"><span>誤ルート</span><b id="wrongRoute">0</b></div>
+      <div class="stat"><span>その他FAIL</span><b id="otherFail">0</b></div>
+    </div>
+    <div class="stats" style="margin-top:8px">
+      <div class="stat"><span>総ケース数</span><b id="total">0</b></div>
+      <div class="stat"><span>正解率</span><b id="accuracy">—</b></div>
+    </div>
+  </section>
+
+  <section class="card"><div class="filters" id="filters"></div></section>
+  <section class="card"><div class="list" id="list"></div></section>
+</div>
+<script>
+let CASES=[];
+const $=id=>document.getElementById(id), results=new Map();
+let running=false,cursor=0,activeFilter='全部';
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+async function loadCases(){
+  const html=await fetch('/router-stress-test.html?case-source=1',{cache:'no-store'}).then(r=>{if(!r.ok)throw new Error('テスト定義を取得できません');return r.text()});
+  const m=html.match(/const CASES=(\[[\s\S]*?\]);\s*\n\s*const \$=/);
+  if(!m)throw new Error('CASESを解析できません');
+  CASES=Function('"use strict";return ('+m[1]+')')();
+  $('total').textContent=CASES.length;
+  $('state').textContent=`準備完了：${CASES.length}件`;
+  makeFilters();render();toggleButtons();
+}
+
+function hasAll(arr,expected){return (expected||[]).every(x=>(arr||[]).includes(x))}
+function evaluate(c,d){
+ const e=c.exp||{},reasons=[];
+ if(e.route&&d.route!==e.route)reasons.push(`route expected=${e.route} actual=${d.route}`);
+ if(typeof e.clarify==='boolean'&&!!d.needsClarification!==e.clarify)reasons.push(`clarify expected=${e.clarify} actual=${!!d.needsClarification}`);
+ if(typeof e.safe==='boolean'&&!!d.safeToExecute!==e.safe)reasons.push(`safe expected=${e.safe} actual=${!!d.safeToExecute}`);
+ if(e.player&&!(d.players||[]).includes(e.player))reasons.push(`player missing=${e.player}`);
+ if(e.players&&!hasAll(d.players,e.players))reasons.push(`players missing=${e.players.filter(x=>!(d.players||[]).includes(x)).join(',')}`);
+ if(e.domain&&!(d.domains||[]).includes(e.domain))reasons.push(`domain missing=${e.domain}`);
+ if(e.time&&d.timeScope!==e.time)reasons.push(`time expected=${e.time} actual=${d.timeScope}`);
+ const dangerous=e.clarify===true&&d.route!=='CLARIFY'&&d.safeToExecute===true;
+ const overclarify=e.clarify===false&&d.route==='CLARIFY';
+ const wrongRoute=!!e.route&&e.route!=='CLARIFY'&&d.route!==e.route&&!overclarify;
+ return {pass:reasons.length===0,dangerous,overclarify,wrongRoute,reasons};
+}
+
+async function requestRoute(c){
+  let lastError=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    try{
+      const r=await fetch('/api/magi/health',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ROUTE_QUESTION',question:c.q,context:c.ctx||[]})});
+      let d=null;try{d=await r.json()}catch{throw new Error(`HTTP ${r.status} / invalid JSON`)}
+      if(!r.ok||!d.ok)throw new Error(d?.error||`HTTP ${r.status}`);
+      return {data:d,attempt};
+    }catch(err){
+      lastError=err;
+      if(attempt<3)await sleep(1200*attempt);
+    }
+  }
+  throw lastError||new Error('API request failed');
+}
+
+async function runCase(c){
+ const start=performance.now();
+ try{
+  const out=await requestRoute(c),ev=evaluate(c,out.data);
+  results.set(c.id,{case:c,data:out.data,ev,attempts:out.attempt,ms:Math.round(performance.now()-start),apiError:false});
+ }catch(err){
+  results.set(c.id,{case:c,error:String(err?.message||err),ev:{pass:false,dangerous:false,overclarify:false,wrongRoute:false,reasons:[]},apiError:true,ms:Math.round(performance.now()-start)});
+ }
+ render();
+}
+
+async function runIds(ids){
+ if(running||!CASES.length)return;running=true;toggleButtons();
+ for(let k=0;k<ids.length;k++){
+  if(!running)break;
+  const c=CASES.find(x=>x.id===ids[k]);if(!c)continue;
+  $('state').textContent=`${k+1}/${ids.length} 実行中: ${c.id} ${c.q}`;
+  await runCase(c);
+  if(k<ids.length-1&&running)await sleep(3800);
+ }
+ running=false;toggleButtons();$('state').textContent='指定テスト終了';
+}
+
+async function runRange(from,to){
+ if(running||!CASES.length)return;running=true;toggleButtons();
+ for(let i=from;i<to&&i<CASES.length;i++){
+  if(!running)break;cursor=i;
+  $('state').textContent=`${i+1}/${CASES.length} 実行中: ${CASES[i].id} ${CASES[i].q}`;
+  await runCase(CASES[i]);cursor=i+1;updateProgress();
+  if(i<to-1&&i<CASES.length-1&&running)await sleep(3800);
+ }
+ running=false;toggleButtons();$('state').textContent=cursor>=CASES.length?'全テスト終了':'停止中 / 次は '+(cursor+1)+'件目';
+}
+
+$('runAll').onclick=()=>runRange(cursor,CASES.length);
+$('runNext').onclick=()=>runRange(cursor,Math.min(cursor+10,CASES.length));
+$('retryApi').onclick=()=>runIds([...results.values()].filter(r=>r.apiError).map(r=>r.case.id));
+$('stop').onclick=()=>{running=false;$('state').textContent='停止要求を受け付けました';toggleButtons()};
+$('reset').onclick=()=>{if(running)return;results.clear();cursor=0;render();updateProgress();$('state').textContent=`結果をリセットしました：${CASES.length}件`};
+function toggleButtons(){const loading=!CASES.length;$('runAll').disabled=running||loading;$('runNext').disabled=running||loading;$('retryApi').disabled=running||loading||![...results.values()].some(r=>r.apiError);$('reset').disabled=running||loading;$('stop').disabled=!running}
+function updateProgress(){$('bar').style.width=CASES.length?`${Math.round((results.size/CASES.length)*100)}%`:'0%'}
+
+function summary(){
+ let pass=0,danger=0,over=0,wrong=0,other=0,api=0;
+ for(const r of results.values()){
+  if(r.apiError){api++;continue}
+  if(r.ev.pass)pass++;else if(r.ev.dangerous)danger++;else if(r.ev.overclarify)over++;else if(r.ev.wrongRoute)wrong++;else other++;
+ }
+ const evaluated=results.size-api;
+ $('done').textContent=results.size;$('evaluated').textContent=evaluated;$('pass').textContent=pass;$('apiError').textContent=api;$('danger').textContent=danger;$('overclarify').textContent=over;$('wrongRoute').textContent=wrong;$('otherFail').textContent=other;$('accuracy').textContent=evaluated?`${Math.round(pass/evaluated*1000)/10}%`:'—';toggleButtons();
+}
+function makeFilters(){
+ const cats=['全部','判定FAILのみ','APIエラー',...new Set(CASES.map(c=>c.cat))];$('filters').innerHTML='';
+ for(const cat of cats){const b=document.createElement('button');b.className=cat===activeFilter?'':'secondary';b.textContent=cat;b.onclick=()=>{activeFilter=cat;makeFilters();renderList()};$('filters').appendChild(b)}
+}
+function visible(c,r){if(activeFilter==='全部')return true;if(activeFilter==='判定FAILのみ')return r&&!r.apiError&&!r.ev.pass;if(activeFilter==='APIエラー')return r&&r.apiError;return c.cat===activeFilter}
+function renderList(){
+ const list=$('list');list.innerHTML='';
+ for(const c of CASES){const r=results.get(c.id);if(!visible(c,r))continue;
+  const row=document.createElement('div');row.className='row '+(r?(r.apiError?'apierr':r.ev.pass?'pass':'fail'):'');
+  const verdict=!r?'未実行':r.apiError?'API ERROR':r.ev.pass?'PASS':r.ev.dangerous?'危険誤作動':r.ev.overclarify?'不要聞き返し':r.ev.wrongRoute?'誤ルート':'FAIL';
+  const actual=r?.data?`${r.data.route} / ${r.data.confidence||'—'} / safe=${!!r.data.safeToExecute}`:(r?.error?`API ERROR ${r.error}`:'—');
+  row.innerHTML=`<div class="top"><span class="id">${c.id}</span><span class="tag">${c.cat}</span><span class="verdict">${verdict}</span></div><div class="q"></div><div class="meta">期待: ${c.exp.route||'任意'} / clarify=${c.exp.clarify??'任意'} / safe=${c.exp.safe??'任意'}<br>実際: ${actual}${r?.attempts?`<br>API試行: ${r.attempts}回`:''}</div><div class="detail"></div>`;
+  row.querySelector('.q').textContent=c.q;
+  const detail=row.querySelector('.detail');if(r&&!r.apiError&&!r.ev.pass)detail.textContent=r.ev.reasons.join('\n');if(r?.apiError)detail.textContent='質問理解のFAILには集計していません。APIエラー再実行で再試行できます。';
+  if(r?.data){const raw=document.createElement('details');raw.innerHTML='<summary>JSON</summary>';const pre=document.createElement('div');pre.className='raw';pre.textContent=JSON.stringify(r.data,null,2);raw.appendChild(pre);row.appendChild(raw)}
+  list.appendChild(row);
+ }
+}
+function render(){summary();renderList();updateProgress()}
+
+loadCases().catch(err=>{$('state').textContent='初期化失敗: '+String(err?.message||err)});
+</script>
+</body>
+</html>
