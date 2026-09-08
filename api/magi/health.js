@@ -47,19 +47,12 @@ function stripOutputFormatModifier(questionValue) {
     .replace(/(?:PDF|ＰＤＦ)(?:形式)?/gi, ' ')
     .replace(/\s+/g, ' ')
     .trim();
-
-  // 「打撃成績をPDFで」のような文からPDF指定だけを外すと、
-  // 「打撃成績を」のように目的語助詞だけが末尾に残ることがある。
-  // これは本体意図ではなく、出力形式句を除去した副作用なので末尾だけ正規化する。
-  // 文中の助詞は触らない。
   q = q.replace(/(?:を|で|に|として|の形で|形式で)$/u, '').trim();
   return q;
 }
 
 function isExplicitExistingPdfSearch(questionValue) {
   const q = String(questionValue || '');
-  // PDFそのものを既存資料として探す依頼だけはDOCUMENT_SEARCHの意味を保持する。
-  // 「成績をPDFで」のような出力形式指定とは分離する。
   return (
     /(?:PDF|ＰＤＦ)(?:ファイル|資料|文書|レポート)?[^。！？!?]{0,24}(?:探して|検索して|どこ|見つけて|開いて|見せて)/i.test(q) ||
     /(?:探して|検索して|どこ|見つけて|開いて|見せて)[^。！？!?]{0,24}(?:PDF|ＰＤＦ)(?:ファイル|資料|文書|レポート)?/i.test(q) ||
@@ -75,56 +68,29 @@ async function classify(question, context) {
 
 async function routeWithOutputFormat(question, context) {
   const outputFormat = detectOutputFormat(question);
-
   if (outputFormat !== 'PDF') {
     const routed = await classify(question, context);
     return { ...routed, outputFormat };
   }
-
   const baseQuestion = stripOutputFormatModifier(question);
   const explicitExistingPdfSearch = isExplicitExistingPdfSearch(question);
-
-  // 原則: PDFは「何をするか」ではなく「どう出すか」。
-  // したがって、まずPDF指定を外した本体質問を分類する。
-  // 例: 「大野竜暉の打撃成績をPDFで」
-  //   -> BATTING_LOOKUP + outputFormat=PDF
-  // 例: 「陽翔を4番にすべきかPDFでまとめて」
-  //   -> DELIBERATION + outputFormat=PDF
   if (baseQuestion && baseQuestion !== question && !explicitExistingPdfSearch) {
     const base = await classify(baseQuestion, context);
     if (base.route !== 'CLARIFY' && base.route !== 'UNSUPPORTED') {
-      return {
-        ...base,
-        outputFormat,
-        outputFormatRecovered: true,
-        outputFormatBaseQuestion: baseQuestion,
-        outputFormatReason: 'PRESENTATION_MODIFIER'
-      };
+      return { ...base, outputFormat, outputFormatRecovered: true, outputFormatBaseQuestion: baseQuestion, outputFormatReason: 'PRESENTATION_MODIFIER' };
     }
   }
-
-  // 既存PDFを探す依頼、またはPDFを外しても意味が確定しない場合は原文で分類する。
   let routed = await classify(question, context);
   routed.outputFormat = outputFormat;
   routed.outputFormatBaseQuestion = baseQuestion;
   routed.outputFormatRecovered = false;
   routed.outputFormatReason = explicitExistingPdfSearch ? 'EXISTING_PDF_SEARCH' : 'BASE_INTENT_UNRESOLVED';
-
-  // 原文がPDF語に引っ張られてDOCUMENT_SEARCHへ寄っても、
-  // PDFを外した本体質問が安全に実行可能なら本体質問を優先する。
   if (!explicitExistingPdfSearch && routed.route === 'DOCUMENT_SEARCH' && baseQuestion && baseQuestion !== question) {
     const base = await classify(baseQuestion, context);
     if (base.safeToExecute && base.route !== 'CLARIFY' && base.route !== 'UNSUPPORTED' && base.route !== 'DOCUMENT_SEARCH') {
-      routed = {
-        ...base,
-        outputFormat,
-        outputFormatRecovered: true,
-        outputFormatBaseQuestion: baseQuestion,
-        outputFormatReason: 'DOCUMENT_SEARCH_FALSE_POSITIVE_RECOVERED'
-      };
+      routed = { ...base, outputFormat, outputFormatRecovered: true, outputFormatBaseQuestion: baseQuestion, outputFormatReason: 'DOCUMENT_SEARCH_FALSE_POSITIVE_RECOVERED' };
     }
   }
-
   return routed;
 }
 
@@ -133,18 +99,8 @@ async function runAnswerFixture(body) {
   const route = String(body?.route || '').trim().slice(0, 80);
   const evidence = body?.evidence && typeof body.evidence === 'object' ? body.evidence : {};
   if (question.length < 2 || !route) return { error: 'question and route are required' };
-
-  const result = await callGemini({
-    systemInstruction: ANSWER_SYSTEM,
-    userPayload: { question, route, evidence },
-    responseSchema: answerSchema
-  });
-
-  return {
-    ok: true,
-    answerEngineVersion: ANSWER_ENGINE_VERSION,
-    ...result
-  };
+  const result = await callGemini({ systemInstruction: ANSWER_SYSTEM, userPayload: { question, route, evidence }, responseSchema: answerSchema });
+  return { ok: true, answerEngineVersion: ANSWER_ENGINE_VERSION, ...result };
 }
 
 export default async function handler(req, res) {
@@ -153,7 +109,6 @@ export default async function handler(req, res) {
     const body = await readBody(req);
     const mode = String(body?.mode || '').toUpperCase();
 
-    // Standalone semantic-router lab path. This is not wired into MAGI-WEB's main execution button yet.
     if (mode === 'ROUTE_QUESTION') {
       const question = String(body?.question || '').trim();
       if (!question) return sendJson(res, 400, { ok: false, error: 'question is required' });
@@ -161,22 +116,19 @@ export default async function handler(req, res) {
       return sendJson(res, 200, { ok: true, ...routed });
     }
 
-    // Answer-quality laboratory path. Reuses the existing health function so it does not create
-    // another serverless route. It uses fixed test evidence only and is not wired into MAGI-WEB yet.
     if (mode === 'ANSWER_FIXTURE') {
       const result = await runAnswerFixture(body);
       if (result?.error) return sendJson(res, 400, { ok: false, error: result.error });
       return sendJson(res, 200, result);
     }
 
-    // Live Drive audit path. This intentionally reuses the existing health function to stay within
-    // the free-plan serverless function limit. Unlike ANSWER_FIXTURE, this reads the authoritative
-    // 2026-2027 PDF from Google Drive at request time and extracts the current-season values.
+    // Live XLSM audit for either current (2026-2027) or old (2025-2026) team.
+    // Both seasons use their own 03_STATS/00_MASTER authoritative XLSM; PDFs are reference-only.
     if (mode === 'DRIVE_LIVE_AUDIT') {
       const member = await requireApprovedMember(req, res);
       if (!member) return;
       try {
-        const result = await runDriveLiveAudit();
+        const result = await runDriveLiveAudit({ season: body?.season || 'current' });
         return sendJson(res, 200, { ok: true, ...result });
       } catch (error) {
         console.error('[MAGI live Drive audit]', error?.message || error);
