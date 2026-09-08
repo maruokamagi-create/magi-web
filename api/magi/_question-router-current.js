@@ -1,6 +1,6 @@
 import { routeQuestion as baseRouteQuestion } from './_question-router.js';
 
-const CURRENT_ROUTER_VERSION = 'v9-understanding-guard';
+const CURRENT_ROUTER_VERSION = 'v10-context-scope-guard';
 
 function text(value) {
   return String(value || '').trim();
@@ -59,6 +59,77 @@ function latestGenericStatsRequest(context) {
   return false;
 }
 
+function periodIntent(question) {
+  const q = text(question);
+  const candidates = [];
+  const add = (regex, scope) => {
+    let match;
+    const re = new RegExp(regex.source, regex.flags.includes('g') ? regex.flags : `${regex.flags}g`);
+    while ((match = re.exec(q))) candidates.push({ index: match.index, scope, value: match[0] });
+  };
+  add(/\d{4}\s*[-–—〜~]\s*\d{4}/, 'SPECIFIC_SEASON');
+  add(/直近\s*6\s*試合/, 'RECENT_6');
+  add(/通算|全期間|全部/, 'CAREER');
+  add(/今季|今シーズン|今年度|今年/, 'CURRENT_SEASON');
+  add(/昨季|去年|前年度|前シーズン/, 'PREVIOUS_SEASON');
+  add(/最近|直近/, 'RECENT');
+  if (!candidates.length) return null;
+  candidates.sort((a, b) => a.index - b.index);
+  const chosen = candidates[candidates.length - 1];
+  return {
+    timeScope: chosen.scope,
+    specificSeason: chosen.scope === 'SPECIFIC_SEASON' ? chosen.value.replace(/\s+/g, '') : ''
+  };
+}
+
+function isPeriodOnlyFollowup(question) {
+  const q = text(question).replace(/[。！？!?]/g, '');
+  if (!q || q.length > 36 || !periodIntent(q)) return false;
+  if (isDomainSpecified(q) || isExplicitDecisionRequest(q) || /比べ|比較|どっち|どちら|誰|何番/.test(q)) return false;
+  return /通算|全期間|全部|今季|今シーズン|今年度|今年|昨季|去年|前年度|前シーズン|最近|直近|\d{4}\s*[-–—〜~]\s*\d{4}/.test(q);
+}
+
+function latestLookupDomain(context) {
+  const items = [...normalizedContext(context)].reverse();
+  for (const item of items) {
+    const q = item.text;
+    if (/投手|防御率|投球|奪三振|与四球|WHIP/.test(q)) return 'PITCHING';
+    if (/打撃|打率|OPS|出塁率|長打率|安打|打点|本塁打/.test(q)) return 'BATTING';
+  }
+  return '';
+}
+
+function recoverPeriodOnlyLookup(base, question, context) {
+  if (!isPeriodOnlyFollowup(question)) return null;
+  const intent = periodIntent(question);
+  const baseDomains = Array.isArray(base?.domains) ? base.domains : [];
+  const domain = baseDomains.includes('PITCHING') ? 'PITCHING'
+    : baseDomains.includes('BATTING') ? 'BATTING'
+      : latestLookupDomain(context);
+  const players = Array.isArray(base?.players) ? base.players : [];
+  if (!intent || players.length !== 1 || !['PITCHING','BATTING'].includes(domain)) return null;
+
+  const route = domain === 'PITCHING' ? 'PITCHING_LOOKUP' : 'BATTING_LOOKUP';
+  return {
+    ...base,
+    routerVersion: CURRENT_ROUTER_VERSION,
+    baseRouterVersion: base?.routerVersion || null,
+    route,
+    confidence: 'HIGH',
+    domains: [domain],
+    timeScope: intent.timeScope,
+    specificSeason: intent.specificSeason,
+    needsClarification: false,
+    clarificationQuestion: '',
+    needsDeliberation: false,
+    safeToExecute: true,
+    safetyStatus: 'READY',
+    guardApplied: true,
+    guardReason: 'PERIOD_ONLY_LOOKUP_CONTINUATION',
+    understoodRequest: `${players[0]}の${intent.timeScope === 'CAREER' ? '通算' : intent.timeScope === 'CURRENT_SEASON' ? '今季' : intent.timeScope === 'PREVIOUS_SEASON' ? '前シーズン' : intent.timeScope === 'RECENT_6' ? '直近6試合' : intent.timeScope === 'RECENT' ? '最近' : intent.specificSeason}の${domain === 'PITCHING' ? '投手' : '打撃'}成績を確認する`
+  };
+}
+
 function clarification(base, question, reason) {
   const players = Array.isArray(base?.players) ? base.players : [];
   let clarificationQuestion = '何について知りたいか、もう少し具体的に教えてください。';
@@ -104,6 +175,11 @@ export async function routeQuestion(questionValue, contextValue = []) {
   if (isSelectionOnlyReply(question) && latestGenericStatsRequest(context) && !isDomainSpecified(question) && !isExplicitDecisionRequest(question)) {
     return clarification(base, question, 'PLAYER_SELECTED_DOMAIN_STILL_MISSING');
   }
+
+  // 「通算で」「それの通算」「今季じゃなくて通算で」など、期間だけを変更する返答は
+  // 新しい判断依頼ではない。直前までに確定した選手・打撃/投手領域を保持し、同じ照会ルートを継続する。
+  const periodRecovered = recoverPeriodOnlyLookup(base, question, context);
+  if (periodRecovered) return periodRecovered;
 
   return {
     ...base,
