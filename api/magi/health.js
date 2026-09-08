@@ -1,5 +1,6 @@
 import { checkGeminiConfiguration, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { routeQuestion } from './_question-router.js';
+import { recoverContextBoundDeliberation } from './_conversation-recovery.js';
 
 function detectOutputFormat(questionValue) {
   const q = String(questionValue || '');
@@ -16,6 +17,7 @@ function stripOutputFormatModifier(questionValue) {
 async function routeWithOutputFormat(question, context) {
   const outputFormat = detectOutputFormat(question);
   let routed = await routeQuestion(question, context);
+  routed = await recoverContextBoundDeliberation(question, context, routed);
   routed.outputFormat = outputFormat;
 
   // Output format is a presentation modifier, not a reason to lose an otherwise clear intent.
@@ -24,7 +26,8 @@ async function routeWithOutputFormat(question, context) {
   if (outputFormat === 'PDF' && routed.route === 'CLARIFY') {
     const baseQuestion = stripOutputFormatModifier(question);
     if (baseQuestion && baseQuestion !== question) {
-      const base = await routeQuestion(baseQuestion, context);
+      let base = await routeQuestion(baseQuestion, context);
+      base = await recoverContextBoundDeliberation(baseQuestion, context, base);
       if (base.safeToExecute && base.route !== 'CLARIFY' && base.route !== 'UNSUPPORTED') {
         routed = {
           ...base,
