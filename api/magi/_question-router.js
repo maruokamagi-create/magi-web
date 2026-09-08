@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-const ROUTER_VERSION = 'v7-conversation-grounding';
+const ROUTER_VERSION = 'v8-context-evidence';
 const ROUTES = Object.freeze([
   'BATTING_LOOKUP',
   'PITCHING_LOOKUP',
@@ -48,6 +48,8 @@ const ROUTER_SYSTEM = `
 - ユーザーが「いや」「違う」「やっぱり」「ごめん」等で対象や領域を訂正した場合、最新の明示的な訂正を古い文脈より優先する。
 - 対象だけを訂正した文（例:「いや宮村 龍だった」）では、直前に明確だった依頼内容（例: 打撃成績）は、矛盾がない限り保持してよい。
 - ユーザーの短い返答（例:「投手」「今季」「それ」「うん」）は、直前のMAGIの確認質問への回答として suppliedContext と合わせて解釈する。
+- 「それ見て」「その数字で」「その結果から」「これをもとに」「その成績を見て」のように、直前の事実照会の結果を明示的に根拠として判断を求めている場合、その直前の照会結果そのものが判断材料として指定済みである。直前の照会が実行可能だったなら、期間や資料をもう一度聞き直さず、対象・領域・期間を保持して DELIBERATION に進む。
+- ただし「それ」が複数の過去結果を指し得て一意に解決できない場合だけ CLARIFY にする。
 - suppliedContext に複数の候補があり一意に結びつかない場合は推測せず CLARIFY。
 - 事実照会と判断依頼を厳密に分ける。数値・記録を「教えて/見せて/出して」は原則照会。起用・評価・優劣・べき論・戦術判断は DELIBERATION。
 - PLAYER_COMPARISON は数値や事実の比較だけに使う。どちらを起用すべきか、誰が向くか、4番は誰か等の判断は DELIBERATION。
@@ -83,6 +85,7 @@ UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで�
 「宮嵜 翔の成績を教えて」=> CLARIFY（打撃か投手か確認）
 前ターン「宮嵜 翔の成績を教えて」→MAGI「打撃と投手どちら？」→ユーザー「投手」=> PITCHING_LOOKUP / 宮嵜 翔 / HIGH
 前ターン「宮嵜 翔の打撃成績」→ユーザー「いや宮村 龍だった」=> BATTING_LOOKUP / 宮村 龍 / HIGH
+前ターン「陽翔のOPS教えて」→ユーザー「それ見て4番にするか判断して」=> DELIBERATION / 大久保 陽翔 / HIGH。直前のOPS照会が判断材料として指定済みなので、期間や資料を再質問しない。
 「大野 竜暉と大久保 陽翔の通算打撃成績を比べて」=> PLAYER_COMPARISON / BATTING / HIGH / needsDeliberation=false
 「大野 竜暉と大久保 陽翔ならどっちを4番にする？」=> DELIBERATION / LINEUP / HIGH / needsDeliberation=true
 「大野 竜暉をクローザー固定すべき？」=> DELIBERATION / PITCHING+TACTICS / HIGH / needsDeliberation=true
@@ -434,7 +437,7 @@ export async function routeQuestion(questionValue, contextValue = []) {
       officialPlayers: OFFICIAL_PLAYER_REGISTRY,
       groundedPlayerCandidates,
       mode: 'ACCURACY_FIRST',
-      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. A single groundedPlayerCandidate is deterministically supported by the typed characters and is authoritative for player identity. Never invent a second same-name candidate when groundedPlayerCandidates contains exactly one player. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
+      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. A single groundedPlayerCandidate is deterministically supported by the typed characters and is authoritative for player identity. Never invent a second same-name candidate when groundedPlayerCandidates contains exactly one player. If the user explicitly refers to the immediately prior lookup/result as the basis for a new judgment, preserve that prior subject/scope and route the judgment to DELIBERATION instead of asking for the period or evidence again. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
     },
     responseSchema
   });
