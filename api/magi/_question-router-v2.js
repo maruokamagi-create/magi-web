@@ -35,6 +35,7 @@ const ROUTER_SYSTEM = `
 - ユーザーへの最終回答や成績数値は作らない。ここでは質問理解だけ行う。
 - CLARIFY は「次に何を実行すべきか」が一意に決まらないときだけ使う。判断材料が十分か不足かはルーターでは評価しない。判断依頼の対象と目的が明確なら、材料が1項目しかなくても DELIBERATION に送る。
 - 直前の数値照会・比較・資料確認を受けて「それ見て判断して」「その結果ならどうする？」「じゃあ起用する？」「それを踏まえて決めて」等と判断へ移る場合、直前までに確定した対象・領域・期間・参照結果を引き継ぎ DELIBERATION に送る。
+- ただし「AとBどっちがいい？」「誰がいい？」のように、何について良いのか・何を決めたいのかが未指定なら、勝手に起用判断へ膨らませず CLARIFY。打撃比較、投手比較、起用判断など判断軸を確認する。
 
 会話型聞き返しの絶対ルール:
 - suppliedContext は古い順に並ぶ会話履歴である。current question が「投手」「通算で」「それ」「うん」など短い返答でも、直前までの会話を必ず引き継いで解釈する。
@@ -48,6 +49,8 @@ const ROUTER_SYSTEM = `
 - ユーザーが「わからない」「どっちでも」など不足を解消しない返答をした場合、勝手に決めず、聞き方を変えて CLARIFY を続ける。
 - 「それ」「その数字」「その結果」「さっきのデータ」などが直前の照会対象に一意に対応するなら参照解決済みとして扱う。current question に選手名や指標名が再掲されていないことだけを理由に CLARIFY してはいけない。
 - ルーターが確認するのは「依頼の意味が実行可能なほど明確か」であり、「審議で十分な証拠が揃っているか」ではない。証拠不足の判断は DELIBERATION 側の責務である。
+- 直前の CLARIFY に未解決点が複数あり、current question がそのうち1つだけを解消した場合、残りの未解決点を保持して CLARIFY を続ける。例: 「大久保の成績見せて」で選手と打撃/投手の両方が曖昧なとき、「陽翔の方」は選手だけを確定する返答であり、判断依頼ではない。次に打撃か投手かを確認する。
+- 「〜の方」「こっち」「そっち」などの短い選択返答は、直前の確認質問への回答としてまず解釈する。それ自体を「どちらが良いかの判断依頼」と誤解して DELIBERATION にしない。
 
 route 定義:
 BATTING_LOOKUP = 打撃成績・打率・OPS・安打・打点等の事実照会
@@ -67,6 +70,7 @@ UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで�
 「大野 竜暉と大久保 陽翔の通算打撃成績を比べて」=> PLAYER_COMPARISON / BATTING / needsDeliberation=false
 「大野 竜暉と大久保 陽翔ならどっちを4番にする？」=> DELIBERATION / LINEUP / needsDeliberation=true
 「大野 竜暉をクローザー固定すべき？」=> DELIBERATION / PITCHING+TACTICS / needsDeliberation=true
+「陽翔と竜暉どっちがいい？」=> 何について良いか未指定なら CLARIFY
 「陽翔どう？」=> CLARIFY
 「昨日のあれどうだった？」=> suppliedContextで解決できなければ CLARIFY
 「チームの通算勝敗を教えて」=> TEAM_LOOKUP
@@ -102,6 +106,18 @@ user: 「大野と陽翔の投手成績を比べて」
 assistant: （比較結果を回答）
 user: 「その結果なら次の試合どっちを先発にする？」
 => DELIBERATION。players=["大野 竜暉","大久保 陽翔"] を保持する。
+
+会話例6:
+user: 「大久保の成績見せて」
+assistant: 「大久保 陽翔と大久保 夢翔のどちらで、打撃成績と投手成績のどちらを確認しますか？」
+user: 「陽翔の方」
+=> CLARIFY。players=["大久保 陽翔"] を保持し、まだ打撃/投手が未確定なので「打撃成績と投手成績、どちらを見ますか？」と確認する。
+
+会話例7:
+user: 「陽翔と竜暉どっちがいい？」
+=> CLARIFY。「打撃成績で比べますか、投手成績で比べますか、それとも起用判断をしますか？」のように目的を確認する。
+user: 「打撃成績で比べて」
+=> PLAYER_COMPARISON。
 
 understoodRequest は質問を勝手に膨らませず、会話全体から確定した依頼を1文で言い換える。
 clarificationQuestion は1回の聞き返しで最も情報量が増える短い日本語質問にする。
@@ -212,5 +228,5 @@ export async function routeQuestion(questionValue, contextValue = []) {
     },
     responseSchema
   });
-  return { routerVersion: 'v2-semantic-multiturn-gemini-r2', ...normalizeResult(result) };
+  return { routerVersion: 'v2-semantic-multiturn-gemini-r3', ...normalizeResult(result) };
 }
