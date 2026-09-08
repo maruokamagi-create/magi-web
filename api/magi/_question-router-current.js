@@ -1,6 +1,7 @@
 import { routeQuestion as baseRouteQuestion } from './_question-router.js';
+import { OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
 
-const CURRENT_ROUTER_VERSION = 'v10-context-scope-guard';
+const CURRENT_ROUTER_VERSION = 'v11-resolved-state-period-guard';
 
 function text(value) {
   return String(value || '').trim();
@@ -89,12 +90,61 @@ function isPeriodOnlyFollowup(question) {
   return /通算|全期間|全部|今季|今シーズン|今年度|今年|昨季|去年|前年度|前シーズン|最近|直近|\d{4}\s*[-–—〜~]\s*\d{4}/.test(q);
 }
 
-function latestLookupDomain(context) {
+function domainFromText(value) {
+  const q = text(value);
+  const pitching = /投手|防御率|投球|奪三振|与四球|WHIP/.test(q);
+  const batting = /打撃|打率|OPS|出塁率|長打率|安打|打点|本塁打/.test(q);
+  if (pitching === batting) return '';
+  return pitching ? 'PITCHING' : 'BATTING';
+}
+
+function playersFromText(value) {
+  const q = text(value);
+  const compact = q.replace(/[\s　]/g, '');
+  const matches = OFFICIAL_PLAYER_REGISTRY.filter(name => {
+    const noSpace = name.replace(/[\s　]/g, '');
+    return q.includes(name) || compact.includes(noSpace);
+  });
+  return [...new Set(matches)];
+}
+
+function latestResolvedLookupState(context) {
   const items = [...normalizedContext(context)].reverse();
   for (const item of items) {
+    // In the test harness, a successful route is stored as the assistant's declarative
+    // understoodRequest, while clarification text is a question. Only use a resolved,
+    // one-player, one-domain state so a period word can never manufacture missing intent.
+    if (item.role !== 'assistant') continue;
     const q = item.text;
-    if (/投手|防御率|投球|奪三振|与四球|WHIP/.test(q)) return 'PITCHING';
-    if (/打撃|打率|OPS|出塁率|長打率|安打|打点|本塁打/.test(q)) return 'BATTING';
+    if (/[?？]/.test(q)) continue;
+    const domain = domainFromText(q);
+    if (!domain) continue;
+    const players = playersFromText(q);
+    if (players.length === 1) return { player: players[0], domain };
+    if (players.length > 1) return null;
+  }
+  return null;
+}
+
+function latestLookupDomain(context) {
+  const resolved = latestResolvedLookupState(context);
+  if (resolved?.domain) return resolved.domain;
+  const items = [...normalizedContext(context)].reverse();
+  for (const item of items) {
+    const domain = domainFromText(item.text);
+    if (domain) return domain;
+  }
+  return '';
+}
+
+function latestLookupPlayer(context) {
+  const resolved = latestResolvedLookupState(context);
+  if (resolved?.player) return resolved.player;
+  const items = [...normalizedContext(context)].reverse();
+  for (const item of items) {
+    const players = playersFromText(item.text);
+    if (players.length === 1) return players[0];
+    if (players.length > 1) return '';
   }
   return '';
 }
@@ -103,11 +153,16 @@ function recoverPeriodOnlyLookup(base, question, context) {
   if (!isPeriodOnlyFollowup(question)) return null;
   const intent = periodIntent(question);
   const baseDomains = Array.isArray(base?.domains) ? base.domains : [];
+  const basePlayers = Array.isArray(base?.players) ? base.players : [];
+  const resolved = latestResolvedLookupState(context);
+
   const domain = baseDomains.includes('PITCHING') ? 'PITCHING'
     : baseDomains.includes('BATTING') ? 'BATTING'
-      : latestLookupDomain(context);
-  const players = Array.isArray(base?.players) ? base.players : [];
-  if (!intent || players.length !== 1 || !['PITCHING','BATTING'].includes(domain)) return null;
+      : resolved?.domain || latestLookupDomain(context);
+  const player = basePlayers.length === 1 ? basePlayers[0]
+    : resolved?.player || latestLookupPlayer(context);
+
+  if (!intent || !player || !['PITCHING','BATTING'].includes(domain)) return null;
 
   const route = domain === 'PITCHING' ? 'PITCHING_LOOKUP' : 'BATTING_LOOKUP';
   return {
@@ -116,6 +171,7 @@ function recoverPeriodOnlyLookup(base, question, context) {
     baseRouterVersion: base?.routerVersion || null,
     route,
     confidence: 'HIGH',
+    players: [player],
     domains: [domain],
     timeScope: intent.timeScope,
     specificSeason: intent.specificSeason,
@@ -124,9 +180,10 @@ function recoverPeriodOnlyLookup(base, question, context) {
     needsDeliberation: false,
     safeToExecute: true,
     safetyStatus: 'READY',
+    validationIssues: [],
     guardApplied: true,
-    guardReason: 'PERIOD_ONLY_LOOKUP_CONTINUATION',
-    understoodRequest: `${players[0]}の${intent.timeScope === 'CAREER' ? '通算' : intent.timeScope === 'CURRENT_SEASON' ? '今季' : intent.timeScope === 'PREVIOUS_SEASON' ? '前シーズン' : intent.timeScope === 'RECENT_6' ? '直近6試合' : intent.timeScope === 'RECENT' ? '最近' : intent.specificSeason}の${domain === 'PITCHING' ? '投手' : '打撃'}成績を確認する`
+    guardReason: 'PERIOD_ONLY_LOOKUP_CONTINUATION_FROM_RESOLVED_STATE',
+    understoodRequest: `${player}の${intent.timeScope === 'CAREER' ? '通算' : intent.timeScope === 'CURRENT_SEASON' ? '今季' : intent.timeScope === 'PREVIOUS_SEASON' ? '前シーズン' : intent.timeScope === 'RECENT_6' ? '直近6試合' : intent.timeScope === 'RECENT' ? '最近' : intent.specificSeason}の${domain === 'PITCHING' ? '投手' : '打撃'}成績を確認する`
   };
 }
 
@@ -170,16 +227,17 @@ export async function routeQuestion(questionValue, contextValue = []) {
     return clarification(base, question, 'BARE_PREFERENCE_COMPARISON');
   }
 
+  // 期間語（「今季」「通算」等）は短い選択返答にも見えるため、
+  // 一般の selection-only guard より先に、直前の解決済みLOOKUP状態を使って判定する。
+  // 選手＋領域が直前に確定していない場合は何も補完せず、後続の通常判定へ渡す。
+  const periodRecovered = recoverPeriodOnlyLookup(base, question, context);
+  if (periodRecovered) return periodRecovered;
+
   // 直前の曖昧な「成績」質問に対し、ユーザーが人物だけを選び直した場合、
   // 人物は確定しても打撃/投手の領域は未確定。勝手に判断・照会へ進まない。
   if (isSelectionOnlyReply(question) && latestGenericStatsRequest(context) && !isDomainSpecified(question) && !isExplicitDecisionRequest(question)) {
     return clarification(base, question, 'PLAYER_SELECTED_DOMAIN_STILL_MISSING');
   }
-
-  // 「通算で」「それの通算」「今季じゃなくて通算で」など、期間だけを変更する返答は
-  // 新しい判断依頼ではない。直前までに確定した選手・打撃/投手領域を保持し、同じ照会ルートを継続する。
-  const periodRecovered = recoverPeriodOnlyLookup(base, question, context);
-  if (periodRecovered) return periodRecovered;
 
   return {
     ...base,
