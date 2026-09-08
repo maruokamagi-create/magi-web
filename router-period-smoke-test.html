@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>MAGI Period Followup Smoke Test</title>
+<style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:860px;margin:auto;padding:24px 14px 40px}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:12px 0}button{border:0;border-radius:12px;padding:13px 16px;font-weight:800;background:#edf6ff;color:#07111f}.ok{color:#8ce0b4}.bad{color:#ff9898}.meta{color:#9db4c7}.turn{margin:8px 0;padding:10px;border-radius:10px;background:#091522}.route{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;word-break:break-all}.row{background:#071827;border:1px solid #274965;border-radius:12px;padding:10px;margin:8px 0}.row.fail{border-color:#8b4040}
+</style>
+</head>
+<body><div class="wrap">
+<h1>MAGI Period Followup Smoke Test</h1>
+<p class="meta">M13 / M19 / M30 の期間継承だけを短時間で確認します。routerVersion も表示します。</p>
+<div class="card"><button id="run">3ケース開始</button><div id="state" class="meta">未実行</div></div>
+<div class="card"><b>Router Version: </b><span id="version">未取得</span></div>
+<div class="card" id="list"></div>
+</div>
+<script>
+const CASES=[
+{id:'M13',turns:[{u:'竜暉の成績見たい',route:'CLARIFY'},{u:'投手',route:'PITCHING_LOOKUP'},{u:'今季じゃなくて通算で',route:'PITCHING_LOOKUP',time:'CAREER'}]},
+{id:'M19',turns:[{u:'陽翔の成績',route:'CLARIFY'},{u:'投手で',route:'PITCHING_LOOKUP'},{u:'それの通算',route:'PITCHING_LOOKUP',time:'CAREER'}]},
+{id:'M30',turns:[{u:'陽翔どう？',route:'CLARIFY'},{u:'成績',route:'CLARIFY'},{u:'投手',route:'PITCHING_LOOKUP'},{u:'いや打撃',route:'BATTING_LOOKUP'},{u:'今季',route:'BATTING_LOOKUP',time:'CURRENT_SEASON'},{u:'やっぱ投手の通算',route:'PITCHING_LOOKUP',time:'CAREER'}]}
+];
+const $=id=>document.getElementById(id);const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+async function call(q,ctx){const r=await fetch('/api/magi/health',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({mode:'ROUTE_QUESTION',question:q,context:ctx})});const d=await r.json();if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);return d}
+function good(t,d){return d.route===t.route&&(!t.time||d.timeScope===t.time)}
+async function runCase(c){const ctx=[],out=[];for(const t of c.turns){const d=await call(t.u,ctx);out.push({t,d,pass:good(t,d)});ctx.push({role:'user',text:t.u});ctx.push({role:'assistant',text:d.route==='CLARIFY'&&d.clarificationQuestion?d.clarificationQuestion:(d.understoodRequest||d.route)});await sleep(800)}return out}
+$('run').onclick=async()=>{ $('run').disabled=true;$('list').innerHTML='';$('state').textContent='実行中';let all=true;let ver='';for(const c of CASES){let out;try{out=await runCase(c)}catch(e){all=false;$('list').innerHTML+=`<div class="row fail"><b>${c.id} — API ERROR</b><div class="bad">${e.message}</div></div>`;continue}const pass=out.every(x=>x.pass);if(!pass)all=false;const row=document.createElement('div');row.className='row '+(pass?'':'fail');row.innerHTML=`<b>${c.id} — ${pass?'PASS':'FAIL'}</b>`;for(const x of out){ver=x.d.routerVersion||ver;row.innerHTML+=`<div class="turn"><div>あなた: ${x.t.u}</div><div>MAGI: ${x.d.clarificationQuestion||x.d.understoodRequest||''}</div><div class="route">${x.d.route} / ${x.d.timeScope||''}<br>router=${x.d.routerVersion||'-'}<br>guard=${x.d.guardReason||'-'}</div>${x.pass?'':`<div class="bad">expected ${x.t.route}${x.t.time?' / '+x.t.time:''}</div>`}</div>`} $('list').appendChild(row)}$('version').textContent=ver||'取得できず';$('state').innerHTML=all?'<span class="ok">3/3 PASS</span>':'<span class="bad">FAILあり</span>';$('run').disabled=false};
+</script>
+</body></html>
