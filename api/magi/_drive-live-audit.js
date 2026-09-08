@@ -55,6 +55,16 @@ function displayDecimal(value) {
   return String(n);
 }
 
+function decimalNumber(value) {
+  const n = Number(String(value ?? '').replace(/,/g,'').trim());
+  return Number.isFinite(n) ? n : null;
+}
+
+function threeDecimal(value) {
+  if (!Number.isFinite(value)) return '';
+  return value.toFixed(3).replace(/^0/, '').replace(/-0\./, '-.');
+}
+
 function toInt(value) {
   const n = Number(String(value ?? '').replace(/,/g,'').trim());
   return Number.isFinite(n) ? Math.trunc(n) : null;
@@ -130,8 +140,98 @@ function headerIndex(row, label) {
   });
 }
 
+function calculateTeamOpsFromBattingTotals(sheets) {
+  // Team OPS is NOT stored as an authoritative field in the master workbook.
+  // It must be calculated from team batting aggregates. Never average player OPS.
+  // Standard formula:
+  //   OBP = (H + BB + HBP) / (AB + BB + HBP + SF)
+  //   SLG = TB / AB
+  //   TB  = 1B + 2*2B + 3*3B + 4*HR
+  //   OPS = OBP + SLG
+  for (const { sheetName, rows } of sheets) {
+    for (let i = 0; i < rows.length; i++) {
+      const h = rows[i] || [];
+      if (headerIndex(h,'選手名') >= 0) continue;
+      if (!rowHasLabels(h, ['打数','二塁打','三塁打','本塁打','四球','死球','犠飛'])) continue;
+
+      const abCol = headerIndex(h,'打数');
+      const hCol = headerIndex(h,'安打');
+      const singleCol = headerIndex(h,'単打');
+      const d2Col = headerIndex(h,'二塁打');
+      const d3Col = headerIndex(h,'三塁打');
+      const hrCol = headerIndex(h,'本塁打');
+      const bbCol = headerIndex(h,'四球');
+      const hbpCol = headerIndex(h,'死球');
+      const sfCol = headerIndex(h,'犠飛');
+      if (abCol < 0 || d2Col < 0 || d3Col < 0 || hrCol < 0 || bbCol < 0 || hbpCol < 0 || sfCol < 0) continue;
+      if (hCol < 0 && singleCol < 0) continue;
+
+      const needed = [abCol,d2Col,d3Col,hrCol,bbCol,hbpCol,sfCol,hCol >= 0 ? hCol : singleCol];
+      const data = nextDataRow(rows, i, needed);
+      if (!data) continue;
+
+      const AB = decimalNumber(data[abCol]);
+      const doubles = decimalNumber(data[d2Col]);
+      const triples = decimalNumber(data[d3Col]);
+      const HR = decimalNumber(data[hrCol]);
+      const BB = decimalNumber(data[bbCol]);
+      const HBP = decimalNumber(data[hbpCol]);
+      const SF = decimalNumber(data[sfCol]);
+      let H = hCol >= 0 ? decimalNumber(data[hCol]) : null;
+      let singles = singleCol >= 0 ? decimalNumber(data[singleCol]) : null;
+      if ([AB,doubles,triples,HR,BB,HBP,SF].some(v => v === null) || AB <= 0) continue;
+      if (H === null && singles !== null) H = singles + doubles + triples + HR;
+      if (singles === null && H !== null) singles = H - doubles - triples - HR;
+      if (H === null || singles === null) continue;
+
+      const obpDen = AB + BB + HBP + SF;
+      if (obpDen <= 0) continue;
+      const OBP = (H + BB + HBP) / obpDen;
+      const TB = singles + (2 * doubles) + (3 * triples) + (4 * HR);
+      const SLG = TB / AB;
+      const OPS = OBP + SLG;
+      return {
+        OPS: threeDecimal(OPS),
+        OBP: threeDecimal(OBP),
+        SLG: threeDecimal(SLG),
+        method:'CALCULATED_FROM_TEAM_TOTALS',
+        sheetName,
+        inputs:{ AB,H,singles,doubles,triples,HR,BB,HBP,SF }
+      };
+    }
+  }
+
+  // Fallback: some workbooks expose aggregate OBP and SLG but omit the raw
+  // extra-base totals on the same summary table. OPS is still calculated here
+  // as OBP + SLG; it is never read as a stored team OPS field.
+  for (const { sheetName, rows } of sheets) {
+    for (let i = 0; i < rows.length; i++) {
+      const h = rows[i] || [];
+      if (headerIndex(h,'選手名') >= 0) continue;
+      if (!rowHasLabels(h, ['出塁率','長打率'])) continue;
+      const obpCol = headerIndex(h,'出塁率');
+      const slgCol = headerIndex(h,'長打率');
+      const data = nextDataRow(rows, i, [obpCol, slgCol]);
+      if (!data) continue;
+      const OBP = decimalNumber(data[obpCol]);
+      const SLG = decimalNumber(data[slgCol]);
+      if (OBP === null || SLG === null) continue;
+      return {
+        OPS: threeDecimal(OBP + SLG),
+        OBP: threeDecimal(OBP),
+        SLG: threeDecimal(SLG),
+        method:'CALCULATED_FROM_AGGREGATE_OBP_SLG',
+        sheetName,
+        inputs:null
+      };
+    }
+  }
+
+  throw new Error('XLSM正本からチームOPS計算に必要な打撃集計値を特定できませんでした');
+}
+
 function findTeamRecord(sheets) {
-  let team = { games:null, wins:null, draws:null, losses:null, OPS:'' };
+  let team = { games:null, wins:null, draws:null, losses:null, OPS:'', OBP:'', SLG:'', opsCalculation:null };
 
   for (const { rows } of sheets) {
     for (let i = 0; i < rows.length; i++) {
@@ -150,27 +250,19 @@ function findTeamRecord(sheets) {
     if (team.games !== null) break;
   }
 
-  // Team OPS is normally in the aggregate batting row immediately below the
-  // batting header containing OBP / SLG / OPS. Read the cached XLSM cell value
-  // directly; no LLM is involved.
-  for (const { rows } of sheets) {
-    for (let i = 0; i < rows.length; i++) {
-      const h = rows[i] || [];
-      if (!rowHasLabels(h, ['OPS']) || !(rowHasLabels(h,['出塁率']) || rowHasLabels(h,['長打率']) || rowHasLabels(h,['打率']))) continue;
-      const opsCol = headerIndex(h,'OPS');
-      if (opsCol < 0) continue;
-      const data = nextDataRow(rows, i, [opsCol]);
-      if (!data) continue;
-      const candidate = displayDecimal(data[opsCol]);
-      if (candidate) { team.OPS = candidate; break; }
-    }
-    if (team.OPS) break;
-  }
-
   if ([team.games,team.wins,team.draws,team.losses].some(v => v === null)) {
     throw new Error('XLSM正本からチーム成績（試合数/勝敗）を特定できませんでした');
   }
-  if (!team.OPS) throw new Error('XLSM正本からチームOPSを特定できませんでした');
+
+  const calculated = calculateTeamOpsFromBattingTotals(sheets);
+  team.OPS = calculated.OPS;
+  team.OBP = calculated.OBP;
+  team.SLG = calculated.SLG;
+  team.opsCalculation = {
+    method:calculated.method,
+    sheetName:calculated.sheetName,
+    inputs:calculated.inputs
+  };
   return team;
 }
 
@@ -182,9 +274,6 @@ function findPlayerBatting(sheets, playerName) {
       const playerCol = row.findIndex(cell => norm(cell).includes(target));
       if (playerCol < 0) continue;
 
-      // Find the nearest preceding batting header. Some master workbooks place
-      // several title rows between the header and the first player, so allow a
-      // generous window while still requiring both AVG and OPS labels.
       for (let h = i - 1; h >= Math.max(0, i - 20); h--) {
         const header = rows[h] || [];
         const opsCol = headerIndex(header,'OPS');
@@ -207,6 +296,7 @@ function extractFromXlsm(buffer, season) {
   const players = {};
   const usedSheets = new Set();
 
+  if (team.opsCalculation?.sheetName) usedSheets.add(team.opsCalculation.sheetName);
   for (const player of season.players) {
     const found = findPlayerBatting(sheets, player.name);
     players[player.key] = { AVG: found.AVG, OPS: found.OPS };
@@ -215,7 +305,7 @@ function extractFromXlsm(buffer, season) {
 
   if (!period.start) throw new Error(`${season.label} XLSM正本から集計開始日を特定できませんでした`);
   return {
-    parser:'deterministic-xlsx-v1',
+    parser:'deterministic-xlsx-v2-team-ops-calculated',
     usedSheets:[...usedSheets],
     extracted:{ periodStart:period.start, periodEnd:period.end, team, players }
   };
