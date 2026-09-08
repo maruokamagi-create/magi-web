@@ -33,6 +33,8 @@ const ROUTER_SYSTEM = `
 - 選手名は officialPlayers を参照する。表記揺れ・軽微な誤字・一意な呼び方は公式名へ正規化してよいが、複数候補があるなら CLARIFY。
 - 3賢人審議は route=DELIBERATION のときだけ必要。照会や資料検索では needsDeliberation=false。
 - ユーザーへの最終回答や成績数値は作らない。ここでは質問理解だけ行う。
+- CLARIFY は「次に何を実行すべきか」が一意に決まらないときだけ使う。判断材料が十分か不足かはルーターでは評価しない。判断依頼の対象と目的が明確なら、材料が1項目しかなくても DELIBERATION に送る。
+- 直前の数値照会・比較・資料確認を受けて「それ見て判断して」「その結果ならどうする？」「じゃあ起用する？」「それを踏まえて決めて」等と判断へ移る場合、直前までに確定した対象・領域・期間・参照結果を引き継ぎ DELIBERATION に送る。
 
 会話型聞き返しの絶対ルール:
 - suppliedContext は古い順に並ぶ会話履歴である。current question が「投手」「通算で」「それ」「うん」など短い返答でも、直前までの会話を必ず引き継いで解釈する。
@@ -44,6 +46,8 @@ const ROUTER_SYSTEM = `
 - 文脈から確定した内容は understoodRequest に統合して書く。current question の断片だけを言い換えない。
 - ユーザーが訂正した場合は最新の明示情報を優先する。例: 「打撃じゃなく投手」なら投手を採用する。
 - ユーザーが「わからない」「どっちでも」など不足を解消しない返答をした場合、勝手に決めず、聞き方を変えて CLARIFY を続ける。
+- 「それ」「その数字」「その結果」「さっきのデータ」などが直前の照会対象に一意に対応するなら参照解決済みとして扱う。current question に選手名や指標名が再掲されていないことだけを理由に CLARIFY してはいけない。
+- ルーターが確認するのは「依頼の意味が実行可能なほど明確か」であり、「審議で十分な証拠が揃っているか」ではない。証拠不足の判断は DELIBERATION 側の責務である。
 
 route 定義:
 BATTING_LOOKUP = 打撃成績・打率・OPS・安打・打点等の事実照会
@@ -86,6 +90,18 @@ user: 「陽翔どう？」
 assistant: 「大久保 陽翔について、成績を見たいですか、それとも起用や状態を評価してほしいですか？」
 user: 「成績」
 => 打撃/投手がまだ未確定なら CLARIFY を続ける。「打撃成績と投手成績、どちらを見ますか？」
+
+会話例4:
+user: 「陽翔のOPS教えて」
+assistant: （大久保 陽翔のOPSを回答）
+user: 「それ見て4番にするか判断して」
+=> DELIBERATION。players=["大久保 陽翔"] を保持する。「それ」は直前のOPS照会結果を指す。OPSだけで判断材料が十分かどうかを理由に CLARIFY しない。
+
+会話例5:
+user: 「大野と陽翔の投手成績を比べて」
+assistant: （比較結果を回答）
+user: 「その結果なら次の試合どっちを先発にする？」
+=> DELIBERATION。players=["大野 竜暉","大久保 陽翔"] を保持する。
 
 understoodRequest は質問を勝手に膨らませず、会話全体から確定した依頼を1文で言い換える。
 clarificationQuestion は1回の聞き返しで最も情報量が増える短い日本語質問にする。
@@ -196,5 +212,5 @@ export async function routeQuestion(questionValue, contextValue = []) {
     },
     responseSchema
   });
-  return { routerVersion: 'v2-semantic-multiturn-gemini', ...normalizeResult(result) };
+  return { routerVersion: 'v2-semantic-multiturn-gemini-r2', ...normalizeResult(result) };
 }
