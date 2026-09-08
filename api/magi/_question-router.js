@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-const ROUTER_VERSION = 'v6-comparison-explicit-evidence';
+const ROUTER_VERSION = 'v7-conversation-grounding';
 const ROUTES = Object.freeze([
   'BATTING_LOOKUP',
   'PITCHING_LOOKUP',
@@ -45,6 +45,8 @@ const ROUTER_SYSTEM = `
 - 質問が意味不明でも無理に推測しない。
 - 一度の聞き返しで解消できる曖昧さは、できるだけまとめて確認する。ただし正確性を犠牲にしてはいけない。
 - 前のターンですでに確定した選手名・領域・期間・対象は保持する。同じことを何度も聞き直さない。
+- ユーザーが「いや」「違う」「やっぱり」「ごめん」等で対象や領域を訂正した場合、最新の明示的な訂正を古い文脈より優先する。
+- 対象だけを訂正した文（例:「いや宮村 龍だった」）では、直前に明確だった依頼内容（例: 打撃成績）は、矛盾がない限り保持してよい。
 - ユーザーの短い返答（例:「投手」「今季」「それ」「うん」）は、直前のMAGIの確認質問への回答として suppliedContext と合わせて解釈する。
 - suppliedContext に複数の候補があり一意に結びつかない場合は推測せず CLARIFY。
 - 事実照会と判断依頼を厳密に分ける。数値・記録を「教えて/見せて/出して」は原則照会。起用・評価・優劣・べき論・戦術判断は DELIBERATION。
@@ -53,7 +55,7 @@ const ROUTER_SYSTEM = `
 - 「成績」だけで打撃/投手を一意に確定できない場合は、勝手に打撃へ寄せず CLARIFY。
 - 「昨日のあれ」「さっきのやつ」「これどう？」等の指示語は suppliedContext だけで一意に解決できるときだけ解決する。解決不能なら CLARIFY。
 - 選手名は officialPlayers を参照する。正式名・登録済み表記揺れ・会話で確定済みの名前は公式名へ正規化してよい。
-- groundedPlayerCandidates は文字表記から機械的に一意に確認できた候補である。1人だけなら、その人物名については推測ではなく根拠ありとして扱ってよい。
+- groundedPlayerCandidates は文字表記から機械的に一意に確認できた候補である。1人だけなら、その人物名については推測ではなく確定済みの根拠として扱う。groundedPlayerCandidates が1人なのに「同名候補が複数いる」とは判断してはいけない。
 - ただし、ひらがな・音の類似・推測だけから漢字の公式選手名を勝手に確定してはいけない。候補が有力でも、名前の根拠が不足するなら CLARIFY。
 - 姓または名だけの呼称は、その表記が登録選手の中で一意に対応するときだけ補完してよい。複数候補なら CLARIFY。
 - 3賢人審議は route=DELIBERATION のときだけ必要。照会や資料検索では needsDeliberation=false。
@@ -80,13 +82,14 @@ UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで�
 「宮嵜 翔の通算打撃成績を教えて」=> BATTING_LOOKUP / CAREER / HIGH / needsDeliberation=false
 「宮嵜 翔の成績を教えて」=> CLARIFY（打撃か投手か確認）
 前ターン「宮嵜 翔の成績を教えて」→MAGI「打撃と投手どちら？」→ユーザー「投手」=> PITCHING_LOOKUP / 宮嵜 翔 / HIGH
+前ターン「宮嵜 翔の打撃成績」→ユーザー「いや宮村 龍だった」=> BATTING_LOOKUP / 宮村 龍 / HIGH
 「大野 竜暉と大久保 陽翔の通算打撃成績を比べて」=> PLAYER_COMPARISON / BATTING / HIGH / needsDeliberation=false
 「大野 竜暉と大久保 陽翔ならどっちを4番にする？」=> DELIBERATION / LINEUP / HIGH / needsDeliberation=true
 「大野 竜暉をクローザー固定すべき？」=> DELIBERATION / PITCHING+TACTICS / HIGH / needsDeliberation=true
 「陽翔の防御率は？」=> PITCHING_LOOKUP / 大久保 陽翔 / HIGH（登録選手中で「陽翔」が一意）
 「陽翔を次の試合で先発させるべき？」=> DELIBERATION / 大久保 陽翔 / HIGH
 「みやざきしょうの投手成績」=> 名前の漢字を音だけで確定せず CLARIFY
-「陽翔どう？」=> CLARIFY
+「陽翔どう？」=> CLARIFY。ただし「陽翔」は大久保 陽翔として確定し、打撃・投手・評価など何を知りたいかだけ確認する。
 「昨日のあれどうだった？」=> suppliedContextで一意に解決できなければ CLARIFY
 「チームの通算勝敗を教えて」=> TEAM_LOOKUP / HIGH
 「8月号のTEAM REPORTを見せて」=> DOCUMENT_SEARCH / HIGH
@@ -97,6 +100,7 @@ UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで�
 - understoodRequest は質問を勝手に膨らませず1文で言い換える。
 - routeReason は、なぜそのルートまたはCLARIFYなのかを短い1文で書く。回答や評価は書かない。
 - clarificationQuestion は1回の聞き返しで最も情報量が増える短い日本語質問にする。
+- すでに一意に確定した選手名を再確認しない。
 - ambiguities は未解決点だけを列挙する。実行可能なら空配列にする。
 - unresolvedEntities は公式名などへ解決できない固有名詞だけを列挙する。
 - contextReferences は suppliedContext を使って解決した参照だけを書く。
@@ -212,26 +216,58 @@ function deterministicPlayersInText(value) {
 }
 
 function maybeResolveUniquePlayerFromQuestion(result, rawQuestion) {
-  if (result.players.length || !['BATTING_LOOKUP','PITCHING_LOOKUP','DELIBERATION'].includes(result.modelRoute)) return result;
+  if (result.players.length) return result;
   const candidates = deterministicPlayersInText(rawQuestion);
-  if (candidates.length === 1) result.players = [candidates[0]];
+  if (candidates.length === 1) {
+    result.players = [candidates[0]];
+    result.deterministicPlayerGrounded = true;
+  }
   return result;
 }
 
 function maybeCarryUniquePlayerFromContext(result, suppliedContext) {
-  if (result.players.length || !['BATTING_LOOKUP','PITCHING_LOOKUP','DELIBERATION'].includes(result.modelRoute)) return result;
-  const recent = [...suppliedContext].reverse();
-  const candidates = [];
-  for (const item of recent) {
-    for (const p of deterministicPlayersInText(item?.text)) {
-      if (!candidates.includes(p)) candidates.push(p);
+  if (result.players.length || !['BATTING_LOOKUP','PITCHING_LOOKUP','DELIBERATION','CLARIFY'].includes(result.modelRoute)) return result;
+
+  const recentUsers = [...suppliedContext].reverse().filter(item => item.role === 'user');
+  for (const item of recentUsers) {
+    const found = deterministicPlayersInText(item?.text);
+    if (found.length === 1) {
+      result.players = [found[0]];
+      if (!result.contextReferences.includes(`player:${found[0]}`)) result.contextReferences.push(`player:${found[0]}`);
+      result.contextRequired = true;
+      return result;
     }
-    if (candidates.length > 1) break;
+    if (found.length > 1) break;
   }
-  if (candidates.length === 1) {
-    result.players = [candidates[0]];
-    if (!result.contextReferences.includes(`player:${candidates[0]}`)) result.contextReferences.push(`player:${candidates[0]}`);
-    result.contextRequired = true;
+
+  const recentAssistants = [...suppliedContext].reverse().filter(item => item.role === 'assistant');
+  for (const item of recentAssistants) {
+    const found = deterministicPlayersInText(item?.text);
+    if (found.length === 1) {
+      result.players = [found[0]];
+      if (!result.contextReferences.includes(`player:${found[0]}`)) result.contextReferences.push(`player:${found[0]}`);
+      result.contextRequired = true;
+      return result;
+    }
+    if (found.length > 1) break;
+  }
+  return result;
+}
+
+function repairClarificationForGroundedPlayer(result, rawQuestion) {
+  if (result.modelRoute !== 'CLARIFY' || result.players.length !== 1) return result;
+  const player = result.players[0];
+  const q = String(rawQuestion || '');
+  const clarificationNames = deterministicPlayersInText(result.clarificationQuestion || '');
+  const mentionsOtherPlayers = clarificationNames.some(name => name !== player);
+  const asksPlayerChoice = /どの選手|どちらの選手|誰の|どちらでしょう|どの人物/.test(result.clarificationQuestion || '');
+
+  if (/成績/.test(q) && !/打撃|打率|OPS|投手|防御率|投球|奪三振/.test(q)) {
+    result.clarificationQuestion = `「${player}」の打撃成績と投手成績、どちらを見ますか？`;
+    result.routeReason = `${player}は確定しているが、打撃成績か投手成績かが未確定。`;
+  } else if (mentionsOtherPlayers || asksPlayerChoice || /どう|について|教えて|知りたい|見せて/.test(q)) {
+    result.clarificationQuestion = `「${player}」について、打撃成績・投手成績・起用や評価のどれを知りたいですか？`;
+    result.routeReason = `${player}は確定しているが、知りたい内容が未確定。`;
   }
   return result;
 }
@@ -398,7 +434,7 @@ export async function routeQuestion(questionValue, contextValue = []) {
       officialPlayers: OFFICIAL_PLAYER_REGISTRY,
       groundedPlayerCandidates,
       mode: 'ACCURACY_FIRST',
-      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. A single groundedPlayerCandidate is deterministically supported by the typed characters and may be treated as the player identity. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
+      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. A single groundedPlayerCandidate is deterministically supported by the typed characters and is authoritative for player identity. Never invent a second same-name candidate when groundedPlayerCandidates contains exactly one player. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
     },
     responseSchema
   });
@@ -407,6 +443,7 @@ export async function routeQuestion(questionValue, contextValue = []) {
     maybeResolveUniquePlayerFromQuestion(normalizeResult(raw), rawQuestion),
     suppliedContext
   );
+  normalized = repairClarificationForGroundedPlayer(normalized, rawQuestion);
   normalized = await verifyBorderline(rawQuestion, suppliedContext, normalized, groundedPlayerCandidates);
   const gated = validateAndGate(normalized, suppliedContext, rawQuestion);
   return { routerVersion: ROUTER_VERSION, ...gated };
