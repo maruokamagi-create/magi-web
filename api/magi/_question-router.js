@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-const ROUTER_VERSION = 'v3-accuracy-grounded';
+const ROUTER_VERSION = 'v4-accuracy-verified';
 const ROUTES = Object.freeze([
   'BATTING_LOOKUP',
   'PITCHING_LOOKUP',
@@ -53,6 +53,7 @@ const ROUTER_SYSTEM = `
 - 「成績」だけで打撃/投手を一意に確定できない場合は、勝手に打撃へ寄せず CLARIFY。
 - 「昨日のあれ」「さっきのやつ」「これどう？」等の指示語は suppliedContext だけで一意に解決できるときだけ解決する。解決不能なら CLARIFY。
 - 選手名は officialPlayers を参照する。正式名・登録済み表記揺れ・会話で確定済みの名前は公式名へ正規化してよい。
+- groundedPlayerCandidates は文字表記から機械的に一意に確認できた候補である。1人だけなら、その人物名については推測ではなく根拠ありとして扱ってよい。
 - ただし、ひらがな・音の類似・推測だけから漢字の公式選手名を勝手に確定してはいけない。候補が有力でも、名前の根拠が不足するなら CLARIFY。
 - 姓または名だけの呼称は、その表記が登録選手の中で一意に対応するときだけ補完してよい。複数候補なら CLARIFY。
 - 3賢人審議は route=DELIBERATION のときだけ必要。照会や資料検索では needsDeliberation=false。
@@ -72,7 +73,7 @@ DOCUMENT_SEARCH = Drive等の資料・レポート・ファイルを探す/見�
 DELIBERATION = 起用、打順、先発、継投、評価、育成、戦術、選択、推奨など判断が必要
 GENERAL_QUESTION = MAGIの使い方、仕組み、野球一般など、専用データ照会/審議ではない質問
 CLARIFY = 意味・対象・期間・打撃/投手等が不足し、安全に1ルートへ確定できない
-UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで扱わない方がよい
+UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで扱わない方がよい。意味不明・単なる文字列・意図不明は UNSUPPORTED ではなく CLARIFY。
 
 代表例:
 「宮嵜 翔の通算投手成績を教えて」=> PITCHING_LOOKUP / CAREER / HIGH / needsDeliberation=false
@@ -90,6 +91,7 @@ UNSUPPORTED = MAGIの対象外で、質問自体は明確だが現在のMAGIで�
 「チームの通算勝敗を教えて」=> TEAM_LOOKUP / HIGH
 「8月号のTEAM REPORTを見せて」=> DOCUMENT_SEARCH / HIGH
 「MAGIって何？」=> GENERAL_QUESTION / HIGH
+「asdfgh」=> 意味を推測せず CLARIFY
 
 出力規則:
 - understoodRequest は質問を勝手に膨らませず1文で言い換える。
@@ -126,6 +128,15 @@ const responseSchema = {
     'needsDeliberation','needsClarification','clarificationQuestion','contextRequired','contextReferences',
     'ambiguities','unresolvedEntities'
   ]
+};
+
+const verificationSchema = {
+  type: 'OBJECT',
+  properties: {
+    verdict: { type: 'STRING', enum: ['APPROVE','CLARIFY'] },
+    reason: { type: 'STRING' }
+  },
+  required: ['verdict','reason']
 };
 
 function cleanText(value, max = 4000) {
@@ -233,6 +244,57 @@ function groundedPlayers(rawQuestion, suppliedContext) {
   return grounded;
 }
 
+async function verifyBorderline(rawQuestion, suppliedContext, result, groundedCandidates) {
+  const verifyMedium = EXECUTION_ROUTES.has(result.modelRoute)
+    && result.confidence === 'MEDIUM'
+    && result.ambiguities.length === 0
+    && result.unresolvedEntities.length === 0;
+  const verifyUnsupported = result.modelRoute === 'UNSUPPORTED';
+  if (!verifyMedium && !verifyUnsupported) return result;
+
+  const verification = await callGemini({
+    systemInstruction: `あなたはMAGI質問ルーターの安全監査役。回答は作らず、最初の分類を監査する。\n- APPROVE は、質問の意味と処理が一意で、別解釈が回答を変えないと判断できる場合だけ。\n- CLARIFY は、対象・領域・目的などに実質的な曖昧さがある場合。\n- firstRoute=UNSUPPORTED の場合、ユーザーの意図自体が明確に理解でき、MAGI対象外だと分かる時だけ APPROVE。意味不明、単なる文字列、ノイズ、意図不明は必ず CLARIFY。\n- groundedPlayerCandidates は文字表記から機械的に確認済みの候補であり、1人だけなら名前については根拠ありとして扱ってよい。`,
+    userPayload: {
+      question: rawQuestion,
+      suppliedContext,
+      groundedPlayerCandidates: groundedCandidates,
+      firstClassification: {
+        route: result.modelRoute,
+        confidence: result.confidence,
+        understoodRequest: result.understoodRequest,
+        routeReason: result.routeReason,
+        players: result.players,
+        domains: result.domains,
+        timeScope: result.timeScope,
+        specificSeason: result.specificSeason,
+        ambiguities: result.ambiguities,
+        unresolvedEntities: result.unresolvedEntities
+      }
+    },
+    responseSchema: verificationSchema
+  });
+
+  result.verificationApplied = true;
+  result.verificationVerdict = String(verification?.verdict || 'CLARIFY').toUpperCase();
+  result.verificationReason = cleanText(verification?.reason, 700);
+
+  if (verifyUnsupported && result.verificationVerdict === 'CLARIFY') {
+    result.modelRoute = 'CLARIFY';
+    result.route = 'CLARIFY';
+    result.confidence = 'LOW';
+    result.needsClarification = true;
+    result.clarificationQuestion = '質問の意味を正確に確認したいので、もう少し具体的に教えてください。';
+    return result;
+  }
+
+  if (verifyMedium && result.verificationVerdict === 'APPROVE') {
+    result.confidence = 'HIGH';
+    result.needsClarification = false;
+    result.clarificationQuestion = '';
+  }
+  return result;
+}
+
 function defaultClarification(result, issues) {
   if (issues.includes('PLAYER_NOT_GROUNDED')) {
     if (result.ungroundedPlayers?.length === 1) return `「${result.ungroundedPlayers[0]}」のことですか？`;
@@ -308,21 +370,26 @@ export async function routeQuestion(questionValue, contextValue = []) {
   const question = canonicalizeKnownNameText(rawQuestion);
   if (!question) throw new Error('question is required');
   const suppliedContext = normalizeContext(contextValue);
+  const groundedPlayerCandidates = deterministicPlayersInText(rawQuestion);
+
   const raw = await callGemini({
     systemInstruction: ROUTER_SYSTEM,
     userPayload: {
       question,
       suppliedContext,
       officialPlayers: OFFICIAL_PLAYER_REGISTRY,
+      groundedPlayerCandidates,
       mode: 'ACCURACY_FIRST',
-      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
+      instruction: 'Classify only. Do not answer the baseball question itself. Only choose an executable route when confidence is HIGH and ambiguity is resolved. A single groundedPlayerCandidate is deterministically supported by the typed characters and may be treated as the player identity. Do not infer a registered player solely from phonetic similarity; if the player identity is not grounded, choose CLARIFY.'
     },
     responseSchema
   });
-  const normalized = maybeCarryUniquePlayerFromContext(
+
+  let normalized = maybeCarryUniquePlayerFromContext(
     maybeResolveUniquePlayerFromQuestion(normalizeResult(raw), rawQuestion),
     suppliedContext
   );
+  normalized = await verifyBorderline(rawQuestion, suppliedContext, normalized, groundedPlayerCandidates);
   const gated = validateAndGate(normalized, suppliedContext, rawQuestion);
   return { routerVersion: ROUTER_VERSION, ...gated };
 }
