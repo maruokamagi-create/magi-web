@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-const ROUTER_VERSION = 'v5-comparison-grounded';
+const ROUTER_VERSION = 'v6-comparison-explicit-evidence';
 const ROUTES = Object.freeze([
   'BATTING_LOOKUP',
   'PITCHING_LOOKUP',
@@ -236,6 +236,19 @@ function maybeCarryUniquePlayerFromContext(result, suppliedContext) {
   return result;
 }
 
+function hasExplicitComparisonDimension(rawQuestion) {
+  const q = String(rawQuestion || '');
+  const patterns = [
+    /打撃|打率|出塁率|長打率|OPS|安打|打点|本塁打|ホームラン|三振|四球/,
+    /投手|防御率|投球|奪三振|与四球|WHIP|被安打|失点|自責点|先発|救援|クローザー/,
+    /守備|守備率|失策|エラー|捕球|送球|フライ|内野|外野/,
+    /走塁|盗塁|走力|脚|ベースランニング/,
+    /成績|数字|記録|データ|スタッツ/,
+    /打順|起用|適性|評価|総合|どっちが上|どちらが上/
+  ];
+  return patterns.some(re => re.test(q));
+}
+
 function groundedPlayers(rawQuestion, suppliedContext) {
   const grounded = new Set(deterministicPlayersInText(rawQuestion));
   for (const item of suppliedContext) {
@@ -343,7 +356,7 @@ function validateAndGate(result, suppliedContext, rawQuestion) {
   if (result.modelRoute === 'PLAYER_COMPARISON') {
     if (result.players.length < 2) issues.push('COMPARISON_PLAYERS_REQUIRED');
     const comparisonDomains = new Set(['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM']);
-    if (!result.domains.some(domain => comparisonDomains.has(domain))) issues.push('COMPARISON_DOMAIN_REQUIRED');
+    if (!result.domains.some(domain => comparisonDomains.has(domain)) || !hasExplicitComparisonDimension(rawQuestion)) issues.push('COMPARISON_DOMAIN_REQUIRED');
   }
 
   const uniqueIssues = [...new Set(issues)];
