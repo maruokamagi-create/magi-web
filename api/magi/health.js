@@ -1,5 +1,5 @@
 import { checkGeminiConfiguration, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
-import { routeQuestion } from './_question-router.js';
+import { routeQuestion } from './_question-router-current.js';
 import { recoverContextBoundDeliberation } from './_conversation-recovery.js';
 
 function detectOutputFormat(questionValue) {
