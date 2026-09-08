@@ -1,6 +1,47 @@
 import { checkGeminiConfiguration, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { routeQuestion } from './_question-router.js';
 
+function detectOutputFormat(questionValue) {
+  const q = String(questionValue || '');
+  return /(?:PDF|ＰＤＦ)/i.test(q) ? 'PDF' : 'DEFAULT';
+}
+
+function stripOutputFormatModifier(questionValue) {
+  return String(questionValue || '')
+    .replace(/(?:PDF|ＰＤＦ)(?:にして|化して|で出して|で見せて|で保存して|で作って|でお願い|で)?/gi, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+async function routeWithOutputFormat(question, context) {
+  const outputFormat = detectOutputFormat(question);
+  let routed = await routeQuestion(question, context);
+  routed.outputFormat = outputFormat;
+
+  // Output format is a presentation modifier, not a reason to lose an otherwise clear intent.
+  // If the first pass stops only after a PDF modifier was added, classify the same request again
+  // without that modifier. An actually ambiguous base request remains CLARIFY (e.g. "陽翔の成績").
+  if (outputFormat === 'PDF' && routed.route === 'CLARIFY') {
+    const baseQuestion = stripOutputFormatModifier(question);
+    if (baseQuestion && baseQuestion !== question) {
+      const base = await routeQuestion(baseQuestion, context);
+      if (base.safeToExecute && base.route !== 'CLARIFY' && base.route !== 'UNSUPPORTED') {
+        routed = {
+          ...base,
+          outputFormat,
+          outputFormatRecovered: true,
+          outputFormatBaseQuestion: baseQuestion
+        };
+      } else {
+        routed.outputFormatBaseQuestion = baseQuestion;
+        routed.outputFormatRecovered = false;
+      }
+    }
+  }
+
+  return routed;
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -10,7 +51,7 @@ export default async function handler(req, res) {
     if (String(body?.mode || '').toUpperCase() === 'ROUTE_QUESTION') {
       const question = String(body?.question || '').trim();
       if (!question) return sendJson(res, 400, { ok: false, error: 'question is required' });
-      const routed = await routeQuestion(question, body?.context || []);
+      const routed = await routeWithOutputFormat(question, body?.context || []);
       return sendJson(res, 200, { ok: true, ...routed });
     }
 
