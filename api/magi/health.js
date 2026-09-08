@@ -1,6 +1,8 @@
 import { callGemini, checkGeminiConfiguration, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { routeQuestion } from './_question-router-current.js';
 import { recoverContextBoundDeliberation } from './_conversation-recovery.js';
+import { requireApprovedMember } from '../drive/_access.js';
+import { runDriveLiveAudit } from './_drive-live-audit.js';
 
 const ANSWER_ENGINE_VERSION = 'fixture-answer-v1';
 
@@ -165,6 +167,21 @@ export default async function handler(req, res) {
       const result = await runAnswerFixture(body);
       if (result?.error) return sendJson(res, 400, { ok: false, error: result.error });
       return sendJson(res, 200, result);
+    }
+
+    // Live Drive audit path. This intentionally reuses the existing health function to stay within
+    // the free-plan serverless function limit. Unlike ANSWER_FIXTURE, this reads the authoritative
+    // 2026-2027 PDF from Google Drive at request time and extracts the current-season values.
+    if (mode === 'DRIVE_LIVE_AUDIT') {
+      const member = await requireApprovedMember(req, res);
+      if (!member) return;
+      try {
+        const result = await runDriveLiveAudit();
+        return sendJson(res, 200, { ok: true, ...result });
+      } catch (error) {
+        console.error('[MAGI live Drive audit]', error?.message || error);
+        return sendJson(res, 502, { ok: false, error: error?.message || 'Live Drive audit failed' });
+      }
     }
 
     const gemini = await checkGeminiConfiguration();
