@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-const ROUTER_VERSION = 'v4-accuracy-verified';
+const ROUTER_VERSION = 'v5-comparison-grounded';
 const ROUTES = Object.freeze([
   'BATTING_LOOKUP',
   'PITCHING_LOOKUP',
@@ -304,6 +304,7 @@ function defaultClarification(result, issues) {
     return result.modelRoute === 'PITCHING_LOOKUP' ? '誰の投手成績を確認しますか？' : '誰の打撃成績を確認しますか？';
   }
   if (issues.includes('COMPARISON_PLAYERS_REQUIRED')) return '比較する選手を2人以上教えてください。';
+  if (issues.includes('COMPARISON_DOMAIN_REQUIRED')) return '何について比べますか？ 打撃・投手・守備・走塁など、比較したい内容を教えてください。';
   if (issues.includes('SPECIFIC_SEASON_REQUIRED')) return '対象にしたい年度を教えてください。';
   if (issues.includes('CONTEXT_NOT_RESOLVED')) return '「それ」「あれ」が何を指しているか、もう少し具体的に教えてください。';
   if (issues.includes('DOMAIN_ROUTE_MISMATCH')) return '打撃と投手など、どの領域について確認したいか教えてください。';
@@ -339,7 +340,11 @@ function validateAndGate(result, suppliedContext, rawQuestion) {
     if (!result.players.length) issues.push('PLAYER_REQUIRED');
     if (result.domains.length && !result.domains.includes('PITCHING')) issues.push('DOMAIN_ROUTE_MISMATCH');
   }
-  if (result.modelRoute === 'PLAYER_COMPARISON' && result.players.length < 2) issues.push('COMPARISON_PLAYERS_REQUIRED');
+  if (result.modelRoute === 'PLAYER_COMPARISON') {
+    if (result.players.length < 2) issues.push('COMPARISON_PLAYERS_REQUIRED');
+    const comparisonDomains = new Set(['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM']);
+    if (!result.domains.some(domain => comparisonDomains.has(domain))) issues.push('COMPARISON_DOMAIN_REQUIRED');
+  }
 
   const uniqueIssues = [...new Set(issues)];
   const modelRequestedClarify = result.modelRoute === 'CLARIFY' || result.needsClarification;
