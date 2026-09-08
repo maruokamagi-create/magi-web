@@ -1,7 +1,7 @@
 import { routeQuestion as baseRouteQuestion } from './_question-router.js';
 import { OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
 
-const CURRENT_ROUTER_VERSION = 'v11-resolved-state-period-guard';
+const CURRENT_ROUTER_VERSION = 'v12-intent-specificity-overview';
 
 function text(value) {
   return String(value || '').trim();
@@ -39,6 +39,28 @@ function isDomainSpecified(question) {
 
 function isExplicitDecisionRequest(question) {
   return /判断|審議|すべき|した方が|起用|4番|四番|先発|クローザー|エース|打順|スタメン|レギュラー|評価して|どう評価/.test(text(question));
+}
+
+function isBareDocumentRequest(question) {
+  const q = text(question).replace(/[。！？!?]/g, '').replace(/\s+/g, '');
+  if (!q || q.length > 24) return false;
+  return /^(?:レポート|資料|ファイル|文書|ドキュメント|PDF|ＰＤＦ)(?:を)?(?:見せて|見たい|開いて|探して|検索して|出して|お願い)?$/.test(q);
+}
+
+function isExplicitPlayerOverview(question) {
+  const q = text(question);
+  const batting = /打撃|打率|OPS|出塁率|長打率|安打|打点/.test(q);
+  const pitching = /投手|防御率|投球|奪三振|与四球|WHIP/.test(q);
+  const combine = /両方|両面|どっちも|双方|まとめて|まとめ|全部/.test(q);
+  return batting && pitching && combine && !isExplicitDecisionRequest(q);
+}
+
+function isOpenLineupDecision(question) {
+  const q = text(question).replace(/[。！？!?]/g, '');
+  if (!q || q.length > 40) return false;
+  const role = /4番|四番|打順|スタメン|先発メンバー/.test(q);
+  const decision = /どうする|誰にする|決めて|組んで|考えて/.test(q);
+  return role && decision;
 }
 
 function isSelectionOnlyReply(question) {
@@ -111,9 +133,6 @@ function playersFromText(value) {
 function latestResolvedLookupState(context) {
   const items = [...normalizedContext(context)].reverse();
   for (const item of items) {
-    // In the test harness, a successful route is stored as the assistant's declarative
-    // understoodRequest, while clarification text is a question. Only use a resolved,
-    // one-player, one-domain state so a period word can never manufacture missing intent.
     if (item.role !== 'assistant') continue;
     const q = item.text;
     if (/[?？]/.test(q)) continue;
@@ -187,6 +206,55 @@ function recoverPeriodOnlyLookup(base, question, context) {
   };
 }
 
+function recoverPlayerOverview(base, question) {
+  if (!isExplicitPlayerOverview(question)) return null;
+  const basePlayers = Array.isArray(base?.players) ? base.players : [];
+  const typedPlayers = playersFromText(question);
+  const players = basePlayers.length === 1 ? basePlayers : typedPlayers;
+  if (players.length !== 1) return null;
+  return {
+    ...base,
+    routerVersion: CURRENT_ROUTER_VERSION,
+    baseRouterVersion: base?.routerVersion || null,
+    route: 'PLAYER_OVERVIEW',
+    modelRoute: base?.modelRoute || base?.route || 'PLAYER_OVERVIEW',
+    confidence: 'HIGH',
+    players,
+    domains: ['BATTING','PITCHING'],
+    needsClarification: false,
+    clarificationQuestion: '',
+    needsDeliberation: false,
+    safeToExecute: true,
+    safetyStatus: 'READY',
+    validationIssues: [],
+    guardApplied: true,
+    guardReason: 'EXPLICIT_MULTI_DOMAIN_PLAYER_OVERVIEW',
+    understoodRequest: `${players[0]}の打撃成績と投手成績をまとめて確認する`
+  };
+}
+
+function recoverOpenLineupDecision(base, question) {
+  if (!isOpenLineupDecision(question)) return null;
+  return {
+    ...base,
+    routerVersion: CURRENT_ROUTER_VERSION,
+    baseRouterVersion: base?.routerVersion || null,
+    route: 'DELIBERATION',
+    modelRoute: base?.modelRoute || base?.route || 'DELIBERATION',
+    confidence: 'HIGH',
+    domains: [...new Set([...(Array.isArray(base?.domains) ? base.domains : []), 'LINEUP'])],
+    needsClarification: false,
+    clarificationQuestion: '',
+    needsDeliberation: true,
+    safeToExecute: true,
+    safetyStatus: 'READY',
+    validationIssues: [],
+    guardApplied: true,
+    guardReason: 'OPEN_TEAM_LINEUP_DECISION_IS_ACTIONABLE',
+    understoodRequest: 'チームの打順・4番起用について判断する'
+  };
+}
+
 function clarification(base, question, reason) {
   const players = Array.isArray(base?.players) ? base.players : [];
   let clarificationQuestion = '何について知りたいか、もう少し具体的に教えてください。';
@@ -196,6 +264,8 @@ function clarification(base, question, reason) {
   } else if (reason === 'PLAYER_SELECTED_DOMAIN_STILL_MISSING') {
     const player = players.length === 1 ? `「${players[0]}」の` : '';
     clarificationQuestion = `${player}打撃成績と投手成績、どちらを見ますか？`;
+  } else if (reason === 'BARE_DOCUMENT_REQUEST') {
+    clarificationQuestion = 'どのレポートや資料を見ますか？ タイトル・月・選手名など、手がかりを教えてください。';
   }
 
   return {
@@ -221,20 +291,29 @@ export async function routeQuestion(questionValue, contextValue = []) {
   const context = normalizedContext(contextValue);
   const base = await baseRouteQuestion(question, context);
 
-  // 「AとBどっちがいい？」だけでは、比較軸も意思決定の目的も確定していない。
-  // 「どっちを4番」「どっちが先発向き」のように軸が明示されている場合は対象外。
+  // 「レポート見せて」のように資料種別だけで対象が一意でない依頼は、
+  // 広いDOCUMENT_SEARCHを勝手に実行せず、対象を1回だけ確認する。
+  if (isBareDocumentRequest(question)) {
+    return clarification(base, question, 'BARE_DOCUMENT_REQUEST');
+  }
+
+  // 「打撃と投手の両方まとめて」のように複数領域が明示されている場合、
+  // 1領域を選ばせる聞き返しは不要。PLAYER_OVERVIEWとして保持する。
+  const overviewRecovered = recoverPlayerOverview(base, question);
+  if (overviewRecovered) return overviewRecovered;
+
+  // 「4番どうする？」のようにチーム全体から候補を選ぶ明示的な打順判断は、
+  // 選手名がなくても候補集合=チーム roster と一意に理解できるため審議へ進める。
+  const lineupRecovered = recoverOpenLineupDecision(base, question);
+  if (lineupRecovered) return lineupRecovered;
+
   if (isBarePreferenceComparison(question)) {
     return clarification(base, question, 'BARE_PREFERENCE_COMPARISON');
   }
 
-  // 期間語（「今季」「通算」等）は短い選択返答にも見えるため、
-  // 一般の selection-only guard より先に、直前の解決済みLOOKUP状態を使って判定する。
-  // 選手＋領域が直前に確定していない場合は何も補完せず、後続の通常判定へ渡す。
   const periodRecovered = recoverPeriodOnlyLookup(base, question, context);
   if (periodRecovered) return periodRecovered;
 
-  // 直前の曖昧な「成績」質問に対し、ユーザーが人物だけを選び直した場合、
-  // 人物は確定しても打撃/投手の領域は未確定。勝手に判断・照会へ進まない。
   if (isSelectionOnlyReply(question) && latestGenericStatsRequest(context) && !isDomainSpecified(question) && !isExplicitDecisionRequest(question)) {
     return clarification(base, question, 'PLAYER_SELECTED_DOMAIN_STILL_MISSING');
   }
