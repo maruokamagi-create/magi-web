@@ -3,7 +3,7 @@
 const SCENARIOS=[
 {id:'M01',name:'領域確認',turns:[{u:'陽翔の成績見せて',route:'CLARIFY'},{u:'投手',route:'PITCHING_LOOKUP',player:'大久保 陽翔',domain:'PITCHING'}]},
 {id:'M02',name:'比較軸確認',turns:[{u:'大野と陽翔を比べて',route:'CLARIFY'},{u:'打撃',route:'PLAYER_COMPARISON',players:['大野 竜暉','大久保 陽翔'],domain:'BATTING'}]},
-{id:'M03',name:'途中訂正',turns:[{u:'宮嵜 翔の打撃成績',route:'BATTING_LOOKUP'},{u:'いや宮村 龍だった',route:'CLARIFY'},{u:'打撃で',route:'BATTING_LOOKUP',player:'宮村 龍',domain:'BATTING'}]},
+{id:'M03',name:'途中訂正',turns:[{u:'宮嵜 翔の打撃成績',route:'BATTING_LOOKUP'},{u:'いや宮村 龍だった',route:'BATTING_LOOKUP',player:'宮村 龍',domain:'BATTING'},{u:'打撃で',route:'BATTING_LOOKUP',player:'宮村 龍',domain:'BATTING'}]},
 {id:'M04',name:'話題変更',turns:[{u:'宮嵜 翔の投手成績',route:'PITCHING_LOOKUP'},{u:'やっぱり宮村 龍の打撃成績にして',route:'BATTING_LOOKUP',player:'宮村 龍',domain:'BATTING'}]},
 {id:'M05',name:'期間補完',turns:[{u:'宮嵜 翔の投手成績',route:'PITCHING_LOOKUP'},{u:'通算で',route:'PITCHING_LOOKUP',player:'宮嵜 翔',domain:'PITCHING',time:'CAREER'}]},
 {id:'M06',name:'曖昧継続',turns:[{u:'陽翔どう？',route:'CLARIFY'},{u:'成績',route:'CLARIFY'},{u:'打撃',route:'BATTING_LOOKUP',player:'大久保 陽翔',domain:'BATTING'}]},
