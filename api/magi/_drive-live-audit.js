@@ -6,6 +6,7 @@ import { CURRENT_ROSTER, OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
 const STATS_TOKEN = '03_STATS_成績データ';
 const MASTER_TOKEN = '00_MASTER_正本';
 const SNAPSHOT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
+const HOT_SNAPSHOT_TTL_SECONDS = 60 * 5;
 const CURRENT_MASTER_FILE_ID = process.env.MAGI_CURRENT_MASTER_FILE_ID || '11ABgSFKN-9Bhde1hJ_n-Qytz0cuImM0E';
 
 const SEASONS = {
@@ -338,9 +339,9 @@ async function readSnapshot(key) {
   }
 }
 
-async function writeSnapshot(key, value) {
+async function writeSnapshot(key, value, ttl = SNAPSHOT_CACHE_TTL_SECONDS, tags = ['magi-stats-snapshot-v1']) {
   try {
-    await getCache().set(key, value, { ttl:SNAPSHOT_CACHE_TTL_SECONDS, tags:['magi-stats-snapshot-v1'] });
+    await getCache().set(key, value, { ttl, tags });
   } catch (error) {
     console.warn('[MAGI stats snapshot cache write]', error?.message || error);
   }
@@ -375,11 +376,22 @@ function seasonRoster(season) {
 
 export async function runDriveLiveAudit({ season: seasonValue = 'current', players = null } = {}) {
   const season = resolveSeason(seasonValue);
+  const hotKey = `magi:stats-snapshot:hot:v2:${season.key}`;
+
+  // Hot snapshot is deliberately checked BEFORE any Drive metadata request. This is
+  // what removes the 5-7 second first-hit tax when users ask several different stats.
+  // It expires quickly, so authoritative XLSM changes are revalidated regularly.
+  const hot = await readSnapshot(hotKey);
+  if (hot?.extracted?.playersByName) {
+    return { ...hot, cacheHit:true, hotCacheHit:true };
+  }
+
   const file = await resolveMasterFile(season);
   const cacheKey = `magi:stats-snapshot:v1:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
   const cached = await readSnapshot(cacheKey);
   if (cached?.extracted?.playersByName) {
-    return { ...cached, cacheHit:true };
+    await writeSnapshot(hotKey, cached, HOT_SNAPSHOT_TTL_SECONDS, ['magi-stats-hot-v2', `magi-stats-hot-${season.key}`]);
+    return { ...cached, cacheHit:true, hotCacheHit:false };
   }
 
   const fetched = await fetchDriveFileContent(file);
@@ -395,6 +407,9 @@ export async function runDriveLiveAudit({ season: seasonValue = 'current', playe
     model:null,
     extracted:parsed.extracted
   };
-  await writeSnapshot(cacheKey, result);
-  return { ...result, cacheHit:false };
+  await Promise.all([
+    writeSnapshot(cacheKey, result),
+    writeSnapshot(hotKey, result, HOT_SNAPSHOT_TTL_SECONDS, ['magi-stats-hot-v2', `magi-stats-hot-${season.key}`])
+  ]);
+  return { ...result, cacheHit:false, hotCacheHit:false };
 }
