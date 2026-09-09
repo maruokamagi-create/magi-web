@@ -1,7 +1,7 @@
 import { routeQuestion as baseRouteQuestion } from './_question-router.js';
 import { OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
 
-const CURRENT_ROUTER_VERSION = 'v12-intent-specificity-overview';
+const CURRENT_ROUTER_VERSION = 'v13-named-document-deliberation';
 
 function text(value) {
   return String(value || '').trim();
@@ -45,6 +45,14 @@ function isBareDocumentRequest(question) {
   const q = text(question).replace(/[。！？!?]/g, '').replace(/\s+/g, '');
   if (!q || q.length > 24) return false;
   return /^(?:レポート|資料|ファイル|文書|ドキュメント|PDF|ＰＤＦ)(?:を)?(?:見せて|見たい|開いて|探して|検索して|出して|お願い)?$/.test(q);
+}
+
+function isNamedDocumentDeliberation(question) {
+  const q = text(question);
+  const documentCue = /一覧|レポート|資料|ファイル|文書|ドキュメント|PDF|ＰＤＦ|CSV|XLSX|Excel|エクセル|シート|表/.test(q);
+  const inspectCue = /内容|中身|記載|見て|確認して|読んで|参照して|データ/.test(q);
+  const decisionCue = isExplicitDecisionRequest(q) || /気になる点|問題点|懸念|課題|検討して|分析して|どう思う/.test(q);
+  return documentCue && inspectCue && decisionCue;
 }
 
 function isExplicitPlayerOverview(question) {
@@ -255,6 +263,30 @@ function recoverOpenLineupDecision(base, question) {
   };
 }
 
+function recoverNamedDocumentDeliberation(base, question) {
+  if (!isNamedDocumentDeliberation(question)) return null;
+  const domains = [...new Set([...(Array.isArray(base?.domains) ? base.domains : []), 'DOCUMENT'])];
+  if (/守備|ポジション|内野|外野/.test(question)) domains.push('FIELDING');
+  return {
+    ...base,
+    routerVersion: CURRENT_ROUTER_VERSION,
+    baseRouterVersion: base?.routerVersion || null,
+    route: 'DELIBERATION',
+    modelRoute: base?.modelRoute || base?.route || 'DELIBERATION',
+    confidence: 'HIGH',
+    domains: [...new Set(domains)],
+    needsClarification: false,
+    clarificationQuestion: '',
+    needsDeliberation: true,
+    safeToExecute: true,
+    safetyStatus: 'READY',
+    validationIssues: [],
+    guardApplied: true,
+    guardReason: 'NAMED_DOCUMENT_REFERENCE_WITH_EXPLICIT_DELIBERATION',
+    understoodRequest: '指定された資料を参照し、その内容を根拠に審議する'
+  };
+}
+
 function clarification(base, question, reason) {
   const players = Array.isArray(base?.players) ? base.players : [];
   let clarificationQuestion = '何について知りたいか、もう少し具体的に教えてください。';
@@ -290,6 +322,11 @@ export async function routeQuestion(questionValue, contextValue = []) {
   const question = text(questionValue);
   const context = normalizedContext(contextValue);
   const base = await baseRouteQuestion(question, context);
+
+  // 資料名・資料種別を示し、その内容を見た上で明示的に審議を求めている場合は、
+  // 資料名の完全一致をユーザーに言い直させず審議へ進める。
+  const documentDeliberationRecovered = recoverNamedDocumentDeliberation(base, question);
+  if (documentDeliberationRecovered) return documentDeliberationRecovered;
 
   // 「レポート見せて」のように資料種別だけで対象が一意でない依頼は、
   // 広いDOCUMENT_SEARCHを勝手に実行せず、対象を1回だけ確認する。
