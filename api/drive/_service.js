@@ -9,7 +9,10 @@ let cachedUntil = 0;
 let cachedTree = null;
 let cachedTreeAt = 0;
 const TREE_CACHE_MS = 300_000;
+const FRESH_TREE_MIN_INTERVAL_MS = 30_000;
 const TREE_SCAN_CONCURRENCY = 6;
+const FILE_CACHE_MS = 60_000;
+const fileContentCache = new Map();
 
 function readConfig() {
   let json = null;
@@ -57,9 +60,10 @@ async function accessToken() {
   const assertion = `${unsigned}.${signature}`;
 
   const body = new URLSearchParams({
-    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
+    grant_type: 'urn:ietf:params:oauth-type:jwt-bearer',
     assertion
   });
+  body.set('grant_type','urn:ietf:params:oauth:grant-type:jwt-bearer');
   const response = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -111,7 +115,11 @@ async function listChildren(folderId) {
 
 export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh = false } = {}) {
   if (!driveServiceConfigured()) throw new Error('drive_service_not_configured');
-  if (!fresh && cachedTree && Date.now() - cachedTreeAt < TREE_CACHE_MS) return cachedTree;
+  const age = Date.now() - cachedTreeAt;
+  if (cachedTree) {
+    if (!fresh && age < TREE_CACHE_MS) return cachedTree;
+    if (fresh && age < FRESH_TREE_MIN_INTERVAL_MS) return cachedTree;
+  }
 
   const out = [];
   const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: '20_TEAM_DATA_チームデータ', depth: 0 }];
@@ -169,6 +177,13 @@ export async function fetchDriveFileContent(fileOrId, { signal } = {}) {
   const id = String(meta.id || source.id || '');
   if (!id) throw new Error('missing_drive_file_id');
 
+  const version = String(meta.modifiedTime || source.modifiedTime || '');
+  const cacheKey = `${id}|${version}|${String(meta.mimeType || source.mimeType || '')}`;
+  const cached = fileContentCache.get(cacheKey);
+  if (cached && Date.now() - cached.at < FILE_CACHE_MS) {
+    return { buffer: cached.buffer, contentType: cached.contentType, meta };
+  }
+
   let url = '';
   let contentType = 'application/octet-stream';
   if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
@@ -190,9 +205,11 @@ export async function fetchDriveFileContent(fileOrId, { signal } = {}) {
     throw error;
   }
   const buffer = Buffer.from(await response.arrayBuffer());
-  return {
-    buffer,
-    contentType: response.headers.get('content-type') || contentType,
-    meta
-  };
+  const resolvedContentType = response.headers.get('content-type') || contentType;
+  fileContentCache.set(cacheKey, { at: Date.now(), buffer, contentType: resolvedContentType });
+  if (fileContentCache.size > 24) {
+    const oldest = [...fileContentCache.entries()].sort((a,b)=>a[1].at-b[1].at).slice(0,fileContentCache.size-24);
+    for (const [key] of oldest) fileContentCache.delete(key);
+  }
+  return { buffer, contentType: resolvedContentType, meta };
 }
