@@ -1,6 +1,7 @@
 import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
 import { runStrictBattingMasterAudit } from './_strict-batting-master.js';
 import { BATTING_RECONCILIATION_KEYS, reconcileMasterAndDetail, STATS_SOURCE_POLICY_VERSION } from './_stats-source-policy.js';
+import { runFieldingCsvAudit } from './_fielding-csv-audit.js';
 
 const SEASONS = {
   current: { key:'current', token:'2026-2027_CURRENT_現チーム', yearToken:'2026-2027', minDate:'2026-08-02' },
@@ -196,10 +197,19 @@ export async function runDetailCsvConsistencyAudit({ season: seasonValue = 'curr
 
   const battingBlockedPlayers = players.filter(p => !p.reconciliation.csvAnalysisAllowed);
   const battingGateOpen = batting.missingColumns.length === 0 && batting.duplicateRows === 0 && battingBlockedPlayers.length === 0;
-  const fieldingGateOpen = fielding.structuralAllowed;
+  const fieldingStructureOpen = fielding.structuralAllowed;
+
+  const fieldingNumeric = await runFieldingCsvAudit({ season:season.key });
+  const fieldingAllowedPlayers = (fieldingNumeric.players || []).filter(p => p.allowed).length;
+  const fieldingUnavailablePlayers = (fieldingNumeric.players || []).filter(p => !p.csv && p.master).length;
+  const fieldingBlockedPlayers = (fieldingNumeric.players || []).filter(p => p.csv && !p.allowed).length;
+
+  let overallState = 'BLOCKED';
+  if (battingGateOpen && fieldingNumeric.teamWideAnalysisAllowed) overallState = 'FULL';
+  else if (battingGateOpen || fieldingAllowedPlayers > 0) overallState = 'PARTIAL';
 
   return {
-    auditVersion:'detail-csv-consistency-v2-strict-batting-master',
+    auditVersion:'detail-csv-consistency-v3-fielding-numeric',
     policyVersion:STATS_SOURCE_POLICY_VERSION,
     season:season.key,
     seasonLabel:season.yearToken,
@@ -225,10 +235,18 @@ export async function runDetailCsvConsistencyAudit({ season: seasonValue = 'curr
       duplicateRows:fielding.duplicateRows,
       missingRequiredColumns:fielding.missingRequiredColumns,
       startDateValid:fielding.startDateValid,
-      structuralGateOpen:fieldingGateOpen,
-      note:'守備CSVはこの段階では構造・重複・期間を監査。XLSMに同一守備項目がある場合の数値照合は次段階で接続する。'
+      structuralGateOpen:fieldingStructureOpen,
+      numericAuditVersion:fieldingNumeric.auditVersion,
+      masterPlayerCount:fieldingNumeric.masterPlayerCount,
+      allowedPlayerCount:fieldingAllowedPlayers,
+      unavailablePlayerCount:fieldingUnavailablePlayers,
+      blockedPlayerCount:fieldingBlockedPlayers,
+      teamWideAnalysisAllowed:fieldingNumeric.teamWideAnalysisAllowed,
+      players:fieldingNumeric.players,
+      note:'守備はXLSM正本を基準に数値照合。CSV一致選手のみ試合別・条件別の詳細分析を許可し、不一致またはCSV未収録選手はXLSM集計値のみ使用する。'
     },
-    analysisAllowed:battingGateOpen && fieldingGateOpen,
-    rule:(battingGateOpen && fieldingGateOpen) ? 'DETAIL_ANALYSIS_MAY_PROCEED' : 'DETAIL_ANALYSIS_BLOCKED_XLSM_REMAINS_AUTHORITATIVE'
+    overallState,
+    analysisAllowed:overallState !== 'BLOCKED',
+    rule:overallState === 'FULL' ? 'FULL_DETAIL_ANALYSIS_ALLOWED' : overallState === 'PARTIAL' ? 'PARTIAL_DETAIL_ANALYSIS_ALLOWED_XLSM_WINS' : 'DETAIL_ANALYSIS_BLOCKED_XLSM_REMAINS_AUTHORITATIVE'
   };
 }
