@@ -1,10 +1,24 @@
 import { runStrictPitchingAudit } from './_drive-pitching-strict.js';
 
-const VERSION='strict-pitching-answer-v1';
+const VERSION='strict-pitching-answer-v2-season-aliases';
 function text(v){return String(v||'').trim();}
 function seasonFrom(question,routed){
-  const q=text(question), s=text(routed?.specificSeason);
-  if(/2025\s*[-–—〜~]\s*2026/.test(q)||/2025\s*[-–—〜~]\s*2026/.test(s)||/旧チーム/.test(q)||routed?.timeScope==='PREVIOUS_SEASON') return 'old';
+  const q=text(question), s=text(routed?.specificSeason), t=text(routed?.timeScope);
+  const previousSeasonExplicit =
+    /2025\s*[-–—〜~]\s*2026/.test(q) ||
+    /2025\s*[-–—〜~]\s*2026/.test(s) ||
+    /(?:前|旧)(?:の)?チーム/.test(q) ||
+    /(?:前年度|昨年度|昨季|昨シーズン)/.test(q) ||
+    t === 'PREVIOUS_SEASON';
+  if(previousSeasonExplicit) return 'old';
+
+  const currentSeasonExplicit =
+    /2026\s*[-–—〜~]\s*2027/.test(q) ||
+    /2026\s*[-–—〜~]\s*2027/.test(s) ||
+    /(?:現チーム|今季|今シーズン|今期)/.test(q) ||
+    t === 'CURRENT_SEASON';
+  if(currentSeasonExplicit) return 'current';
+
   return 'current';
 }
 const METRICS=[
