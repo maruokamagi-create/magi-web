@@ -1,9 +1,11 @@
 import crypto from 'node:crypto';
+import { cacheableDriveFile, getCachedDriveFile, putCachedDriveFile } from './_cache.js';
 
 // Initial/common MAGI-WEB Drive scope: 20_TEAM_DATA_チームデータ
 export const MAGI_DRIVE_ROOT_ID = process.env.MAGI_TEAM_DATA_ROOT_ID || '1lIRTMRRMOE0lnIPAFmw9NrCDHSKf_8Hn';
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.readonly';
 const TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const ROOT_LABEL = '20_TEAM_DATA_チームデータ';
 let cachedToken = null;
 let cachedUntil = 0;
 let cachedTree = null;
@@ -11,7 +13,8 @@ let cachedTreeAt = 0;
 const TREE_CACHE_MS = 300_000;
 const FRESH_TREE_MIN_INTERVAL_MS = 30_000;
 const TREE_SCAN_CONCURRENCY = 6;
-const FILE_CACHE_MS = 60_000;
+const FILE_CACHE_MS = 300_000;
+const FLAT_SCAN_LIMIT = 10_000;
 const fileContentCache = new Map();
 
 function readConfig() {
@@ -60,10 +63,9 @@ async function accessToken() {
   const assertion = `${unsigned}.${signature}`;
 
   const body = new URLSearchParams({
-    grant_type: 'urn:ietf:params:oauth-type:jwt-bearer',
+    grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
     assertion
   });
-  body.set('grant_type','urn:ietf:params:oauth:grant-type:jwt-bearer');
   const response = await fetch(TOKEN_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -92,14 +94,16 @@ export async function googleDriveFetch(url, options = {}) {
   });
 }
 
-async function listChildren(folderId) {
-  const q = encodeURIComponent(`'${folderId}' in parents and trashed=false`);
+function filesListUrl({ q = '', pageToken = '' } = {}) {
   const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,size,webViewLink,parents)');
+  return `https://www.googleapis.com/drive/v3/files?${q ? `q=${encodeURIComponent(q)}&` : ''}pageSize=1000&fields=${fields}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
+}
+
+async function listChildren(folderId) {
   let pageToken = '';
   const all = [];
   do {
-    const url = `https://www.googleapis.com/drive/v3/files?q=${q}&pageSize=1000&fields=${fields}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
-    const response = await googleDriveFetch(url);
+    const response = await googleDriveFetch(filesListUrl({ q: `'${folderId}' in parents and trashed=false`, pageToken }));
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {
       const error = new Error('drive_list_failed');
@@ -113,16 +117,68 @@ async function listChildren(folderId) {
   return all;
 }
 
-export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh = false } = {}) {
-  if (!driveServiceConfigured()) throw new Error('drive_service_not_configured');
-  const age = Date.now() - cachedTreeAt;
-  if (cachedTree) {
-    if (!fresh && age < TREE_CACHE_MS) return cachedTree;
-    if (fresh && age < FRESH_TREE_MIN_INTERVAL_MS) return cachedTree;
+async function listAllVisibleFiles(limit = FLAT_SCAN_LIMIT) {
+  let pageToken = '';
+  const all = [];
+  do {
+    const response = await googleDriveFetch(filesListUrl({ q: 'trashed=false', pageToken }));
+    const data = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      const error = new Error('drive_flat_list_failed');
+      error.status = response.status;
+      error.details = data;
+      throw error;
+    }
+    all.push(...(Array.isArray(data.files) ? data.files : []));
+    pageToken = String(data.nextPageToken || '');
+  } while (pageToken && all.length < limit);
+  return all.slice(0, limit);
+}
+
+function buildRootedTreeFromFlat(files, { maxItems, maxDepth }) {
+  const byId = new Map((files || []).filter(x => x?.id).map(x => [String(x.id), x]));
+  const memo = new Map();
+  const resolving = new Set();
+
+  function resolve(id) {
+    if (memo.has(id)) return memo.get(id);
+    if (resolving.has(id)) return null;
+    const file = byId.get(id);
+    if (!file) return null;
+    resolving.add(id);
+    const parents = Array.isArray(file.parents) ? file.parents.map(String) : [];
+    let resolved = null;
+    for (const parentId of parents) {
+      if (parentId === MAGI_DRIVE_ROOT_ID) {
+        resolved = { path: `${ROOT_LABEL}/${file.name}`, depth: 1 };
+        break;
+      }
+      const parent = resolve(parentId);
+      if (parent) {
+        resolved = { path: `${parent.path}/${file.name}`, depth: parent.depth + 1 };
+        break;
+      }
+    }
+    resolving.delete(id);
+    memo.set(id, resolved);
+    return resolved;
   }
 
   const out = [];
-  const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: '20_TEAM_DATA_チームデータ', depth: 0 }];
+  for (const file of files || []) {
+    if (!file?.id || String(file.id) === MAGI_DRIVE_ROOT_ID) continue;
+    const rooted = resolve(String(file.id));
+    if (!rooted || rooted.depth > maxDepth + 1) continue;
+    out.push({ ...file, path: rooted.path });
+    if (out.length >= maxItems) break;
+  }
+  out.sort((a, b) => String(a.path || '').localeCompare(String(b.path || ''), 'ja'));
+  return out;
+}
+
+async function listTreeRecursive({ maxItems, maxDepth }) {
+  const out = [];
+  const queue = [{ id: MAGI_DRIVE_ROOT_ID, path: ROOT_LABEL, depth: 0 }];
   const seen = new Set();
 
   while (queue.length && out.length < maxItems) {
@@ -152,6 +208,28 @@ export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh 
       if (out.length >= maxItems) break;
     }
   }
+  return out;
+}
+
+export async function listMagiDriveTree({ maxItems = 2000, maxDepth = 12, fresh = false } = {}) {
+  if (!driveServiceConfigured()) throw new Error('drive_service_not_configured');
+  const age = Date.now() - cachedTreeAt;
+  if (cachedTree) {
+    if (!fresh && age < TREE_CACHE_MS) return cachedTree;
+    if (fresh && age < FRESH_TREE_MIN_INTERVAL_MS) return cachedTree;
+  }
+
+  let out = [];
+  try {
+    const flat = await listAllVisibleFiles(Math.max(FLAT_SCAN_LIMIT, maxItems * 2));
+    out = buildRootedTreeFromFlat(flat, { maxItems, maxDepth });
+  } catch (error) {
+    console.warn('[MAGI Drive flat tree fallback]', error?.message || error);
+  }
+
+  if (!out.length) {
+    out = await listTreeRecursive({ maxItems, maxDepth });
+  }
 
   cachedTree = out;
   cachedTreeAt = Date.now();
@@ -171,6 +249,14 @@ export async function getDriveFileMetadata(id) {
   return data;
 }
 
+function rememberFile(cacheKey, buffer, contentType) {
+  fileContentCache.set(cacheKey, { at: Date.now(), buffer, contentType });
+  if (fileContentCache.size > 24) {
+    const oldest = [...fileContentCache.entries()].sort((a,b) => a[1].at - b[1].at).slice(0, fileContentCache.size - 24);
+    for (const [key] of oldest) fileContentCache.delete(key);
+  }
+}
+
 export async function fetchDriveFileContent(fileOrId, { signal } = {}) {
   const source = typeof fileOrId === 'string' ? { id: fileOrId } : (fileOrId || {});
   const meta = source.mimeType ? source : await getDriveFileMetadata(source.id);
@@ -178,18 +264,30 @@ export async function fetchDriveFileContent(fileOrId, { signal } = {}) {
   if (!id) throw new Error('missing_drive_file_id');
 
   const version = String(meta.modifiedTime || source.modifiedTime || '');
-  const cacheKey = `${id}|${version}|${String(meta.mimeType || source.mimeType || '')}`;
-  const cached = fileContentCache.get(cacheKey);
-  if (cached && Date.now() - cached.at < FILE_CACHE_MS) {
-    return { buffer: cached.buffer, contentType: cached.contentType, meta };
+  const mimeType = String(meta.mimeType || source.mimeType || '');
+  const cacheKey = `${id}|${version}|${mimeType}`;
+  const memoryCached = fileContentCache.get(cacheKey);
+  if (memoryCached && Date.now() - memoryCached.at < FILE_CACHE_MS) {
+    return { buffer: memoryCached.buffer, contentType: memoryCached.contentType, meta };
+  }
+
+  if (cacheableDriveFile(meta)) {
+    try {
+      const persistent = await getCachedDriveFile(meta);
+      if (persistent?.buffer) {
+        const contentType = persistent.contentType || 'application/octet-stream';
+        rememberFile(cacheKey, persistent.buffer, contentType);
+        return { buffer: persistent.buffer, contentType, meta };
+      }
+    } catch (_) {}
   }
 
   let url = '';
   let contentType = 'application/octet-stream';
-  if (meta.mimeType === 'application/vnd.google-apps.spreadsheet') {
+  if (mimeType === 'application/vnd.google-apps.spreadsheet') {
     contentType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
     url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${encodeURIComponent(contentType)}`;
-  } else if (meta.mimeType === 'application/vnd.google-apps.document') {
+  } else if (mimeType === 'application/vnd.google-apps.document') {
     contentType = 'text/plain; charset=utf-8';
     url = `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(id)}/export?mimeType=${encodeURIComponent('text/plain')}`;
   } else {
@@ -198,18 +296,19 @@ export async function fetchDriveFileContent(fileOrId, { signal } = {}) {
 
   const response = await googleDriveFetch(url, signal ? { signal } : {});
   if (!response.ok) {
-    const text = await response.text().catch(() => '');
+    const responseText = await response.text().catch(() => '');
     const error = new Error('drive_file_fetch_failed');
     error.status = response.status;
-    error.details = text.slice(0, 300);
+    error.details = responseText.slice(0, 300);
     throw error;
   }
   const buffer = Buffer.from(await response.arrayBuffer());
   const resolvedContentType = response.headers.get('content-type') || contentType;
-  fileContentCache.set(cacheKey, { at: Date.now(), buffer, contentType: resolvedContentType });
-  if (fileContentCache.size > 24) {
-    const oldest = [...fileContentCache.entries()].sort((a,b)=>a[1].at-b[1].at).slice(0,fileContentCache.size-24);
-    for (const [key] of oldest) fileContentCache.delete(key);
+  rememberFile(cacheKey, buffer, resolvedContentType);
+
+  if (cacheableDriveFile(meta)) {
+    putCachedDriveFile(meta, buffer, resolvedContentType).catch(() => {});
   }
+
   return { buffer, contentType: resolvedContentType, meta };
 }
