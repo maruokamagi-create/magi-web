@@ -7,7 +7,7 @@ window.MAGI_MAIN_LIVE_ANSWER_V320=true;
 window.MAGI_MAIN_LIVE_ANSWER_V318=true;
 
 const DIRECT_ROUTES=new Set(['BATTING_LOOKUP','PITCHING_LOOKUP','PLAYER_OVERVIEW','TEAM_LOOKUP','CLARIFY']);
-let busy=false;
+let busy=false,prewarmStarted=false;
 const $=id=>document.getElementById(id);
 const txt=v=>String(v??'').trim();
 
@@ -85,6 +85,18 @@ async function execute(btn){
  }finally{if(btn){btn.disabled=false;if(btn.textContent==='確認中…')btn.textContent=oldText||'MAGI実行'}busy=false}
 }
 
+function startPrewarm(){
+ if(prewarmStarted)return;prewarmStarted=true;
+ setTimeout(()=>{
+  const c=new AbortController(),t=setTimeout(()=>c.abort(),30000);
+  fetch('/api/magi/prewarm-stats',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},body:'{}',signal:c.signal})
+   .then(r=>r.ok?r.json():null)
+   .then(r=>{window.MAGI_STATS_PREWARM_RESULT=r})
+   .catch(e=>console.warn('[MAGI stats prewarm]',e?.message||e))
+   .finally(()=>clearTimeout(t));
+ },350);
+}
+
 document.addEventListener('click',event=>{
  const btn=mainButton(event.target);if(!btn)return;
  event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();
@@ -93,5 +105,6 @@ document.addEventListener('click',event=>{
 
 const observer=new MutationObserver(()=>{if($('judge'))ensurePanel()});
 observer.observe(document.documentElement,{childList:true,subtree:true});
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel,{once:true});else ensurePanel();
+function boot(){ensurePanel();startPrewarm()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
