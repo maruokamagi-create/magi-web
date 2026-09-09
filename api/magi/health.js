@@ -8,6 +8,7 @@ import { buildLiveAnswer } from './_live-answer.js';
 import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
 import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
+import { buildFastLiveRoute } from './_fast-live-route.js';
 
 const ANSWER_ENGINE_VERSION = 'fixture-answer-v1';
 
@@ -139,11 +140,18 @@ export default async function handler(req, res) {
           return sendJson(res, 200, { ...result, outputFormat, integratedRoute: 'VERIFIED_OLD_DETAIL' });
         }
 
-        const routed = await routeWithOutputFormat(question, body?.context || []);
+        const context = body?.context || [];
+        const fastRouted = outputFormat === 'DEFAULT' ? buildFastLiveRoute(question, context) : null;
+        const routed = fastRouted || await routeWithOutputFormat(question, context);
         const result = routed?.route === 'PITCHING_LOOKUP'
           ? await buildStrictPitchingAnswer({ question, routed })
           : await buildLiveAnswer({ question, routed });
-        return sendJson(res, 200, { ...result, outputFormat: routed?.outputFormat || 'DEFAULT' });
+        return sendJson(res, 200, {
+          ...result,
+          outputFormat: routed?.outputFormat || outputFormat || 'DEFAULT',
+          fastPath: Boolean(fastRouted),
+          fastRouterVersion: fastRouted?.routerVersion || null
+        });
       } catch (error) {
         console.error('[MAGI live question answer]', error?.message || error);
         return sendJson(res, 502, { ok: false, error: error?.message || 'Live question answer failed' });
