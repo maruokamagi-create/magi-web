@@ -5,7 +5,6 @@ window.MAGI_MAIN_LIVE_ANSWER_V318=true;
 
 const DIRECT_ROUTES=new Set(['BATTING_LOOKUP','PITCHING_LOOKUP','PLAYER_OVERVIEW','TEAM_LOOKUP','CLARIFY']);
 let busy=false;
-let installedOriginal=null;
 
 const $=id=>document.getElementById(id);
 const txt=v=>String(v??'').trim();
@@ -57,9 +56,7 @@ function showPanel(result,question){
  if(status)status.textContent='MAGI 検証済みライブ回答 完了';
  panel.style.display='block';
  panel.scrollIntoView({behavior:'smooth',block:'center'});
- try{
-  window.dispatchEvent(new CustomEvent('magi:live-answer',{detail:{question,result}}));
- }catch(_){ }
+ try{window.dispatchEvent(new CustomEvent('magi:live-answer',{detail:{question,result}}))}catch(_){ }
  return true;
 }
 
@@ -68,9 +65,7 @@ async function postLive(question){
  const timer=setTimeout(()=>controller.abort(),35000);
  try{
   const response=await fetch('/api/magi/health',{
-   method:'POST',
-   credentials:'same-origin',
-   cache:'no-store',
+   method:'POST',credentials:'same-origin',cache:'no-store',
    headers:{'Content-Type':'application/json'},
    body:JSON.stringify({mode:'LIVE_QUESTION_ANSWER',question,context:[]}),
    signal:controller.signal
@@ -88,13 +83,12 @@ async function postLive(question){
 
 function shouldDisplay(result){
  if(result?.integratedRoute==='VERIFIED_OLD_DETAIL')return true;
- if(DIRECT_ROUTES.has(txt(result?.route)))return true;
- return false;
+ return DIRECT_ROUTES.has(txt(result?.route));
 }
 
-async function liveRun(original){
+async function liveRun(original,args){
  const q=txt($('q')?.value);
- if(!q)return original.apply(window,arguments);
+ if(!q)return original.apply(window,args||[]);
  if(busy)return;
  busy=true;
  const status=$('status');
@@ -106,31 +100,27 @@ async function liveRun(original){
    showPanel(result,q);
    return result;
   }
-  // 判断・資料検索・高度相談など、まだライブ回答に正式接続していない経路は既存処理へ戻す。
   if(status)status.textContent='この質問は従来のMAGI処理へ引き継ぎます…';
-  return await original.call(window);
+  return await original.apply(window,args||[]);
  }catch(error){
   console.warn('[MAGI main live answer v318]',error?.message||error);
-  // 通信・一時障害で既存機能まで止めない。401/403は認証画面側の案内を優先する。
   if(error?.status===401||error?.status===403){
    if(status)status.textContent=error.status===401?'LINEログインを確認してください。':'利用承認を確認してください。';
    return;
   }
   if(status)status.textContent='ライブ回答を取得できなかったため、従来処理へ切り替えます。';
-  return await original.call(window);
- }finally{
-  busy=false;
- }
+  return await original.apply(window,args||[]);
+ }finally{busy=false}
 }
 
 function install(){
  const fn=window.runMagi;
  if(typeof fn!=='function')return false;
  if(fn.__magiMainLiveAnswerV318)return true;
- installedOriginal=fn;
- const wrapped=function(){return liveRun(installedOriginal)};
+ const original=fn;
+ const wrapped=function(...args){return liveRun(original,args)};
  wrapped.__magiMainLiveAnswerV318=true;
- wrapped.__magiMainLiveOriginal=fn;
+ wrapped.__magiMainLiveOriginal=original;
  window.runMagi=wrapped;
  return true;
 }
