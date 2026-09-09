@@ -6,6 +6,7 @@ import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { runDetailCsvConsistencyAudit } from './_detail-csv-audit.js';
 import { buildLiveAnswer } from './_live-answer.js';
 import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
+import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 
 const ANSWER_ENGINE_VERSION = 'fixture-answer-v1';
 
@@ -139,6 +140,20 @@ export default async function handler(req, res) {
       } catch (error) {
         console.error('[MAGI live question answer]', error?.message || error);
         return sendJson(res, 502, { ok: false, error: error?.message || 'Live question answer failed' });
+      }
+    }
+
+    if (mode === 'VERIFIED_DETAIL_ANSWER') {
+      const member = await requireApprovedMember(req, res);
+      if (!member) return;
+      const question = String(body?.question || '').trim();
+      if (!question) return sendJson(res, 400, { ok: false, error: 'question is required' });
+      try {
+        const result = await buildVerifiedDetailAnswer({ question });
+        return sendJson(res, 200, result);
+      } catch (error) {
+        console.error('[MAGI verified detail answer]', error?.message || error);
+        return sendJson(res, 502, { ok: false, error: error?.message || 'Verified detail answer failed' });
       }
     }
 
