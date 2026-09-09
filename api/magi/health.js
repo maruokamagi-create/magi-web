@@ -3,6 +3,7 @@ import { routeQuestion } from './_question-router-current.js';
 import { recoverContextBoundDeliberation } from './_conversation-recovery.js';
 import { requireApprovedMember } from '../drive/_access.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
+import { runDetailCsvConsistencyAudit } from './_detail-csv-audit.js';
 import { buildLiveAnswer } from './_live-answer.js';
 import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
 
@@ -150,6 +151,18 @@ export default async function handler(req, res) {
       } catch (error) {
         console.error('[MAGI live Drive audit]', error?.message || error);
         return sendJson(res, 502, { ok: false, error: error?.message || 'Live Drive audit failed' });
+      }
+    }
+
+    if (mode === 'DETAIL_CSV_AUDIT') {
+      const member = await requireApprovedMember(req, res);
+      if (!member) return;
+      try {
+        const result = await runDetailCsvConsistencyAudit({ season: body?.season || 'current' });
+        return sendJson(res, 200, { ok: true, ...result });
+      } catch (error) {
+        console.error('[MAGI detail CSV consistency]', error?.message || error);
+        return sendJson(res, 502, { ok: false, error: error?.message || 'Detail CSV consistency audit failed' });
       }
     }
 
