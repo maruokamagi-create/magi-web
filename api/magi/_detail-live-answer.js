@@ -1,7 +1,7 @@
 import { runDetailCsvConsistencyAudit } from './_detail-csv-audit.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalizeKnownNameText } from './_roster.js';
 
-const ENGINE_VERSION = 'verified-detail-answer-v1-old-full-open';
+const ENGINE_VERSION = 'verified-detail-answer-v2-player-target-priority';
 let oldAuditCache = { expires: 0, data: null };
 
 function pct(n, d) {
@@ -32,7 +32,11 @@ function findPlayer(question) {
 }
 
 function isTeamTarget(question) {
-  return /チーム全体|チームの|全員|全体/.test(String(question || ''));
+  const q = String(question || '');
+  // 「前チームの宮村 龍」のような season + player 表現は個人質問。
+  // 明示的な選手が1人解決できる場合は、team という語が含まれていても個人を優先する。
+  if (findPlayer(q)) return false;
+  return /チーム全体|全員|全選手|全体|チーム(?:の)?(?:合計|総計)|全員(?:合わせた)?/.test(q);
 }
 
 async function oldAudit() {
