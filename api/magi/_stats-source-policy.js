@@ -2,7 +2,7 @@
 // XLSM in 00_MASTER_正本 is authoritative for season totals.
 // CSV in 10_DETAIL_詳細データ is secondary evidence for per-game/conditional analysis.
 
-export const STATS_SOURCE_POLICY_VERSION = 'xlsm-master-csv-detail-v1';
+export const STATS_SOURCE_POLICY_VERSION = 'xlsm-master-csv-detail-v2-strict';
 export const AUTHORITATIVE_SOURCE = 'XLSM_MASTER';
 export const DETAIL_SOURCE = 'CSV_DETAIL';
 
@@ -22,6 +22,7 @@ function numeric(value) {
 export function reconcileMasterAndDetail(masterStats = {}, csvTotals = {}, keys = BATTING_RECONCILIATION_KEYS) {
   const checks = [];
   const mismatches = [];
+  const unverifiable = [];
   const resolved = {};
 
   for (const key of keys) {
@@ -30,12 +31,13 @@ export function reconcileMasterAndDetail(masterStats = {}, csvTotals = {}, keys 
 
     if (master === null && csv === null) continue;
 
-    // If XLSM has the value, it always wins. CSV never overwrites it.
+    // XLSM always wins. CSV never overwrites or averages with XLSM.
     if (master !== null) resolved[key] = masterStats[key];
-    else if (csv !== null) resolved[key] = csvTotals[key];
 
     if (master === null || csv === null) {
-      checks.push({ key, master, csv, status: master === null ? 'CSV_ONLY' : 'XLSM_ONLY' });
+      const item = { key, master, csv, status: master === null ? 'CSV_ONLY_UNVERIFIABLE' : 'XLSM_ONLY_UNVERIFIABLE' };
+      checks.push(item);
+      unverifiable.push(item);
       continue;
     }
 
@@ -45,22 +47,28 @@ export function reconcileMasterAndDetail(masterStats = {}, csvTotals = {}, keys 
     if (status === 'MISMATCH') mismatches.push(item);
   }
 
+  const blockingIssues = [...mismatches, ...unverifiable];
+  const allowed = blockingIssues.length === 0;
+
   return {
     policyVersion: STATS_SOURCE_POLICY_VERSION,
     authoritativeSource: AUTHORITATIVE_SOURCE,
     detailSource: DETAIL_SOURCE,
-    consistent: mismatches.length === 0,
+    consistent: allowed,
     mismatches,
+    unverifiable,
+    blockingIssues,
     checks,
     resolved,
-    csvAnalysisAllowed: mismatches.length === 0,
-    rule: mismatches.length
-      ? 'XLSM_WINS_AND_CSV_ANALYSIS_BLOCKED'
-      : 'CSV_DETAIL_ALLOWED_AFTER_RECONCILIATION'
+    csvAnalysisAllowed: allowed,
+    rule: allowed
+      ? 'CSV_DETAIL_ALLOWED_AFTER_STRICT_RECONCILIATION'
+      : 'XLSM_WINS_AND_CSV_ANALYSIS_BLOCKED'
   };
 }
 
 export function authoritativeValue(masterValue, csvValue) {
   if (masterValue !== null && masterValue !== undefined && masterValue !== '') return masterValue;
-  return csvValue;
+  // No fallback for shared authoritative metrics. A missing XLSM value must stay unresolved.
+  return null;
 }
