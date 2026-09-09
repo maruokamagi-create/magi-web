@@ -1,8 +1,12 @@
 import * as XLSX from 'xlsx';
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { getCache } from '@vercel/functions';
+import { fetchDriveFileContent, getDriveFileMetadata, listMagiDriveTree } from '../drive/_service.js';
+import { CURRENT_ROSTER, OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
 
 const STATS_TOKEN = '03_STATS_成績データ';
 const MASTER_TOKEN = '00_MASTER_正本';
+const SNAPSHOT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
+const CURRENT_MASTER_FILE_ID = process.env.MAGI_CURRENT_MASTER_FILE_ID || '11ABgSFKN-9Bhde1hJ_n-Qytz0cuImM0E';
 
 const SEASONS = {
   current: {
@@ -325,8 +329,36 @@ function extractFromXlsm(buffer, season, requestedPlayers) {
   };
 }
 
-export async function runDriveLiveAudit({ season: seasonValue = 'current', players = null } = {}) {
-  const season = resolveSeason(seasonValue);
+async function readSnapshot(key) {
+  try {
+    return (await getCache().get(key)) || null;
+  } catch (error) {
+    console.warn('[MAGI stats snapshot cache read]', error?.message || error);
+    return null;
+  }
+}
+
+async function writeSnapshot(key, value) {
+  try {
+    await getCache().set(key, value, { ttl:SNAPSHOT_CACHE_TTL_SECONDS, tags:['magi-stats-snapshot-v1'] });
+  } catch (error) {
+    console.warn('[MAGI stats snapshot cache write]', error?.message || error);
+  }
+}
+
+async function resolveMasterFile(season) {
+  if (season.key === 'current' && CURRENT_MASTER_FILE_ID) {
+    try {
+      const meta = await getDriveFileMetadata(CURRENT_MASTER_FILE_ID);
+      return {
+        ...meta,
+        path:`20_TEAM_DATA_チームデータ/${season.token}/${STATS_TOKEN}/${MASTER_TOKEN}/${meta.name}`
+      };
+    } catch (error) {
+      console.warn('[MAGI current master direct metadata fallback]', error?.message || error);
+    }
+  }
+
   const tree = await listMagiDriveTree({ fresh:true });
   const candidates = tree.filter(file => isAuthoritativeXlsm(file, season));
   if (candidates.length !== 1) {
@@ -334,10 +366,25 @@ export async function runDriveLiveAudit({ season: seasonValue = 'current', playe
     const names = nearby.slice(0, 8).map(f => f.path).join(' | ');
     throw new Error(`${season.label}の00_MASTER_正本XLSMを一意に特定できませんでした (${candidates.length})${names ? ` / XLSM候補: ${names}` : ''}`);
   }
-  const file = candidates[0];
+  return candidates[0];
+}
+
+function seasonRoster(season) {
+  return season.key === 'current' ? CURRENT_ROSTER : OFFICIAL_PLAYER_REGISTRY;
+}
+
+export async function runDriveLiveAudit({ season: seasonValue = 'current', players = null } = {}) {
+  const season = resolveSeason(seasonValue);
+  const file = await resolveMasterFile(season);
+  const cacheKey = `magi:stats-snapshot:v1:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
+  const cached = await readSnapshot(cacheKey);
+  if (cached?.extracted?.playersByName) {
+    return { ...cached, cacheHit:true };
+  }
+
   const fetched = await fetchDriveFileContent(file);
-  const parsed = extractFromXlsm(fetched.buffer, season, players);
-  return {
+  const parsed = extractFromXlsm(fetched.buffer, season, seasonRoster(season));
+  const result = {
     live:true,
     season:season.key,
     seasonLabel:season.label,
@@ -348,4 +395,6 @@ export async function runDriveLiveAudit({ season: seasonValue = 'current', playe
     model:null,
     extracted:parsed.extracted
   };
+  await writeSnapshot(cacheKey, result);
+  return { ...result, cacheHit:false };
 }
