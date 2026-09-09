@@ -7,6 +7,7 @@ import { runDetailCsvConsistencyAudit } from './_detail-csv-audit.js';
 import { buildLiveAnswer } from './_live-answer.js';
 import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
 import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
+import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
 
 const ANSWER_ENGINE_VERSION = 'fixture-answer-v1';
 
@@ -132,6 +133,12 @@ export default async function handler(req, res) {
       const question = String(body?.question || '').trim();
       if (!question) return sendJson(res, 400, { ok: false, error: 'question is required' });
       try {
+        const outputFormat = detectOutputFormat(question);
+        if (outputFormat === 'DEFAULT' && shouldUseVerifiedOldDetailAnswer(question)) {
+          const result = await buildVerifiedDetailAnswer({ question });
+          return sendJson(res, 200, { ...result, outputFormat, integratedRoute: 'VERIFIED_OLD_DETAIL' });
+        }
+
         const routed = await routeWithOutputFormat(question, body?.context || []);
         const result = routed?.route === 'PITCHING_LOOKUP'
           ? await buildStrictPitchingAnswer({ question, routed })
