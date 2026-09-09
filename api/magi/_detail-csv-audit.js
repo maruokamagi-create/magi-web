@@ -1,5 +1,5 @@
 import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
-import { runDriveLiveAudit } from './_drive-live-audit.js';
+import { runStrictBattingMasterAudit } from './_strict-batting-master.js';
 import { BATTING_RECONCILIATION_KEYS, reconcileMasterAndDetail, STATS_SOURCE_POLICY_VERSION } from './_stats-source-policy.js';
 
 const SEASONS = {
@@ -179,16 +179,17 @@ export async function runDetailCsvConsistencyAudit({ season: seasonValue = 'curr
   const fielding = fieldingStructure(parseCsv(fieldingDecoded.text), season);
 
   const playerNames = Object.keys(batting.totalsByPlayer);
-  const master = await runDriveLiveAudit({ season:season.key, players:playerNames });
+  const master = await runStrictBattingMasterAudit({ season:season.key, players:playerNames });
   const players = [];
   for (const name of playerNames) {
-    const masterStats = master?.extracted?.playersByName?.[name]?.batting || {};
+    const masterStats = master?.playersByName?.[name]?.batting || {};
     const csvTotals = batting.totalsByPlayer[name] || {};
     const reconciliation = reconcileMasterAndDetail(masterStats, csvTotals);
     players.push({
       name,
       csvRows:csvTotals._rows || 0,
-      masterFound:Boolean(master?.extracted?.playersByName?.[name]?.batting),
+      masterFound:Boolean(master?.playersByName?.[name]?.batting),
+      masterSource:master?.playersByName?.[name]?.source || null,
       reconciliation
     });
   }
@@ -198,11 +199,11 @@ export async function runDetailCsvConsistencyAudit({ season: seasonValue = 'curr
   const fieldingGateOpen = fielding.structuralAllowed;
 
   return {
-    auditVersion:'detail-csv-consistency-v1',
+    auditVersion:'detail-csv-consistency-v2-strict-batting-master',
     policyVersion:STATS_SOURCE_POLICY_VERSION,
     season:season.key,
     seasonLabel:season.yearToken,
-    authoritativeSource:{ type:'XLSM_MASTER', name:master?.source?.name || '', path:master?.source?.path || '' },
+    authoritativeSource:{ type:'XLSM_MASTER', name:master?.source?.name || '', path:master?.source?.path || '', parser:master?.parser || '' },
     batting:{
       source:{ name:battingFile.name, path:battingFile.path, encoding:battingDecoded.encoding },
       rows:batting.dataRows,
