@@ -3,6 +3,7 @@ import { routeQuestion } from './_question-router-current.js';
 import { recoverContextBoundDeliberation } from './_conversation-recovery.js';
 import { requireApprovedMember } from '../drive/_access.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
+import { buildLiveAnswer } from './_live-answer.js';
 
 const ANSWER_ENGINE_VERSION = 'fixture-answer-v1';
 
@@ -120,6 +121,24 @@ export default async function handler(req, res) {
       const result = await runAnswerFixture(body);
       if (result?.error) return sendJson(res, 400, { ok: false, error: result.error });
       return sendJson(res, 200, result);
+    }
+
+    // First true end-to-end answer path:
+    // natural-language question -> semantic router -> authoritative XLSM -> deterministic answer.
+    // The router may use Gemini, but numeric retrieval/answer formatting does not.
+    if (mode === 'LIVE_QUESTION_ANSWER') {
+      const member = await requireApprovedMember(req, res);
+      if (!member) return;
+      const question = String(body?.question || '').trim();
+      if (!question) return sendJson(res, 400, { ok: false, error: 'question is required' });
+      try {
+        const routed = await routeWithOutputFormat(question, body?.context || []);
+        const result = await buildLiveAnswer({ question, routed });
+        return sendJson(res, 200, { ...result, outputFormat: routed?.outputFormat || 'DEFAULT' });
+      } catch (error) {
+        console.error('[MAGI live question answer]', error?.message || error);
+        return sendJson(res, 502, { ok: false, error: error?.message || 'Live question answer failed' });
+      }
     }
 
     // Live XLSM audit for either current (2026-2027) or old (2025-2026) team.
