@@ -4,6 +4,7 @@ import { recoverContextBoundDeliberation } from './_conversation-recovery.js';
 import { requireApprovedMember } from '../drive/_access.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { buildLiveAnswer } from './_live-answer.js';
+import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
 
 const ANSWER_ENGINE_VERSION = 'fixture-answer-v1';
 
@@ -123,9 +124,6 @@ export default async function handler(req, res) {
       return sendJson(res, 200, result);
     }
 
-    // First true end-to-end answer path:
-    // natural-language question -> semantic router -> authoritative XLSM -> deterministic answer.
-    // The router may use Gemini, but numeric retrieval/answer formatting does not.
     if (mode === 'LIVE_QUESTION_ANSWER') {
       const member = await requireApprovedMember(req, res);
       if (!member) return;
@@ -133,7 +131,9 @@ export default async function handler(req, res) {
       if (!question) return sendJson(res, 400, { ok: false, error: 'question is required' });
       try {
         const routed = await routeWithOutputFormat(question, body?.context || []);
-        const result = await buildLiveAnswer({ question, routed });
+        const result = routed?.route === 'PITCHING_LOOKUP'
+          ? await buildStrictPitchingAnswer({ question, routed })
+          : await buildLiveAnswer({ question, routed });
         return sendJson(res, 200, { ...result, outputFormat: routed?.outputFormat || 'DEFAULT' });
       } catch (error) {
         console.error('[MAGI live question answer]', error?.message || error);
@@ -141,8 +141,6 @@ export default async function handler(req, res) {
       }
     }
 
-    // Live XLSM audit for either current (2026-2027) or old (2025-2026) team.
-    // Both seasons use their own 03_STATS/00_MASTER authoritative XLSM; PDFs are reference-only.
     if (mode === 'DRIVE_LIVE_AUDIT') {
       const member = await requireApprovedMember(req, res);
       if (!member) return;
