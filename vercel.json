@@ -1,1 +1,41 @@
-{"headers":[{"source":"/(.*)","headers":[{"key":"X-Content-Type-Options","value":"nosniff"},{"key":"Referrer-Policy","value":"same-origin"},{"key":"X-Frame-Options","value":"DENY"},{"key":"Permissions-Policy","value":"camera=(), microphone=(), geolocation=()"}]},{"source":"/","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/index.html","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/index-legacy-v092.html","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/loader-v130.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/auth-config-v271.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/auth-gate-v271.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/version-current.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/version-sync-v132.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/persistence-guard-v131.js","headers":[{"key":"Cache-Control","value":"no-store, no-cache, must-revalidate, max-age=0"}]},{"source":"/api/(.*)","headers":[{"key":"Cache-Control","value":"no-store"},{"key":"X-Robots-Tag","value":"noindex, nofollow"}]},{"source":"/magi-official-symbol-v125.svg","headers":[{"key":"Cache-Control","value":"public, max-age=86400, immutable"}]}]}
+{
+  "rewrites": [
+    { "source": "/api/admin/line-members", "destination": "/api/auth-gateway?__magi_route=admin-line-members" },
+    { "source": "/api/auth/line/start", "destination": "/api/auth-gateway?__magi_route=line-start" },
+    { "source": "/api/auth/line/callback", "destination": "/api/auth-gateway?__magi_route=line-callback" },
+    { "source": "/api/auth/line/logout", "destination": "/api/auth-gateway?__magi_route=line-logout" },
+    { "source": "/api/auth/line/profile", "destination": "/api/auth-gateway?__magi_route=line-profile" },
+    { "source": "/api/auth/line/session", "destination": "/api/auth-gateway?__magi_route=line-session" },
+    { "source": "/api/drive", "destination": "/api/drive-gateway?__magi_route=drive-index" },
+    { "source": "/api/drive/index", "destination": "/api/drive-gateway?__magi_route=drive-index" },
+    { "source": "/api/drive/file", "destination": "/api/drive-gateway?__magi_route=drive-file" },
+    { "source": "/api/drive/warm", "destination": "/api/drive-gateway?__magi_route=drive-warm" },
+    { "source": "/api/magi/core", "destination": "/api/magi-gateway?__magi_route=magi-core" },
+    { "source": "/api/magi/fielding-report", "destination": "/api/magi-gateway?__magi_route=magi-fielding-report" },
+    { "source": "/api/magi/health", "destination": "/api/magi-gateway?__magi_route=magi-health" },
+    { "source": "/api/magi/orchestrate", "destination": "/api/magi-gateway?__magi_route=magi-orchestrate" },
+    { "source": "/api/magi/persona", "destination": "/api/magi-gateway?__magi_route=magi-persona" }
+  ],
+  "headers": [
+    { "source": "/(.*)", "headers": [
+      { "key": "X-Content-Type-Options", "value": "nosniff" },
+      { "key": "Referrer-Policy", "value": "same-origin" },
+      { "key": "X-Frame-Options", "value": "DENY" },
+      { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+    ]},
+    { "source": "/", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/index.html", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/index-legacy-v092.html", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/loader-v130.js", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/auth-config-v271.js", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/auth-gate-v271.js", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/version-current.js", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/version-sync-v132.js", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/persistence-guard-v131.js", "headers": [{ "key": "Cache-Control", "value": "no-store, no-cache, must-revalidate, max-age=0" }]},
+    { "source": "/api/(.*)", "headers": [
+      { "key": "Cache-Control", "value": "no-store" },
+      { "key": "X-Robots-Tag", "value": "noindex, nofollow" }
+    ]},
+    { "source": "/magi-official-symbol-v125.svg", "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, immutable" }]}
+  ]
+}
