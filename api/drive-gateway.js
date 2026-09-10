@@ -1,21 +1,27 @@
+import driveIndex from '../server/api/drive/index.js';
+import driveFile from '../server/api/drive/file.js';
+import driveWarm from '../server/api/drive/warm.js';
+
 const routes = {
-  'drive-index': () => import('../server/api/drive/index.js'),
-  'drive-file': () => import('../server/api/drive/file.js'),
-  'drive-warm': () => import('../server/api/drive/warm.js')
+  'drive-index': driveIndex,
+  'drive-file': driveFile,
+  'drive-warm': driveWarm
 };
 
+function routeKey(req) {
+  const value = req.query?.__magi_route;
+  return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+}
+
 export default async function handler(req, res) {
-  const key = String(req.query?.__magi_route || '');
-  const load = routes[key];
-  if (!load) {
+  const key = routeKey(req);
+  const fn = routes[key];
+  if (typeof fn !== 'function') {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.end(JSON.stringify({ ok: false, error: 'Unknown drive route' }));
   }
   try {
-    const mod = await load();
-    const fn = mod.default || mod.handler;
-    if (typeof fn !== 'function') throw new Error(`Handler not found: ${key}`);
     return await fn(req, res);
   } catch (error) {
     console.error('[MAGI drive gateway]', key, error?.message || error);
