@@ -1,23 +1,31 @@
+import magiCore from '../server/api/magi/core.js';
+import fieldingReport from '../server/api/magi/fielding-report.js';
+import magiHealth from '../server/api/magi/health.js';
+import magiOrchestrate from '../server/api/magi/orchestrate.js';
+import magiPersona from '../server/api/magi/persona.js';
+
 const routes = {
-  'magi-core': () => import('../server/api/magi/core.js'),
-  'magi-fielding-report': () => import('../server/api/magi/fielding-report.js'),
-  'magi-health': () => import('../server/api/magi/health.js'),
-  'magi-orchestrate': () => import('../server/api/magi/orchestrate.js'),
-  'magi-persona': () => import('../server/api/magi/persona.js')
+  'magi-core': magiCore,
+  'magi-fielding-report': fieldingReport,
+  'magi-health': magiHealth,
+  'magi-orchestrate': magiOrchestrate,
+  'magi-persona': magiPersona
 };
 
+function routeKey(req) {
+  const value = req.query?.__magi_route;
+  return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+}
+
 export default async function handler(req, res) {
-  const key = String(req.query?.__magi_route || '');
-  const load = routes[key];
-  if (!load) {
+  const key = routeKey(req);
+  const fn = routes[key];
+  if (typeof fn !== 'function') {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.end(JSON.stringify({ ok: false, error: 'Unknown MAGI route' }));
   }
   try {
-    const mod = await load();
-    const fn = mod.default || mod.handler;
-    if (typeof fn !== 'function') throw new Error(`Handler not found: ${key}`);
     return await fn(req, res);
   } catch (error) {
     console.error('[MAGI gateway]', key, error?.message || error);
