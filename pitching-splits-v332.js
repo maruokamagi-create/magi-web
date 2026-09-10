@@ -1,0 +1,105 @@
+(()=>{
+'use strict';
+if(window.MAGI_PITCHING_SPLITS_V332)return;
+window.MAGI_PITCHING_SPLITS_V332=true;
+
+const FALLBACK=[
+ {season:'2025-2026',id:'1thxQXAdswckPVdmXdvRXPeuVAfDtskUB',name:'投手詳細2025-2026.csv'},
+ {season:'2026-2027',id:'12Lw2EfQFktx57z_AEVcteFdO4ayD197C',name:'投手詳細2026-2027.csv'}
+];
+const cache=new Map();
+const norm=v=>String(v??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
+const num=v=>{const s=String(v??'').replace(/,/g,'').trim();if(!s||s==='-'||s==='—')return 0;const x=Number(s);return Number.isFinite(x)?x:0};
+const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+function seasonText(s){const m=String(s||'').match(/(20\d{2})\s*[-–—_. /]\s*(20\d{2})/);return m?`${m[1]}-${m[2]}`:''}
+function driveFiles(){try{return Array.isArray(driveIndex)?driveIndex:[]}catch(_){return[]}}
+function sources(){
+ const map=new Map(FALLBACK.map(x=>[x.season,{...x}]));
+ for(const f of driveFiles()){
+  if(!f?.id)continue;
+  const name=String(f.name||''),path=String(f.path||'');
+  if(!/投手詳細/i.test(name)||!/\.csv$/i.test(name))continue;
+  const season=seasonText(`${name} ${path}`);if(season)map.set(season,{season,id:f.id,name,path});
+ }
+ return[...map.values()].sort((a,b)=>a.season.localeCompare(b.season));
+}
+function parseCsv(text){
+ const out=[];let row=[],cell='',quoted=false;
+ for(let i=0;i<text.length;i++){
+  const c=text[i];
+  if(quoted){if(c==='"'&&text[i+1]==='"'){cell+='"';i++;continue}if(c==='"'){quoted=false;continue}cell+=c;continue}
+  if(c==='"'){quoted=true;continue}if(c===','){row.push(cell);cell='';continue}
+  if(c==='\n'){row.push(cell.replace(/\r$/,''));if(row.some(v=>String(v).trim()))out.push(row);row=[];cell='';continue}
+  cell+=c;
+ }
+ row.push(cell.replace(/\r$/,''));if(row.some(v=>String(v).trim()))out.push(row);return out;
+}
+function decodeSmart(buffer){
+ try{if(typeof window.MAGI_DECODE_TEXT_SMART==='function')return window.MAGI_DECODE_TEXT_SMART(buffer)}catch(_){}
+ const score=s=>(String(s).match(/[ぁ-んァ-ヶ一-龯々]/g)||[]).length-(String(s).match(/�/g)||[]).length*30;
+ let u='',sj='';try{u=new TextDecoder('utf-8',{fatal:false}).decode(buffer)}catch(_){}try{sj=new TextDecoder('shift_jis',{fatal:false}).decode(buffer)}catch(_){}
+ return score(sj)>score(u)?sj:u;
+}
+async function fetchTable(src){
+ if(cache.has(src.id))return cache.get(src.id);
+ const p=(async()=>{const c=new AbortController(),t=setTimeout(()=>c.abort(),9000);try{const r=await fetch(`/api/drive/file?id=${encodeURIComponent(src.id)}`,{cache:'no-store',credentials:'same-origin',signal:c.signal});if(!r.ok)throw new Error(`Drive file ${r.status}`);return parseCsv(decodeSmart(await r.arrayBuffer()))}finally{clearTimeout(t)}})().catch(e=>{cache.delete(src.id);throw e});
+ cache.set(src.id,p);return p;
+}
+function colIndex(cols,aliases){const want=aliases.map(norm);for(let i=0;i<cols.length;i++)if(want.includes(norm(cols[i])))return i;for(let i=0;i<cols.length;i++){const c=norm(cols[i]);if(want.some(x=>x&&x.length>=2&&c.includes(x)))return i}return-1}
+function dateRank(v){const s=String(v??'').trim(),m=s.match(/(20\d{2})[\/.\-年](\d{1,2})[\/.\-月](\d{1,2})/);if(m)return Date.UTC(Number(m[1]),Number(m[2])-1,Number(m[3]));const x=Number(s);return Number.isFinite(x)?x:0}
+function inningsToOuts(v){const s=String(v??'').trim().replace(/回$/,'');const m=s.match(/^(\d+)(?:\.(\d))?$/);if(!m)return 0;const r=Number(m[2]||0);return r<=2?Number(m[1])*3+r:0}
+function fmtInn(o){return`${Math.floor(o/3)}.${o%3}`}
+function meta(src,table){
+ const cols=(table[0]||[]).map(v=>String(v??'').trim());
+ const ix={date:colIndex(cols,['開催日','日付']),tournament:colIndex(cols,['大会名','大会','試合種別']),order:colIndex(cols,['試合順','試合']),opponent:colIndex(cols,['相手校','対戦相手','対戦校']),usage:colIndex(cols,['起用法','起用']),player:colIndex(cols,['選手名','投手名','氏名','名前','選手']),innings:colIndex(cols,['投球回','投球回数']),win:colIndex(cols,['勝利','勝']),loss:colIndex(cols,['敗北','敗戦','敗']),save:colIndex(cols,['セーブ']),hits:colIndex(cols,['被安打']),earned:colIndex(cols,['自責点']),walks:colIndex(cols,['与四球','四球']),so:colIndex(cols,['奪三振','三振']),wp:colIndex(cols,['暴投'])};
+ const rowGame=new Map(),games=[];let seq=0,lastDate='',lastIdentity='',seenPlayers=new Set();
+ for(let i=1;i<table.length;i++){
+  const r=table[i]||[],date=ix.date>=0?String(r[ix.date]??'').trim():'';if(!date)continue;
+  const tour=ix.tournament>=0?String(r[ix.tournament]??'').trim():'',ord=ix.order>=0?String(r[ix.order]??'').trim():'',opp=ix.opponent>=0?String(r[ix.opponent]??'').trim():'',p=ix.player>=0?norm(r[ix.player]):'',identity=`${date}|${ord}|${opp}`,repeated=p&&seenPlayers.has(p);
+  if(date!==lastDate||identity!==lastIdentity||repeated){seq++;lastDate=date;lastIdentity=identity;seenPlayers=new Set();games.push({key:`${src.season}|${seq}`,season:src.season,date,rank:dateRank(date),seq,tournament:tour,opponent:opp,practice:/練習試合/.test(tour)&&!/公式戦/.test(tour)})}
+  if(p)seenPlayers.add(p);rowGame.set(i,`${src.season}|${seq}`);
+ }
+ return{src,table,ix,rowGame,games};
+}
+function playerRows(m,target){if(m.ix.player<0)return[];const np=norm(target),out=[];for(let i=1;i<m.table.length;i++)if(norm(m.table[i]?.[m.ix.player])===np)out.push({m,row:m.table[i]||[],gameKey:m.rowGame.get(i)||`${m.src.season}|row${i}`});return out}
+function aggregate(items){
+ const t={games:new Set(),w:0,l:0,sv:0,outs:0,h:0,er:0,bb:0,k:0,wp:0};
+ for(const x of items){const {m,row,gameKey}=x,ix=m.ix;t.games.add(gameKey);t.outs+=ix.innings>=0?inningsToOuts(row[ix.innings]):0;t.w+=ix.win>=0?num(row[ix.win]):0;t.l+=ix.loss>=0?num(row[ix.loss]):0;t.sv+=ix.save>=0?num(row[ix.save]):0;t.h+=ix.hits>=0?num(row[ix.hits]):0;t.er+=ix.earned>=0?num(row[ix.earned]):0;t.bb+=ix.walks>=0?num(row[ix.walks]):0;t.k+=ix.so>=0?num(row[ix.so]):0;t.wp+=ix.wp>=0?num(row[ix.wp]):0}
+ const inn=t.outs/3;return{games:t.games.size,w:t.w,l:t.l,sv:t.sv,ip:fmtInn(t.outs),h:t.h,er:t.er,bb:t.bb,k:t.k,wp:t.wp,era:t.outs?t.er*21/t.outs:'',whip:t.outs?(t.h+t.bb)/inn:''};
+}
+function usageType(x){const ix=x.m.ix.usage,s=ix>=0?String(x.row[ix]??'').trim():'';return/先発/.test(s)?'先発':'救援'}
+function latestSix(metas){const all=[];for(const m of metas)for(const g of m.games)if(g.practice)all.push(g);const seen=new Map();for(const g of all)if(!seen.has(g.key))seen.set(g.key,g);return[...seen.values()].sort((a,b)=>b.rank-a.rank||b.seq-a.seq||b.season.localeCompare(a.season)).slice(0,6)}
+function rowsForLabel(label,all,bySeason,sixKeys){if(/全年度通算/.test(label))return all;if(/直近6試合/.test(label))return all.filter(x=>sixKeys.has(x.gameKey));const y=seasonText(label);return y?(bySeason.get(y)||[]):[]}
+function f2(v){const x=Number(v);return Number.isFinite(x)?x.toFixed(2):'—'}
+const COLS=[['games','登板'],['w','勝'],['l','敗'],['sv','S'],['ip','投球回'],['h','被安打'],['er','自責点'],['bb','与四球'],['k','奪三振'],['wp','暴投'],['era','防御率','rate'],['whip','WHIP','rate']];
+function splitMarkup(items){
+ const rows=['先発','救援'].map(type=>{const a=aggregate(items.filter(x=>usageType(x)===type));return`<tr><th>${type}</th>${COLS.map(([k,,t])=>`<td>${esc(t==='rate'?f2(a[k]):a[k])}</td>`).join('')}</tr>`}).join('');
+ return`<section class="statsBreakdown magiUsageSplitV332"><div class="statsBreakdownHead"><b>先発・救援別投手成績</b><span>起用法別に再集計</span></div><div class="statsTableWrap"><table class="statsBreakdownTable"><thead><tr><th>起用</th>${COLS.map(([,l])=>`<th>${esc(l)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></section>`;
+}
+function opponentWp(items){const map=new Map();for(const x of items){const ix=x.m.ix.opponent,opp=ix>=0?String(x.row[ix]??'').trim():'';if(!opp)continue;map.set(opp,(map.get(opp)||0)+(x.m.ix.wp>=0?num(x.row[x.m.ix.wp]):0))}return map}
+function addWpToOpponent(section,items){
+ const table=[...section.querySelectorAll('.statsBreakdownTable')].find(t=>/相手校/.test(t.querySelector('thead th')?.textContent||''));if(!table||table.dataset.magiWpV332)return;
+ const head=table.querySelector('thead tr');if(!head)return;const th=document.createElement('th');th.textContent='暴投';head.appendChild(th);
+ const wp=opponentWp(items);table.querySelectorAll('tbody tr').forEach(tr=>{const label=String(tr.querySelector('th,td')?.textContent||'').trim(),td=document.createElement('td');td.textContent=String(wp.get(label)||0);tr.appendChild(td)});table.dataset.magiWpV332='1';
+}
+async function enhance(){
+ const panel=document.getElementById('statsLookupPanel');if(!panel||!panel.classList.contains('show'))return;
+ const title=panel.querySelector('.statsTitle h2')?.textContent?.trim();if(!title)return;
+ const pitching=/PLAYER PITCHING RECORD/.test(panel.querySelector('.statsTitle span')?.textContent||'')||/投手成績/.test(panel.textContent||'');if(!pitching)return;
+ if(panel.dataset.magiPitchSplitBusyV332==='1')return;panel.dataset.magiPitchSplitBusyV332='1';
+ try{
+  const metas=(await Promise.all(sources().map(async s=>meta(s,await fetchTable(s))))).filter(Boolean),bySeason=new Map(),all=[];
+  for(const m of metas){const rr=playerRows(m,title);if(rr.length){bySeason.set(m.src.season,rr);all.push(...rr)}}
+  if(!all.length)return;
+  const sixKeys=new Set(latestSix(metas).map(g=>g.key));
+  panel.querySelectorAll('.statsSeason').forEach(section=>{
+   const label=section.querySelector('.statsSeasonHead b')?.textContent||'',items=rowsForLabel(label,all,bySeason,sixKeys);if(!items.length)return;
+   if(!section.querySelector('.magiUsageSplitV332')){const source=section.querySelector('.statsSource');const wrap=document.createElement('div');wrap.innerHTML=splitMarkup(items);const split=wrap.firstElementChild;if(source)source.insertAdjacentElement('afterend',split);else section.appendChild(split)}
+   addWpToOpponent(section,items);
+  });
+ }catch(e){console.warn('[MAGI pitching splits v332]',e?.message||e)}finally{panel.dataset.magiPitchSplitBusyV332='0'}
+}
+let timer=0;const schedule=()=>{clearTimeout(timer);timer=setTimeout(enhance,80)};
+const observer=new MutationObserver(schedule);observer.observe(document.documentElement,{childList:true,subtree:true});
+window.addEventListener('magi:pitching-report-rendered',schedule);schedule();setTimeout(schedule,1200);
+})();
