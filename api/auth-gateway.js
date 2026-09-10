@@ -1,24 +1,33 @@
+import adminLineMembers from '../server/api/admin/line-members.js';
+import lineCallback from '../server/api/auth/line/callback.js';
+import lineLogout from '../server/api/auth/line/logout.js';
+import lineProfile from '../server/api/auth/line/profile.js';
+import lineSession from '../server/api/auth/line/session.js';
+import lineStart from '../server/api/auth/line/start.js';
+
 const routes = {
-  'admin-line-members': () => import('../server/api/admin/line-members.js'),
-  'line-callback': () => import('../server/api/auth/line/callback.js'),
-  'line-logout': () => import('../server/api/auth/line/logout.js'),
-  'line-profile': () => import('../server/api/auth/line/profile.js'),
-  'line-session': () => import('../server/api/auth/line/session.js'),
-  'line-start': () => import('../server/api/auth/line/start.js')
+  'admin-line-members': adminLineMembers,
+  'line-callback': lineCallback,
+  'line-logout': lineLogout,
+  'line-profile': lineProfile,
+  'line-session': lineSession,
+  'line-start': lineStart
 };
 
+function routeKey(req) {
+  const value = req.query?.__magi_route;
+  return Array.isArray(value) ? String(value[0] || '') : String(value || '');
+}
+
 export default async function handler(req, res) {
-  const key = String(req.query?.__magi_route || '');
-  const load = routes[key];
-  if (!load) {
+  const key = routeKey(req);
+  const fn = routes[key];
+  if (typeof fn !== 'function') {
     res.statusCode = 404;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.end(JSON.stringify({ ok: false, error: 'Unknown auth route' }));
   }
   try {
-    const mod = await load();
-    const fn = mod.default || mod.handler;
-    if (typeof fn !== 'function') throw new Error(`Handler not found: ${key}`);
     return await fn(req, res);
   } catch (error) {
     console.error('[MAGI auth gateway]', key, error?.message || error);
