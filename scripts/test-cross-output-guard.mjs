@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { failClosedCross, validateCrossOutput, validateDialoguePresence, validateFullLineupDialogueSpecificity } from '../server/api/magi/_cross-output-guard.js';
+import { failClosedCross, validateCrossOutput, validateDialoguePresence, validateCrossLanguage, validateFullLineupDialogueSpecificity } from '../server/api/magi/_cross-output-guard.js';
 
 const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
@@ -104,6 +104,20 @@ test('X11 full-lineup challenges must name a player and exact batting slot',()=>
     casper:['9番 上村 蓮の起用は役割の偏りまで含めてどう考えますか。']
   }});
   assert.deepEqual(validateFullLineupDialogueSpecificity(FULL_LINEUP_CASE,r),[]);
+});
+
+test('X12 English-heavy public cross text is rejected',()=>{
+  const r=cross({agreement:['All three Wise Men completed the current-team review.']});
+  const issues=validateCrossLanguage(r);
+  assert.ok(issues.some(x=>x.includes('自然な日本語')));
+});
+
+test('X13 Japanese cross text may contain baseball metric abbreviations',()=>{
+  const r=cross({
+    agreement:['現チームのOPSと打率を確認した。'],
+    disagreement:['MELCHIOR-1はOPSを重く見るが、打順の流れは別に検討する必要がある。']
+  });
+  assert.deepEqual(validateCrossLanguage(r),[]);
 });
 
 let passed=0;
