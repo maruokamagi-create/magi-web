@@ -9,6 +9,9 @@ on:
       - 'server/api/magi/_prompts.js'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_roster.js'
+      - 'server/api/magi/core.js'
+      - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_drive-live-audit.js'
       - '.github/workflows/magi-production-selection-smoke.yml'
   workflow_dispatch:
 
@@ -40,6 +43,7 @@ jobs:
             "question":"3番は誰がいい？",
             "evidence":{
               "scope":"PRODUCTION_SELECTION_SMOKE_SYNTHETIC_FIXED_EVIDENCE",
+              "primarySeason":"current",
               "allCurrentTeamCheck":{
                 "status":"COMPLETE",
                 "players":[
@@ -59,7 +63,18 @@ jobs:
                   {"name":"武田 晴琉翔","positions":["左翼"],"batting":{"AVG":".260","OPS":".660"}}
                 ]
               },
-              "dataRule":"ここにない数値・役割・選手は作らない"
+              "historicalReference":{
+                "status":"COMPLETE",
+                "scope":"2025-2026旧チーム",
+                "candidateEligible":false,
+                "players":[
+                  {"name":"大野 竜暉","batting":{"AVG":".300","OPS":".840"}},
+                  {"name":"大久保 陽翔","batting":{"AVG":".290","OPS":".800"}},
+                  {"name":"宮嵜 翔","batting":{"AVG":".500","OPS":"1.500"}}
+                ],
+                "warning":"旧チーム記録は参考のみ。引退選手を現チーム候補に混ぜない。"
+              },
+              "dataRule":"候補は現チーム14名のみ。現チームを主評価、旧チームは参考。ここにない数値・役割・選手は作らない"
             }
           }
           JSON
@@ -75,7 +90,8 @@ jobs:
             local file="$1"
             jq -e --slurpfile roster /tmp/roster.json '
               (.candidatePlayers|type=="array") and (.candidatePlayers|length>0) and
-              ([.candidatePlayers[] as $p | ($roster[0] | index($p)) != null] | all)
+              ([.candidatePlayers[] as $p | ($roster[0] | index($p)) != null] | all) and
+              ((.candidatePlayers|index("宮嵜 翔")) == null)
             ' "$file" >/dev/null
           }
 
@@ -163,7 +179,9 @@ jobs:
             (.candidateSupport|type=="array") and (.candidateSupport|length>0) and
             (.recommendedCandidates|type=="array") and (.recommendedCandidates|length>0) and
             ([.recommendedCandidates[] as $p | ($roster[0] | index($p)) != null] | all) and
-            ([.alternateCandidates[] as $p | ($roster[0] | index($p)) != null] | all)
+            ([.alternateCandidates[] as $p | ($roster[0] | index($p)) != null] | all) and
+            ((.recommendedCandidates|index("宮嵜 翔")) == null) and
+            ((.alternateCandidates|index("宮嵜 翔")) == null)
           ' /tmp/final.json >/dev/null
 
           m=$(jq -r '.publicStatement' /tmp/melchior-second.json)
