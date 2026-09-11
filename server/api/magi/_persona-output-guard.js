@@ -46,6 +46,26 @@ function collectMetrics(value,map={}){
   return map;
 }
 
+function hasStructuredPeerComparison(caseData){
+  const block=caseData?.evidence?.allCurrentTeamCheck;
+  const players=Array.isArray(block?.players)?block.players:[];
+  if(players.length!==CURRENT_ROSTER.length)return false;
+  const names=new Set(players.map(p=>text(p?.name)).filter(Boolean));
+  if(names.size!==CURRENT_ROSTER.length||CURRENT_ROSTER.some(name=>!names.has(name)))return false;
+  const counts=new Map();
+  const walk=(value,prefix='')=>{
+    if(!value||typeof value!=='object'||Array.isArray(value))return;
+    for(const [key,v] of Object.entries(value)){
+      if(key==='name'||key==='positions')continue;
+      const path=prefix?`${prefix}.${key}`:key;
+      if(numberValue(v)!==null)counts.set(path,(counts.get(path)||0)+1);
+      else if(v&&typeof v==='object'&&!Array.isArray(v))walk(v,path);
+    }
+  };
+  players.forEach(player=>walk(player));
+  return [...counts.values()].some(count=>count>=2);
+}
+
 function outputText(result){
   return [
     ...(Array.isArray(result?.facts)?result.facts:[]),
@@ -150,7 +170,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   for(const p of patterns)validatePattern({all,...p,metrics,issues});
   validateAmbiguousInningLanguage(parts,metrics,issues);
 
-  const hasComparisonBaseline=/(?:比較|平均|基準|順位|上位|下位|チーム内|リーグ|相手別|平均との差|多い|少ない|高い|低い|良い|悪い)/.test(evidenceText);
+  const hasComparisonBaseline=/(?:比較|平均|基準|順位|上位|下位|チーム内|リーグ|相手別|平均との差|多い|少ない|高い|低い|良い|悪い)/.test(evidenceText) || hasStructuredPeerComparison(caseData);
   if(!hasComparisonBaseline){
     const unsupportedQuality=[
       /(?:与四球|四球)(?:数)?(?:の|が|は)?(?:少な|多い|多く|少なく)/,
@@ -163,6 +183,17 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     ];
     const unsupportedSentence=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedQuality.some(re=>re.test(sentence)));
     if(unsupportedSentence)issues.push('比較基準のない統計値を定性的な強弱・優劣へ変換している');
+  }
+
+  const hasSluggingEvidence=/(?:"SLG"|"slugging"|長打率|二塁打|三塁打|本塁打|ホームラン)/i.test(evidenceText);
+  if(!hasSluggingEvidence){
+    const unsupported=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&/(?:長打力|長打能力|長打性能)/.test(sentence));
+    if(unsupported)issues.push('OPS等の合成指標だけから長打力を単独で推定している');
+  }
+  const hasOnBaseEvidence=/(?:"OBP"|"onBase"|出塁率)/i.test(evidenceText);
+  if(!hasOnBaseEvidence){
+    const unsupported=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&/(?:出塁力|出塁能力)/.test(sentence));
+    if(unsupported)issues.push('OPSや打率だけから出塁能力を単独で推定している');
   }
 
   const hasHistoricalCloserEvidence=/(?:セーブ|クローザー|抑え|守護神|終盤|締め(?:た|る|くく)|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
