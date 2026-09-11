@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v1-accuracy-first';
+export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v2-accuracy-first';
 
 const MODES = ['SINGLE_VALUE','SUMMARY','FULL_REPORT','COMPARISON','DELIBERATION','DOCUMENT_SEARCH','GENERAL','CLARIFY'];
 const DOMAINS = ['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM','DOCUMENTS','OTHER'];
@@ -33,6 +33,8 @@ const SYSTEM = `
 
 最優先方針は ACCURACY FIRST。処理時間より意味理解と正確性を優先する。単語1個の一致だけで処理を決めてはいけない。
 
+入力には originalQuestion（ユーザーが実際に入力した原文）と normalizedQuestion（既知の正式表記候補へ機械的に正規化した文）の両方がある。normalizedQuestion は照合補助にだけ使い、originalQuestion に存在しない意味を勝手に追加してはいけない。
+
 判断するもの:
 - mode: SINGLE_VALUE / SUMMARY / FULL_REPORT / COMPARISON / DELIBERATION / DOCUMENT_SEARCH / GENERAL / CLARIFY
 - players: 対象選手
@@ -51,12 +53,26 @@ const SYSTEM = `
 - 「ポジション別守備成績」は FIELDING の事実照会で FULL_REPORT + POSITION。データ不足かどうかは後段で判断するので、ここでは意味だけ理解する。
 - 「4番にするべき」「先発させるべき」「クローザー固定はどうか」「評価して」「どちらを起用」は DELIBERATION。
 - 「成績」だけで打撃・投手・守備を一意に決められないなら CLARIFY。勝手に打撃へ寄せない。
-- 選手名は officialPlayers を基準にする。typedGroundedPlayers が1人なら、その人物は文字列から機械的に確認済みなので優先する。
+
+名前処理:
+- 選手名は officialPlayers を唯一の正式表記基準にする。
+- typedGroundedPlayers が1人なら、その人物は文字列から機械的に候補化できている。ただし originalQuestion でフルネームの漢字・読み・表記が正式名と異なる場合は、勝手に確定せず CLARIFY で「○○のことですか？」と短く確認する。
+- 姓だけの入力は、その姓が officialPlayers 内で一意なら人物候補として扱ってよい。複数候補なら必ず CLARIFY。
+- 名だけ・読みだけ・ニックネーム的入力は、現旧年度をまたいで複数候補になり得る。文脈で一意にできなければ CLARIFY。
 - 音の似た別人や存在しない選手を作らない。
+
+文脈と時系列:
 - 前後文脈がある場合は直近の確定事項を保持するが、矛盾する最新の明示指示を優先する。
-- breakdowns はユーザーが明示したものに加え、FULL_REPORTで標準表示として有用なものを含めてもよい。ただし領域に不適切な内訳は入れない。
+- currentDateJst は「今日」「昨日」などを解釈する基準日。相対日時を「最近」「直近の試合」「直近の敗戦」へ勝手に置換してはいけない。
+- 「昨日の試合」のように日付だけで対象試合が一意か確認できない場合、suppliedContext に一意な試合情報がなければ CLARIFY。対戦相手などが明示されて対象が十分具体的なら、その意味を保ったまま構造化する。
+- 「絶対勝てる」などの断定要求でも、対象試合が不明なら CLARIFY。対象が明確でも「絶対」という前提を事実扱いしない。
+
+安全な聞き返し:
 - confidence が HIGH でない、または実質的に複数解釈が残るなら CLARIFY。
+- 対象人物、対象試合、役割、評価軸など結論の前提が欠ける場合、推測で補完せず CLARIFY。
+- 聞き返しは必要最小限。すでに suppliedContext で一意に確定していることを再質問しない。
 - understoodRequest はユーザーの意図を膨らませず、日本語1文で具体的に言い換える。
+- breakdowns はユーザーが明示したものに加え、FULL_REPORTで標準表示として有用なものを含めてもよい。ただし領域に不適切な内訳は入れない。
 `;
 
 function clean(v,max=1000){return String(v??'').trim().slice(0,max)}
@@ -108,12 +124,24 @@ function normalize(raw,question,grounded){
   };
 }
 
-export async function understandRequest(questionValue,contextValue=[]){
+export async function understandRequest(questionValue,contextValue=[],options={}){
   const question=clean(questionValue,4000);if(!question)throw new Error('question is required');
   const suppliedContext=normalizeContext(contextValue),grounded=typedPlayers(question);
+  const normalizedQuestion=canonicalizeKnownNameText(question);
+  const currentDateJst=clean(options?.currentDateJst,20)||new Date(Date.now()+9*60*60*1000).toISOString().slice(0,10);
   const raw=await callGemini({
     systemInstruction:SYSTEM,
-    userPayload:{question:canonicalizeKnownNameText(question),suppliedContext,officialPlayers:OFFICIAL_PLAYER_REGISTRY,typedGroundedPlayers:grounded,mode:'ACCURACY_FIRST',instruction:'質問に答えず、意味だけを構造化してください。速度より正確性を優先してください。'},
+    userPayload:{
+      originalQuestion:question,
+      normalizedQuestion,
+      question:normalizedQuestion,
+      suppliedContext,
+      currentDateJst,
+      officialPlayers:OFFICIAL_PLAYER_REGISTRY,
+      typedGroundedPlayers:grounded,
+      mode:'ACCURACY_FIRST',
+      instruction:'質問に答えず、意味だけを構造化してください。速度より正確性を優先してください。'
+    },
     responseSchema
   });
   return normalize(raw,question,grounded);
