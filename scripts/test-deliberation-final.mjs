@@ -106,6 +106,24 @@ test('R03 deadlock has no false minority label',()=>{
   assert.equal(r.majorReasons.length,3);
 });
 
+test('R04 cross evidence failure forces final review required',()=>{
+  const r=buildFinalResult({
+    melchior:persona('MELCHIOR','GREEN'),
+    balthasar:persona('BALTHASAR','GREEN'),
+    casper:persona('CASPER','GREEN')
+  },{
+    reviewRequired:true,
+    reviewReason:'クロス審議の数値ラベル不一致',
+    warnings:['再確認が必要'],
+    informationGaps:['元データ確認']
+  });
+  assert.equal(r.status,'MAGI_REVIEW_REQUIRED');
+  assert.equal(r.confidence,'LOW');
+  assert.equal(r.minorityOpinion,'');
+  assert.match(r.reviewReason,/クロス審議/);
+  assert.match(r.recommendation,/再審議/);
+});
+
 // Selection aggregation: no hard-coded clean-up wording, preserve split/review states.
 test('C01 shared top candidate produces selection result',()=>{
   const second={
@@ -155,6 +173,25 @@ test('C04 non-current candidate name is filtered from selection arrays',()=>{
   assert.ok(!r.recommendedCandidates.includes('宮嵜 翔'));
   assert.ok(!r.alternateCandidates.includes('宮嵜 翔'));
   assert.ok(r.recommendedCandidates.includes('大野 竜暉'));
+});
+
+test('C05 cross evidence failure blocks candidate finalization',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['大野 竜暉']}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['大野 竜暉']}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['橋向 結都']})
+  };
+  const r=buildSelectionResult(second,{
+    reviewRequired:true,
+    reviewReason:'クロス審議にEvidence不一致',
+    warnings:['再確認が必要'],
+    informationGaps:['元データ確認']
+  });
+  assert.equal(r.status,'SELECTION_REVIEW_REQUIRED');
+  assert.deepEqual(r.centerCandidates,[]);
+  assert.deepEqual(r.recommendedCandidates,[]);
+  assert.equal(r.confidence,'LOW');
+  assert.match(r.reviewReason,/Evidence不一致/);
 });
 
 let passed=0;
