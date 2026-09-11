@@ -68,6 +68,7 @@ function hasStructuredPeerComparison(caseData){
 
 function outputText(result){
   return [
+    result?.candidateBasis,
     ...(Array.isArray(result?.facts)?result.facts:[]),
     ...(Array.isArray(result?.analysis)?result.analysis:[]),
     ...(Array.isArray(result?.prediction)?result.prediction:[]),
@@ -80,6 +81,7 @@ function outputText(result){
 }
 function assertiveOutputText(result){
   return [
+    result?.candidateBasis,
     ...(Array.isArray(result?.facts)?result.facts:[]),
     ...(Array.isArray(result?.analysis)?result.analysis:[]),
     result?.primaryReason,
@@ -128,13 +130,13 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
 
 function hasUnhedgedOutcomePrediction(sentence){
   const s=String(sentence||'');
-  const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|チーム力|コンディション|パフォーマンス|故障|低下|改善|回復|好機|機会)/.test(s);
-  const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着|高ま|高め|育つ|育て)/.test(s);
+  const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|チーム力|コンディション|パフォーマンス|故障|低下|改善|回復|好機|機会|攻撃力|得点力)/.test(s);
+  const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着|高ま|高め|向上|強く|育つ|育て)/.test(s);
   if(!outcome&&!directFuture)return false;
   const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|し得る|あり得る)/.test(s);
   const hard=/(?:絶対|必ず|確実に)/.test(s);
   if(hard)return true;
-  const causalGuarantee=/(?:ことで|すれば|なら|場合|なければ|れば|と|ば|たら).{0,80}(?:成長する|成長し|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる|狂う|崩れる|悪化する|高まる|高める|育つ|育てる|育てていく|できます|できる)/.test(s);
+  const causalGuarantee=/(?:ことで|すれば|なら|場合|なければ|れば|と|ば|たら|ため).{0,80}(?:成長する|成長し|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる|狂う|崩れる|悪化する|高まる|高める|向上する|強くなる|育つ|育てる|育てていく|できます|できる)/.test(s);
   return (causalGuarantee||directFuture)&&!hedge;
 }
 
