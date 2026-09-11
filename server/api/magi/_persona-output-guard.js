@@ -68,6 +68,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const issues=[];
   const all=outputText(result);
   const caseText=JSON.stringify(caseData||{});
+  const evidenceText=JSON.stringify(caseData?.evidence||{});
   const metrics=collectMetrics(caseData||{});
 
   if(/四死球/.test(all) && !/四死球/.test(caseText)){
@@ -87,6 +88,26 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     {metric:'SV',label:'セーブ',re:/セーブ(?:数)?(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g}
   ];
   for(const p of patterns)validatePattern({all,...p,metrics,issues});
+
+  const hasComparisonBaseline=/(?:比較|平均|基準|順位|上位|下位|チーム内|リーグ|相手別|平均との差|多い|少ない|高い|低い|良い|悪い)/.test(evidenceText);
+  if(!hasComparisonBaseline){
+    const unsupportedQuality=[
+      /(?:与四球|四球)(?:数)?(?:の|が|は)?(?:少な|多い|多く|少なく)/,
+      /奪三振(?:数)?(?:の|が|は)?(?:多い|少ない|高い|低い)/,
+      /防御率(?:の|が|は)?(?:低い|高い|良い|悪い|優秀)/,
+      /(?:打率|OPS|出塁率|長打率)(?:の|が|は)?(?:高い|低い|良い|悪い|優秀)/i
+    ];
+    for(const re of unsupportedQuality){
+      if(re.test(all)){issues.push('比較基準のない統計値を「多い・少ない・高い・低い」等で定性評価している');break;}
+    }
+  }
+
+  const hasHistoricalCloserEvidence=/(?:セーブ|クローザー|抑え|守護神|終盤|締め(?:た|る|くく))/.test(evidenceText);
+  if(!hasHistoricalCloserEvidence && /クローザー|抑え/.test(String(caseData?.question||''))){
+    if(/旧チーム(?:同様|でも|で).{0,32}(?:締め|クローザー|抑え|守護神|セーブ)/.test(all)){
+      issues.push('旧チームのクローザー・終盤実績がEvidenceにないのに、その役割実績を前提にしている');
+    }
+  }
 
   if(focused){
     for(const player of CURRENT_ROSTER){
