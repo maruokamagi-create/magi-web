@@ -6,12 +6,16 @@ on:
     paths:
       - 'server/api/magi/persona.js'
       - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/core.js'
+      - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_drive-live-audit.js'
       - 'server/api/magi/_persona-output-guard.js'
       - 'server/api/magi/_cross-output-guard.js'
       - 'server/api/magi/_roster.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
       - 'scripts/test-selection-peer-baseline.mjs'
+      - 'scripts/test-selection-live-evidence.mjs'
       - 'scripts/test-cross-output-guard.mjs'
       - 'scripts/test-persona-case-mode.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
@@ -41,6 +45,9 @@ jobs:
 
       - name: Run selection peer-baseline guard cases
         run: node --experimental-default-type=module scripts/test-selection-peer-baseline.mjs
+
+      - name: Run live lineup selection evidence cases
+        run: node --experimental-default-type=module scripts/test-selection-live-evidence.mjs
 
       - name: Run cross-examination evidence guard cases
         run: node --experimental-default-type=module scripts/test-cross-output-guard.mjs
