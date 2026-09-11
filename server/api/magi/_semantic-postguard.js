@@ -16,6 +16,16 @@ function genericFullLineupQuestion(q){
   return false;
 }
 
+function genericPitchingPlanQuestion(q){
+  const n=String(q||'').normalize('NFKC');
+  if(/(?:今日|この試合|次の試合|今度の試合|次の公式戦|3年生|三年生|旧チーム|前のチーム)/.test(n))return false;
+  const planWord=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(n);
+  const buildCue=/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る)/.test(n);
+  const roles=[/先発/,/(?:第?2投手|第二投手|2番手|二番手)/,/(?:終盤|つなぎ|ブリッジ)/,/(?:クローザー|抑え|守護神)/].filter(re=>re.test(n)).length;
+  const sevenInning=/(?:7回制|七回制|7イニング|七イニング)/.test(n);
+  return (planWord&&buildCue)||(roles>=2&&buildCue)||(sevenInning&&roles>=2);
+}
+
 export function applySemanticGuard(questionValue,contextValue=[],semanticValue={}){
   const question=clean(questionValue,4000);
   const semantic=semanticValue&&typeof semanticValue==='object'?semanticValue:{};
@@ -24,7 +34,7 @@ export function applySemanticGuard(questionValue,contextValue=[],semanticValue={
     const clarificationQuestion='「一番いい」は、打撃・投手・守備・走塁・総合のどの基準で比べますか？';
     return {
       ...semantic,
-      semanticVersion:`${semantic.semanticVersion||'semantic-request'}+postguard-v2`,
+      semanticVersion:`${semantic.semanticVersion||'semantic-request'}+postguard-v3`,
       mode:'CLARIFY',
       confidence:'LOW',
       understoodRequest:`${grade}年生の中で一番いい選手を選ぶため、評価基準を確認する`,
@@ -47,7 +57,7 @@ export function applySemanticGuard(questionValue,contextValue=[],semanticValue={
   if(genericFullLineupQuestion(question)){
     return {
       ...semantic,
-      semanticVersion:`${semantic.semanticVersion||'semantic-request'}+postguard-v2`,
+      semanticVersion:`${semantic.semanticVersion||'semantic-request'}+postguard-v3`,
       mode:'DELIBERATION',
       confidence:'HIGH',
       understoodRequest:'現チームを基本に、1番から9番までのベストオーダーを3賢人で審議する',
@@ -60,6 +70,29 @@ export function applySemanticGuard(questionValue,contextValue=[],semanticValue={
       breakdowns:[],
       clarificationQuestion:'',
       needsData:true,
+      preflightApplied:true,
+      postguardApplied:true
+    };
+  }
+
+  if(genericPitchingPlanQuestion(question)){
+    return {
+      ...semantic,
+      semanticVersion:`${semantic.semanticVersion||'semantic-request'}+postguard-v3`,
+      mode:'DELIBERATION',
+      confidence:'HIGH',
+      understoodRequest:'現チームを基本に、7回制の投手運用を先発・第2投手・終盤・クローザーまで3賢人で審議する',
+      routeReason:'複数役を含む投手運用・継投の組み立て要求は、単独投手候補ではなくチーム全体の戦術審議。',
+      players:[],
+      domains:['PITCHING','TACTICS','TEAM'],
+      timeScope:'CURRENT_SEASON',
+      specificSeason:'',
+      metric:'',
+      opponent:semantic?.opponent||'',
+      breakdowns:[],
+      clarificationQuestion:'',
+      needsData:true,
+      groundedPlayers:[],
       preflightApplied:true,
       postguardApplied:true
     };
