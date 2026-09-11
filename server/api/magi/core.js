@@ -7,6 +7,7 @@ import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
 import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
 import { resolveQuestionEvidence } from './_evidence-resolver.js';
+import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
 import { understandRequest } from './_semantic-request.js';
 import { applySemanticGuard } from './_semantic-postguard.js';
 
@@ -49,12 +50,27 @@ async function deliberationPayload({question,semantic,routed}){
     const answer=names.length?`参照する資料を一意に決められませんでした。候補は「${names.join('」「')}」です。どれを使うか教えてください。`:'参照する資料を一意に決められませんでした。資料名をもう少し具体的に教えてください。';
     return {ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',answer,needsClarification:true,clarificationQuestion:answer,semantic,evidenceResolution:resolution};
   }
+
+  let effectiveResolution=resolution;
+  if(!resolution?.requestedDocument){
+    const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed});
+    if(liveSelectionEvidence){
+      effectiveResolution={
+        version:liveSelectionEvidence.resolverVersion,
+        status:'RESOLVED',
+        requestedDocument:false,
+        source:'CURRENT_MASTER_LIVE_SELECTION',
+        evidence:liveSelectionEvidence
+      };
+    }
+  }
+
   return {
     ok:true,handled:true,coreVersion:CORE_VERSION,route:'DELIBERATION',action:'DELIBERATE',
     routerVersion:routed?.routerVersion||semantic?.semanticVersion||null,understoodRequest:semantic?.understoodRequest||routed?.understoodRequest||question,
     domains:Array.isArray(semantic?.domains)?semantic.domains:[],players:Array.isArray(semantic?.players)?semantic.players:[],
     timeScope:semantic?.timeScope||'UNSPECIFIED',specificSeason:semantic?.specificSeason||'',opponent:semantic?.opponent||'',
-    evidencePacket:resolution?.evidence||null,evidenceResolution:resolution,semantic,fastPath:false
+    evidencePacket:effectiveResolution?.evidence||null,evidenceResolution:effectiveResolution,semantic,fastPath:false
   };
 }
 
