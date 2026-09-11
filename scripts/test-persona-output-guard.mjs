@@ -213,6 +213,29 @@ test('G35 explicit probability hedge allows win-pattern prediction',()=>{
   assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
 });
 
+test('G36 negative condition causal outcome still requires hedge',()=>{
+  const r=result({prediction:['慎重な起用を続けなければ疲労やコンディション不良でチームの勝利計画が狂う。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('不確実性')));
+});
+
+test('G37 future combat-strength certainty is blocked',()=>{
+  const r=result({prediction:['段階的な起用管理を行えば、捕手と投手の負担を軽減しつつ、将来の確かな戦力として育てていくことができます。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('不確実性')));
+});
+
+test('G38 unsupported unfamiliar-pressure premise is blocked even when hedged',()=>{
+  const r=result({prediction:['不慣れな緊迫場面で破綻を招く恐れがあります。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('役割経験')));
+});
+
+test('G39 missing pressure-experience disclaimer remains allowed',()=>{
+  const r=result({analysis:['緊迫した場面での経験はEvidenceにないため確認できません。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
