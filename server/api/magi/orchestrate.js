@@ -31,12 +31,13 @@ function validCase(body) {
   return q.length >= 2 && q.length <= 12000;
 }
 
-function isSelectionCase(caseData) {
+export function isSelectionCase(caseData) {
   if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
   const q = String(caseData?.question || '');
-  const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション/;
-  const cue = /誰|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番/;
-  return domain.test(q) && cue.test(q);
+  const battingSlot = /(?:[1-9１-９一二三四五六七八九](?:番|ばん)(?:打者)?)/;
+  const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
+  const cue = /誰|だれ|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト/;
+  return (domain.test(q) || battingSlot.test(q)) && cue.test(q);
 }
 
 function jstContext() {
@@ -56,7 +57,7 @@ function normalizeSecond(second) {
   return list.filter(Boolean).slice(0,3);
 }
 
-function deterministicFinal(second) {
+export function deterministicFinal(second) {
   const list = normalizeSecond(second);
   if (list.length !== 3) return { status: null, vote: '' };
   const judgments = list.map(x => String(x?.judgment || '').toUpperCase());
@@ -96,7 +97,7 @@ function lowestConfidence(list) {
   return values.sort((a,b)=>(CONFIDENCE_ORDER[a] ?? 0) - (CONFIDENCE_ORDER[b] ?? 0))[0] || 'LOW';
 }
 
-function buildSelectionResult(second, cross) {
+export function buildSelectionResult(second, cross) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
   const entries = Array.isArray(normalizedSecond) ? normalizedSecond.map((v,i)=>[String(i),v]) : Object.entries(normalizedSecond || {});
@@ -182,9 +183,11 @@ function buildSelectionResult(second, cross) {
   const centerText = centerCandidates.length
     ? `中心候補：${centerCandidates.join('・')}。`
     : '3賢人の中心候補はまだ一本化していない。';
-  const recommendedText = recommendedCandidates.length
-    ? `クリーンナップ有力候補：${recommendedCandidates.join('・')}。`
-    : '候補を確定できない。';
+  const recommendedText = !recommendedCandidates.length
+    ? '候補を確定できない。'
+    : centerCandidates.length
+      ? `有力候補：${recommendedCandidates.join('・')}。`
+      : `各賢人の上位候補：${recommendedCandidates.join('・')}。`;
 
   const warnings = compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
   const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
@@ -205,7 +208,7 @@ function buildSelectionResult(second, cross) {
   });
 }
 
-function buildFinalResult(second, cross) {
+export function buildFinalResult(second, cross) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
   const list = normalizeSecond(normalizedSecond);
