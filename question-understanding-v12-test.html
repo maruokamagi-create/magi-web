@@ -6,12 +6,12 @@
 <meta name="robots" content="noindex,nofollow">
 <title>MAGI-WEB Question Understanding v1.2 Test</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:920px;margin:auto;padding:22px 14px 40px}h1{font-size:26px;margin:0 0 8px}.sub{color:#9db4c7;line-height:1.65}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:14px 0}button{border:0;border-radius:12px;padding:12px 16px;font-weight:800;background:#edf6ff;color:#07111f}.row{background:#071827;border:1px solid #284966;border-radius:14px;padding:12px;margin:10px 0}.row.pass{border-color:#2c6a4b}.row.fail{border-color:#8b4040}.row.skip{border-color:#75642c}.ok{color:#8ce0b4}.bad{color:#ff9898}.warn{color:#f3d779}.meta{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;line-height:1.6;word-break:break-word}.q{font-size:16px;font-weight:800;margin:8px 0}.top{display:flex;justify-content:space-between;gap:10px}.note{font-size:13px;color:#bad0e1;line-height:1.55}.summary{font-size:18px;font-weight:800}.small{font-size:12px;color:#9db4c7;margin-top:8px}</style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:920px;margin:auto;padding:22px 14px 40px}h1{font-size:26px;margin:0 0 8px}.sub{color:#9db4c7;line-height:1.65}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:14px 0}button,a.btn{display:inline-block;border:0;border-radius:12px;padding:12px 16px;font-weight:800;background:#edf6ff;color:#07111f;text-decoration:none}.row{background:#071827;border:1px solid #284966;border-radius:14px;padding:12px;margin:10px 0}.row.pass{border-color:#2c6a4b}.row.fail{border-color:#8b4040}.row.skip{border-color:#75642c}.ok{color:#8ce0b4}.bad{color:#ff9898}.warn{color:#f3d779}.meta{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;line-height:1.6;word-break:break-word}.q{font-size:16px;font-weight:800;margin:8px 0}.top{display:flex;justify-content:space-between;gap:10px}.note{font-size:13px;color:#bad0e1;line-height:1.55}.summary{font-size:18px;font-weight:800}.small{font-size:12px;color:#9db4c7;margin-top:8px}.authHelp{display:none;margin-top:12px;padding:14px;border:1px solid #8b4040;border-radius:14px;background:#2a1218;line-height:1.65}.authHelp strong{color:#ff9898}.authHelp .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}</style>
 </head>
 <body><div class="wrap">
 <h1>MAGI-WEB 質問理解 v1.2 実装テスト</h1>
 <div class="sub">本番の <code>/api/magi/core</code> を同一オリジンで呼び、人物取り違え・曖昧入力・相対日時・旧現チーム混同の高リスク11ケースを確認します。メインUIは変更しません。</div>
-<div class="card"><button id="run">11ケース開始</button><div id="summary" class="summary" style="margin-top:12px">未実行</div><div id="version" class="meta"></div><div class="small">※ LINEログイン等で承認済みセッションが必要です。APIエラーは合格扱いにしません。</div></div>
+<div class="card"><button id="run">11ケース開始</button><div id="summary" class="summary" style="margin-top:12px">未実行</div><div id="version" class="meta"></div><div class="small">※ MAGI-WEB本体と同じブラウザの承認済みセッションが必要です。</div><div id="authHelp" class="authHelp"><strong>認証されていません。</strong><br>このテスト画面をChatGPT内ブラウザなど別ブラウザで開くと、MAGI-WEB本体のLINEログイン状態は引き継がれません。<br><br>普段MAGI-WEBを使っているChromeでこのページを開くか、下の「MAGI-WEBを開く」から同じブラウザ内でログインしてから戻ってください。<div class="actions"><a class="btn" href="/">MAGI-WEBを開く</a><button type="button" onclick="location.reload()">テスト画面を再読み込み</button></div></div></div>
 <div id="list"></div>
 </div>
 <script>
@@ -28,7 +28,7 @@ const CASES=[
 {id:'S10',q:'絶対勝てるよな？',ctx:[{role:'user',text:'次の試合は坂井中との対戦です'}],check:d=>!(d.route==='CLARIFY'&&/どの試合/.test(answerOf(d))),why:'対象試合が文脈で一意なら「どの試合？」を再質問しない'},
 {id:'S11',q:'大野竜輝をクローザー固定',ctx:[],check:d=>playerOf(d)==='大野 竜暉'||(d.route==='CLARIFY'&&/大野/.test(answerOf(d))),why:'誤記候補を別人として生成せず正式名候補へ安全に寄せる'}
 ];
-const list=document.getElementById('list'),summary=document.getElementById('summary'),version=document.getElementById('version');
+const list=document.getElementById('list'),summary=document.getElementById('summary'),version=document.getElementById('version'),authHelp=document.getElementById('authHelp');
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function answerOf(d){return String(d?.answer||d?.clarificationQuestion||d?.semantic?.clarificationQuestion||'')}
 function playersOf(d){const a=d?.players||d?.semantic?.players||d?.routed?.players||[];return Array.isArray(a)?a:[]}
@@ -36,12 +36,12 @@ function playerOf(d){return playersOf(d)[0]||''}
 async function call(c){
   const r=await fetch('/api/magi/core',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({question:c.q,context:c.ctx})});
   let d={};try{d=await r.json()}catch{}
-  if(!r.ok||!d.ok)throw new Error(d.error||`HTTP ${r.status}`);
+  if(!r.ok||!d.ok){const e=new Error(d.error||`HTTP ${r.status}`);e.status=r.status;throw e}
   return d;
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 document.getElementById('run').onclick=async()=>{
-  list.innerHTML='';summary.textContent='実行中…';let pass=0,fail=0,api=0;
+  list.innerHTML='';authHelp.style.display='none';summary.textContent='実行中…';let pass=0,fail=0,api=0;
   for(const c of CASES){
     const row=document.createElement('div');row.className='row';
     try{
@@ -49,7 +49,11 @@ document.getElementById('run').onclick=async()=>{
       if(ok)pass++;else fail++;row.classList.add(ok?'pass':'fail');
       row.innerHTML=`<div class="top"><b>${c.id}</b><b class="${ok?'ok':'bad'}">${ok?'PASS':'FAIL'}</b></div><div class="q">${escapeHtml(c.q)}</div><div class="meta">route=${escapeHtml(d.route||'?')} / action=${escapeHtml(d.action||'?')} / core=${escapeHtml(d.coreVersion||'?')} / semantic=${escapeHtml(d.semantic?.semanticVersion||'?')}<br>players=${escapeHtml(JSON.stringify(playersOf(d)))}<br>answer=${escapeHtml(answerOf(d)||'(none)')}</div><div class="note">${escapeHtml(c.why)}</div>`;
       version.textContent=`Core: ${d.coreVersion||'?'} / Semantic: ${d.semantic?.semanticVersion||'?'}`;
-    }catch(e){api++;row.classList.add('fail');row.innerHTML=`<div class="top"><b>${c.id}</b><b class="bad">API ERROR</b></div><div class="q">${escapeHtml(c.q)}</div><div class="bad">${escapeHtml(e.message||e)}</div><div class="note">${escapeHtml(c.why)}</div>`}
+    }catch(e){
+      api++;row.classList.add('fail');row.innerHTML=`<div class="top"><b>${c.id}</b><b class="bad">API ERROR</b></div><div class="q">${escapeHtml(c.q)}</div><div class="bad">${escapeHtml(e.message||e)}</div><div class="note">${escapeHtml(c.why)}</div>`;list.appendChild(row);
+      if(e.status===401||/Authentication required/i.test(String(e.message||''))){summary.innerHTML='<span class="bad">認証が必要です</span> — テストは未実行';authHelp.style.display='block';return}
+      await sleep(900);continue;
+    }
     list.appendChild(row);await sleep(900);
   }
   summary.innerHTML=`<span class="${fail||api?'bad':'ok'}">${pass}/${CASES.length} PASS</span> / FAIL ${fail} / API ERROR ${api}`;
