@@ -93,7 +93,7 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
     if(/投球回|イニング/.test(sentence))continue;
     const candidates=[];
     const explicitBare=sentence.match(/(?:サンプル|現チーム).{0,24}?([0-9]+(?:\.[0-9]+)?)\s*回/);
-    if(explicitBare)candidates.push({value:explicitBare[1],label:`${explicitBare[1]}回`});
+    if(explicitBare&&!explicitBare[1].includes('.'))candidates.push({value:explicitBare[1],label:`${explicitBare[1]}回`});
     const unlabeledNearJudgment=sentence.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:と|で|しか|のみ)(?:少な|小さ)/);
     if(unlabeledNearJudgment)candidates.push({value:unlabeledNearJudgment[1],label:unlabeledNearJudgment[1]});
     for(const candidate of candidates){
