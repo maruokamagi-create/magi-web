@@ -8,8 +8,9 @@ import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
 import { resolveQuestionEvidence } from './_evidence-resolver.js';
 import { understandRequest } from './_semantic-request.js';
+import { preflightQuestion } from './_question-preflight.js';
 
-const CORE_VERSION='magi-core-semantic-first-v2';
+const CORE_VERSION='magi-core-semantic-first-v3-question-guard';
 
 function text(v){return String(v||'').trim()}
 function hasPdfModifier(q){return /(?:PDF|ＰＤＦ)/i.test(String(q||''))}
@@ -21,6 +22,14 @@ async function classify(question,context){
 }
 function clarificationAnswer(message){
   return text(message)||'質問の意味を正確に確認したいので、もう少し具体的に教えてください。';
+}
+function preflightSemantic(preflight, question){
+  return {
+    semanticVersion:preflight?.version||'question-preflight',mode:'CLARIFY',confidence:'LOW',
+    understoodRequest:text(question),routeReason:text(preflight?.reason),players:[],domains:[],
+    timeScope:'UNSPECIFIED',specificSeason:'',metric:'',opponent:'',breakdowns:[],
+    clarificationQuestion:clarificationAnswer(preflight?.clarificationQuestion),needsData:false
+  };
 }
 function routedFromSemantic(semantic){
   const domain=semantic?.domains?.find(d=>['BATTING','PITCHING','FIELDING'].includes(d))||semantic?.domains?.[0]||'OTHER';
@@ -68,12 +77,20 @@ export default async function handler(req,res){
 
     if(hasPdfModifier(question))return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK'});
 
+    // Deterministic safety gate first. Obvious ambiguity is clarified without spending an AI call.
+    const preflight=preflightQuestion(question,context);
+    if(preflight?.action==='CLARIFY'){
+      const answer=clarificationAnswer(preflight.clarificationQuestion);
+      const semantic=preflightSemantic(preflight,question);
+      return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',answer,clarificationQuestion:answer,needsClarification:true,semantic,preflight,fastPath:true});
+    }
+
     // Accuracy-first: every normal question is semantically understood before selecting an execution path.
-    const semantic=await understandRequest(question,context);
+    const semantic=await understandRequest(question,context,{currentDateJst:preflight?.currentDateJst});
 
     if(semantic.mode==='CLARIFY'){
       const answer=clarificationAnswer(semantic.clarificationQuestion);
-      return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',answer,clarificationQuestion:answer,needsClarification:true,semantic,fastPath:false});
+      return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',answer,clarificationQuestion:answer,needsClarification:true,semantic,preflight,fastPath:false});
     }
 
     if(semantic.mode==='FULL_REPORT'){
@@ -82,7 +99,7 @@ export default async function handler(req,res){
         return sendJson(res,200,{
           ok:true,handled:true,coreVersion:CORE_VERSION,route:`${kind}_REPORT`,action:'FULL_REPORT',reportKind:kind,
           understoodRequest:semantic.understoodRequest,players:semantic.players,domains:semantic.domains,timeScope:semantic.timeScope,
-          specificSeason:semantic.specificSeason,opponent:semantic.opponent,breakdowns:semantic.breakdowns,semantic,fastPath:false
+          specificSeason:semantic.specificSeason,opponent:semantic.opponent,breakdowns:semantic.breakdowns,semantic,preflight,fastPath:false
         });
       }
     }
@@ -95,28 +112,28 @@ export default async function handler(req,res){
       if(semantic.timeScope)routed.timeScope=semantic.timeScope;
       if(semantic.specificSeason)routed.specificSeason=semantic.specificSeason;
       if(semantic.opponent)routed.opponent=semantic.opponent;
-      return sendJson(res,200,await deliberationPayload({question,semantic,routed}));
+      return sendJson(res,200,{...(await deliberationPayload({question,semantic,routed})),preflight});
     }
 
     if(['SINGLE_VALUE','SUMMARY'].includes(semantic.mode)){
       const kind=reportKind(semantic);
       if(kind==='FIELDING'){
         // Fielding currently has one verified report engine. Use it instead of inventing a separate scalar path.
-        return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'FIELDING_REPORT',action:'FULL_REPORT',reportKind:'FIELDING',understoodRequest:semantic.understoodRequest,players:semantic.players,domains:semantic.domains,timeScope:semantic.timeScope,specificSeason:semantic.specificSeason,opponent:semantic.opponent,breakdowns:semantic.breakdowns,semantic,fastPath:false});
+        return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'FIELDING_REPORT',action:'FULL_REPORT',reportKind:'FIELDING',understoodRequest:semantic.understoodRequest,players:semantic.players,domains:semantic.domains,timeScope:semantic.timeScope,specificSeason:semantic.specificSeason,opponent:semantic.opponent,breakdowns:semantic.breakdowns,semantic,preflight,fastPath:false});
       }
       const routed=routedFromSemantic(semantic);
       if(shouldUseVerifiedOldDetailAnswer(question)){
         const result=await buildVerifiedDetailAnswer({question});
-        return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,integratedRoute:'VERIFIED_OLD_DETAIL',semantic,fastPath:false});
+        return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,integratedRoute:'VERIFIED_OLD_DETAIL',semantic,preflight,fastPath:false});
       }
       const result=routed.route==='PITCHING_LOOKUP'?await buildStrictPitchingAnswer({question,routed}):await buildLiveAnswer({question,routed});
-      return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,semantic,fastPath:false});
+      return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,semantic,preflight,fastPath:false});
     }
 
     // Existing mature paths remain available for comparison/document/general requests after semantic understanding.
     const routed=await classify(question,context);
-    if(routed?.route==='DELIBERATION')return sendJson(res,200,await deliberationPayload({question,semantic,routed}));
-    return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:`SEMANTIC_${semantic.mode}_LEGACY_FALLBACK`,semantic,routed,fastPath:false});
+    if(routed?.route==='DELIBERATION')return sendJson(res,200,{...(await deliberationPayload({question,semantic,routed})),preflight});
+    return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:`SEMANTIC_${semantic.mode}_LEGACY_FALLBACK`,semantic,routed,preflight,fastPath:false});
   }catch(error){
     console.error('[MAGI CORE]',error?.message||error);
     return sendJson(res,502,{ok:false,error:error?.message||'MAGI core failed',coreVersion:CORE_VERSION});
