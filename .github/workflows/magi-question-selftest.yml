@@ -1,0 +1,73 @@
+name: MAGI Question Understanding Selftest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/magi-question-selftest.js'
+      - '.github/workflows/magi-question-selftest.yml'
+  workflow_dispatch:
+
+jobs:
+  production-selftest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Wait for Vercel production deployment
+        shell: bash
+        run: |
+          set -e
+          URL='https://magi-web.vercel.app/api/magi-question-selftest?batch=0'
+          for i in $(seq 1 30); do
+            code=$(curl -L -sS -o /tmp/probe.json -w '%{http_code}' "$URL" || true)
+            if [ "$code" = "200" ] && grep -q '"ok":true' /tmp/probe.json; then
+              echo "Production selftest endpoint is ready."
+              exit 0
+            fi
+            echo "Waiting for deployment... attempt $i, HTTP $code"
+            sleep 10
+          done
+          echo 'Production endpoint did not become ready.'
+          cat /tmp/probe.json || true
+          exit 1
+
+      - name: Run 95 production semantic cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f /tmp/all-results.ndjson
+          total=0
+          passed=0
+          failed=0
+          for batch in $(seq 0 18); do
+            echo "=== batch $batch ==="
+            curl -L --fail --retry 2 --retry-delay 3 -sS "https://magi-web.vercel.app/api/magi-question-selftest?batch=$batch" -o "/tmp/batch-$batch.json"
+            cat "/tmp/batch-$batch.json"
+            echo
+            python - "$batch" <<'PY'
+import json,sys
+b=sys.argv[1]
+p=f'/tmp/batch-{b}.json'
+d=json.load(open(p,encoding='utf-8'))
+assert d.get('ok') is True, d
+for r in d.get('results',[]):
+    print(json.dumps(r,ensure_ascii=False))
+PY
+            python - "$batch" >> /tmp/all-results.ndjson <<'PY'
+import json,sys
+b=sys.argv[1]
+d=json.load(open(f'/tmp/batch-{b}.json',encoding='utf-8'))
+for r in d.get('results',[]): print(json.dumps(r,ensure_ascii=False))
+PY
+          done
+          python - <<'PY'
+import json
+rows=[json.loads(x) for x in open('/tmp/all-results.ndjson',encoding='utf-8') if x.strip()]
+failed=[r for r in rows if not r.get('pass')]
+print(f'RESULT: {len(rows)-len(failed)}/{len(rows)} PASS, {len(failed)} FAIL')
+if failed:
+    print('FAILED IDS:', ', '.join(str(r.get('id')) for r in failed))
+    for r in failed:
+        print(json.dumps(r,ensure_ascii=False))
+    raise SystemExit(1)
+PY
