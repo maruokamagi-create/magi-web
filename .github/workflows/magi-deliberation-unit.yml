@@ -11,6 +11,7 @@ on:
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_full-lineup.js'
       - 'server/api/magi/_pitching-plan.js'
+      - 'server/api/magi/_pitching-plan-output-guard.js'
       - 'server/api/magi/_drive-live-audit.js'
       - 'server/api/magi/_persona-output-guard.js'
       - 'server/api/magi/_cross-output-guard.js'
@@ -18,6 +19,7 @@ on:
       - 'engine-ui-v187.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
+      - 'scripts/test-pitching-plan-output-guard.mjs'
       - 'scripts/test-derived-metric-label-guard.mjs'
       - 'scripts/test-deliberation-evidence-bridge.mjs'
       - 'scripts/test-selection-peer-baseline.mjs'
@@ -51,6 +53,9 @@ jobs:
 
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
+
+      - name: Run pitching-plan evidence-quality guard cases
+        run: node --experimental-default-type=module scripts/test-pitching-plan-output-guard.mjs
 
       - name: Run derived metric label guard cases
         run: node --experimental-default-type=module scripts/test-derived-metric-label-guard.mjs
