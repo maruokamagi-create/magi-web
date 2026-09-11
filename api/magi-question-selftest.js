@@ -44,6 +44,7 @@ function judge(id,s){
   if(id===17)return playerOf(s)==='嶋田 栄志'&&(m==='CLARIFY'||isActionMode(m));
   if(id===20)return m==='CLARIFY'&&(!s.players||s.players.length===0);
   if(id===21)return playerOf(s)==='大野 竜暉'&&!/誰のこと/.test(answerOf(s));
+  if(id===23)return m==='CLARIFY'||(m==='DELIBERATION'&&playerOf(s)==='橋向 結都');
   if(id===31)return m==='CLARIFY'&&playerOf(s)==='大野 竜暉';
   if(id===47)return s?.timeScope==='CURRENT_SEASON'&&m!=='CLARIFY';
   if(id===48)return s?.timeScope==='RECENT_6'&&m!=='CLARIFY';
