@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { failClosedCross, validateCrossOutput, validateDialoguePresence, validateCrossLanguage, validateFullLineupDialogueSpecificity } from '../server/api/magi/_cross-output-guard.js';
+import { failClosedCross, validateCrossOutput, validateDialoguePresence, validateCrossLanguage, validateFullLineupDialogueSpecificity, validatePitchingPlanDialogueSpecificity } from '../server/api/magi/_cross-output-guard.js';
 
 const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
@@ -13,6 +13,12 @@ const FULL_LINEUP_CASE={
   mode:'selection',
   selectionKind:'FULL_LINEUP',
   question:'ベストオーダーを1番から9番まで組んで',
+  evidence:{allCurrentTeamCheck:{status:'COMPLETE',players:[]}}
+};
+const PITCHING_PLAN_CASE={
+  mode:'selection',
+  selectionKind:'PITCHING_PLAN',
+  question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',
   evidence:{allCurrentTeamCheck:{status:'COMPLETE',players:[]}}
 };
 function threeWayChallenges(){
@@ -118,6 +124,26 @@ test('X13 Japanese cross text may contain baseball metric abbreviations',()=>{
     disagreement:['MELCHIOR-1はOPSを重く見るが、打順の流れは別に検討する必要がある。']
   });
   assert.deepEqual(validateCrossLanguage(r),[]);
+});
+
+test('X14 generic pitching-plan challenges are rejected as too vague',()=>{
+  const r=cross({challenges:{
+    melchior:['その継投で本当にいいですか。'],
+    balthasar:['勝ち筋として投手をもう一度考えてください。'],
+    casper:['負担も考えてください。']
+  }});
+  const issues=validatePitchingPlanDialogueSpecificity(PITCHING_PLAN_CASE,r);
+  assert.equal(issues.length,3);
+  assert.ok(issues.every(x=>x.includes('役割名と選手名')));
+});
+
+test('X15 pitching-plan challenges must name exact role and player',()=>{
+  const r=cross({challenges:{
+    melchior:['先発 橋向 結都は今季の投球回の母数まで見ても妥当ですか。'],
+    balthasar:['第2投手 大久保 陽翔を置くなら、現記録だけでその順序をどう説明しますか。'],
+    casper:['クローザー 大野 竜暉への役割配置を、捕手との兼任も含めてどう見ますか。']
+  }});
+  assert.deepEqual(validatePitchingPlanDialogueSpecificity(PITCHING_PLAN_CASE,r),[]);
 });
 
 let passed=0;
