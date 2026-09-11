@@ -212,6 +212,8 @@ export default async function handler(req, res) {
     const candidateCase = isCandidateCase(body);
     const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
     const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
+    const requestedPitchingPlanInnings = Number(body?.case?.evidence?.gameInnings);
+    const pitchingPlanGameInnings = requestedPitchingPlanInnings === 9 ? 9 : 7;
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
@@ -223,8 +225,8 @@ export default async function handler(req, res) {
     const selectionEvidenceRule = 'SELECTION EVIDENCE RULE: Candidate attributes must come from CASE.evidence only. Persona identity does not authorize invented attributes. If development, mental, leadership, practice-attitude, future-growth or role-suitability evidence is absent, CASPER must not infer growth potential, future team strengthening, human traits, leadership, mental strength, development trajectory or role suitability from AVG/OPS or positions alone; it must say those development factors are unverified and rank only from supported evidence. If tactical expected-runs, clutch, pressure, opponent, lineup-combination or game-state evidence is absent, BALTHASAR must not state those as facts or certainty; any tactical forecast must be explicitly probabilistic. MELCHIOR may compare supplied peer metrics but must not decompose OPS into OBP or SLG qualities unless those components are supplied. candidateBasis, primaryReason and publicStatement are assertive fields and must not contain unsupported future outcomes.';
     const fullLineupPrimaryRule = 'This is a FULL LINEUP task. After checking all 14 current players, candidatePlayers must contain exactly nine distinct current-team players in your proposed batting order, where candidatePlayers[0] is 1番 and candidatePlayers[8] is 9番. This is not a top-nine ranking: treat adjacent hitters and lineup flow as part of your own persona domain. Do not include bench players after the ninth slot. Do not include retired old-team players. Historical evidence may inform current-player continuity only as historicalWeightingRule allows.';
     const fullLineupSecondRule = 'This remains a FULL LINEUP task after cross-examination. Reconsider the actual 1番〜9番 sequence, not just the names. candidatePlayers must still contain exactly nine distinct current-team players in batting-order sequence. Reply to the other Wise Men’s concrete challenges about slots and combinations, then keep or revise your order independently. Do not converge merely to create consensus.';
-    const pitchingPlanPrimaryRule = 'This is a PITCHING PLAN task for a 7-inning game. After checking all 14 current players, candidatePlayers must contain exactly four distinct current-team players in this exact role order: candidatePlayers[0]=先発, candidatePlayers[1]=第2投手, candidatePlayers[2]=終盤, candidatePlayers[3]=クローザー. This is a role assignment, not a generic pitcher ranking. Use only supplied pitching evidence and its sample size. Do not invent exact inning limits, consecutive-use tolerance, saves, closer history, high-leverage success, pressure handling, or fatigue status unless CASE.evidence explicitly supplies them. Historical innings and rates may show past pitching volume only; they do not prove a past role.';
-    const pitchingPlanSecondRule = 'This remains a 7-inning four-role PITCHING PLAN task after cross-examination. Reconsider the exact role sequence 先発→第2投手→終盤→クローザー. candidatePlayers must still contain exactly four distinct current-team players in that role order. Answer the concrete role-player challenges, then keep or revise your plan independently. Do not converge merely to create consensus, and never invent unsupported closer history, pressure ability, fatigue, or exact inning ceilings.';
+    const pitchingPlanPrimaryRule = `This is a PITCHING PLAN task for a ${pitchingPlanGameInnings}-inning game. After checking all 14 current players, candidatePlayers must contain exactly four distinct current-team players in this exact role order: candidatePlayers[0]=先発, candidatePlayers[1]=第2投手, candidatePlayers[2]=終盤, candidatePlayers[3]=クローザー. This is a role assignment, not a generic pitcher ranking. Use only supplied pitching evidence and its sample size. Do not invent exact inning limits, consecutive-use tolerance, saves, closer history, high-leverage success, pressure handling, or fatigue status unless CASE.evidence explicitly supplies them. Historical innings and rates may show past pitching volume only; they do not prove a past role.`;
+    const pitchingPlanSecondRule = `This remains a ${pitchingPlanGameInnings}-inning four-role PITCHING PLAN task after cross-examination. Reconsider the exact role sequence 先発→第2投手→終盤→クローザー. candidatePlayers must still contain exactly four distinct current-team players in that role order. Answer the concrete role-player challenges, then keep or revise your plan independently. Do not converge merely to create consensus, and never invent unsupported closer history, pressure ability, fatigue, or exact inning ceilings.`;
 
     const primaryInstruction = candidateCase
       ? fullLineupCase
@@ -353,10 +355,10 @@ export default async function handler(req, res) {
             result.judgment = 'YELLOW';
             result.confidence = 'LOW';
             result.reviewRequested = true;
-            result.reviewReason = `7回制4役の投手運用を確定できません。${planCheck.issues.join('。')}`;
+            result.reviewReason = `${pitchingPlanGameInnings}回制4役の投手運用を確定できません。${planCheck.issues.join('。')}`;
             result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), result.reviewReason])];
             result.primaryReason = result.reviewReason;
-            result.publicStatement = '現チーム14名は確認できましたが、先発・第2投手・終盤・クローザーの4役が正しく構成できていないため、この案は確定しません。';
+            result.publicStatement = `現チーム14名は確認できましたが、${pitchingPlanGameInnings}回制の先発・第2投手・終盤・クローザーの4役が正しく構成できていないため、この案は確定しません。`;
             result.candidatePlayers = [];
             result.candidateBasis = '4役投手運用の構成エラーのため再審議';
           } else {
