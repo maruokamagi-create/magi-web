@@ -6,8 +6,10 @@ on:
     paths:
       - 'server/api/magi/_semantic-request.js'
       - 'server/api/magi/_semantic-postguard.js'
+      - 'server/api/magi/_attachment-request.js'
       - 'server/api/magi/core.js'
       - 'api/magi-question-selftest.js'
+      - 'api/magi-attachment-selftest.js'
       - '.github/workflows/magi-question-selftest.yml'
   workflow_dispatch:
 
@@ -20,19 +22,25 @@ jobs:
         shell: bash
         run: |
           set -e
-          URL='https://magi-web.vercel.app/api/magi-question-selftest?batch=12'
+          TEXT_URL='https://magi-web.vercel.app/api/magi-question-selftest?batch=12'
+          MEDIA_URL='https://magi-web.vercel.app/api/magi-attachment-selftest'
           for i in $(seq 1 60); do
-            code=$(curl -L -sS -o /tmp/probe.json -w '%{http_code}' "$URL" || true)
-            if [ "$code" = "200" ] && jq -e '.results[] | select(.id == 65 and .pass == true and (.semanticVersion | contains("postguard-v1")))' /tmp/probe.json >/dev/null 2>&1; then
-              echo "Latest production selftest endpoint is ready."
-              cat /tmp/probe.json
+            text_code=$(curl -L -sS -o /tmp/text-probe.json -w '%{http_code}' "$TEXT_URL" || true)
+            media_code=$(curl -L -sS -o /tmp/media-probe.json -w '%{http_code}' "$MEDIA_URL" || true)
+            text_ready=false
+            media_ready=false
+            if [ "$text_code" = "200" ] && jq -e '.results[] | select(.id == 65 and .pass == true and (.semanticVersion | contains("postguard-v1")))' /tmp/text-probe.json >/dev/null 2>&1; then text_ready=true; fi
+            if [ "$media_code" = "200" ] && jq -e '.version == "attachment-request-v1" and .total == 5 and .passed == 5' /tmp/media-probe.json >/dev/null 2>&1; then media_ready=true; fi
+            if [ "$text_ready" = true ] && [ "$media_ready" = true ]; then
+              echo "Latest production selftest endpoints are ready."
               exit 0
             fi
-            echo "Waiting for latest deployment... attempt $i, HTTP $code"
+            echo "Waiting for latest deployment... attempt $i, text HTTP $text_code, media HTTP $media_code"
             sleep 10
           done
-          echo 'Latest production endpoint did not become ready.'
-          cat /tmp/probe.json || true
+          echo 'Latest production endpoints did not become ready.'
+          cat /tmp/text-probe.json || true
+          cat /tmp/media-probe.json || true
           exit 1
 
       - name: Run 95 production semantic cases
@@ -50,9 +58,20 @@ jobs:
           total=$(wc -l < /tmp/all-results.ndjson | tr -d ' ')
           failed=$(jq -s '[.[] | select(.pass != true)] | length' /tmp/all-results.ndjson)
           passed=$((total-failed))
-          echo "RESULT: ${passed}/${total} PASS, ${failed} FAIL"
+          echo "TEXT RESULT: ${passed}/${total} PASS, ${failed} FAIL"
           if [ "$failed" -ne 0 ]; then
-            echo 'FAILED CASES:'
+            echo 'FAILED TEXT CASES:'
             jq -s -c '.[] | select(.pass != true)' /tmp/all-results.ndjson
             exit 1
           fi
+
+      - name: Run 5 production attachment understanding cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 2 --retry-delay 3 -sS 'https://magi-web.vercel.app/api/magi-attachment-selftest' -o /tmp/attachment-results.json
+          cat /tmp/attachment-results.json
+          echo
+          jq -e '.ok == true and .passed == 5 and .total == 5 and ([.results[].pass] | all)' /tmp/attachment-results.json >/dev/null
+          echo 'ATTACHMENT RESULT: 5/5 PASS'
+          echo 'QUESTION UNDERSTANDING RESULT: 100/100 PASS (95 text + 5 attachment routing/safety)'
