@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { failClosedCross, validateCrossOutput } from '../server/api/magi/_cross-output-guard.js';
+import { failClosedCross, validateCrossOutput, validateDialoguePresence } from '../server/api/magi/_cross-output-guard.js';
 
 const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
@@ -9,10 +9,17 @@ const CASE={
     operationalConcern:'捕手との兼任負担を考慮する必要がある'
   }
 };
+function threeWayChallenges(){
+  return {
+    melchior:['旧チームの54.0回だけで固定まで言えるか。'],
+    balthasar:['現時点で起用判断をするなら、どの条件までなら許容できる？'],
+    casper:['捕手との兼任負担を考慮した運用条件は必要ではないですか。']
+  };
+}
 function cross(overrides={}){
   return {
     agreement:[],disagreement:[],domainConflicts:[],warnings:[],informationGaps:[],
-    challenges:{melchior:[],balthasar:[],casper:[]},
+    challenges:threeWayChallenges(),
     ...overrides
   };
 }
@@ -21,8 +28,7 @@ const tests=[];function test(name,fn){tests.push({name,fn});}
 test('X01 evidence-grounded cross text passes',()=>{
   const r=cross({
     agreement:['現チームの投球回5.0はまだ小さいサンプルである。'],
-    informationGaps:['捕手兼任時の具体的な疲労度は確認できていない。'],
-    challenges:{melchior:['旧チームの54.0回だけで固定まで言えるか。'],balthasar:[],casper:[]}
+    informationGaps:['捕手兼任時の具体的な疲労度は確認できていない。']
   });
   assert.deepEqual(validateCrossOutput(CASE,r,{focused:true}),[]);
 });
@@ -62,6 +68,16 @@ test('X07 fail closed cross keeps no unsafe debate content',()=>{
   assert.equal(r.agreement.length,0);
   assert.equal(r.challenges.melchior.length,0);
   assert.match(r.reviewReason,/不整合/);
+});
+
+test('X08 all three Wise Men must participate in cross-examination',()=>{
+  const r=cross({challenges:{melchior:['記録で固定まで言えますか。'],balthasar:[],casper:['兼任条件はどうしますか。']}});
+  const issues=validateDialoguePresence(r);
+  assert.ok(issues.some(x=>x.includes('BALTHASAR-2')));
+});
+
+test('X09 three distinct challenge streams satisfy dialogue presence',()=>{
+  assert.deepEqual(validateDialoguePresence(cross()),[]);
 });
 
 let passed=0;
