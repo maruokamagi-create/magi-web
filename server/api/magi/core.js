@@ -12,10 +12,16 @@ import { understandRequest } from './_semantic-request.js';
 import { applySemanticGuard } from './_semantic-postguard.js';
 import { isExplicitPitchingPlanQuestion } from './_pitching-plan.js';
 
-const CORE_VERSION='magi-core-semantic-first-v4-pitching-plan-routing';
+const CORE_VERSION='magi-core-semantic-first-v5-pitching-plan-innings';
 
 function text(v){return String(v||'').trim()}
 function hasPdfModifier(q){return /(?:PDF|ＰＤＦ)/i.test(String(q||''))}
+function questionGameInnings(q){
+  const n=String(q||'').normalize('NFKC');
+  if(/(?:9回制|9イニング|九回制|九イニング)/.test(n))return 9;
+  if(/(?:7回制|7イニング|七回制|七イニング)/.test(n))return 7;
+  return 7;
+}
 
 async function classify(question,context){
   let routed=await routeQuestion(question,context);
@@ -32,7 +38,7 @@ function routedFromSemantic(semantic){
     route,modelRoute:route,confidence:semantic?.confidence||'HIGH',
     understoodRequest:semantic?.understoodRequest||'',routeReason:semantic?.routeReason||'',
     players:Array.isArray(semantic?.players)?semantic.players:[],domains:Array.isArray(semantic?.domains)?semantic.domains:[],
-    timeScope:semantic?.timeScope||'UNSPECIFIED',specificSeason:semantic?.specificSeason||'',opponent:semantic?.opponent||'',
+    timeScope:semantic?.timeScope||'UNSPECIFIED',specificSeason:semantic?.specificSeason||'',opponent:semantic?.opponent||'',gameInnings:semantic?.gameInnings||null,
     needsDeliberation:false,needsClarification:false,clarificationQuestion:'',contextRequired:false,contextReferences:[],ambiguities:[],unresolvedEntities:[],
     safeToExecute:true,safetyStatus:'READY',routerVersion:semantic?.semanticVersion||'semantic-request'
   };
@@ -45,11 +51,12 @@ function reportKind(semantic){
   return'';
 }
 function pitchingPlanSemantic(question){
+  const gameInnings=questionGameInnings(question);
   return {
-    semanticVersion:'semantic-pitching-plan-direct-v1',mode:'DELIBERATION',confidence:'HIGH',
-    understoodRequest:'7回制の投手運用を、先発・第2投手・終盤・クローザーの4役で審議する',
+    semanticVersion:'semantic-pitching-plan-direct-v2',mode:'DELIBERATION',confidence:'HIGH',
+    understoodRequest:`${gameInnings}回制の投手運用を、先発・第2投手・終盤・クローザーの4役で審議する`,
     routeReason:'複数投手の役割配置を決める明示的な投手運用相談。',players:[],domains:['PITCHING','TACTICS'],
-    timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],clarificationQuestion:'',needsData:true,
+    timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],clarificationQuestion:'',needsData:true,gameInnings,
     groundedPlayers:[],preflightApplied:true,originalQuestion:question
   };
 }
@@ -79,7 +86,7 @@ async function deliberationPayload({question,semantic,routed}){
     ok:true,handled:true,coreVersion:CORE_VERSION,route:'DELIBERATION',action:'DELIBERATE',
     routerVersion:routed?.routerVersion||semantic?.semanticVersion||null,understoodRequest:semantic?.understoodRequest||routed?.understoodRequest||question,
     domains:Array.isArray(semantic?.domains)?semantic.domains:[],players:Array.isArray(semantic?.players)?semantic.players:[],
-    timeScope:semantic?.timeScope||'UNSPECIFIED',specificSeason:semantic?.specificSeason||'',opponent:semantic?.opponent||'',
+    timeScope:semantic?.timeScope||'UNSPECIFIED',specificSeason:semantic?.specificSeason||'',opponent:semantic?.opponent||'',gameInnings:semantic?.gameInnings||routed?.gameInnings||null,
     evidencePacket:effectiveResolution?.evidence||null,evidenceResolution:effectiveResolution,semantic,fastPath:false
   };
 }
@@ -125,6 +132,7 @@ export default async function handler(req,res){
       if(semantic.timeScope)routed.timeScope=semantic.timeScope;
       if(semantic.specificSeason)routed.specificSeason=semantic.specificSeason;
       if(semantic.opponent)routed.opponent=semantic.opponent;
+      if(semantic.gameInnings)routed.gameInnings=semantic.gameInnings;
       return sendJson(res,200,await deliberationPayload({question,semantic,routed}));
     }
 
