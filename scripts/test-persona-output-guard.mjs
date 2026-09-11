@@ -5,7 +5,8 @@ const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
   evidence:{
     currentTeam:{player:'大野 竜暉',pitching:{appearances:3,innings:'5.0',strikeouts:7,walks:2}},
-    oldTeam:{player:'大野 竜暉',pitching:{era:'1.69',innings:'54.0',strikeouts:50}}
+    oldTeam:{player:'大野 竜暉',pitching:{era:'1.69',innings:'54.0',strikeouts:50}},
+    operationalConcern:'捕手との兼任負担を考慮する必要がある'
   }
 };
 function result(overrides={}){
@@ -130,6 +131,34 @@ test('G20 bare inning count used as sample is blocked',()=>{
 test('G21 explicit inning unit is accepted',()=>{
   const r=result({publicStatement:'現チームの投球回は5.0回です。'});
   assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
+test('G22 burden intensity cannot be strengthened beyond evidence',()=>{
+  const r=result({publicStatement:'捕手との兼任負担が大きすぎるので固定は避けます。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('負担の大きさ')));
+});
+
+test('G23 supplied burden concern phrasing is allowed',()=>{
+  const r=result({publicStatement:'捕手との兼任負担を考慮する必要があります。'});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
+test('G24 definite future harm in assertive text is blocked',()=>{
+  const r=result({publicStatement:'捕手との兼任負担で半年後の成長に影響が出てしまいます。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('具体的悪影響')));
+});
+
+test('G25 conditional future burden prediction is allowed',()=>{
+  const r=result({prediction:['負担を考慮せず固定した場合、コンディションに影響を与える可能性があります。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
+test('G26 hard future certainty is blocked',()=>{
+  const r=result({prediction:['この起用なら必ず勝利を維持できます。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('保証できない')));
 });
 
 let passed=0;
