@@ -122,20 +122,22 @@ export default async function handler(req, res) {
 
     const temporalContext = jstContext();
     const historyRule = '2026-2027を主評価とするが、2025-2026を軽い参考として切り捨てない。大久保 陽翔・大野 竜暉は旧チームで十分な出場母数と継続的な実戦経験があるため、旧成績を再現性・経験値・役割継続の重要Evidenceとして現在評価へ接続する。特に大久保 陽翔は旧チームから継続して4番を担い、新チームでも基本的に4番を担うチームの柱という役割継続を必ず考慮する。ただし既得権として固定せず、現在の明確なEvidenceがあれば変更を検討する。旧チームで非レギュラーだった選手の小さい母数は現在評価の不利材料にしない。';
-    const focusedProposalRule = candidateCase ? '' : 'This is a focused proposal/evaluation, not a candidate-selection task. Answer only about the player, role, or proposal actually named in the CASE. Do not introduce another roster player merely because that player appears in historicalWeightingRule or authoritative roster context. Do not manufacture an alternative candidate unless the user explicitly asked for one. Keep checkedPlayers, candidatePlayers and candidateBasis empty for this focused proposal. A strikeout count alone does NOT prove runs were prevented, a save situation was handled, or closer suitability was established; make those claims only when the supplied CASE evidence directly supports them. ';
+    const focusedHistoryRule = 'FOCUSED PROPOSAL HISTORY RULE: Historical facts may be used only when they are explicitly present in CASE.evidence. Generic roster history or role-continuity knowledge must not be imported. Historical innings, ERA, strikeouts, walks, or appearances support only the pitching facts those fields actually state. They do NOT prove prior closer usage, save situations, high-leverage success, pressure handling, end-game experience, or any other role unless CASE.evidence explicitly states that role. Do not turn a raw rate/count into a qualitative claim such as good, bad, high, low, many, few, strong, weak, effective, or reliable without an explicit comparison baseline in CASE.evidence.';
+    const effectiveHistoryRule = candidateCase ? historyRule : focusedHistoryRule;
+    const focusedProposalRule = candidateCase ? '' : 'This is a focused proposal/evaluation, not a candidate-selection task. Answer only about the player, role, or proposal actually named in the CASE. Do not introduce another roster player. Do not manufacture an alternative candidate unless the user explicitly asked for one. Keep checkedPlayers, candidatePlayers and candidateBasis empty. Use only facts explicitly supplied in CASE/evidence. A strikeout count alone does NOT prove runs were prevented, a save situation was handled, pressure was handled, or closer suitability was established. If CASE/evidence does not contain a claimed role or comparison baseline, omit that claim rather than rephrasing it. ';
     const primaryInstruction = selectionMode
       ? 'This is a SELECTION question, not a yes/no proposal. Do not phrase the user-facing answer as 賛成・反対・可決・否決. The judgment enum is only an internal protocol field and must not be treated as the answer. FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. Do not add any fifteenth player or omit anyone. SECOND, independently choose candidatePlayers using only your persona domain. Rank candidatePlayers in your preferred order. candidateBasis must explain your own selection standard. Apply historicalWeightingRule, including substantial old-team experience and role continuity for 大久保 陽翔 and 大野 竜暉. In publicStatement, directly answer who you select and why, using the exact official player names from authoritativeCurrentRoster. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.'
-      : focusedProposalRule + 'Give the independent judgment. For any lineup, batting-order, starter, regular, or candidate-selection question: FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. Do not add any fifteenth player or other reference name, and do not omit anyone. Do not shortlist before this check is complete. SECOND, independently choose your own candidatePlayers using only your persona domain; do not copy or anticipate the other Wise Men. candidateBasis must briefly explain the persona-specific selection standard. Apply historicalWeightingRule: current-team evidence is primary, but substantial old-team evidence and role continuity for 大久保 陽翔 and 大野 竜暉 are meaningful evidence, not a negligible footnote. In publicStatement, name the main candidatePlayers naturally before stating the judgment and use exact official player names from authoritativeCurrentRoster. Resolve all relative time expressions from temporalContext. Write primaryReason and publicStatement in natural spoken Japanese, as if you were saying it aloud in a baseball meeting to coaches and parents. Keep it concrete, easy to understand, and recognizably in this persona voice. Avoid bureaucratic AI/report wording. publicStatement should usually be 1–3 short sentences. Do not expose hidden chain-of-thought.';
+      : focusedProposalRule + 'Give the independent judgment on the exact proposal. Separate supplied fact from analysis and prediction. Historical evidence is governed strictly by historicalWeightingRule. Do not infer prior role, leverage situation, success condition, or qualitative statistical strength from raw counts alone. If the evidence is incomplete, say exactly what remains uncertain while still answering the current choice boundary. Write primaryReason and publicStatement in natural spoken Japanese, usually 1–3 short sentences. Do not expose hidden chain-of-thought.';
     const secondInstruction = selectionMode
       ? 'This remains a SELECTION question, not a yes/no vote. Do not say you are 賛成 or 反対 to the question. Keep checkedPlayers exactly equal to the authoritative 14-player roster. Reconsider your own candidatePlayers only from concrete evidence and cross-examination; do not change merely to join a majority. Rank candidatePlayers in your current preferred order. Continue historicalWeightingRule and temporalContext. In publicStatement, state plainly which candidates you retain, add, or remove and why, using exact official player names from authoritativeCurrentRoster. The actual answer is the candidate shortlist, not the judgment enum. Keep it concise and natural. Do not expose hidden chain-of-thought.'
-      : focusedProposalRule + 'Rejudge independently. For candidate-selection cases, checkedPlayers must continue to contain exactly the authoritative 14-player current-team roster: no omissions and no extra names. candidatePlayers may change only when a concrete evidence-grounded challenge warrants it; do not change merely to join a majority. Continue to apply historicalWeightingRule and resolve all relative dates from temporalContext. In publicStatement, answer the challenge like a real spoken exchange first, then say plainly whether your judgment or candidate shortlist changed and why, using exact official player names from authoritativeCurrentRoster. Use natural baseball language understandable to both experienced people and parents. Keep it concise and human, not report-like. Do not expose hidden chain-of-thought.';
+      : focusedProposalRule + 'Rejudge the exact focused proposal independently. Answer the evidence-grounded challenge, but do not adopt an unsupported claim merely because it appeared in crossExamination or another persona output. CASE/evidence remains authoritative. Historical evidence is governed strictly by historicalWeightingRule. If a challenge mentions a role, rate, strength, weakness, pressure situation, or past usage not explicitly in CASE/evidence, identify it as unverified and do not repeat it as fact. State plainly whether your judgment changed and why. Keep it concise and natural. Do not expose hidden chain-of-thought.';
 
     const payload = phase === 'PRIMARY'
       ? {
           phase,
           temporalContext,
           authoritativeCurrentRoster: candidateCase ? CURRENT_ROSTER : [],
-          historicalWeightingRule: historyRule,
+          historicalWeightingRule: effectiveHistoryRule,
           case: body.case,
           instruction: primaryInstruction
         }
@@ -143,7 +145,7 @@ export default async function handler(req, res) {
           phase,
           temporalContext,
           authoritativeCurrentRoster: candidateCase ? CURRENT_ROSTER : [],
-          historicalWeightingRule: historyRule,
+          historicalWeightingRule: effectiveHistoryRule,
           case: body.case,
           ownPrimaryJudgment: body.primarySelf || null,
           crossExamination: body.crossExamination || null,
@@ -158,12 +160,13 @@ export default async function handler(req, res) {
     let result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
     let guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
 
-    if (guardIssues.length) {
+    for (let attempt = 0; guardIssues.length && attempt < 2; attempt++) {
       const correctionPayload = {
         ...payload,
         invalidDraft: result,
         correctionIssues: guardIssues,
-        instruction: `${payload.instruction} CORRECTION PASS: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Preserve the CASE decision question and persona viewpoint, but do not repeat unsupported or mislabeled statistics, do not introduce unrelated players, and do not add new facts. Return the complete schema again.`
+        correctionAttempt: attempt + 1,
+        instruction: `${payload.instruction} CORRECTION PASS ${attempt + 1}: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Remove unsupported claims completely rather than disguising or rephrasing them. Do not import generic historical role knowledge. Do not relabel a supplied metric. Do not add another player. Return the complete schema again using only CASE/evidence-supported facts.`
       };
       rawResult = await callGemini({
         systemInstruction: PERSONA_PROMPTS[persona],
