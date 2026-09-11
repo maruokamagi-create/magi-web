@@ -3,6 +3,7 @@ import { ORCHESTRATOR } from './_prompts.js';
 import { failClosedCross, validateCrossOutput } from './_cross-output-guard.js';
 import { canonicalizePlayerData, playerKey } from './_roster.js';
 import { buildConsensusLineup, isFullLineupQuestion } from './_full-lineup.js';
+import { buildConsensusPitchingPlan, isPitchingPlanQuestion } from './_pitching-plan.js';
 
 const crossSchema = {
   type: 'OBJECT',
@@ -35,7 +36,7 @@ function validCase(body) {
 
 export function isSelectionCase(caseData) {
   if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
-  if (isFullLineupQuestion(caseData)) return true;
+  if (isFullLineupQuestion(caseData) || isPitchingPlanQuestion(caseData)) return true;
   const q = String(caseData?.question || '');
   const battingSlot = /(?:[1-9１-９一二三四五六七八九](?:番|ばん)(?:打者)?)/;
   const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
@@ -156,6 +157,54 @@ export function buildFullLineupResult(second, cross) {
     warnings,
     reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),
     reviewReason:'',
+    crossDiscussion:crossDiscussion(normalizedCross)
+  });
+}
+
+export function buildPitchingPlanResult(second, cross) {
+  const normalizedSecond=canonicalizePlayerData(second);
+  const normalizedCross=canonicalizePlayerData(cross||{});
+  const entries=Array.isArray(normalizedSecond)?normalizedSecond.map((v,i)=>[String(i),v]):Object.entries(normalizedSecond||{});
+  if(entries.length!==3)return null;
+
+  const crossReviewReason=normalizedCross?.reviewRequired===true?String(normalizedCross?.reviewReason||'クロス審議の再確認が必要です。'):'';
+  const critical=entries.find(([,x])=>x?.reviewRequested===true&&String(x?.reviewReason||'').trim());
+  const dataConflict=entries.find(([,x])=>String(x?.persona||'').toUpperCase().startsWith('MELCHIOR')&&x?.dataConflict===true);
+  const warnings=compactUnique([...(normalizedCross?.warnings||[]),...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
+  const informationGaps=compactUnique(normalizedCross?.informationGaps||[]);
+
+  if(critical||dataConflict||crossReviewReason){
+    return canonicalizePlayerData({
+      mode:'PITCHING_PLAN',status:'PITCHING_PLAN_REVIEW_REQUIRED',recommendation:'投手運用を確定せず、未解決の確認事項を解消して再審議する。',
+      plan:[],personaPlans:Object.fromEntries(entries.map(([k,v])=>[k,Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),roleConflicts:[],playerSupport:[],
+      confidence:'LOW',majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
+      reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),reviewReason:crossReviewReason||String(critical?.[1]?.reviewReason||'MELCHIOR detected an unresolved DATA CONFLICT.'),
+      crossDiscussion:crossDiscussion(normalizedCross)
+    });
+  }
+
+  const consensus=buildConsensusPitchingPlan(normalizedSecond);
+  if(!consensus){
+    return canonicalizePlayerData({
+      mode:'PITCHING_PLAN',status:'PITCHING_PLAN_REVIEW_REQUIRED',recommendation:'3賢人の二次案に4役の投手運用として不完全な案があるため、運用を確定しない。',
+      plan:[],personaPlans:Object.fromEntries(entries.map(([k,v])=>[k,Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),roleConflicts:[],playerSupport:[],
+      confidence:'LOW',majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
+      reDeliberationConditions:compactUnique(['各賢人が現チームの異なる4投手を先発→第2投手→終盤→クローザーの順で再提示する',...informationGaps,...warnings],5),reviewReason:'二次投手運用案の構造が不完全',
+      crossDiscussion:crossDiscussion(normalizedCross)
+    });
+  }
+
+  const recommendation=consensus.plan.map(x=>`${x.roleLabel} ${x.name}`).join(' / ');
+  return canonicalizePlayerData({
+    mode:'PITCHING_PLAN',status:'PITCHING_PLAN_RESULT',recommendation,
+    plan:consensus.plan,
+    personaPlans:consensus.personaPlans,
+    roleConflicts:consensus.roleConflicts,
+    playerSupport:consensus.playerSupport,
+    selectedFromPersona:consensus.selectedFromPersona,
+    confidence:lowestConfidence(entries.map(([,v])=>v)),
+    majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
+    reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),reviewReason:'',
     crossDiscussion:crossDiscussion(normalizedCross)
   });
 }
@@ -334,11 +383,14 @@ export default async function handler(req, res) {
       if (!body.primary) return sendJson(res, 400, { error: 'Locked primary judgments are required' });
       const selectionCase = isSelectionCase(body.case);
       const fullLineupCase = selectionCase && isFullLineupQuestion(body.case);
+      const pitchingPlanCase = selectionCase && isPitchingPlanQuestion(body.case);
       const baseInstruction = fullLineupCase
         ? 'This is a full 1-to-9 batting-order cross-examination. Do not collapse the three proposals into a compromise yet. Compare the three locked batting orders slot by slot and as sequences. Identify concrete disagreements such as who leads off, who bats in the middle, and which adjacent combinations differ. Each Wise Man must receive a real evidence-grounded challenge that responds to his actual proposed order. Press MELCHIOR on whether statistical caution produces a workable sequence, press BALTHASAR on whether tactical flow is supported by the supplied data, and press CASPER on whether development or burden concerns justify moving specific hitters. Preserve current-team priority and use old-team evidence only as labelled reference. Do not introduce a fourth lineup.'
-        : selectionCase
-          ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
-          : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. CASE/evidence remains authoritative: do not introduce unsupported statistics, unrelated players, or historical roles that are not explicitly supported. Resolve all relative date and season expressions from temporalContext.';
+        : pitchingPlanCase
+          ? 'This is a 7-inning four-role pitching-plan cross-examination. candidatePlayers order means STARTER, SECOND PITCHER, LATE, CLOSER. Compare the three locked plans role by role. Every Wise Man must receive a concrete challenge that names an exact role and an exact current-team player from that Wise Man plan. Challenge whether the supplied pitching evidence and sample size support that assignment. Never infer saves, closer history, leverage success, pressure handling, consecutive-use tolerance, or exact inning limits unless CASE evidence explicitly supplies them. Preserve disagreement and do not invent a fourth compromise plan.'
+          : selectionCase
+            ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+            : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. CASE/evidence remains authoritative: do not introduce unsupported statistics, unrelated players, or historical roles that are not explicitly supported. Resolve all relative date and season expressions from temporalContext.';
       const basePayload = {
         phase: 'CROSS_EXAMINATION',
         temporalContext: jstContext(),
@@ -380,9 +432,11 @@ export default async function handler(req, res) {
       if (!body.primary || !body.second) return sendJson(res, 400, { error: 'Primary and second judgments are required' });
       const result = isFullLineupQuestion(body.case)
         ? buildFullLineupResult(body.second, body.crossExamination || null)
-        : isSelectionCase(body.case)
-          ? buildSelectionResult(body.second, body.crossExamination || null)
-          : buildFinalResult(body.second, body.crossExamination || null);
+        : isPitchingPlanQuestion(body.case)
+          ? buildPitchingPlanResult(body.second, body.crossExamination || null)
+          : isSelectionCase(body.case)
+            ? buildSelectionResult(body.second, body.crossExamination || null)
+            : buildFinalResult(body.second, body.crossExamination || null);
       if (!result) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
       return sendJson(res, 200, canonicalizePlayerData(result));
     }
