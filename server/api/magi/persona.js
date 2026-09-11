@@ -109,6 +109,16 @@ export function normalizeConditionalJudgment(result, selectionMode) {
   return result;
 }
 
+function candidateSequence(value) {
+  const rows = Array.isArray(value?.candidatePlayers) ? value.candidatePlayers : [];
+  return rows.map(name => playerKey(name) || String(name || '').trim().normalize('NFKC')).filter(Boolean);
+}
+
+function sameSequence(a, b) {
+  if (a.length !== b.length) return false;
+  return a.every((value, index) => value === b[index]);
+}
+
 export function normalizeChangeTracking(result, phase, primarySelf) {
   if (phase !== 'SECOND') {
     result.changedFromPrimary = false;
@@ -118,14 +128,25 @@ export function normalizeChangeTracking(result, phase, primarySelf) {
   const valid = new Set(['GREEN','BLUE','YELLOW','RED']);
   const previous = String(primarySelf?.judgment || '').toUpperCase();
   const current = String(result?.judgment || '').toUpperCase();
-  if (!valid.has(previous) || !valid.has(current)) return result;
+  const judgmentChanged = valid.has(previous) && valid.has(current) && previous !== current;
 
-  const changed = previous !== current;
+  const previousCandidates = candidateSequence(primarySelf);
+  const currentCandidates = candidateSequence(result);
+  const hasCandidateState = previousCandidates.length > 0 || currentCandidates.length > 0;
+  const candidateChanged = hasCandidateState && !sameSequence(previousCandidates, currentCandidates);
+  const changed = judgmentChanged || candidateChanged;
+
   result.changedFromPrimary = changed;
   if (!changed) {
     result.changeReason = '';
   } else if (!String(result?.changeReason || '').trim()) {
-    result.changeReason = `一次判断 ${previous} から ${current} へ変更。`;
+    if (judgmentChanged && candidateChanged) {
+      result.changeReason = `一次判断 ${previous} から ${current} へ変更し、候補・配置も変更。`;
+    } else if (candidateChanged) {
+      result.changeReason = 'クロス審議を受け、一次案から候補・配置を変更。';
+    } else {
+      result.changeReason = `一次判断 ${previous} から ${current} へ変更。`;
+    }
   }
   return result;
 }
