@@ -3,7 +3,7 @@ import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v5-pitching-plan-sample-aware';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v6-pitching-plan-game-innings';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -100,9 +100,18 @@ function sampleSizeRule(kind){
   return '率系の打撃指標（打率・出塁率・長打率・OPSなど）は、打数・打席などの母数とセットで読む。小さい母数の高低を安定した実力と断定しない。旧チームに十分な過去母数がある場合は再現性・経験の参考にするが、現在成績を上書きしない。母数の数値基準はEvidenceにない限り勝手に作らない。';
 }
 
+function pitchingPlanGameInnings(question,routed){
+  const routedValue=Number(routed?.gameInnings);
+  if(routedValue===7||routedValue===9)return routedValue;
+  const q=normalized(question);
+  if(/(?:9回制|9イニング|九回制|九イニング)/.test(q))return 9;
+  return 7;
+}
+
 export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
+  const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
 
   const [currentResult,oldResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
@@ -173,7 +182,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(kind==='FULL_LINEUP'){
     lines.push('【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議では具体的な打順番号と選手名を挙げて互いの並びを検証した後に二次案を出す。旧チーム記録は参考であり、引退選手を打順に入れない。ここにない数値・性格・将来結果は作らない。');
   }else if(kind==='PITCHING_PLAN'){
-    lines.push('【運用ルール】7回制の基本投手運用を「先発 → 第2投手 → 終盤 → クローザー」の4役で作る。基本案では現チームから異なる4投手を割り当てる。3賢人は全14名を確認して独立案を作り、クロス審議では具体的な役割名と選手名を挙げて相互検証する。回数・交代時点・連投耐性・高圧場面適性はEvidenceに明示されていない限り捏造しない。旧チーム記録は投球経験の参考にできるが、過去のクローザー等の役割経験を数値だけから推測しない。');
+    lines.push(`【試合回数条件】${gameInnings}回制`, `【運用ルール】${gameInnings}回制の基本投手運用を「先発 → 第2投手 → 終盤 → クローザー」の4役で作る。基本案では現チームから異なる4投手を割り当てる。3賢人は全14名を確認して独立案を作り、クロス審議では具体的な役割名と選手名を挙げて相互検証する。回数・交代時点・連投耐性・高圧場面適性はEvidenceに明示されていない限り捏造しない。旧チーム記録は投球経験の参考にできるが、過去のクローザー等の役割経験を数値だけから推測しない。`);
   }else{
     lines.push('【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は補助材料として必要な場合だけ参照する。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。');
   }
@@ -185,7 +194,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const summary=kind==='FULL_LINEUP'
     ? '現チーム14名の正本打撃記録を主評価にし、旧チームの同14名の過去記録を参考として付加した1〜9番打順審議用Evidenceです。率系指標は母数とセットで扱います。'
     : kind==='PITCHING_PLAN'
-      ? '現チーム14名の正本投手記録を主評価にし、旧チームの同14名の過去投球記録を参考として付加した7回制4役投手運用の審議用Evidenceです。率系指標は母数とセットで扱います。'
+      ? `現チーム14名の正本投手記録を主評価にし、旧チームの同14名の過去投球記録を参考として付加した${gameInnings}回制4役投手運用の審議用Evidenceです。率系指標は母数とセットで扱います。`
       : `現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。率系指標は母数とセットで扱います。`;
 
   return {
@@ -196,6 +205,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
     selectionKind:kind,
+    gameInnings,
     scope: audit?.seasonLabel||'2026-2027現チーム',
     primarySeason:'current',
     allCurrentTeamCheck:{status:'COMPLETE',players},
