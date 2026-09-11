@@ -100,6 +100,27 @@ test('G15 raw strikeout count cannot become generic strikeout ability without ba
   assert.ok(issues.some(x=>x.includes('比較基準')));
 });
 
+test('G16 explicit missing closer evidence disclaimer is allowed',()=>{
+  const r=result({warnings:['旧チームでのクローザーとしての起用実績を示す記録は含まれていません。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
+test('G17 explicit no-baseline quality disclaimer is allowed',()=>{
+  const r=result({analysis:['比較基準がないため、与四球が少ないとは言えません。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
+test('G18 plain walk label is checked against supplied walks',()=>{
+  const r=result({facts:['四球2です。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
+test('G19 wrong plain walk label is blocked',()=>{
+  const r=result({facts:['四球5です。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('与四球5')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
