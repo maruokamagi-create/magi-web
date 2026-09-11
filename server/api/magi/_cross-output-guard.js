@@ -1,4 +1,5 @@
 import { validatePersonaOutput } from './_persona-output-guard.js';
+import { validatePitchingPlanCrossOutput } from './_pitching-plan-output-guard.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
@@ -118,6 +119,7 @@ export function validateCrossOutput(caseData,cross,{focused=false}={}){
     ...validateCrossLanguage(cross),
     ...validateFullLineupDialogueSpecificity(caseData,cross),
     ...validatePitchingPlanDialogueSpecificity(caseData,cross),
+    ...validatePitchingPlanCrossOutput(caseData,cross),
     ...validatePersonaOutput(caseData,crossToGuardResult(cross),{focused})
   ];
 }
