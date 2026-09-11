@@ -1,5 +1,6 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
+import { validatePersonaOutput } from './_persona-output-guard.js';
 import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js';
 
 const schema = {
@@ -93,6 +94,21 @@ function jstContext() {
   };
 }
 
+function failClosedPersona(result, issues) {
+  const reason = `回答文の数値・選手参照をEvidenceと照合した結果、不整合を検出したため再確認が必要です。${issues.slice(0,3).join('／')}`;
+  result.judgment = 'YELLOW';
+  result.confidence = 'LOW';
+  result.reviewRequested = true;
+  result.reviewReason = reason;
+  result.primaryReason = reason;
+  result.publicStatement = '記録との照合で不整合を検出しました。このまま選手評価や起用判断には使わず、元データを確認して再審議します。';
+  result.facts = [];
+  result.analysis = [];
+  result.prediction = [];
+  result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), reason])];
+  return result;
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -134,12 +150,29 @@ export default async function handler(req, res) {
           instruction: secondInstruction
         };
 
-    const rawResult = await callGemini({
+    let rawResult = await callGemini({
       systemInstruction: PERSONA_PROMPTS[persona],
       userPayload: payload,
       responseSchema: schema
     });
-    const result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
+    let result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
+    let guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
+
+    if (guardIssues.length) {
+      const correctionPayload = {
+        ...payload,
+        invalidDraft: result,
+        correctionIssues: guardIssues,
+        instruction: `${payload.instruction} CORRECTION PASS: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Preserve the CASE decision question and persona viewpoint, but do not repeat unsupported or mislabeled statistics, do not introduce unrelated players, and do not add new facts. Return the complete schema again.`
+      };
+      rawResult = await callGemini({
+        systemInstruction: PERSONA_PROMPTS[persona],
+        userPayload: correctionPayload,
+        responseSchema: schema
+      });
+      result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
+      guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
+    }
 
     result.persona = persona.toUpperCase();
     result.phase = phase;
@@ -147,6 +180,8 @@ export default async function handler(req, res) {
       result.changedFromPrimary = false;
       result.changeReason = '';
     }
+
+    if (guardIssues.length) failClosedPersona(result, guardIssues);
 
     if (!candidateCase) {
       result.checkedPlayers = [];
