@@ -1,0 +1,143 @@
+name: MAGI Production Pitching Plan Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/magi/persona.js'
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_pitching-plan.js'
+      - 'server/api/magi/_prompts.js'
+      - 'server/api/magi/_persona-output-guard.js'
+      - 'server/api/magi/_cross-output-guard.js'
+      - '.github/workflows/magi-production-pitching-plan-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  production-pitching-plan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for production deployment
+        run: sleep 40
+
+      - name: Run full 7-inning pitching-plan deliberation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          ORIGIN='https://magi-web.vercel.app'
+
+          cat > /tmp/roster.json <<'JSON'
+          ["井坂 悠聖","大久保 陽翔","大野 竜暉","坂田 暉馬","嶋田 栄志","武澤 大翔","橋向 結都","上村 蓮","大久保 夢翔","長侶 穹","中嶋 玲月","吉田 真翔","鰐渕 将太","武田 晴琉翔"]
+          JSON
+
+          cat > /tmp/case.json <<'JSON'
+          {
+            "mode":"selection",
+            "selectionKind":"PITCHING_PLAN",
+            "question":"7回制の投手運用を先発→第2投手→終盤→クローザーの4役で組んで",
+            "evidence":{
+              "scope":"PRODUCTION_PITCHING_PLAN_SMOKE_SYNTHETIC_FIXED_EVIDENCE",
+              "primarySeason":"current",
+              "selectionKind":"PITCHING_PLAN",
+              "allCurrentTeamCheck":{
+                "status":"COMPLETE",
+                "players":[
+                  {"name":"井坂 悠聖","pitching":null},
+                  {"name":"大久保 陽翔","pitching":{"APP":"6","ERA":"2.80","IP":"20.0","SO":"22","BB":"7"}},
+                  {"name":"大野 竜暉","pitching":{"APP":"5","ERA":"2.10","IP":"12.0","SO":"15","BB":"4"}},
+                  {"name":"坂田 暉馬","pitching":{"APP":"3","ERA":"3.20","IP":"7.0","SO":"6","BB":"3"}},
+                  {"name":"嶋田 栄志","pitching":null},
+                  {"name":"武澤 大翔","pitching":null},
+                  {"name":"橋向 結都","pitching":{"APP":"7","ERA":"2.40","IP":"24.0","SO":"24","BB":"8"}},
+                  {"name":"上村 蓮","pitching":null},
+                  {"name":"大久保 夢翔","pitching":{"APP":"2","ERA":"4.20","IP":"5.0","SO":"5","BB":"2"}},
+                  {"name":"長侶 穹","pitching":null},
+                  {"name":"中嶋 玲月","pitching":null},
+                  {"name":"吉田 真翔","pitching":null},
+                  {"name":"鰐渕 将太","pitching":null},
+                  {"name":"武田 晴琉翔","pitching":null}
+                ]
+              },
+              "historicalReference":{
+                "status":"COMPLETE",
+                "scope":"2025-2026旧チーム",
+                "candidateEligible":false,
+                "players":[
+                  {"name":"大久保 陽翔","pitching":{"APP":"21","ERA":"3.63","IP":"56.0","SO":"58"}},
+                  {"name":"大野 竜暉","pitching":{"APP":"16","ERA":"1.69","IP":"54.0","SO":"50"}},
+                  {"name":"橋向 結都","pitching":{"APP":"10","ERA":"4.77","IP":"14.2","SO":"10"}},
+                  {"name":"坂田 暉馬","pitching":{"APP":"1","ERA":"21.00","IP":"1.0","SO":"1"}},
+                  {"name":"大久保 夢翔","pitching":{"APP":"1","ERA":"28.00","IP":"1.0","SO":"1"}}
+                ],
+                "warning":"旧チーム記録は投球経験の参考のみ。過去の役割経験は数値から推測しない。"
+              },
+              "sampleSizeRule":"率系指標は登板数・投球回などの母数とセットで読む。小さい母数を安定した実力と断定しない。",
+              "dataRule":"先発→第2投手→終盤→クローザーの4役を現チームの異なる4投手で構成する。ここにない役割歴・セーブ・高圧場面実績・疲労を作らない。"
+            }
+          }
+          JSON
+
+          same_roster(){
+            jq -S '.checkedPlayers|sort' "$1" > /tmp/actual-roster.json
+            jq -S 'sort' /tmp/roster.json > /tmp/expected-roster.json
+            cmp -s /tmp/actual-roster.json /tmp/expected-roster.json
+          }
+
+          valid_plan(){
+            jq -e --slurpfile roster /tmp/roster.json '
+              (.candidatePlayers|type=="array") and (.candidatePlayers|length==4) and
+              ((.candidatePlayers|unique|length)==4) and
+              ([.candidatePlayers[] as $p | ($roster[0] | index($p)) != null] | all)
+            ' "$1" >/dev/null
+          }
+
+          call_persona(){
+            local persona="$1" phase="$2" outfile="$3" primary_self="${4:-}" cross_file="${5:-}"
+            if [ "$phase" = 'PRIMARY' ]; then
+              jq -n --arg p "$persona" --slurpfile c /tmp/case.json '{persona:$p,phase:"PRIMARY",case:$c[0]}' > /tmp/body.json
+            else
+              jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
+            fi
+            curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
+            cat "$outfile"; echo
+            sleep 2
+          }
+
+          for p in melchior balthasar casper; do
+            call_persona "$p" PRIMARY "/tmp/${p}-primary.json"
+            jq -e '.reviewRequested==false and .dataConflict==false and (.candidateBasis|length>0)' "/tmp/${p}-primary.json" >/dev/null
+            same_roster "/tmp/${p}-primary.json"
+            valid_plan "/tmp/${p}-primary.json"
+          done
+
+          jq -n --slurpfile c /tmp/case.json --slurpfile m /tmp/melchior-primary.json --slurpfile b /tmp/balthasar-primary.json --slurpfile s /tmp/casper-primary.json '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > /tmp/cross-body.json
+          curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/cross-body.json "$BASE/api/magi/orchestrate" -o /tmp/cross.json
+          cat /tmp/cross.json; echo
+          jq -e '(.reviewRequired != true) and (.challenges.melchior|length>0) and (.challenges.balthasar|length>0) and (.challenges.casper|length>0)' /tmp/cross.json >/dev/null
+          sleep 2
+
+          for p in melchior balthasar casper; do
+            call_persona "$p" SECOND "/tmp/${p}-second.json" "/tmp/${p}-primary.json" /tmp/cross.json
+            jq -e '.reviewRequested==false and .dataConflict==false and (.candidateBasis|length>0)' "/tmp/${p}-second.json" >/dev/null
+            same_roster "/tmp/${p}-second.json"
+            valid_plan "/tmp/${p}-second.json"
+          done
+
+          jq -n --slurpfile c /tmp/case.json --slurpfile pm /tmp/melchior-primary.json --slurpfile pb /tmp/balthasar-primary.json --slurpfile pc /tmp/casper-primary.json --slurpfile sm /tmp/melchior-second.json --slurpfile sb /tmp/balthasar-second.json --slurpfile sc /tmp/casper-second.json --slurpfile x /tmp/cross.json '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > /tmp/final-body.json
+          curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
+          cat /tmp/final.json; echo
+
+          jq -e --slurpfile roster /tmp/roster.json '
+            .mode=="PITCHING_PLAN" and .status=="PITCHING_PLAN_RESULT" and
+            (.plan|length==4) and (([.plan[].name]|unique|length)==4) and
+            ([.plan[].name as $p | ($roster[0] | index($p)) != null] | all) and
+            ([.plan[].roleLabel] == ["先発","第2投手","終盤","クローザー"]) and
+            (.personaPlans|keys|length==3) and
+            (.crossDiscussion.challenges.melchior|length>0) and
+            (.crossDiscussion.challenges.balthasar|length>0) and
+            (.crossDiscussion.challenges.casper|length>0)
+          ' /tmp/final.json >/dev/null
+
+          echo 'PRODUCTION 7-INNING PITCHING PLAN DELIBERATION: PASS'
