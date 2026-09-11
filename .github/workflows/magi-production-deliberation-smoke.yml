@@ -67,6 +67,9 @@ jobs:
               ((.publicStatement//"")|length>0) and
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|contains("大野 竜暉")) and
+              ((.publicStatement//"")|contains("大久保 陽翔")|not) and
+              ((.primaryReason//"")|contains("大久保 陽翔")|not) and
+              (.checkedPlayers|length==0) and (.candidatePlayers|length==0) and ((.candidateBasis//"")|length==0) and
               (.facts|type=="array") and (.analysis|type=="array") and (.prediction|type=="array")
             ' "/tmp/${p}-primary.json" >/dev/null
           done
@@ -98,7 +101,9 @@ jobs:
               (.confidence|IN("HIGH","MEDIUM","LOW")) and
               ((.publicStatement//"")|length>0) and
               ((.primaryReason//"")|length>0) and
-              ((.publicStatement//"")|contains("大野 竜暉"))
+              ((.publicStatement//"")|contains("大久保 陽翔")|not) and
+              ((.primaryReason//"")|contains("大久保 陽翔")|not) and
+              (.checkedPlayers|length==0) and (.candidatePlayers|length==0) and ((.candidateBasis//"")|length==0)
             ' "/tmp/${p}-second.json" >/dev/null
           done
 
