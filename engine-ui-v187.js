@@ -117,7 +117,7 @@
     const finalTitle=document.querySelector('.final .title');if(finalTitle)finalTitle.textContent=isSelection?'《MAGI》選択審議結果':'《MAGI》総合判定';
     try{
       setStatus('Gemini接続を確認中…');const h=await health();setStatus(isSelection?`全員確認後、一次候補抽出を実行中…（${h.model}）`:`一次独立判定を実行中…（${h.model}）`);
-      const result=await MAGI_ENGINE_V1.deliberate({question:q,mode:isSelection?'selection':'proposal',objective:isSelection?'3賢人による候補比較・選択支援':'3賢人による意思決定支援',evidence:evidence?{count:evidence.count,files:evidence.files,text:evidence.text}:null},{
+      const result=await MAGI_ENGINE_V1.deliberate({question:q,mode:isSelection?'selection':'proposal',objective:isSelection?'3賢人による候補比較・選択支援':'3賢人による意思決定支援',evidence:evidence||null},{
         onPrimaryLocked:primary=>{showPrimary(primary,isSelection);setStatus(isSelection?'一次候補を公開。候補相互検証を実行中…':'一次判定を公開。相互検証を実行中…')},
         onCrossComplete:cross=>{showCross(cross);setStatus(isSelection?'候補相互検証を公開。二次候補選定を実行中…':'相互検証を公開。二次判定を実行中…')},
         onSecondComplete:second=>{showSecond(second,isSelection);setStatus(isSelection?'二次候補を公開。選択結果を集約中…':'二次判定を公開。最終決定を実行中…')},
