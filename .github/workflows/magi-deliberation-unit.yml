@@ -14,9 +14,11 @@ on:
       - 'server/api/magi/_persona-output-guard.js'
       - 'server/api/magi/_cross-output-guard.js'
       - 'server/api/magi/_roster.js'
+      - 'engine-ui-v187.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
       - 'scripts/test-derived-metric-label-guard.mjs'
+      - 'scripts/test-deliberation-evidence-bridge.mjs'
       - 'scripts/test-selection-peer-baseline.mjs'
       - 'scripts/test-selection-live-evidence.mjs'
       - 'scripts/test-full-lineup-selection.mjs'
@@ -50,6 +52,9 @@ jobs:
 
       - name: Run derived metric label guard cases
         run: node --experimental-default-type=module scripts/test-derived-metric-label-guard.mjs
+
+      - name: Run structured deliberation evidence bridge cases
+        run: node --experimental-default-type=module scripts/test-deliberation-evidence-bridge.mjs
 
       - name: Run selection peer-baseline guard cases
         run: node --experimental-default-type=module scripts/test-selection-peer-baseline.mjs
