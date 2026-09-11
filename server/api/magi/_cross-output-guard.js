@@ -1,6 +1,7 @@
 import { validatePersonaOutput } from './_persona-output-guard.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
+import { isPitchingPlanQuestion } from './_pitching-plan.js';
 
 function list(value){
   return Array.isArray(value) ? value.map(v=>String(v||'').trim()).filter(Boolean) : [];
@@ -90,11 +91,33 @@ export function validateFullLineupDialogueSpecificity(caseData,cross){
   return issues;
 }
 
+export function validatePitchingPlanDialogueSpecificity(caseData,cross){
+  if(!isPitchingPlanQuestion(caseData))return[];
+  const challenges=cross?.challenges||{};
+  const issues=[];
+  const targets=[
+    ['melchior','MELCHIOR-1'],
+    ['balthasar','BALTHASAR-2'],
+    ['casper','CASPER-3']
+  ];
+  const roleRe=/(?:先発|第?2投手|第二投手|二番手|2番手|終盤|つなぎ|ブリッジ|クローザー|抑え|守護神)/;
+  for(const [key,label] of targets){
+    const rows=list(challenges[key]);
+    if(!rows.length)continue;
+    const concrete=rows.some(line=>roleRe.test(line)&&CURRENT_ROSTER.some(name=>line.includes(name)));
+    if(!concrete){
+      issues.push(`${label}への投手運用クロス審議に、具体的な役割名と選手名の組み合わせがありません`);
+    }
+  }
+  return issues;
+}
+
 export function validateCrossOutput(caseData,cross,{focused=false}={}){
   return [
     ...validateDialoguePresence(cross),
     ...validateCrossLanguage(cross),
     ...validateFullLineupDialogueSpecificity(caseData,cross),
+    ...validatePitchingPlanDialogueSpecificity(caseData,cross),
     ...validatePersonaOutput(caseData,crossToGuardResult(cross),{focused})
   ];
 }
