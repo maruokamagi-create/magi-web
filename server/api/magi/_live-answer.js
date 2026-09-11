@@ -1,6 +1,6 @@
 import { runDriveLiveAudit } from './_drive-live-audit.js';
 
-const ANSWER_VERSION = 'live-xlsm-answer-v2-generic-player-stats';
+const ANSWER_VERSION = 'live-xlsm-answer-v3-exact-requested-metrics';
 
 function text(value) {
   return String(value || '').trim();
@@ -9,10 +9,10 @@ function text(value) {
 function seasonFromRequest(routed, question) {
   const q = text(question);
   const specific = text(routed?.specificSeason);
+  if (/通算|全期間/.test(q) || routed?.timeScope === 'CAREER') return 'career';
   if (/2025\s*[-–—〜~]\s*2026/.test(specific) || /2025\s*[-–—〜~]\s*2026/.test(q) || /旧チーム/.test(q)) return 'old';
   if (/2026\s*[-–—〜~]\s*2027/.test(specific) || /2026\s*[-–—〜~]\s*2027/.test(q) || /現チーム/.test(q)) return 'current';
   if (routed?.timeScope === 'PREVIOUS_SEASON' || /昨季|去年|前年度|前シーズン/.test(q)) return 'old';
-  if (routed?.timeScope === 'CAREER' || /通算|全期間/.test(q)) return 'career';
   return 'current';
 }
 
@@ -74,9 +74,27 @@ const PITCHING_METRICS = [
   { key:'WP', label:'暴投', re:/暴投/ }
 ];
 
-function detectMetric(question, metrics) {
+const TEAM_METRICS = [
+  { key:'OPS', label:'チームOPS', re:/チーム[^。！？!?]{0,12}OPS|OPS/i },
+  { key:'OBP', label:'チーム出塁率', re:/チーム[^。！？!?]{0,12}(?:出塁率|OBP)|出塁率|OBP/i },
+  { key:'SLG', label:'チーム長打率', re:/チーム[^。！？!?]{0,12}(?:長打率|SLG)|長打率|SLG/i }
+];
+
+function regexIndex(q, re) {
+  const flags = re.flags.replace('g','');
+  const copy = new RegExp(re.source, flags);
+  const m = copy.exec(q);
+  return m ? m.index : -1;
+}
+
+function detectMetrics(question, metrics) {
   const q = text(question);
-  return metrics.find(m => m.re.test(q)) || null;
+  return metrics
+    .map((metric, order) => ({ metric, index: regexIndex(q, metric.re), order }))
+    .filter(x => x.index >= 0)
+    .sort((a,b) => a.index - b.index || a.order - b.order)
+    .map(x => x.metric)
+    .filter((metric, index, all) => all.findIndex(x => x.key === metric.key) === index);
 }
 
 function sourceFromLive(live) {
@@ -93,24 +111,92 @@ function availableSummary(stats, preferred) {
   return preferred.filter(([key]) => stats?.[key] !== undefined && stats?.[key] !== '').map(([key,label]) => `${label}${stats[key]}`);
 }
 
-function answerSingleMetric({ routed, season, source, playerName, label, domainLabel, stats, metric }) {
-  const value = stats?.[metric.key];
-  if (value === undefined || value === '') {
-    return resultBase({
-      routed, season, source,
-      answer: `${playerName}の${label}${domainLabel}${metric.label}は、正本XLSMから確認できませんでした。数値は作りません。`,
-      refusedToInvent:true,
-      limitation:`${domainLabel === '投手' ? 'PITCHING' : 'BATTING'}_METRIC_MISSING_${metric.key}`
-    });
+function answerMetricSet({ routed, season, source, playerName, label, stats, metrics, domainLabel }) {
+  const found = [];
+  const missing = [];
+  for (const metric of metrics) {
+    const value = stats?.[metric.key];
+    if (value === undefined || value === '') missing.push(metric);
+    else found.push({ metric, value });
   }
+
+  const evidence = found.map(({metric,value}) => `${playerName}: ${metric.key}=${value}`);
+  const foundText = found.map(({metric,value}) => `${metric.label}は${value}`).join('、');
+  const missingText = missing.map(metric => metric.label).join('・');
+  let answer = '';
+  if (found.length) answer = `${playerName}の${label}${foundText}です。`;
+  if (missing.length) {
+    const prefix = answer ? `${answer.slice(0,-1)}。` : '';
+    answer = `${prefix}${playerName}の${label}${domainLabel}${missingText}は、正本XLSMから確認できませんでした。数値は作りません。`;
+  }
+
   return resultBase({
-    routed, season, source,
-    answer:`${playerName}の${label}${metric.label}は${value}です。`,
-    evidence:[`${playerName}: ${metric.key}=${value}`]
+    routed, season, source, answer, evidence,
+    refusedToInvent: missing.length > 0,
+    limitation: missing.length ? `${domainLabel === '投手' ? 'PITCHING' : 'BATTING'}_METRIC_MISSING_${missing.map(x=>x.key).join('_')}` : null
   });
 }
 
-export async function buildLiveAnswer({ question, routed }) {
+function teamMetricAnswer({ routed, season, source, label, team, metrics }) {
+  const found = [];
+  const missing = [];
+  for (const metric of metrics) {
+    const value = team?.[metric.key];
+    if (value === undefined || value === '') missing.push(metric);
+    else found.push({metric,value});
+  }
+  const parts = found.map(({metric,value}) => `${metric.label}は${value}`);
+  let answer = parts.length ? `${label}の${parts.join('、')}です。` : '';
+  if (missing.length) {
+    const msg = `${missing.map(x=>x.label).join('・')}を正本XLSMから確認できませんでした。数値は作りません。`;
+    answer = answer ? `${answer} ${msg}` : msg;
+  }
+  return resultBase({
+    routed, season, source, answer,
+    evidence: found.map(({metric,value})=>`${metric.key}=${value}`),
+    refusedToInvent: missing.length > 0,
+    limitation: missing.length ? `TEAM_METRIC_MISSING_${missing.map(x=>x.key).join('_')}` : null
+  });
+}
+
+function teamRecordAnswer({ routed, season, source, label, team, question }) {
+  const q = text(question);
+  const wantsGames = /試合数|何試合/.test(q);
+  const wantsDraws = /引き分け|分け|全部|すべて/.test(q);
+  const asksRecord = /何勝何敗|勝敗|成績|戦績|勝ち|負け|敗/.test(q);
+  const requested = [];
+  if (wantsGames) requested.push(['games','試合数','試合']);
+  if (asksRecord || !wantsGames) {
+    requested.push(['wins','勝','勝'],['losses','敗','敗']);
+    if (wantsDraws) requested.push(['draws','分','分']);
+  }
+  const missing = requested.filter(([key]) => team?.[key] === null || team?.[key] === undefined);
+  const found = requested.filter(([key]) => team?.[key] !== null && team?.[key] !== undefined);
+  let answer = `${label}のチーム成績は${found.map(([key,,suffix])=>`${team[key]}${suffix}`).join('')}です。`;
+  if (missing.length) {
+    answer += ` ${missing.map(([,name])=>name).join('・')}は正本XLSMから確認できませんでした。数値は作りません。`;
+  }
+  return resultBase({
+    routed, season, source, answer,
+    evidence: found.map(([key])=>`${key}=${team[key]}`),
+    refusedToInvent: missing.length > 0,
+    limitation: missing.length ? `TEAM_RECORD_MISSING_${missing.map(([key])=>key).join('_')}` : null
+  });
+}
+
+function overviewRequestedMetrics(question) {
+  const q = text(question);
+  let batting = detectMetrics(q, BATTING_METRICS);
+  let pitching = detectMetrics(q, PITCHING_METRICS);
+  if (/奪三振/.test(q)) batting = batting.filter(x => x.key !== 'SO');
+  if (/与四球/.test(q)) batting = batting.filter(x => x.key !== 'BB');
+  if (/被安打/.test(q)) batting = batting.filter(x => x.key !== 'H');
+  if (/被本塁打|被本塁/.test(q)) batting = batting.filter(x => x.key !== 'HR');
+  if (/投球回|イニング|登板|防御率|ERA|WHIP|自責点|失点|暴投|被打率/.test(q) && !/打撃|打率|OPS|出塁率|長打率|打点|安打|本塁打/.test(q)) batting = [];
+  return { batting, pitching };
+}
+
+export async function buildLiveAnswer({ question, routed, auditProvider = runDriveLiveAudit }) {
   const q = text(question);
 
   if (routed?.route === 'CLARIFY') {
@@ -124,7 +210,7 @@ export async function buildLiveAnswer({ question, routed }) {
   if (season === 'career') {
     return resultBase({
       routed, season,
-      answer:'通算成績は現チームと旧チームの同じ指標を合算・再計算する必要があります。現在のライブ回答ではまだ通算合算を接続していないため、数値は出しません。',
+      answer:'通算成績は現チームと旧チームを合算・再計算する必要があります。現在のライブ回答では誤集計防止のため、通算値はまだ出しません。',
       refusedToInvent:true,
       limitation:'CAREER_AGGREGATION_NOT_CONNECTED'
     });
@@ -141,24 +227,13 @@ export async function buildLiveAnswer({ question, routed }) {
   }
 
   if (routed.route === 'TEAM_LOOKUP') {
-    const live = await runDriveLiveAudit({ season, players:[] });
+    const live = await auditProvider({ season, players:[] });
     const source = sourceFromLive(live);
     const label = periodLabel(season, live);
     const team = live?.extracted?.team || {};
-    if (/OPS/i.test(q)) {
-      if (!team.OPS) return resultBase({ routed, season, source, answer:'チームOPSの計算に必要な正本データを確認できませんでした。', refusedToInvent:true, limitation:'TEAM_OPS_MISSING' });
-      return resultBase({ routed, season, source, answer:`${label}のチームOPSは${team.OPS}です。`, evidence:[`OPS=${team.OPS}`,`OBP=${team.OBP || ''}`,`SLG=${team.SLG || ''}`,`method=${team?.opsCalculation?.method || 'CALCULATED'}`] });
-    }
-    if (/出塁率|OBP/i.test(q)) {
-      return resultBase({ routed, season, source, answer:`${label}のチーム出塁率は${team.OBP}です。`, evidence:[`OBP=${team.OBP}`] });
-    }
-    if (/長打率|SLG/i.test(q)) {
-      return resultBase({ routed, season, source, answer:`${label}のチーム長打率は${team.SLG}です。`, evidence:[`SLG=${team.SLG}`] });
-    }
-    if ([team.wins,team.draws,team.losses].some(v => v === null || v === undefined)) {
-      return resultBase({ routed, season, source, answer:'チーム勝敗を正本XLSMから確認できませんでした。', refusedToInvent:true, limitation:'TEAM_RECORD_MISSING' });
-    }
-    return resultBase({ routed, season, source, answer:`${label}のチーム成績は${team.wins}勝${team.losses}敗${team.draws}分です。`, evidence:[`games=${team.games}`,`wins=${team.wins}`,`draws=${team.draws}`,`losses=${team.losses}`] });
+    const metrics = detectMetrics(q, TEAM_METRICS);
+    if (metrics.length) return teamMetricAnswer({ routed, season, source, label, team, metrics });
+    return teamRecordAnswer({ routed, season, source, label, team, question:q });
   }
 
   const players = Array.isArray(routed?.players) ? routed.players : [];
@@ -167,7 +242,7 @@ export async function buildLiveAnswer({ question, routed }) {
   }
 
   const playerName = players[0];
-  const live = await runDriveLiveAudit({ season, players:[playerName] });
+  const live = await auditProvider({ season, players:[playerName] });
   const source = sourceFromLive(live);
   const label = periodLabel(season, live);
   const player = live?.extracted?.playersByName?.[playerName] || null;
@@ -178,8 +253,8 @@ export async function buildLiveAnswer({ question, routed }) {
   if (routed.route === 'BATTING_LOOKUP') {
     const stats = player.batting;
     if (!stats) return resultBase({ routed, season, source, answer:`${playerName}の${label}打撃成績を正本XLSMから確認できませんでした。数値は作りません。`, refusedToInvent:true, limitation:'BATTING_NOT_FOUND' });
-    const metric = detectMetric(q, BATTING_METRICS);
-    if (metric) return answerSingleMetric({ routed, season, source, playerName, label, domainLabel:'打撃', stats, metric });
+    const metrics = detectMetrics(q, BATTING_METRICS);
+    if (metrics.length) return answerMetricSet({ routed, season, source, playerName, label, stats, metrics, domainLabel:'打撃' });
     const parts = availableSummary(stats, [['AVG','打率'],['OPS','OPS'],['H','安打'],['RBI','打点'],['HR','本塁打']]);
     return resultBase({ routed, season, source, answer:`${playerName}の${label}打撃成績は、${parts.join('、')}です。`, evidence:parts });
   }
@@ -187,14 +262,36 @@ export async function buildLiveAnswer({ question, routed }) {
   if (routed.route === 'PITCHING_LOOKUP') {
     const stats = player.pitching;
     if (!stats) return resultBase({ routed, season, source, answer:`${playerName}の${label}投手成績を正本XLSMから確認できませんでした。数値は作りません。`, refusedToInvent:true, limitation:'PITCHING_NOT_FOUND' });
-    const metric = detectMetric(q, PITCHING_METRICS);
-    if (metric) return answerSingleMetric({ routed, season, source, playerName, label, domainLabel:'投手', stats, metric });
+    const metrics = detectMetrics(q, PITCHING_METRICS);
+    if (metrics.length) return answerMetricSet({ routed, season, source, playerName, label, stats, metrics, domainLabel:'投手' });
     const parts = availableSummary(stats, [['ERA','防御率'],['IP','投球回'],['SO','奪三振'],['BB','与四球'],['WHIP','WHIP']]);
     return resultBase({ routed, season, source, answer:`${playerName}の${label}投手成績は、${parts.join('、')}です。`, evidence:parts });
   }
 
   const batting = player.batting;
   const pitching = player.pitching;
+  const requested = overviewRequestedMetrics(q);
+  if (requested.batting.length || requested.pitching.length) {
+    const found = [];
+    const missing = [];
+    for (const metric of requested.batting) {
+      const value = batting?.[metric.key];
+      if (value === undefined || value === '') missing.push(`打撃${metric.label}`); else found.push({domain:'B',metric,value});
+    }
+    for (const metric of requested.pitching) {
+      const value = pitching?.[metric.key];
+      if (value === undefined || value === '') missing.push(`投手${metric.label}`); else found.push({domain:'P',metric,value});
+    }
+    let answer = found.length ? `${playerName}の${label}${found.map(x=>`${x.metric.label}は${x.value}`).join('、')}です。` : '';
+    if (missing.length) answer += `${answer?' ':''}${missing.join('・')}は正本XLSMから確認できませんでした。数値は作りません。`;
+    return resultBase({
+      routed, season, source, answer,
+      evidence: found.map(x=>`${x.domain}:${x.metric.key}=${x.value}`),
+      refusedToInvent: missing.length > 0,
+      limitation: missing.length ? `PLAYER_OVERVIEW_METRIC_MISSING_${missing.join('_')}` : null
+    });
+  }
+
   const battingParts = batting ? availableSummary(batting, [['AVG','打率'],['OPS','OPS']]) : [];
   const pitchingParts = pitching ? availableSummary(pitching, [['ERA','防御率'],['IP','投球回'],['SO','奪三振'],['WHIP','WHIP']]) : [];
   if (!battingParts.length && !pitchingParts.length) {
