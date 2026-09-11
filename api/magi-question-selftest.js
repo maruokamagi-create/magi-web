@@ -1,4 +1,5 @@
 import { understandRequest } from '../server/api/magi/_semantic-request.js';
+import { applySemanticGuard } from '../server/api/magi/_semantic-postguard.js';
 
 const Q=[
 '次の試合の打順どうする？','大野をクローザー固定どう？','橋向と大久保ならどっちを先発？','最近の中嶋どう？','昨日の試合の負けた原因は？','4番は陽翔のままでいい？','武田をレフトで使うのどう？','今のチームの弱点は？','次の公式戦で勝つには？','この試合の総括して',
@@ -71,7 +72,7 @@ export default async function handler(req,res){
   const results=[];
   for(const id of ids){
     try{
-      const semantic=await understandRequest(Q[id-1],CTX[id]||[]);
+      const semantic=applySemanticGuard(Q[id-1],CTX[id]||[],await understandRequest(Q[id-1],CTX[id]||[]));
       results.push({id,question:Q[id-1],pass:judge(id,semantic),semanticVersion:semantic.semanticVersion||'',mode:semantic.mode,players:semantic.players||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||'',understoodRequest:semantic.understoodRequest||'',preflightApplied:semantic.preflightApplied===true});
     }catch(error){results.push({id,question:Q[id-1],pass:false,error:error?.message||String(error)});}
   }
