@@ -67,22 +67,50 @@ function rosterStatus(values) {
   };
 }
 
-function normalizeConditionalJudgment(result, selectionMode) {
+export function normalizeConditionalJudgment(result, selectionMode) {
   if (selectionMode || String(result?.judgment || '').toUpperCase() !== 'YELLOW') return result;
-  const text = [
-    result?.publicStatement,
-    result?.primaryReason,
-    result?.candidateBasis,
-    result?.changeReason,
-    ...(Array.isArray(result?.analysis) ? result.analysis : [])
-  ].map(v => String(v || '')).join(' ');
+  const stanceText = [result?.publicStatement, result?.primaryReason]
+    .map(v => String(v || '').trim())
+    .filter(Boolean)
+    .join(' ');
+
+  const explicitHold =
+    /判断(?:を|は)?(?:保留|留保)/.test(stanceText) ||
+    /(?:判断材料|データ|記録|根拠|材料).{0,18}(?:不足|足りない|足りません|揃っていない|揃っていません)/.test(stanceText) ||
+    /(?:結論|判断).{0,12}(?:出せない|出せません|下せない|下せません|できない|できません)/.test(stanceText) ||
+    /(?:固定|決定|即断).{0,16}(?:早い|早すぎ|推奨できない|勧められない|見送る)/.test(stanceText) ||
+    /判断(?:は|を)?変え(?:ない|ません|られない|られません)/.test(stanceText);
+  if (explicitHold) return result;
+
   const supportsConditionalAction =
-    /条件(?:を|付き|つき|付け|つけ).{0,24}(?:暫定|期限|起用|採用|運用|賛成)/.test(text) ||
-    /(?:暫定|期限付き|当面).{0,20}(?:起用|採用|運用|任せ|送り出|賛成)/.test(text) ||
-    /(?:なら|であれば).{0,16}(?:賛成|起用でき|採用でき|任せられ)/.test(text);
+    /条件(?:付き|つき|を付け|をつけ).{0,24}(?:起用|採用|運用|賛成|任せ|使|試|進め)/.test(stanceText) ||
+    /(?:条件付き|期限付き|暫定|当面).{0,24}(?:なら|で|として)?.{0,12}(?:起用|採用|運用|賛成|任せ|使|試|進め)/.test(stanceText) ||
+    /(?:なら|であれば).{0,20}(?:賛成|起用でき|採用でき|任せられ|使える|試せる)/.test(stanceText) ||
+    /無条件.{0,20}(?:ではなく|でなく).{0,20}(?:条件付き|見直し可能).{0,24}(?:起用|運用|採用|使)/.test(stanceText);
   if (supportsConditionalAction) {
     result.judgment = 'BLUE';
     result.warnings = [...new Set(Array.isArray(result.warnings) ? result.warnings : [])];
+  }
+  return result;
+}
+
+export function normalizeChangeTracking(result, phase, primarySelf) {
+  if (phase !== 'SECOND') {
+    result.changedFromPrimary = false;
+    result.changeReason = '';
+    return result;
+  }
+  const valid = new Set(['GREEN','BLUE','YELLOW','RED']);
+  const previous = String(primarySelf?.judgment || '').toUpperCase();
+  const current = String(result?.judgment || '').toUpperCase();
+  if (!valid.has(previous) || !valid.has(current)) return result;
+
+  const changed = previous !== current;
+  result.changedFromPrimary = changed;
+  if (!changed) {
+    result.changeReason = '';
+  } else if (!String(result?.changeReason || '').trim()) {
+    result.changeReason = `一次判断 ${previous} から ${current} へ変更。`;
   }
   return result;
 }
@@ -162,7 +190,11 @@ export default async function handler(req, res) {
       userPayload: payload,
       responseSchema: schema
     });
-    let result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase);
+    let result = normalizeChangeTracking(
+      normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
+      phase,
+      body.primarySelf
+    );
     let guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
 
     for (let attempt = 0; guardIssues.length && attempt < 2; attempt++) {
@@ -178,16 +210,16 @@ export default async function handler(req, res) {
         userPayload: correctionPayload,
         responseSchema: schema
       });
-      result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase);
+      result = normalizeChangeTracking(
+        normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
+        phase,
+        body.primarySelf
+      );
       guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
     }
 
     result.persona = persona.toUpperCase();
     result.phase = phase;
-    if (phase === 'PRIMARY') {
-      result.changedFromPrimary = false;
-      result.changeReason = '';
-    }
 
     if (guardIssues.length) failClosedPersona(result, guardIssues);
 
@@ -218,6 +250,7 @@ export default async function handler(req, res) {
       }
     }
 
+    normalizeChangeTracking(result, phase, body.primarySelf);
     return sendJson(res, 200, canonicalizePlayerData(result));
   } catch (error) {
     const status = error?.message === 'Request body too large' ? 413 : 500;
