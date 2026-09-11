@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, THIRD_YEAR_ROSTER, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v3-robust-input';
+export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v3.1-robust-input';
 
 const MODES = ['SINGLE_VALUE','SUMMARY','FULL_REPORT','COMPARISON','DELIBERATION','DOCUMENT_SEARCH','GENERAL','CLARIFY'];
 const DOMAINS = ['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM','DOCUMENTS','OTHER'];
@@ -69,6 +69,7 @@ const SYSTEM = `
 - 旧チーム選手を「次の試合」「今のチーム」の起用候補として扱う場合、仮定の話だと文脈で明確でない限り確認する。
 - 「今日」「昨日」などの相対日時は currentDateJst を基準に解釈する。別の日の「直近の試合」「直近の敗戦」へ勝手に読み替えない。
 - 「橋向は投手じゃないやろ？」のような既知選手の事実確認は、意味が明確なら不要に聞き返さず GENERAL または SINGLE_VALUE とする。
+- 「メンタルが弱い」「やる気がない」などの内面断定や、単一行動だけから人物全体を断定する要求には迎合しない。対象が分かっている場合は、観察可能な行動・記録と評価を分離して扱う。
 - breakdowns はユーザーが明示したものに加え、FULL_REPORTで標準表示として有用なものを含めてもよい。ただし領域に不適切な内訳は入れない。
 - confidence が HIGH でない、実質的に複数解釈が残る、または clarificationQuestion が必要なら CLARIFY。
 - understoodRequest はユーザーの意図を膨らませず、日本語1文で具体的に言い換える。
@@ -180,6 +181,18 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
     return clarifyResult(q,`「${ambiguous.part}」は複数の選手がいます。${ambiguous.owners.join(' と ')}のどちらですか？`,'公式名の一部が複数選手に一致するため、人物を自動確定しない。',directGrounded.filter(p=>!ambiguous.owners.includes(p)));
   }
 
+  if(!grounded.length&&/(?:クローザ|クローザー).{0,4}固定/.test(q)){
+    return clarifyResult(q,'誰をクローザーに固定する案ですか？ 選手名を教えてください。','役割は明確だが対象選手が特定できない。',[]);
+  }
+
+  if(grounded.length===1&&/(?:メンタル.{0,5}(?:弱|強)|やる気.{0,4}(?:ない|ある)|遅刻.{0,8}(?:ダメ|駄目|だめ))/.test(q)){
+    return directResult(q,{mode:'DELIBERATION',players:grounded,domains:['DEVELOPMENT','TEAM'],timeScope:'CURRENT_SEASON',understoodRequest:`${grounded[0]}について、内面や人格を断定せず観察可能な行動・記録と改善経過から評価する`,routeReason:'内面の決めつけや単一行動だけの人物断定に迎合せず、観察可能な事実へ分離して審議する。'});
+  }
+
+  if(grounded.length===1&&/一番うまい/.test(q)){
+    return clarifyResult(q,'「一番うまい」は、打撃・投手・守備・走塁・総合のどの基準で比べますか？','評価軸が複数あり、同意圧力に迎合せず基準を確認する。',grounded);
+  }
+
   if(genericStatusQuestion(q,grounded)){
     return directResult(q,{mode:'GENERAL',players:grounded,domains:['OTHER'],timeScope:/最近/.test(q)?'RECENT':'CURRENT_SEASON',understoodRequest:`${grounded[0]}の現在の状態や最近の評価を知りたい`,routeReason:'既知の選手に対する総合的な近況質問。特定成績種別を勝手に要求しない。'});
   }
@@ -250,6 +263,14 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
     return clarifyResult(q,'今季の現チーム14人を対象に、打撃だけで9人を選ぶという意味でよいですか？','対象期間と対象選手範囲の確認が必要。',grounded);
   }
 
+  if(/守備うまい順にして/.test(q)){
+    return clarifyResult(q,'守備位置ごとに評価しますか？ それとも全ポジションをまとめて、捕球・送球・範囲などの総合守備で比べますか？','守備はポジション差が大きく、評価軸を確認する必要がある。',grounded);
+  }
+
+  if(/この選手伸びる/.test(q)&&!grounded.length){
+    return clarifyResult(q,'どの選手の成長や将来性についてですか？ 選手名を教えてください。','育成評価の対象人物が特定できない。',[]);
+  }
+
   if(/3年生も入れてベストオーダー/.test(q)){
     return clarifyResult(q,'現チームでは3年生は引退済みです。旧チームを含む仮想ベストオーダーとして組むという意味ですか？','現チームの対象年度と矛盾する可能性がある。',grounded);
   }
@@ -260,6 +281,22 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
 
   if(/次の試合誰せんぱつ/.test(q)){
     return directResult(q,{mode:'DELIBERATION',domains:['PITCHING','TACTICS'],timeScope:'UNSPECIFIED',understoodRequest:'次の試合の先発投手を検討する',routeReason:'次戦の先発起用相談。'});
+  }
+
+  if(/近藤先生なら絶対こうする/.test(q)&&!suppliedContext.length){
+    return clarifyResult(q,'「こうする」は、どの起用案や判断のことですか？ 内容を教えてください。近藤先生本人の意思としては断定せず、これまでの方針から推測として扱います。','指示内容が不明で、本人の意思を捏造しない。',grounded);
+  }
+
+  if(/2年はこの2人以外使えん/.test(q)&&!suppliedContext.length){
+    return clarifyResult(q,'「この2人」は誰と誰ですか？ 2人を特定してから、他の2年生も含めてデータと育成面を分けて評価します。','指示語の対象が不明で、排他的評価に迎合しない。',grounded);
+  }
+
+  if(/俺の案に賛成して/.test(q)&&!suppliedContext.length){
+    return clarifyResult(q,'どの案についてですか？ 案を示してください。MAGIは賛成ありきではなく、3賢人が独立して判断します。','対象案が不明で、依頼者への迎合をしない。',grounded);
+  }
+
+  if(/反対意見いらんから賛成だけ出して/.test(q)&&!suppliedContext.length){
+    return clarifyResult(q,'どの案についてですか？ 内容を教えてください。審議では反対・保留も含め、3賢人の独立判断を保持します。','対象案が不明で、反対意見を消す指示には従わない。',grounded);
   }
 
   if(/(?:2|二)\s*打席/.test(q)&&/評価/.test(q)&&grounded.length!==1){
