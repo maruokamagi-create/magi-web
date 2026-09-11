@@ -25,8 +25,23 @@ export function crossToGuardResult(cross){
   };
 }
 
+export function validateDialoguePresence(cross){
+  const challenges=cross?.challenges||{};
+  const issues=[];
+  const m=list(challenges.melchior), b=list(challenges.balthasar), c=list(challenges.casper);
+  if(!m.length)issues.push('MELCHIOR-1から他賢人へのクロス審議がありません');
+  if(!b.length)issues.push('BALTHASAR-2から他賢人へのクロス審議がありません');
+  if(!c.length)issues.push('CASPER-3から他賢人へのクロス審議がありません');
+  const first=[m[0],b[0],c[0]].filter(Boolean);
+  if(first.length===3&&new Set(first).size<2)issues.push('3賢人のクロス審議が同一文に偏っています');
+  return issues;
+}
+
 export function validateCrossOutput(caseData,cross,{focused=false}={}){
-  return validatePersonaOutput(caseData,crossToGuardResult(cross),{focused});
+  return [
+    ...validateDialoguePresence(cross),
+    ...validatePersonaOutput(caseData,crossToGuardResult(cross),{focused})
+  ];
 }
 
 export function failClosedCross(issues){
