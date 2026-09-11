@@ -109,12 +109,12 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
 function hasUnhedgedOutcomePrediction(sentence){
   const s=String(sentence||'');
   const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|チーム力|コンディション|パフォーマンス|故障|低下|改善|回復|好機|機会)/.test(s);
-  const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着)/.test(s);
+  const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着|高ま|高め|育つ|育て)/.test(s);
   if(!outcome&&!directFuture)return false;
   const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|し得る|あり得る)/.test(s);
   const hard=/(?:絶対|必ず|確実に)/.test(s);
   if(hard)return true;
-  const causalGuarantee=/(?:ことで|すれば|なら|場合|と|ば|たら).{0,64}(?:成長する|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる)/.test(s);
+  const causalGuarantee=/(?:ことで|すれば|なら|場合|なければ|れば|と|ば|たら).{0,80}(?:成長する|成長し|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる|狂う|崩れる|悪化する|高まる|高める|育つ|育てる|育てていく|できます|できる)/.test(s);
   return (causalGuarantee||directFuture)&&!hedge;
 }
 
@@ -170,7 +170,9 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const unsupportedRole=[
       /旧チーム(?:同様|でも|で).{0,40}(?:締め|クローザー|抑え|守護神|セーブ)/,
       /旧チーム.{0,40}(?:プレッシャー|勝負どころ|重要な場面|高レバレッジ).{0,24}(?:経験|実績|対応|強い|慣れ)/,
-      /(?:54(?:\.0)?回|投球回).{0,40}(?:プレッシャー|勝負どころ|重要な場面|終盤).{0,24}(?:経験|実績|対応|強い|慣れ)/
+      /(?:54(?:\.0)?回|投球回).{0,40}(?:プレッシャー|勝負どころ|重要な場面|終盤).{0,24}(?:経験|実績|対応|強い|慣れ)/,
+      /(?:不慣れ|慣れていない|経験不足).{0,20}(?:緊迫|プレッシャー|終盤|勝負どころ|重要な場面)/,
+      /(?:緊迫|プレッシャー|終盤|勝負どころ|重要な場面).{0,20}(?:不慣れ|慣れていない|経験不足)/
     ];
     const unsupportedSentence=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedRole.some(re=>re.test(sentence)));
     if(unsupportedSentence)issues.push('旧チームのクローザー・終盤・高圧場面の実績がEvidenceにないのに、その役割経験を前提にしている');
