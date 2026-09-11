@@ -28,6 +28,7 @@ assert.equal(selectionEvidenceKind('1番は誰がいい？',{players:[],domains:
 assert.equal(selectionEvidenceKind('2番どう組む？',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
 assert.equal(selectionEvidenceKind('5番は誰がいい？',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
 assert.equal(selectionEvidenceKind('ベストオーダーを組んで',{players:[],domains:['LINEUP']}),'FULL_LINEUP');
+assert.equal(selectionEvidenceKind('7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',{players:[],domains:['PITCHING','TACTICS']}),'PITCHING_PLAN');
 assert.equal(selectionEvidenceKind('先発投手は誰がいい？',{players:[],domains:['PITCHING']}),'PITCHING_ROLE');
 assert.equal(selectionEvidenceKind('クローザーは誰がいい？',{players:[],domains:['PITCHING']}),'PITCHING_ROLE');
 assert.equal(shouldBuildCurrentSelectionEvidence('3番は誰がいい？',{players:[],domains:['LINEUP']}),true);
@@ -65,6 +66,15 @@ assert.ok(pitchingPacket.text.includes('防御率'));
 assert.ok(pitchingPacket.text.includes('旧チーム'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('投球回'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('登板数'));
+
+const pitchingPlanPacket=await buildCurrentSelectionEvidence({question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',routed:{players:[],domains:['PITCHING','TACTICS']},auditProvider:fakeAudit});
+assert.equal(pitchingPlanPacket.selectionKind,'PITCHING_PLAN');
+assert.ok(pitchingPlanPacket.text.includes('【現チーム全14選手・投手】'));
+assert.ok(pitchingPlanPacket.text.includes('先発 → 第2投手 → 終盤 → クローザー'));
+assert.ok(pitchingPlanPacket.text.includes('異なる4投手'));
+assert.ok(pitchingPlanPacket.text.includes('高圧場面適性はEvidenceに明示されていない限り捏造しない'));
+assert.ok(pitchingPlanPacket.summary.includes('7回制4役投手運用'));
+assert.ok(pitchingPlanPacket.sampleSizeRule.includes('投球回'));
 
 const incomplete={...currentPlayers};delete incomplete[CURRENT_ROSTER[0]];
 await assert.rejects(()=>buildCurrentSelectionEvidence({
