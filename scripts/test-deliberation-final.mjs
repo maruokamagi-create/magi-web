@@ -94,6 +94,18 @@ test('R02 consensus recommendation follows majority judgment',()=>{
   assert.match(r.recommendation,/賛成判断/);
 });
 
+test('R03 deadlock has no false minority label',()=>{
+  const r=buildFinalResult({
+    melchior:persona('MELCHIOR','YELLOW',{primaryReason:'判断保留'}),
+    balthasar:persona('BALTHASAR','RED',{primaryReason:'固定しない'}),
+    casper:persona('CASPER','BLUE',{primaryReason:'条件付きで試す'})
+  },{});
+  assert.equal(r.status,'MAGI_DEADLOCK');
+  assert.equal(r.vote,'1-1-1');
+  assert.equal(r.minorityOpinion,'');
+  assert.equal(r.majorReasons.length,3);
+});
+
 // Selection aggregation: no hard-coded clean-up wording, preserve split/review states.
 test('C01 shared top candidate produces selection result',()=>{
   const second={
