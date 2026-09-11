@@ -29,9 +29,12 @@ assert.equal(selectionEvidenceKind('2番どう組む？',{players:[],domains:['L
 assert.equal(selectionEvidenceKind('5番は誰がいい？',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
 assert.equal(selectionEvidenceKind('ベストオーダーを組んで',{players:[],domains:['LINEUP']}),'FULL_LINEUP');
 assert.equal(selectionEvidenceKind('7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',{players:[],domains:['PITCHING','TACTICS']}),'PITCHING_PLAN');
+assert.equal(selectionEvidenceKind('投手リレーどう組む？',{players:[],domains:['PITCHING','TACTICS']}),'PITCHING_PLAN');
+assert.equal(selectionEvidenceKind('継投どうする？',{players:[],domains:['PITCHING','TACTICS']}),'PITCHING_PLAN');
 assert.equal(selectionEvidenceKind('先発投手は誰がいい？',{players:[],domains:['PITCHING']}),'PITCHING_ROLE');
 assert.equal(selectionEvidenceKind('クローザーは誰がいい？',{players:[],domains:['PITCHING']}),'PITCHING_ROLE');
 assert.equal(shouldBuildCurrentSelectionEvidence('3番は誰がいい？',{players:[],domains:['LINEUP']}),true);
+assert.equal(shouldBuildCurrentSelectionEvidence('投手リレーどう組む？',{players:[],domains:['PITCHING','TACTICS']}),true);
 assert.equal(shouldBuildCurrentSelectionEvidence('大野 竜暉を3番にする？',{players:['大野 竜暉'],domains:['LINEUP']}),false);
 assert.equal(shouldBuildCurrentSelectionEvidence('大野 竜暉のOPSは？',{players:['大野 竜暉'],domains:['BATTING']}),false);
 
@@ -75,6 +78,12 @@ assert.ok(pitchingPlanPacket.text.includes('異なる4投手'));
 assert.ok(pitchingPlanPacket.text.includes('高圧場面適性はEvidenceに明示されていない限り捏造しない'));
 assert.ok(pitchingPlanPacket.summary.includes('7回制4役投手運用'));
 assert.ok(pitchingPlanPacket.sampleSizeRule.includes('投球回'));
+
+const genericPitchingPlanPacket=await buildCurrentSelectionEvidence({question:'投手リレーどう組む？',routed:{players:[],domains:['PITCHING','TACTICS']},auditProvider:fakeAudit});
+assert.equal(genericPitchingPlanPacket.selectionKind,'PITCHING_PLAN');
+assert.equal(genericPitchingPlanPacket.count,14);
+assert.equal(genericPitchingPlanPacket.primarySeason,'current');
+assert.equal(genericPitchingPlanPacket.historicalReference.candidateEligible,false);
 
 const incomplete={...currentPlayers};delete incomplete[CURRENT_ROSTER[0]];
 await assert.rejects(()=>buildCurrentSelectionEvidence({
