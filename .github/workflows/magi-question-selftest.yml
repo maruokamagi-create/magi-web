@@ -5,6 +5,8 @@ on:
     branches: [main]
     paths:
       - 'server/api/magi/_semantic-request.js'
+      - 'server/api/magi/_semantic-postguard.js'
+      - 'server/api/magi/core.js'
       - 'api/magi-question-selftest.js'
       - '.github/workflows/magi-question-selftest.yml'
   workflow_dispatch:
@@ -18,17 +20,18 @@ jobs:
         shell: bash
         run: |
           set -e
-          URL='https://magi-web.vercel.app/api/magi-question-selftest?batch=0'
-          for i in $(seq 1 30); do
+          URL='https://magi-web.vercel.app/api/magi-question-selftest?batch=12'
+          for i in $(seq 1 60); do
             code=$(curl -L -sS -o /tmp/probe.json -w '%{http_code}' "$URL" || true)
-            if [ "$code" = "200" ] && grep -q '"ok":true' /tmp/probe.json; then
-              echo "Production selftest endpoint is ready."
+            if [ "$code" = "200" ] && jq -e '.results[] | select(.id == 65 and .pass == true and (.semanticVersion | contains("postguard-v1")))' /tmp/probe.json >/dev/null 2>&1; then
+              echo "Latest production selftest endpoint is ready."
+              cat /tmp/probe.json
               exit 0
             fi
-            echo "Waiting for deployment... attempt $i, HTTP $code"
+            echo "Waiting for latest deployment... attempt $i, HTTP $code"
             sleep 10
           done
-          echo 'Production endpoint did not become ready.'
+          echo 'Latest production endpoint did not become ready.'
           cat /tmp/probe.json || true
           exit 1
 
