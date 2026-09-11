@@ -91,25 +91,31 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
   if(!innings.length)return;
   for(const sentence of parts){
     if(/投球回|イニング/.test(sentence))continue;
-    const m=sentence.match(/(?:サンプル|現チーム).{0,24}?([0-9]+(?:\.[0-9]+)?)\s*回/);
-    if(!m)continue;
-    const n=numberValue(m[1]);
-    if(n===null)continue;
-    if(innings.some(x=>sameNumber(x,n))&&!appearances.some(x=>sameNumber(x,n))){
-      issues.push(`投球回${m[1]} を単位不明の「${m[1]}回」と表現している`);
+    const candidates=[];
+    const explicitBare=sentence.match(/(?:サンプル|現チーム).{0,24}?([0-9]+(?:\.[0-9]+)?)\s*回/);
+    if(explicitBare)candidates.push({value:explicitBare[1],label:`${explicitBare[1]}回`});
+    const unlabeledNearJudgment=sentence.match(/([0-9]+(?:\.[0-9]+)?)\s*(?:と|で|しか|のみ)(?:少な|小さ)/);
+    if(unlabeledNearJudgment)candidates.push({value:unlabeledNearJudgment[1],label:unlabeledNearJudgment[1]});
+    for(const candidate of candidates){
+      const n=numberValue(candidate.value);
+      if(n===null)continue;
+      if(innings.some(x=>sameNumber(x,n))&&!appearances.some(x=>sameNumber(x,n))){
+        issues.push(`投球回${candidate.value} を単位不明の「${candidate.label}」と表現している`);
+      }
     }
   }
 }
 
 function hasUnhedgedOutcomePrediction(sentence){
   const s=String(sentence||'');
-  const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|コンディション|パフォーマンス|故障|低下|改善|回復)/.test(s);
-  if(!outcome)return false;
-  const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|場合|なら|次第|し得る|あり得る)/.test(s);
+  const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|チーム力|コンディション|パフォーマンス|故障|低下|改善|回復|好機|機会)/.test(s);
+  const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着)/.test(s);
+  if(!outcome&&!directFuture)return false;
+  const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|し得る|あり得る)/.test(s);
   const hard=/(?:絶対|必ず|確実に)/.test(s);
   if(hard)return true;
-  const causalGuarantee=/(?:ことで|すれば|なら).{0,48}(?:成長する|定着する|勝てる|勝利できる|維持できる|改善する|回復する)/.test(s);
-  return causalGuarantee&&!hedge;
+  const causalGuarantee=/(?:ことで|すれば|なら|場合|と|ば|たら).{0,64}(?:成長する|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる)/.test(s);
+  return (causalGuarantee||directFuture)&&!hedge;
 }
 
 export function validatePersonaOutput(caseData,result,{focused=false}={}){
@@ -176,7 +182,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       /負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度)/,
       /蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)/,
       /(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/,
-      /(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/
+      /(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/,
+      /(?:兼任|負担|固定).{0,48}(?:半年後|来年|将来|今後).{0,24}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化)/
     ];
     const unsupportedSentence=assertiveParts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedBurden.some(re=>re.test(sentence)));
     if(unsupportedSentence)issues.push('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
@@ -184,6 +191,9 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   if(parts.some(sentence=>/(?:絶対|必ず|確実に).{0,24}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事|拾)/.test(sentence))){
     issues.push('Evidenceから保証できない結果を断定している');
+  }
+  if(assertiveParts.some(hasUnhedgedOutcomePrediction)){
+    issues.push('分析・回答で将来結果を不確実性の表現なしに確定結果として述べている');
   }
   if(predictionParts.some(hasUnhedgedOutcomePrediction)){
     issues.push('将来予測を不確実性の表現なしに確定結果として述べている');
