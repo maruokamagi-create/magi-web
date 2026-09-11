@@ -5,6 +5,10 @@ on:
     paths:
       - 'engine-ui-v187.js'
       - 'scripts/test-engine-ui-selection-mode.mjs'
+      - 'scripts/test-client-server-selection-alignment.mjs'
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_pitching-plan.js'
+      - 'server/api/magi/_full-lineup.js'
       - '.github/workflows/magi-engine-ui-selection-unit.yml'
   workflow_dispatch:
 
@@ -18,3 +22,5 @@ jobs:
           node-version: '22'
       - name: Test client selection routing
         run: node scripts/test-engine-ui-selection-mode.mjs
+      - name: Test client server selection alignment
+        run: node scripts/test-client-server-selection-alignment.mjs
