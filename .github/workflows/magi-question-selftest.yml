@@ -35,39 +35,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          rm -f /tmp/all-results.ndjson
-          total=0
-          passed=0
-          failed=0
+          : > /tmp/all-results.ndjson
           for batch in $(seq 0 18); do
             echo "=== batch $batch ==="
             curl -L --fail --retry 2 --retry-delay 3 -sS "https://magi-web.vercel.app/api/magi-question-selftest?batch=$batch" -o "/tmp/batch-$batch.json"
             cat "/tmp/batch-$batch.json"
             echo
-            python - "$batch" <<'PY'
-import json,sys
-b=sys.argv[1]
-p=f'/tmp/batch-{b}.json'
-d=json.load(open(p,encoding='utf-8'))
-assert d.get('ok') is True, d
-for r in d.get('results',[]):
-    print(json.dumps(r,ensure_ascii=False))
-PY
-            python - "$batch" >> /tmp/all-results.ndjson <<'PY'
-import json,sys
-b=sys.argv[1]
-d=json.load(open(f'/tmp/batch-{b}.json',encoding='utf-8'))
-for r in d.get('results',[]): print(json.dumps(r,ensure_ascii=False))
-PY
+            jq -c '.results[]' "/tmp/batch-$batch.json" >> /tmp/all-results.ndjson
           done
-          python - <<'PY'
-import json
-rows=[json.loads(x) for x in open('/tmp/all-results.ndjson',encoding='utf-8') if x.strip()]
-failed=[r for r in rows if not r.get('pass')]
-print(f'RESULT: {len(rows)-len(failed)}/{len(rows)} PASS, {len(failed)} FAIL')
-if failed:
-    print('FAILED IDS:', ', '.join(str(r.get('id')) for r in failed))
-    for r in failed:
-        print(json.dumps(r,ensure_ascii=False))
-    raise SystemExit(1)
-PY
+          total=$(wc -l < /tmp/all-results.ndjson | tr -d ' ')
+          failed=$(jq -s '[.[] | select(.pass != true)] | length' /tmp/all-results.ndjson)
+          passed=$((total-failed))
+          echo "RESULT: ${passed}/${total} PASS, ${failed} FAIL"
+          if [ "$failed" -ne 0 ]; then
+            echo 'FAILED CASES:'
+            jq -s -c '.[] | select(.pass != true)' /tmp/all-results.ndjson
+            exit 1
+          fi
