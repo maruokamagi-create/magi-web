@@ -6,20 +6,20 @@
 <meta name="robots" content="noindex,nofollow">
 <title>MAGI-WEB Question Understanding v1.2 Test</title>
 <style>
-:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:920px;margin:auto;padding:22px 14px 40px}h1{font-size:26px;margin:0 0 8px}.sub{color:#9db4c7;line-height:1.65}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:14px 0}button,a.btn{display:inline-block;border:0;border-radius:12px;padding:12px 16px;font-weight:800;background:#edf6ff;color:#07111f;text-decoration:none}.row{background:#071827;border:1px solid #284966;border-radius:14px;padding:12px;margin:10px 0}.row.pass{border-color:#2c6a4b}.row.fail{border-color:#8b4040}.row.skip{border-color:#75642c}.ok{color:#8ce0b4}.bad{color:#ff9898}.warn{color:#f3d779}.meta{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;line-height:1.6;word-break:break-word}.q{font-size:16px;font-weight:800;margin:8px 0}.top{display:flex;justify-content:space-between;gap:10px}.note{font-size:13px;color:#bad0e1;line-height:1.55}.summary{font-size:18px;font-weight:800}.small{font-size:12px;color:#9db4c7;margin-top:8px}.authHelp{display:none;margin-top:12px;padding:14px;border:1px solid #8b4040;border-radius:14px;background:#2a1218;line-height:1.65}.authHelp strong{color:#ff9898}.authHelp .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}</style>
+:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:920px;margin:auto;padding:22px 14px 40px}h1{font-size:26px;margin:0 0 8px}.sub{color:#9db4c7;line-height:1.65}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:14px 0}button,a.btn{display:inline-block;border:0;border-radius:12px;padding:12px 16px;font-weight:800;background:#edf6ff;color:#07111f;text-decoration:none}.row{background:#071827;border:1px solid #284966;border-radius:14px;padding:12px;margin:10px 0}.row.pass{border-color:#2c6a4b}.row.fail{border-color:#8b4040}.ok{color:#8ce0b4}.bad{color:#ff9898}.meta{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;line-height:1.6;word-break:break-word}.q{font-size:16px;font-weight:800;margin:8px 0}.top{display:flex;justify-content:space-between;gap:10px}.note{font-size:13px;color:#bad0e1;line-height:1.55}.summary{font-size:18px;font-weight:800}.small{font-size:12px;color:#9db4c7;margin-top:8px}.authHelp{display:none;margin-top:12px;padding:14px;border:1px solid #8b4040;border-radius:14px;background:#2a1218;line-height:1.65}.authHelp strong{color:#ff9898}.authHelp .actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}</style>
 </head>
 <body><div class="wrap">
 <h1>MAGI-WEB 質問理解 v1.2 実装テスト</h1>
 <div class="sub">本番の <code>/api/magi/core</code> を同一オリジンで呼び、人物取り違え・曖昧入力・相対日時・旧現チーム混同の高リスク11ケースを確認します。メインUIは変更しません。</div>
-<div class="card"><button id="run">11ケース開始</button><div id="summary" class="summary" style="margin-top:12px">未実行</div><div id="version" class="meta"></div><div class="small">※ MAGI-WEB本体と同じブラウザの承認済みセッションが必要です。</div><div id="authHelp" class="authHelp"><strong>認証されていません。</strong><br>このテスト画面をChatGPT内ブラウザなど別ブラウザで開くと、MAGI-WEB本体のLINEログイン状態は引き継がれません。<br><br>普段MAGI-WEBを使っているChromeでこのページを開くか、下の「MAGI-WEBを開く」から同じブラウザ内でログインしてから戻ってください。<div class="actions"><a class="btn" href="/">MAGI-WEBを開く</a><button type="button" onclick="location.reload()">テスト画面を再読み込み</button></div></div></div>
+<div class="card"><button id="run">11ケース開始</button><div id="summary" class="summary" style="margin-top:12px">未実行</div><div id="version" class="meta"></div><div class="small">※ MAGI-WEB本体と同じブラウザの承認済みセッションが必要です。通信失敗は1回だけ自動再試行します。</div><div id="authHelp" class="authHelp"><strong>認証されていません。</strong><br>このテスト画面をChatGPT内ブラウザなど別ブラウザで開くと、MAGI-WEB本体のLINEログイン状態は引き継がれません。<br><br>普段MAGI-WEBを使っているChromeでこのページを開くか、下の「MAGI-WEBを開く」から同じブラウザ内でログインしてから戻ってください。<div class="actions"><a class="btn" href="/">MAGI-WEBを開く</a><button type="button" onclick="location.reload()">テスト画面を再読み込み</button></div></div></div>
 <div id="list"></div>
 </div>
 <script>
 const CASES=[
 {id:'S01',q:'大野固定どう？',ctx:[],check:d=>d.route==='CLARIFY'&&/何|固定|役割|ポジション/.test(answerOf(d)),why:'役割不明の固定は勝手にクローザー等へ決めない'},
 {id:'S02',q:'大野をクローザー固定どう？',ctx:[],check:d=>!(d.route==='CLARIFY'&&/何に固定|役割やポジション/.test(answerOf(d)))&&playerOf(d)==='大野 竜暉',why:'役割が明示済みなので「何に固定？」とは聞き返さない'},
-{id:'S03',q:'大久保どう？',ctx:[],check:d=>d.route==='CLARIFY',why:'大久保陽翔／大久保夢翔を勝手に一人へ決めない'},
-{id:'S04',q:'ゆめと最近どう？',ctx:[],check:d=>d.route==='CLARIFY'&&!['大久保 夢翔','前川 夢斗'].includes(playerOf(d)),why:'未登録の読みだけから漢字名を推測しない'},
+{id:'S03',q:'大久保どう？',ctx:[],check:d=>d.route==='CLARIFY'&&/大久保 陽翔/.test(answerOf(d))&&/大久保 夢翔/.test(answerOf(d)),why:'同姓2人を勝手に一人へ決めず、公式名で確認する'},
+{id:'S04',q:'ゆめと最近どう？',ctx:[],check:d=>d.route==='CLARIFY'&&playersOf(d).length===0&&!/(?:前川 夢斗|大久保 夢翔)/.test(answerOf(d))&&/ゆめと/.test(answerOf(d)),why:'未登録の読みだけから漢字名も候補名も推測しない'},
 {id:'S05',q:'昨日の試合の負けた原因は？',ctx:[],check:d=>d.route==='CLARIFY'&&/昨日|試合|対戦相手/.test(answerOf(d)),why:'「昨日」を別の直近敗戦へ置換しない'},
 {id:'S06',q:'絶対勝てるよな？',ctx:[],check:d=>d.route==='CLARIFY'&&/どの試合/.test(answerOf(d)),why:'対象試合不明のまま勝敗予測しない'},
 {id:'S07',q:'データが2打席しかないけど評価して',ctx:[],check:d=>d.route==='CLARIFY'&&/誰の2打席|誰/.test(answerOf(d)),why:'対象選手不明のまま母数不足判定へ進まない'},
@@ -33,11 +33,18 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 function answerOf(d){return String(d?.answer||d?.clarificationQuestion||d?.semantic?.clarificationQuestion||'')}
 function playersOf(d){const a=d?.players||d?.semantic?.players||d?.routed?.players||[];return Array.isArray(a)?a:[]}
 function playerOf(d){return playersOf(d)[0]||''}
-async function call(c){
-  const r=await fetch('/api/magi/core',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({question:c.q,context:c.ctx})});
+async function callOnce(c){
+  const r=await fetch('/api/magi/core',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',cache:'no-store',body:JSON.stringify({question:c.q,context:c.ctx})});
   let d={};try{d=await r.json()}catch{}
   if(!r.ok||!d.ok){const e=new Error(d.error||`HTTP ${r.status}`);e.status=r.status;throw e}
   return d;
+}
+async function call(c){
+  try{return await callOnce(c)}catch(e){
+    if(e?.status)throw e;
+    await sleep(700);
+    return await callOnce(c);
+  }
 }
 function escapeHtml(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 document.getElementById('run').onclick=async()=>{
