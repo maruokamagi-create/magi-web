@@ -8,14 +8,39 @@
   const join=v=>list(v).join('／')||'特記事項なし';
   const judgment=v=>J[String(v||'').toUpperCase()]||J.YELLOW;
   const button=()=>document.querySelector('button[onclick="runMagi()"]');
-  const candidateText=p=>list(p?.candidatePlayers).join('・')||'候補未確定';
+  const pitchingPlanMode=q=>{
+    const s=String(q||'').normalize('NFKC');
+    const hasPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(s);
+    const buildCue=/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る)/.test(s);
+    const roleCount=[/先発/,/(?:第?2投手|二番手|2番手|第二投手)/,/(?:終盤|つなぎ|ブリッジ)/,/(?:クローザー|抑え|守護神)/].filter(re=>re.test(s)).length;
+    const sevenInning=/(?:7回制|七回制|7イニング|七イニング)/.test(s);
+    return (roleCount>=2&&(sevenInning||hasPlan||buildCue))||(hasPlan&&buildCue);
+  };
+  const fullLineupMode=q=>{
+    const s=String(q||'').normalize('NFKC');
+    if(/(?:ベストオーダー|ベスト打順)/.test(s))return true;
+    if(/(?:打順|オーダー|打線).{0,16}(?:どうする|どう組|組んで|組む|組みたい|考えて|考える|決めて|決める|作って|作る)/.test(s))return true;
+    if(/(?:組んで|組む|作って|作る|考えて|考える).{0,12}(?:打順|オーダー|打線)/.test(s))return true;
+    return /1番.{0,40}9番|一番.{0,40}九番/.test(s);
+  };
   const selectionMode=q=>{
     const s=String(q||'').normalize('NFKC');
-    const pitchingPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(s)&&/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る)/.test(s);
+    if(pitchingPlanMode(s)||fullLineupMode(s))return true;
     const battingSlot=/(?:[1-9一二三四五六七八九](?:番|ばん)(?:打者)?)/;
     const domain=/クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
     const cue=/誰|だれ|どの|どれ|どちら|どう組|どうする|組んで|組む|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト|考えて|決めて/;
-    return pitchingPlan||((domain.test(s)||battingSlot.test(s))&&cue.test(s));
+    return (domain.test(s)||battingSlot.test(s))&&cue.test(s);
+  };
+  const selectionKind=q=>pitchingPlanMode(q)?'pitching':fullLineupMode(q)?'lineup':selectionMode(q)?'generic':'proposal';
+  const candidateText=(p,kind='generic')=>{
+    const values=list(p?.candidatePlayers);
+    if(!values.length)return'候補未確定';
+    if(kind==='pitching'){
+      const roles=['先発','第2投手','終盤','クローザー'];
+      return values.map((name,i)=>`${roles[i]||`役割${i+1}`} ${name}`).join(' / ');
+    }
+    if(kind==='lineup')return values.map((name,i)=>`${i+1}番 ${name}`).join(' / ');
+    return values.join('・');
   };
 
   const css=`
@@ -53,14 +78,14 @@
     if(!text)return;ensureLive();const b=$('magiLiveBody');const d=document.createElement('div');d.className='magiExchange';
     d.innerHTML=`<div class="magiSpeaker">${esc(speaker)}${judge?`<span class="magiJudge">${esc(judge)}</span>`:''}</div><div class="magiSpeech ${kind}">${esc(text)}</div>`;b.appendChild(d);
   }
-  function showPrimary(primary,isSelection){
-    Object.entries(primary||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.primaryReason,'',isSelection?`候補：${candidateText(v)}`:judgment(v.judgment).label));
+  function showPrimary(primary,isSelection,kind){
+    Object.entries(primary||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.primaryReason,'',isSelection?`候補：${candidateText(v,kind)}`:judgment(v.judgment).label));
   }
   function showCross(cross){
     const ch=cross?.challenges||{};Object.entries(ch).forEach(([k,arr])=>list(arr).forEach(t=>addExchange(`MAGI CONTROL → ${names[k]||k}`,t,'magiChallenge','相互検証')));
   }
-  function showSecond(second,isSelection){
-    Object.entries(second||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.changeReason||v.primaryReason,'magiReply',isSelection?`再選定：${candidateText(v)}`:`${judgment(v.judgment).label}${v.changedFromPrimary?'・判定変更':'・判定維持'}`));
+  function showSecond(second,isSelection,kind){
+    Object.entries(second||{}).forEach(([k,v])=>addExchange(names[k]||k,v.publicStatement||v.changeReason||v.primaryReason,'magiReply',isSelection?`再選定：${candidateText(v,kind)}`:`${judgment(v.judgment).label}${v.changedFromPrimary?'・判定変更':'・判定維持'}`));
   }
   function setStatus(text){$('status').textContent=text}
   function setBusy(on){const b=button();if(!b)return;b.disabled=on;b.classList.toggle('magiRunning',on);b.textContent=on?'審議中…':'MAGI実行'}
@@ -70,28 +95,31 @@
     const mode=caseData?.mode==='selection'?'選択審議':'賛否審議';
     $('caseMeta').innerHTML=`審議日：${date}<br>審議案件番号：${esc(caseData.id)}<br>審議方式：${mode}<br>DATA HUB：${hub}<br>ENGINE：Gemini v1.0`;
   }
-  function renderPersona(prefix,p,isSelection){
+  function renderPersona(prefix,p,isSelection,kind){
     const j=judgment(p.judgment);
     const spoken=p.publicStatement||p.primaryReason||join(p.analysis);
     const evidenceBits=[...list(p.facts),...list(p.analysis)];
     setPersona(prefix,{vote:isSelection?'cond':j.key,conf:0,text:spoken,basis:join(evidenceBits),concern:join(p.warnings)});
     if(isSelection){
-      $(prefix+'Vote').textContent=`候補：${candidateText(p)}`;
+      $(prefix+'Vote').textContent=`候補：${candidateText(p,kind)}`;
       $(prefix+'Conf').textContent=`選定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;
     }else{
       $(prefix+'Conf').textContent=`判定確度 ${C[p.confidence]||p.confidence||'低'}（AI評価）`;
     }
     return j;
   }
-  function renderCross(cross,primary,second,isSelection){
+  function renderCross(cross,primary,second,isSelection,kind){
     const box=ensureProtocol();const live=ensureLive();
     [...box.querySelectorAll('.protocolBlock')].forEach(n=>n.remove());
     if(isSelection){
-      const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${candidateText(v)}${v.candidateBasis?'｜'+v.candidateBasis:''}`);
+      const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${candidateText(v,kind)}${v.candidateBasis?'｜'+v.candidateBasis:''}`);
+      const firstTitle=kind==='pitching'?'一次投手運用案':kind==='lineup'?'一次打順案':'一次候補抽出';
+      const crossTitle=kind==='pitching'?'投手運用相互検証':kind==='lineup'?'打順相互検証':'候補相互検証';
+      const secondTitle=kind==='pitching'?'二次投手運用案':kind==='lineup'?'二次打順案':'二次候補選定';
       live.insertAdjacentHTML('afterend',`
-        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">一次候補抽出</div><div class="protocolPhase">INDEPENDENT SELECTION / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>候補：${esc(candidateText(v))}<br>${esc(v.candidateBasis||v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
-        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">候補相互検証</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
-        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">二次候補選定</div><div class="protocolPhase">SECOND SELECTION</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(firstTitle)}</div><div class="protocolPhase">INDEPENDENT SELECTION / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(candidateText(v,kind))}<br>${esc(v.candidateBasis||v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(crossTitle)}</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(secondTitle)}</div><div class="protocolPhase">SECOND SELECTION</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
     }else{
       const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${v.changedFromPrimary?'変更（'+(v.changeReason||'理由記載なし')+'）':'維持'}`);
       live.insertAdjacentHTML('afterend',`
@@ -112,38 +140,53 @@
     const q=$('q').value.trim();if(!q){setStatus('相談内容を入力してください。');return}
     const route=routeQuestion(q);if(route.type==='advanced'){setStatus('高度相談向けの内容です。引継ぎパネルを開きました。');openAdvanced();return}
     if(!window.MAGI_ENGINE_V1){setStatus('正式審議エンジンを読み込めませんでした。');return}
-    const isSelection=selectionMode(q);
+    const kind=selectionKind(q),isSelection=kind!=='proposal';
     const evidence=searchDataEvidence(q),x=analyze(q),protocol=ensureProtocol();
     protocol.innerHTML='';protocol.classList.remove('hidden');resetLive();renderEvidence(evidence);renderSignals(x,{...route,label:isSelection?'Gemini正式3賢人選択審議':'Gemini正式3賢人審議'},evidence);
     $('caseQuestion').textContent=q;$('response').classList.add('show');setBusy(true);
-    const finalTitle=document.querySelector('.final .title');if(finalTitle)finalTitle.textContent=isSelection?'《MAGI》選択審議結果':'《MAGI》総合判定';
+    const finalTitle=document.querySelector('.final .title');
+    if(finalTitle)finalTitle.textContent=kind==='pitching'?'《MAGI》投手運用審議結果':kind==='lineup'?'《MAGI》打順審議結果':isSelection?'《MAGI》選択審議結果':'《MAGI》総合判定';
     try{
       setStatus('Gemini接続を確認中…');const h=await health();setStatus(isSelection?`全員確認後、一次候補抽出を実行中…（${h.model}）`:`一次独立判定を実行中…（${h.model}）`);
-      const result=await MAGI_ENGINE_V1.deliberate({question:q,mode:isSelection?'selection':'proposal',objective:isSelection?'3賢人による候補比較・選択支援':'3賢人による意思決定支援',evidence:evidence||null},{
-        onPrimaryLocked:primary=>{showPrimary(primary,isSelection);setStatus(isSelection?'一次候補を公開。候補相互検証を実行中…':'一次判定を公開。相互検証を実行中…')},
+      const objective=kind==='pitching'?'3賢人による投手運用選定':kind==='lineup'?'3賢人による1〜9番打順選定':isSelection?'3賢人による候補比較・選択支援':'3賢人による意思決定支援';
+      const result=await MAGI_ENGINE_V1.deliberate({question:q,mode:isSelection?'selection':'proposal',objective,evidence:evidence||null},{
+        onPrimaryLocked:primary=>{showPrimary(primary,isSelection,kind);setStatus(isSelection?'一次候補を公開。候補相互検証を実行中…':'一次判定を公開。相互検証を実行中…')},
         onCrossComplete:cross=>{showCross(cross);setStatus(isSelection?'候補相互検証を公開。二次候補選定を実行中…':'相互検証を公開。二次判定を実行中…')},
-        onSecondComplete:second=>{showSecond(second,isSelection);setStatus(isSelection?'二次候補を公開。選択結果を集約中…':'二次判定を公開。最終決定を実行中…')},
+        onSecondComplete:second=>{showSecond(second,isSelection,kind);setStatus(isSelection?'二次候補を公開。選択結果を集約中…':'二次判定を公開。最終決定を実行中…')},
         onStage:s=>{if(s.stage==='FINAL')setStatus(isSelection?'選択結果を集約中…':'最終決定を実行中…')},
         onRetry:r=>setStatus(`一時エラーを検出。再試行中…（${r.attempt}/3）`)
       });
-      const m=renderPersona('m',result.second.melchior,isSelection),b=renderPersona('b',result.second.balthasar,isSelection),c=renderPersona('c',result.second.casper,isSelection);
-      renderCross(result.crossExamination,result.primary,result.second,isSelection);
+      const m=renderPersona('m',result.second.melchior,isSelection,kind),b=renderPersona('b',result.second.balthasar,isSelection,kind),c=renderPersona('c',result.second.casper,isSelection,kind);
+      renderCross(result.crossExamination,result.primary,result.second,isSelection,kind);
       if(isSelection){
-        $('v1').textContent=`MELCHIOR候補 ${candidateText(result.second.melchior)}`;
-        $('v2').textContent=`BALTHASAR候補 ${candidateText(result.second.balthasar)}`;
-        $('v3').textContent=`CASPER候補 ${candidateText(result.second.casper)}`;
-        if(result.final.status==='SELECTION_REVIEW_REQUIRED'){
+        $('v1').textContent=`MELCHIOR ${candidateText(result.second.melchior,kind)}`;
+        $('v2').textContent=`BALTHASAR ${candidateText(result.second.balthasar,kind)}`;
+        $('v3').textContent=`CASPER ${candidateText(result.second.casper,kind)}`;
+        $('next').style.display='block';
+        if(result.final.mode==='PITCHING_PLAN'){
+          const held=result.final.status==='PITCHING_PLAN_REVIEW_REQUIRED';
+          $('verdict').textContent=held?'投手運用 確定保留':'投手運用案';
+          $('reason').textContent=result.final.recommendation||(held?'確認事項を解消して再審議します。':'先発からクローザーまでの運用案を確認してください。');
+          const conds=list(result.final.reDeliberationConditions);
+          $('next').textContent=conds.length?`再検討条件：${conds.join('／')}`:(result.final.reviewReason||'試合状況や投手の状態が変われば再審議します。');
+        }else if(result.final.mode==='FULL_LINEUP'){
+          const held=result.final.status==='LINEUP_REVIEW_REQUIRED';
+          $('verdict').textContent=held?'打順 確定保留':'1〜9番 打順案';
+          $('reason').textContent=result.final.recommendation||(held?'確認事項を解消して再審議します。':'1番から9番までの打順案を確認してください。');
+          const conds=list(result.final.reDeliberationConditions);
+          $('next').textContent=conds.length?`再検討条件：${conds.join('／')}`:(result.final.reviewReason||'選手状態や相手条件が変われば再審議します。');
+        }else if(result.final.status==='SELECTION_REVIEW_REQUIRED'){
           $('verdict').textContent='候補確定保留';
           $('reason').textContent=result.final.reviewReason||result.final.recommendation||'確認事項を解消して再審議します。';
+          $('next').textContent=list(result.final.reDeliberationConditions).length?`再検討条件：${join(result.final.reDeliberationConditions)}`:'確認事項を解消して再審議します。';
         }else{
           const center=list(result.final.centerCandidates),recommended=list(result.final.recommendedCandidates);
           $('verdict').textContent=center.length?`中心候補：${center.join('・')}`:'候補比較継続';
           $('reason').textContent=result.final.recommendation||(recommended.length?`推奨候補群：${recommended.join('・')}`:'3賢者の候補を比較してください。');
+          const alt=list(result.final.alternateCandidates),conds=list(result.final.reDeliberationConditions);
+          const bits=[];if(alt.length)bits.push(`次点・追加候補：${alt.join('・')}`);if(conds.length)bits.push(`再検討条件：${conds.join('／')}`);
+          $('next').textContent=bits.join('　')||'今後の試合データや役割変化に応じて再選定します。';
         }
-        $('next').style.display='block';
-        const alt=list(result.final.alternateCandidates),conds=list(result.final.reDeliberationConditions);
-        const bits=[];if(alt.length)bits.push(`次点・追加候補：${alt.join('・')}`);if(conds.length)bits.push(`再検討条件：${conds.join('／')}`);
-        $('next').textContent=bits.join('　')||'今後の試合データや役割変化に応じて再選定します。';
         caseMeta(evidence,result.case);setStatus(`MAGI選択審議完了 — ${h.model} / ${result.engineVersion}`);saveHistory(q,'selection');
       }else{
         $('v1').textContent=`MELCHIOR ${m.label}`;$('v2').textContent=`BALTHASAR ${b.label}`;$('v3').textContent=`CASPER ${c.label}`;
