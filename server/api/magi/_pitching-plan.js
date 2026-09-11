@@ -9,17 +9,30 @@ export const PITCHING_PLAN_ROLES=Object.freeze([
   {key:'CLOSER',label:'クローザー'}
 ]);
 
-export function isPitchingPlanQuestion(input){
+function pitchingPlanSignals(input){
   const caseData=typeof input==='string'?{question:input}:(input||{});
-  if(String(caseData?.selectionKind||'').toUpperCase()==='PITCHING_PLAN') return true;
-  if(String(caseData?.mode||'').toLowerCase()==='pitching_plan') return true;
+  const explicitMode=String(caseData?.selectionKind||'').toUpperCase()==='PITCHING_PLAN'||String(caseData?.mode||'').toLowerCase()==='pitching_plan';
   const q=text(caseData?.question).normalize('NFKC');
-  if(!q) return false;
   const hasPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(q);
   const buildCue=/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る)/.test(q);
-  const hasMultipleRoles=[/先発/,/(?:第?2投手|二番手|2番手|第二投手)/,/(?:終盤|つなぎ|ブリッジ)/,/(?:クローザー|抑え|守護神)/].filter(re=>re.test(q)).length>=2;
+  const roleCount=[/先発/,/(?:第?2投手|二番手|2番手|第二投手)/,/(?:終盤|つなぎ|ブリッジ)/,/(?:クローザー|抑え|守護神)/].filter(re=>re.test(q)).length;
   const sevenInning=/(?:7回制|七回制|7イニング|七イニング)/.test(q);
-  return (hasPlan&&buildCue)||(hasMultipleRoles&&buildCue)||(sevenInning&&hasMultipleRoles);
+  return {explicitMode,q,hasPlan,buildCue,roleCount,sevenInning};
+}
+
+export function isExplicitPitchingPlanQuestion(input){
+  const s=pitchingPlanSignals(input);
+  if(s.explicitMode)return true;
+  if(!s.q)return false;
+  return s.roleCount>=2&&(s.sevenInning||s.hasPlan);
+}
+
+export function isPitchingPlanQuestion(input){
+  const s=pitchingPlanSignals(input);
+  if(s.explicitMode)return true;
+  if(!s.q)return false;
+  if(s.roleCount>=2&&(s.sevenInning||s.hasPlan||s.buildCue))return true;
+  return s.hasPlan&&s.buildCue;
 }
 
 export function validatePitchingPlanOrder(values){
