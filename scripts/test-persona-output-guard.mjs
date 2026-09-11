@@ -184,6 +184,35 @@ test('G30 hedged growth prediction is allowed',()=>{
   assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
 });
 
+test('G31 bare decimal inning after appearance count is blocked',()=>{
+  const r=result({publicStatement:'現チームの登板数がまだ3試合5.0と少ないため、固定は早いです。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('投球回5.0')));
+});
+
+test('G32 assertive future team impact is blocked',()=>{
+  const r=result({publicStatement:'捕手との兼任負担や現チームのサンプルが少ない状況で固定してしまうと、半年後のチームに響きます。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('具体的悪影響')||x.includes('不確実性')));
+});
+
+test('G33 unhedged causal win-pattern prediction is blocked',()=>{
+  const r=result({prediction:['状態を見極めながら起用することで、負担を抑えつつチームの勝ちパターンを作れる。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('不確実性')));
+});
+
+test('G34 conditional loss prediction still needs probability hedge',()=>{
+  const r=result({prediction:['慎重になりすぎて好機の起用を逃せば、勝利のチャンスを失うことにつながる。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('不確実性')));
+});
+
+test('G35 explicit probability hedge allows win-pattern prediction',()=>{
+  const r=result({prediction:['状態を見極めながら起用することで、チームの勝ちパターンを作れる可能性があります。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
