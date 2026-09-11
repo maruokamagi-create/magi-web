@@ -1,8 +1,9 @@
 import { CURRENT_ROSTER } from './_roster.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
+import { isPitchingPlanQuestion } from './_pitching-plan.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v4-sample-aware-current-primary-old-reference';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v5-pitching-plan-sample-aware';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -26,6 +27,7 @@ function pitchingSelectionQuestion(question){
 export function selectionEvidenceKind(question,routed={}){
   if(hasNamedPlayer(routed)) return '';
   if(isFullLineupQuestion({question})) return 'FULL_LINEUP';
+  if(isPitchingPlanQuestion({question})) return 'PITCHING_PLAN';
   if(pitchingSelectionQuestion(question)) return 'PITCHING_ROLE';
   if(battingSelectionQuestion(question)) return 'BATTING_ORDER';
   const domains=Array.isArray(routed?.domains)?routed.domains:[];
@@ -74,9 +76,11 @@ function pitchingParts(stats){
   return parts;
 }
 
+function isPitchingKind(kind){return kind==='PITCHING_ROLE'||kind==='PITCHING_PLAN';}
+
 function playerLine(name,entry,kind){
-  const parts=kind==='PITCHING_ROLE' ? pitchingParts(entry?.pitching) : battingParts(entry?.batting);
-  const label=kind==='PITCHING_ROLE'?'投手記録なし':'打撃記録なし';
+  const parts=isPitchingKind(kind) ? pitchingParts(entry?.pitching) : battingParts(entry?.batting);
+  const label=isPitchingKind(kind)?'投手記録なし':'打撃記録なし';
   return `${name}：${parts.length?parts.join(' / '):label}`;
 }
 
@@ -90,7 +94,7 @@ function historicalPlayer(name,byName){
 }
 
 function sampleSizeRule(kind){
-  if(kind==='PITCHING_ROLE'){
+  if(isPitchingKind(kind)){
     return '率系の投手指標（防御率・WHIP・被打率など）は、登板数・投球回などの母数とセットで読む。小さい母数の好不調を安定した実力と断定しない。旧チームに十分な過去母数がある場合は再現性・経験の参考にするが、現在成績を上書きしない。母数の数値基準はEvidenceにない限り勝手に作らない。';
   }
   return '率系の打撃指標（打率・出塁率・長打率・OPSなど）は、打数・打席などの母数とセットで読む。小さい母数の高低を安定した実力と断定しない。旧チームに十分な過去母数がある場合は再現性・経験の参考にするが、現在成績を上書きしない。母数の数値基準はEvidenceにない限り勝手に作らない。';
@@ -143,7 +147,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     };
   }
 
-  const metricLabel=kind==='PITCHING_ROLE'?'投手':'打撃';
+  const metricLabel=isPitchingKind(kind)?'投手':'打撃';
   const sampleRule=sampleSizeRule(kind);
   const lines=[
     '【MAGI 選考Evidence】',
@@ -166,22 +170,28 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     lines.push(`【参考】旧チーム：取得不可。${historicalReference.warning}`);
   }
 
-  lines.push(
-    kind==='FULL_LINEUP'
-      ? '【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議では具体的な打順番号と選手名を挙げて互いの並びを検証した後に二次案を出す。旧チーム記録は参考であり、引退選手を打順に入れない。ここにない数値・性格・将来結果は作らない。'
-      : '【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は補助材料として必要な場合だけ参照する。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。'
-  );
+  if(kind==='FULL_LINEUP'){
+    lines.push('【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議では具体的な打順番号と選手名を挙げて互いの並びを検証した後に二次案を出す。旧チーム記録は参考であり、引退選手を打順に入れない。ここにない数値・性格・将来結果は作らない。');
+  }else if(kind==='PITCHING_PLAN'){
+    lines.push('【運用ルール】7回制の基本投手運用を「先発 → 第2投手 → 終盤 → クローザー」の4役で作る。基本案では現チームから異なる4投手を割り当てる。3賢人は全14名を確認して独立案を作り、クロス審議では具体的な役割名と選手名を挙げて相互検証する。回数・交代時点・連投耐性・高圧場面適性はEvidenceに明示されていない限り捏造しない。旧チーム記録は投球経験の参考にできるが、過去のクローザー等の役割経験を数値だけから推測しない。');
+  }else{
+    lines.push('【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は補助材料として必要な場合だけ参照する。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。');
+  }
 
   const sources=[];
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
   if(historicalReference.source) sources.push({...historicalReference.source,season:'old',priority:'REFERENCE'});
 
+  const summary=kind==='FULL_LINEUP'
+    ? '現チーム14名の正本打撃記録を主評価にし、旧チームの同14名の過去記録を参考として付加した1〜9番打順審議用Evidenceです。率系指標は母数とセットで扱います。'
+    : kind==='PITCHING_PLAN'
+      ? '現チーム14名の正本投手記録を主評価にし、旧チームの同14名の過去投球記録を参考として付加した7回制4役投手運用の審議用Evidenceです。率系指標は母数とセットで扱います。'
+      : `現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。率系指標は母数とセットで扱います。`;
+
   return {
     count: players.length,
     files: sources.map(s=>s.name).filter(Boolean),
-    summary:kind==='FULL_LINEUP'
-      ? '現チーム14名の正本打撃記録を主評価にし、旧チームの同14名の過去記録を参考として付加した1〜9番打順審議用Evidenceです。率系指標は母数とセットで扱います。'
-      : `現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。率系指標は母数とセットで扱います。`,
+    summary,
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
