@@ -70,9 +70,11 @@ assert.ok(pitchingPacket.text.includes('旧チーム'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('投球回'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('登板数'));
 
-const pitchingPlanPacket=await buildCurrentSelectionEvidence({question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',routed:{players:[],domains:['PITCHING','TACTICS']},auditProvider:fakeAudit});
+const pitchingPlanPacket=await buildCurrentSelectionEvidence({question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:7},auditProvider:fakeAudit});
 assert.equal(pitchingPlanPacket.selectionKind,'PITCHING_PLAN');
+assert.equal(pitchingPlanPacket.gameInnings,7);
 assert.ok(pitchingPlanPacket.text.includes('【現チーム全14選手・投手】'));
+assert.ok(pitchingPlanPacket.text.includes('【試合回数条件】7回制'));
 assert.ok(pitchingPlanPacket.text.includes('先発 → 第2投手 → 終盤 → クローザー'));
 assert.ok(pitchingPlanPacket.text.includes('異なる4投手'));
 assert.ok(pitchingPlanPacket.text.includes('高圧場面適性はEvidenceに明示されていない限り捏造しない'));
@@ -83,7 +85,16 @@ const genericPitchingPlanPacket=await buildCurrentSelectionEvidence({question:'�
 assert.equal(genericPitchingPlanPacket.selectionKind,'PITCHING_PLAN');
 assert.equal(genericPitchingPlanPacket.count,14);
 assert.equal(genericPitchingPlanPacket.primarySeason,'current');
+assert.equal(genericPitchingPlanPacket.gameInnings,7);
 assert.equal(genericPitchingPlanPacket.historicalReference.candidateEligible,false);
+
+const nineInningPacket=await buildCurrentSelectionEvidence({question:'投手リレーどう組む？',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:9},auditProvider:fakeAudit});
+assert.equal(nineInningPacket.selectionKind,'PITCHING_PLAN');
+assert.equal(nineInningPacket.gameInnings,9);
+assert.ok(nineInningPacket.text.includes('【試合回数条件】9回制'));
+assert.ok(nineInningPacket.text.includes('【運用ルール】9回制の基本投手運用'));
+assert.ok(nineInningPacket.summary.includes('9回制4役投手運用'));
+assert.equal(nineInningPacket.text.includes('【運用ルール】7回制の基本投手運用'),false);
 
 const incomplete={...currentPlayers};delete incomplete[CURRENT_ROSTER[0]];
 await assert.rejects(()=>buildCurrentSelectionEvidence({
