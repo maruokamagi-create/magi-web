@@ -64,6 +64,7 @@ jobs:
               .persona==$p and .phase=="PRIMARY" and
               (.judgment|IN("GREEN","BLUE","YELLOW","RED")) and
               (.confidence|IN("HIGH","MEDIUM","LOW")) and
+              (.reviewRequested==false) and (.dataConflict==false) and
               ((.publicStatement//"")|length>0) and
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|contains("大久保 陽翔")|not) and
@@ -100,6 +101,7 @@ jobs:
               .persona==$p and .phase=="SECOND" and
               (.judgment|IN("GREEN","BLUE","YELLOW","RED")) and
               (.confidence|IN("HIGH","MEDIUM","LOW")) and
+              (.reviewRequested==false) and (.dataConflict==false) and
               ((.publicStatement//"")|length>0) and
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|contains("大久保 陽翔")|not) and
@@ -125,7 +127,7 @@ jobs:
           cat /tmp/final.json; echo
 
           jq -e '
-            (.status|IN("MAGI_CONSENSUS","MAGI_MAJORITY","MAGI_DEADLOCK","INSUFFICIENT_EVIDENCE","MAGI_REVIEW_REQUIRED")) and
+            (.status|IN("MAGI_CONSENSUS","MAGI_MAJORITY","MAGI_DEADLOCK","INSUFFICIENT_EVIDENCE")) and
             ((.recommendation//"")|length>0) and
             (.confidence|IN("HIGH","MEDIUM","LOW")) and
             (.majorReasons|type=="array") and (.warnings|type=="array") and (.reDeliberationConditions|type=="array") and
