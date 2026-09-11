@@ -2,6 +2,7 @@ import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJs
 import { ORCHESTRATOR } from './_prompts.js';
 import { failClosedCross, validateCrossOutput } from './_cross-output-guard.js';
 import { canonicalizePlayerData, playerKey } from './_roster.js';
+import { buildConsensusLineup, isFullLineupQuestion } from './_full-lineup.js';
 
 const crossSchema = {
   type: 'OBJECT',
@@ -34,10 +35,11 @@ function validCase(body) {
 
 export function isSelectionCase(caseData) {
   if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
+  if (isFullLineupQuestion(caseData)) return true;
   const q = String(caseData?.question || '');
   const battingSlot = /(?:[1-9１-９一二三四五六七八九](?:番|ばん)(?:打者)?)/;
   const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
-  const cue = /誰|だれ|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト/;
+  const cue = /誰|だれ|どの|どれ|どちら|どう組|どうする|組んで|組む|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト|考えて|決めて/;
   return (domain.test(q) || battingSlot.test(q)) && cue.test(q);
 }
 
@@ -98,6 +100,66 @@ function lowestConfidence(list) {
   return values.sort((a,b)=>(CONFIDENCE_ORDER[a] ?? 0) - (CONFIDENCE_ORDER[b] ?? 0))[0] || 'LOW';
 }
 
+function crossDiscussion(cross){
+  const c=canonicalizePlayerData(cross||{});
+  return {
+    agreement:Array.isArray(c?.agreement)?c.agreement:[],
+    disagreement:Array.isArray(c?.disagreement)?c.disagreement:[],
+    domainConflicts:Array.isArray(c?.domainConflicts)?c.domainConflicts:[],
+    challenges:c?.challenges||{melchior:[],balthasar:[],casper:[]},
+    informationGaps:Array.isArray(c?.informationGaps)?c.informationGaps:[]
+  };
+}
+
+export function buildFullLineupResult(second, cross) {
+  const normalizedSecond = canonicalizePlayerData(second);
+  const normalizedCross = canonicalizePlayerData(cross || {});
+  const entries = Array.isArray(normalizedSecond) ? normalizedSecond.map((v,i)=>[String(i),v]) : Object.entries(normalizedSecond || {});
+  if (entries.length !== 3) return null;
+
+  const crossReviewReason = normalizedCross?.reviewRequired === true ? String(normalizedCross?.reviewReason || 'クロス審議の再確認が必要です。') : '';
+  const critical = entries.find(([,x]) => x?.reviewRequested === true && String(x?.reviewReason || '').trim());
+  const dataConflict = entries.find(([,x]) => String(x?.persona || '').toUpperCase().startsWith('MELCHIOR') && x?.dataConflict === true);
+  const warnings = compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
+  const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
+
+  if (critical || dataConflict || crossReviewReason) {
+    return canonicalizePlayerData({
+      mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',recommendation:'1〜9番を確定せず、未解決の確認事項を解消して再審議する。',
+      lineup:[],personaLineups:Object.fromEntries(entries.map(([k,v])=>[k,Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),slotConflicts:[],playerSupport:[],
+      confidence:'LOW',majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
+      reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),reviewReason:crossReviewReason||String(critical?.[1]?.reviewReason||'MELCHIOR detected an unresolved DATA CONFLICT.'),
+      crossDiscussion:crossDiscussion(normalizedCross)
+    });
+  }
+
+  const consensus=buildConsensusLineup(normalizedSecond);
+  if(!consensus){
+    return canonicalizePlayerData({
+      mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',recommendation:'3賢人の二次案に9人の打順として不完全な案があるため、打順を確定しない。',
+      lineup:[],personaLineups:Object.fromEntries(entries.map(([k,v])=>[k,Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),slotConflicts:[],playerSupport:[],
+      confidence:'LOW',majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
+      reDeliberationConditions:compactUnique(['各賢人が現チームの異なる9選手を1番〜9番の順で再提示する',...informationGaps,...warnings],5),reviewReason:'二次打順案の構造が不完全',
+      crossDiscussion:crossDiscussion(normalizedCross)
+    });
+  }
+
+  const recommendation=consensus.lineup.map(x=>`${x.slot}番 ${x.name}`).join(' / ');
+  return canonicalizePlayerData({
+    mode:'FULL_LINEUP',status:'LINEUP_RESULT',recommendation,
+    lineup:consensus.lineup,
+    personaLineups:consensus.personaLineups,
+    slotConflicts:consensus.slotConflicts,
+    playerSupport:consensus.playerSupport,
+    confidence:lowestConfidence(entries.map(([,v])=>v)),
+    majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
+    warnings,
+    reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),
+    reviewReason:'',
+    crossDiscussion:crossDiscussion(normalizedCross)
+  });
+}
+
 export function buildSelectionResult(second, cross) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
@@ -115,7 +177,8 @@ export function buildSelectionResult(second, cross) {
       confidence: 'LOW', majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
       warnings: compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]),
       reDeliberationConditions: compactUnique([...(normalizedCross?.informationGaps||[]), ...(normalizedCross?.warnings||[])],5),
-      reviewReason: crossReviewReason || String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.')
+      reviewReason: crossReviewReason || String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.'),
+      crossDiscussion:crossDiscussion(normalizedCross)
     });
   }
 
@@ -206,7 +269,8 @@ export function buildSelectionResult(second, cross) {
     majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
     warnings,
     reDeliberationConditions: compactUnique([...informationGaps, ...warnings],5),
-    reviewReason: ''
+    reviewReason: '',
+    crossDiscussion:crossDiscussion(normalizedCross)
   });
 }
 
@@ -255,12 +319,13 @@ export function buildFinalResult(second, cross) {
     warnings,
     prediction,
     reviewReason: crossReviewReason || enforced.reviewReason || '',
-    reDeliberationConditions
+    reDeliberationConditions,
+    crossDiscussion:crossDiscussion(normalizedCross)
   });
 }
 
 export default async function handler(req, res) {
-  if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
+  if (!requirePost(req, res) || !requireSameOrigin(req,res) || !rateLimit(req,res))return;
   try {
     const body = await readBody(req);
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
@@ -268,9 +333,12 @@ export default async function handler(req, res) {
     if (body.phase === 'CROSS_EXAMINATION') {
       if (!body.primary) return sendJson(res, 400, { error: 'Locked primary judgments are required' });
       const selectionCase = isSelectionCase(body.case);
-      const baseInstruction = selectionCase
-        ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
-        : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. CASE/evidence remains authoritative: do not introduce unsupported statistics, unrelated players, or historical roles that are not explicitly supported. Resolve all relative date and season expressions from temporalContext.';
+      const fullLineupCase = selectionCase && isFullLineupQuestion(body.case);
+      const baseInstruction = fullLineupCase
+        ? 'This is a full 1-to-9 batting-order cross-examination. Do not collapse the three proposals into a compromise yet. Compare the three locked batting orders slot by slot and as sequences. Identify concrete disagreements such as who leads off, who bats in the middle, and which adjacent combinations differ. Each Wise Man must receive a real evidence-grounded challenge that responds to his actual proposed order. Press MELCHIOR on whether statistical caution produces a workable sequence, press BALTHASAR on whether tactical flow is supported by the supplied data, and press CASPER on whether development or burden concerns justify moving specific hitters. Preserve current-team priority and use old-team evidence only as labelled reference. Do not introduce a fourth lineup.'
+        : selectionCase
+          ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+          : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. CASE/evidence remains authoritative: do not introduce unsupported statistics, unrelated players, or historical roles that are not explicitly supported. Resolve all relative date and season expressions from temporalContext.';
       const basePayload = {
         phase: 'CROSS_EXAMINATION',
         temporalContext: jstContext(),
@@ -310,9 +378,11 @@ export default async function handler(req, res) {
 
     if (body.phase === 'FINAL') {
       if (!body.primary || !body.second) return sendJson(res, 400, { error: 'Primary and second judgments are required' });
-      const result = isSelectionCase(body.case)
-        ? buildSelectionResult(body.second, body.crossExamination || null)
-        : buildFinalResult(body.second, body.crossExamination || null);
+      const result = isFullLineupQuestion(body.case)
+        ? buildFullLineupResult(body.second, body.crossExamination || null)
+        : isSelectionCase(body.case)
+          ? buildSelectionResult(body.second, body.crossExamination || null)
+          : buildFinalResult(body.second, body.crossExamination || null);
       if (!result) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
       return sendJson(res, 200, canonicalizePlayerData(result));
     }
