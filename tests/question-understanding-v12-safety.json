@@ -1,0 +1,88 @@
+{
+  "version": "v1.2",
+  "date": "2026-09-11",
+  "purpose": "MAGI-WEB 質問理解・聞き返し仕様 v1.2 の高リスク回帰テスト。人物取り違え、相対日時の誤置換、対象不明のままの予測・評価、旧現チーム混同を最優先で防ぐ。",
+  "rules": {
+    "accuracy_first": true,
+    "no_invented_players": true,
+    "no_invented_facts": true,
+    "unregistered_phonetic_name_must_clarify": true,
+    "relative_dates_must_not_shift_to_other_matches": true,
+    "former_players_must_not_enter_current_lineup_without_confirmation": true
+  },
+  "cases": [
+    {
+      "id": "S01",
+      "question": "大野固定どう？",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "player": "大野 竜暉", "mustAskAboutRole": true}
+    },
+    {
+      "id": "S02",
+      "question": "大野をクローザー固定どう？",
+      "context": [],
+      "expect": {"mustNotClarifyRole": true, "player": "大野 竜暉", "allowedModes": ["DELIBERATION", "CLARIFY"]},
+      "note": "CLARIFYはデータ不足等の別理由なら許容するが、『何を固定するか』は聞き返してはならない。"
+    },
+    {
+      "id": "S03",
+      "question": "大久保どう？",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "mustNotAutoSelect": ["大久保 陽翔", "大久保 夢翔"]}
+    },
+    {
+      "id": "S04",
+      "question": "ゆめと最近どう？",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "mustNotInventOrGuess": true},
+      "note": "公式名簿に読み仮名・音声別名が登録されていないため、『夢翔』『夢斗』へ自動変換しない。"
+    },
+    {
+      "id": "S05",
+      "question": "昨日の試合の負けた原因は？",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "mustNotSubstituteRecentLoss": true, "mustResolveRelativeDate": true}
+    },
+    {
+      "id": "S06",
+      "question": "絶対勝てるよな？",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "mustAskWhichMatch": true, "mustNotClaimCertainty": true}
+    },
+    {
+      "id": "S07",
+      "question": "データが2打席しかないけど評価して",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "mustAskWhichPlayer": true}
+    },
+    {
+      "id": "S08",
+      "question": "宮嵜を次の試合先発でどう？",
+      "context": [],
+      "expect": {"mode": "CLARIFY", "player": "宮嵜 翔", "mustConfirmHypothetical": true, "reason": "旧チーム選手"}
+    },
+    {
+      "id": "S09",
+      "question": "データが2打席しかないけど評価して",
+      "context": [
+        {"role": "user", "text": "大野 竜暉の最近の打撃を見てる"},
+        {"role": "assistant", "text": "大野 竜暉を対象に確認します。"}
+      ],
+      "expect": {"player": "大野 竜暉", "mustCarryContext": true, "mustNotAskWhichPlayer": true}
+    },
+    {
+      "id": "S10",
+      "question": "絶対勝てるよな？",
+      "context": [
+        {"role": "user", "text": "次の試合は坂井中との対戦です"}
+      ],
+      "expect": {"mustNotAskWhichMatch": true, "mustNotClaimCertainty": true, "requiresPredictionLanguage": true}
+    },
+    {
+      "id": "S11",
+      "question": "大野竜輝をクローザー固定",
+      "context": [],
+      "expect": {"canonicalCandidate": "大野 竜暉", "mustNotCreateNewPlayer": true, "confirmationAllowed": true}
+    }
+  ]
+}
