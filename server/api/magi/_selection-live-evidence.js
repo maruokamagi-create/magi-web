@@ -1,7 +1,8 @@
 import { CURRENT_ROSTER } from './_roster.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
+import { isFullLineupQuestion } from './_full-lineup.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v2-current-primary-old-reference';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v3-full-lineup-current-primary-old-reference';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -11,7 +12,7 @@ function display(v){ const s=text(v); return s || '—'; }
 function battingSelectionQuestion(question){
   const q=normalized(question);
   const slot=/(?:^|[^0-9])([1-9])番(?:打者)?/.test(q) || /打順|クリーンナップ|中軸|主軸|打線|オーダー|ベストオーダー|スタメン/.test(q);
-  const choice=/誰|だれ|どの|候補|いい|良い|最適|ベスト|決め|どうする|どう組|組んで|組む|選ぶ|選定/.test(q);
+  const choice=/誰|だれ|どの|候補|いい|良い|最適|ベスト|決め|どうする|どう組|組んで|組む|選ぶ|選定|考えて|作って/.test(q);
   return slot && choice;
 }
 
@@ -24,6 +25,7 @@ function pitchingSelectionQuestion(question){
 
 export function selectionEvidenceKind(question,routed={}){
   if(hasNamedPlayer(routed)) return '';
+  if(isFullLineupQuestion({question})) return 'FULL_LINEUP';
   if(pitchingSelectionQuestion(question)) return 'PITCHING_ROLE';
   if(battingSelectionQuestion(question)) return 'BATTING_ORDER';
   const domains=Array.isArray(routed?.domains)?routed.domains:[];
@@ -156,7 +158,9 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }
 
   lines.push(
-    '【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は補助材料として必要な場合だけ参照する。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。'
+    kind==='FULL_LINEUP'
+      ? '【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議後に二次案を出す。旧チーム記録は参考であり、引退選手を打順に入れない。ここにない数値・性格・将来結果は作らない。'
+      : '【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は補助材料として必要な場合だけ参照する。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。'
   );
 
   const sources=[];
@@ -166,7 +170,9 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   return {
     count: players.length,
     files: sources.map(s=>s.name).filter(Boolean),
-    summary:`現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。`,
+    summary:kind==='FULL_LINEUP'
+      ? '現チーム14名の正本打撃記録を主評価にし、旧チームの同14名の過去記録を参考として付加した1〜9番打順審議用Evidenceです。'
+      : `現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。`,
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
