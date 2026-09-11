@@ -121,6 +121,17 @@ test('G19 wrong plain walk label is blocked',()=>{
   assert.ok(issues.some(x=>x.includes('与四球5')));
 });
 
+test('G20 bare inning count used as sample is blocked',()=>{
+  const r=result({publicStatement:'現チームのサンプルはまだ5回と少ないです。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('投球回5')));
+});
+
+test('G21 explicit inning unit is accepted',()=>{
+  const r=result({publicStatement:'現チームの投球回は5.0回です。'});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
