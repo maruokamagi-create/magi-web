@@ -10,6 +10,7 @@ on:
       - 'server/api/magi/_semantic-postguard.js'
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_full-lineup.js'
+      - 'server/api/magi/_pitching-plan.js'
       - 'server/api/magi/_drive-live-audit.js'
       - 'server/api/magi/_persona-output-guard.js'
       - 'server/api/magi/_cross-output-guard.js'
@@ -22,6 +23,7 @@ on:
       - 'scripts/test-selection-peer-baseline.mjs'
       - 'scripts/test-selection-live-evidence.mjs'
       - 'scripts/test-full-lineup-selection.mjs'
+      - 'scripts/test-pitching-plan-selection.mjs'
       - 'scripts/test-full-lineup-semantic-route.mjs'
       - 'scripts/test-cross-output-guard.mjs'
       - 'scripts/test-persona-case-mode.mjs'
@@ -64,6 +66,9 @@ jobs:
 
       - name: Run full 1-9 lineup deliberation cases
         run: node --experimental-default-type=module scripts/test-full-lineup-selection.mjs
+
+      - name: Run 7-inning pitching-plan deliberation cases
+        run: node --experimental-default-type=module scripts/test-pitching-plan-selection.mjs
 
       - name: Run full lineup semantic routing cases
         run: node --experimental-default-type=module scripts/test-full-lineup-semantic-route.mjs
