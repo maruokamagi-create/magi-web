@@ -1,0 +1,132 @@
+name: MAGI Production Deliberation Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/magi-production-deliberation-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  production-deliberation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for production deployment
+        run: sleep 35
+
+      - name: Run one full three-wise-men deliberation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          ORIGIN='https://magi-web.vercel.app'
+
+          cat > /tmp/case.json <<'JSON'
+          {
+            "question":"大野 竜暉をクローザー固定すべき？",
+            "evidence":{
+              "scope":"PRODUCTION_SMOKE_FIXED_EVIDENCE",
+              "currentTeam":{
+                "player":"大野 竜暉",
+                "role":"捕手・投手",
+                "pitching":{"appearances":3,"innings":"5.0","strikeouts":7,"walks":2},
+                "note":"現チームのサンプルはまだ小さい"
+              },
+              "oldTeam":{
+                "player":"大野 竜暉",
+                "pitching":{"era":"1.69","innings":"54.0","strikeouts":50},
+                "note":"旧チームで十分な投球回がある"
+              },
+              "operationalConcern":"捕手との兼任負担を考慮する必要がある",
+              "dataRule":"ここにない数値は作らない"
+            }
+          }
+          JSON
+
+          call_persona(){
+            local persona="$1" phase="$2" outfile="$3" primary_self="${4:-}" cross_file="${5:-}"
+            if [ "$phase" = 'PRIMARY' ]; then
+              jq -n --arg p "$persona" --slurpfile c /tmp/case.json '{persona:$p,phase:"PRIMARY",case:$c[0]}' > /tmp/body.json
+            else
+              jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
+            fi
+            curl -L --fail --retry 2 --retry-delay 3 -sS \
+              -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+              -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
+            cat "$outfile"; echo
+          }
+
+          for p in melchior balthasar casper; do
+            call_persona "$p" PRIMARY "/tmp/${p}-primary.json"
+            expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
+            jq -e --arg p "$expected" '
+              .persona==$p and .phase=="PRIMARY" and
+              (.judgment|IN("GREEN","BLUE","YELLOW","RED")) and
+              (.confidence|IN("HIGH","MEDIUM","LOW")) and
+              ((.publicStatement//"")|length>0) and
+              ((.primaryReason//"")|length>0) and
+              ((.publicStatement//"")|contains("大野 竜暉")) and
+              (.facts|type=="array") and (.analysis|type=="array") and (.prediction|type=="array")
+            ' "/tmp/${p}-primary.json" >/dev/null
+          done
+
+          jq -n \
+            --slurpfile c /tmp/case.json \
+            --slurpfile m /tmp/melchior-primary.json \
+            --slurpfile b /tmp/balthasar-primary.json \
+            --slurpfile s /tmp/casper-primary.json \
+            '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > /tmp/cross-body.json
+          curl -L --fail --retry 2 --retry-delay 3 -sS \
+            -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+            -d @/tmp/cross-body.json "$BASE/api/magi/orchestrate" -o /tmp/cross.json
+          cat /tmp/cross.json; echo
+          jq -e '
+            (.agreement|type=="array") and (.disagreement|type=="array") and
+            (.warnings|type=="array") and (.informationGaps|type=="array") and
+            (.challenges.melchior|type=="array") and
+            (.challenges.balthasar|type=="array") and
+            (.challenges.casper|type=="array")
+          ' /tmp/cross.json >/dev/null
+
+          for p in melchior balthasar casper; do
+            call_persona "$p" SECOND "/tmp/${p}-second.json" "/tmp/${p}-primary.json" /tmp/cross.json
+            expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
+            jq -e --arg p "$expected" '
+              .persona==$p and .phase=="SECOND" and
+              (.judgment|IN("GREEN","BLUE","YELLOW","RED")) and
+              (.confidence|IN("HIGH","MEDIUM","LOW")) and
+              ((.publicStatement//"")|length>0) and
+              ((.primaryReason//"")|length>0) and
+              ((.publicStatement//"")|contains("大野 竜暉"))
+            ' "/tmp/${p}-second.json" >/dev/null
+          done
+
+          jq -n \
+            --slurpfile c /tmp/case.json \
+            --slurpfile pm /tmp/melchior-primary.json \
+            --slurpfile pb /tmp/balthasar-primary.json \
+            --slurpfile pc /tmp/casper-primary.json \
+            --slurpfile sm /tmp/melchior-second.json \
+            --slurpfile sb /tmp/balthasar-second.json \
+            --slurpfile sc /tmp/casper-second.json \
+            --slurpfile x /tmp/cross.json \
+            '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > /tmp/final-body.json
+          curl -L --fail --retry 2 --retry-delay 3 -sS \
+            -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+            -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
+          cat /tmp/final.json; echo
+
+          jq -e '
+            (.status|IN("MAGI_CONSENSUS","MAGI_MAJORITY","MAGI_DEADLOCK","INSUFFICIENT_EVIDENCE","MAGI_REVIEW_REQUIRED")) and
+            ((.recommendation//"")|length>0) and
+            (.confidence|IN("HIGH","MEDIUM","LOW")) and
+            (.majorReasons|type=="array") and (.warnings|type=="array") and (.reDeliberationConditions|type=="array")
+          ' /tmp/final.json >/dev/null
+
+          m=$(jq -r '.publicStatement' /tmp/melchior-second.json)
+          b=$(jq -r '.publicStatement' /tmp/balthasar-second.json)
+          c=$(jq -r '.publicStatement' /tmp/casper-second.json)
+          [ "$m" != "$b" ] && [ "$m" != "$c" ] && [ "$b" != "$c" ]
+
+          echo 'PRODUCTION THREE-WISE-MEN DELIBERATION: PASS'
