@@ -33,8 +33,14 @@ function validCase(body) {
   return q.length >= 2 && q.length <= 12000;
 }
 
-function isCandidateCase(body) {
-  return /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|先発|レギュラー|スタメン|候補|誰を中心|誰を起用/.test(String(body?.case?.question || ''));
+export function isCandidateCase(body) {
+  const caseData = body?.case || {};
+  if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
+  const q = String(caseData?.question || '');
+  const battingSlot = /(?:[1-9１-９一二三四五六七八九](?:番|ばん)(?:打者)?)/;
+  const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
+  const cue = /誰|だれ|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト/;
+  return (domain.test(q) || battingSlot.test(q)) && cue.test(q);
 }
 
 function rosterStatus(values) {
@@ -115,7 +121,6 @@ export default async function handler(req, res) {
     const body = await readBody(req);
     const persona = String(body?.persona || '').toLowerCase();
     const phase = body?.phase === 'SECOND' ? 'SECOND' : 'PRIMARY';
-    const selectionMode = String(body?.case?.mode || '').toLowerCase() === 'selection';
     const candidateCase = isCandidateCase(body);
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
@@ -125,10 +130,10 @@ export default async function handler(req, res) {
     const focusedHistoryRule = 'FOCUSED PROPOSAL HISTORY RULE: Historical facts may be used only when they are explicitly present in CASE.evidence. Generic roster history or role-continuity knowledge must not be imported. Historical innings, ERA, strikeouts, walks, or appearances support only the pitching facts those fields actually state. They do NOT prove prior closer usage, save situations, high-leverage success, pressure handling, end-game experience, or any other role unless CASE.evidence explicitly states that role. Do not turn a raw rate/count into a qualitative claim such as good, bad, high, low, many, few, strong, weak, effective, or reliable without an explicit comparison baseline in CASE.evidence.';
     const effectiveHistoryRule = candidateCase ? historyRule : focusedHistoryRule;
     const focusedProposalRule = candidateCase ? '' : 'This is a focused proposal/evaluation, not a candidate-selection task. Answer only about the player, role, or proposal actually named in the CASE. Do not introduce another roster player. Do not manufacture an alternative candidate unless the user explicitly asked for one. Keep checkedPlayers, candidatePlayers and candidateBasis empty. Use only facts explicitly supplied in CASE/evidence. A strikeout count alone does NOT prove runs were prevented, a save situation was handled, pressure was handled, or closer suitability was established. If CASE/evidence does not contain a claimed role or comparison baseline, omit that claim rather than rephrasing it. ';
-    const primaryInstruction = selectionMode
+    const primaryInstruction = candidateCase
       ? 'This is a SELECTION question, not a yes/no proposal. Do not phrase the user-facing answer as 賛成・反対・可決・否決. The judgment enum is only an internal protocol field and must not be treated as the answer. FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. Do not add any fifteenth player or omit anyone. SECOND, independently choose candidatePlayers using only your persona domain. Rank candidatePlayers in your preferred order. candidateBasis must explain your own selection standard. Apply historicalWeightingRule, including substantial old-team experience and role continuity for 大久保 陽翔 and 大野 竜暉. In publicStatement, directly answer who you select and why, using the exact official player names from authoritativeCurrentRoster. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.'
       : focusedProposalRule + 'Give the independent judgment on the exact proposal. Separate supplied fact from analysis and prediction. Historical evidence is governed strictly by historicalWeightingRule. Do not infer prior role, leverage situation, success condition, or qualitative statistical strength from raw counts alone. If the evidence is incomplete, say exactly what remains uncertain while still answering the current choice boundary. Write primaryReason and publicStatement in natural spoken Japanese, usually 1–3 short sentences. Do not expose hidden chain-of-thought.';
-    const secondInstruction = selectionMode
+    const secondInstruction = candidateCase
       ? 'This remains a SELECTION question, not a yes/no vote. Do not say you are 賛成 or 反対 to the question. Keep checkedPlayers exactly equal to the authoritative 14-player roster. Reconsider your own candidatePlayers only from concrete evidence and cross-examination; do not change merely to join a majority. Rank candidatePlayers in your current preferred order. Continue historicalWeightingRule and temporalContext. In publicStatement, state plainly which candidates you retain, add, or remove and why, using exact official player names from authoritativeCurrentRoster. The actual answer is the candidate shortlist, not the judgment enum. Keep it concise and natural. Do not expose hidden chain-of-thought.'
       : focusedProposalRule + 'Rejudge the exact focused proposal independently. Answer the evidence-grounded challenge, but do not adopt an unsupported claim merely because it appeared in crossExamination or another persona output. CASE/evidence remains authoritative. Historical evidence is governed strictly by historicalWeightingRule. If a challenge mentions a role, rate, strength, weakness, pressure situation, or past usage not explicitly in CASE/evidence, identify it as unverified and do not repeat it as fact. State plainly whether your judgment changed and why. Keep it concise and natural. Do not expose hidden chain-of-thought.';
 
@@ -157,7 +162,7 @@ export default async function handler(req, res) {
       userPayload: payload,
       responseSchema: schema
     });
-    let result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
+    let result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase);
     let guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
 
     for (let attempt = 0; guardIssues.length && attempt < 2; attempt++) {
@@ -173,7 +178,7 @@ export default async function handler(req, res) {
         userPayload: correctionPayload,
         responseSchema: schema
       });
-      result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), selectionMode);
+      result = normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase);
       guardIssues = validatePersonaOutput(body.case, result, { focused: !candidateCase });
     }
 
