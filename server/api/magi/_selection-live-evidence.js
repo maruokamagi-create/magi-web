@@ -2,7 +2,7 @@ import { CURRENT_ROSTER } from './_roster.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v3-full-lineup-current-primary-old-reference';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v4-sample-aware-current-primary-old-reference';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -89,6 +89,13 @@ function historicalPlayer(name,byName){
   };
 }
 
+function sampleSizeRule(kind){
+  if(kind==='PITCHING_ROLE'){
+    return '率系の投手指標（防御率・WHIP・被打率など）は、登板数・投球回などの母数とセットで読む。小さい母数の好不調を安定した実力と断定しない。旧チームに十分な過去母数がある場合は再現性・経験の参考にするが、現在成績を上書きしない。母数の数値基準はEvidenceにない限り勝手に作らない。';
+  }
+  return '率系の打撃指標（打率・出塁率・長打率・OPSなど）は、打数・打席などの母数とセットで読む。小さい母数の高低を安定した実力と断定しない。旧チームに十分な過去母数がある場合は再現性・経験の参考にするが、現在成績を上書きしない。母数の数値基準はEvidenceにない限り勝手に作らない。';
+}
+
 export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
@@ -137,6 +144,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }
 
   const metricLabel=kind==='PITCHING_ROLE'?'投手':'打撃';
+  const sampleRule=sampleSizeRule(kind);
   const lines=[
     '【MAGI 選考Evidence】',
     '【主評価】2026-2027 現チーム',
@@ -144,6 +152,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     `集計期間：${display(audit?.extracted?.periodStart)} ～ ${display(audit?.extracted?.periodEnd)}`,
     `【現チーム全14選手・${metricLabel}】`,
     ...players.map(p=>playerLine(p.name,p,kind)),
+    `【母数ルール】${sampleRule}`,
     '【過年度の扱い】基本判断は現チーム。旧チームは現14名の過去実績を補助的に確認する比較材料としてだけ使う。旧チームの引退選手を現チーム候補に入れない。'
   ];
 
@@ -159,7 +168,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   lines.push(
     kind==='FULL_LINEUP'
-      ? '【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議後に二次案を出す。旧チーム記録は参考であり、引退選手を打順に入れない。ここにない数値・性格・将来結果は作らない。'
+      ? '【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議では具体的な打順番号と選手名を挙げて互いの並びを検証した後に二次案を出す。旧チーム記録は参考であり、引退選手を打順に入れない。ここにない数値・性格・将来結果は作らない。'
       : '【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は補助材料として必要な場合だけ参照する。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。'
   );
 
@@ -171,8 +180,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     count: players.length,
     files: sources.map(s=>s.name).filter(Boolean),
     summary:kind==='FULL_LINEUP'
-      ? '現チーム14名の正本打撃記録を主評価にし、旧チームの同14名の過去記録を参考として付加した1〜9番打順審議用Evidenceです。'
-      : `現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。`,
+      ? '現チーム14名の正本打撃記録を主評価にし、旧チームの同14名の過去記録を参考として付加した1〜9番打順審議用Evidenceです。率系指標は母数とセットで扱います。'
+      : `現チーム14名の正本${metricLabel}記録を主評価にし、取得できた場合は旧チームの同14名の過去記録を参考として付加しました。率系指標は母数とセットで扱います。`,
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
@@ -181,6 +190,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     primarySeason:'current',
     allCurrentTeamCheck:{status:'COMPLETE',players},
     historicalReference,
-    dataRule:'候補は現チーム14名のみ。現チームを主評価、旧チームは参考。ここにない数値・役割・選手・性格・将来結果は作らない'
+    sampleSizeRule:sampleRule,
+    dataRule:'候補は現チーム14名のみ。現チームを主評価、旧チームは参考。率系指標は母数とセットで読む。ここにない数値・役割・選手・性格・将来結果は作らない'
   };
 }
