@@ -64,6 +64,24 @@ test('G09 invented save count is blocked',()=>{
   assert.ok(issues.some(x=>x.includes('セーブ3')));
 });
 
+test('G10 stat quality adjective without baseline is blocked',()=>{
+  const r=result({primaryReason:'与四球の少なさを評価して条件付きで起用する。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('比較基準')));
+});
+
+test('G11 unsupported historical closer performance is blocked',()=>{
+  const r=result({prediction:['旧チーム同様に重要な場面で試合を締めくくるだろう。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('クローザー・終盤実績')));
+});
+
+test('G12 explicit comparison baseline permits stat-quality language',()=>{
+  const compared={...CASE,evidence:{...CASE.evidence,comparison:'チーム平均より与四球が少ない'}};
+  const r=result({analysis:['与四球が少ない点は比較上の強みです。']});
+  assert.deepEqual(validatePersonaOutput(compared,r,{focused:true}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
