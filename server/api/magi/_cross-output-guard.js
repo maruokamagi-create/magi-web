@@ -3,16 +3,6 @@ import { validatePersonaOutput } from './_persona-output-guard.js';
 function list(value){
   return Array.isArray(value) ? value.map(v=>String(v||'').trim()).filter(Boolean) : [];
 }
-function peerText(value){
-  const out=[];
-  for(const item of Array.isArray(value)?value:[]){
-    for(const field of ['point','challenge','evidenceBasis']){
-      const v=String(item?.[field]||'').trim();
-      if(v)out.push(v);
-    }
-  }
-  return out;
-}
 
 export function crossToGuardResult(cross){
   const challenges=cross?.challenges||{};
@@ -24,8 +14,7 @@ export function crossToGuardResult(cross){
       ...list(cross?.informationGaps),
       ...list(challenges?.melchior),
       ...list(challenges?.balthasar),
-      ...list(challenges?.casper),
-      ...peerText(cross?.peerExchanges)
+      ...list(challenges?.casper)
     ],
     prediction:[],
     primaryReason:'',
@@ -49,7 +38,6 @@ export function failClosedCross(issues){
     warnings:[reason],
     informationGaps:[reason],
     challenges:{melchior:[],balthasar:[],casper:[]},
-    peerExchanges:[],
     reviewRequired:true,
     reviewReason:reason
   };
