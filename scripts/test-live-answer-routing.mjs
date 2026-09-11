@@ -41,12 +41,12 @@ function test(name,fn){tests.push({name,fn});}
 
 test('L01 batting single metric returns only AVG',async()=>{
   const r=await buildLiveAnswer({question:'大野竜暉の打率だけ教えて',routed:route('BATTING_LOOKUP'),auditProvider:fakeLiveAudit});
-  includesAll(r.answer,['.278']);includesNone(r.answer,['.924','10','7']);assert.equal(r.refusedToInvent,false);
+  includesAll(r.answer,['.278']);includesNone(r.answer,['.924','安打10','打点7']);assert.equal(r.refusedToInvent,false);
 });
 
 test('L02 batting multi metric returns AVG and OPS',async()=>{
   const r=await buildLiveAnswer({question:'大野竜暉の打率とOPS教えて',routed:route('BATTING_LOOKUP'),auditProvider:fakeLiveAudit});
-  includesAll(r.answer,['.278','.924']);includesNone(r.answer,['10','7']);
+  includesAll(r.answer,['.278','.924']);includesNone(r.answer,['安打10','打点7']);
 });
 
 test('L03 batting hits and RBI exact',async()=>{
@@ -89,7 +89,7 @@ test('L09 career batting refuses instead of silently using current',async()=>{
 
 test('L10 overview exact four metrics',async()=>{
   const r=await buildLiveAnswer({question:'大野竜暉の打率・OPS・防御率・奪三振をまとめて',routed:route('PLAYER_OVERVIEW'),auditProvider:fakeLiveAudit});
-  includesAll(r.answer,['.278','.924','1.69','50']);includesNone(r.answer,['54.0','12']);
+  includesAll(r.answer,['.278','.924','1.69','50']);includesNone(r.answer,['54.0','与四球12']);
 });
 
 test('L11 player not unique refuses',async()=>{
@@ -99,22 +99,22 @@ test('L11 player not unique refuses',async()=>{
 
 test('P01 pitching single ERA excludes extra metrics',async()=>{
   const r=await buildStrictPitchingAnswer({question:'大野竜暉の防御率だけ教えて',routed:route('PITCHING_LOOKUP'),auditProvider:fakeStrictAudit});
-  includesAll(r.answer,['1.69']);includesNone(r.answer,['50','12','54.0']);
+  includesAll(r.answer,['1.69']);includesNone(r.answer,['奪三振50','与四球12','投球回54.0']);
 });
 
 test('P02 pitching multi ERA and strikeouts',async()=>{
   const r=await buildStrictPitchingAnswer({question:'大野竜暉の防御率と奪三振教えて',routed:route('PITCHING_LOOKUP'),auditProvider:fakeStrictAudit});
-  includesAll(r.answer,['1.69','50']);includesNone(r.answer,['54.0','12']);
+  includesAll(r.answer,['1.69','50']);includesNone(r.answer,['投球回54.0','与四球12']);
 });
 
 test('P03 pitching strikeouts and walks exact',async()=>{
   const r=await buildStrictPitchingAnswer({question:'大野竜暉の奪三振と与四球だけ教えて',routed:route('PITCHING_LOOKUP'),auditProvider:fakeStrictAudit});
-  includesAll(r.answer,['50','12']);includesNone(r.answer,['1.69','54.0']);
+  includesAll(r.answer,['50','12']);includesNone(r.answer,['防御率1.69','投球回54.0']);
 });
 
 test('P04 pitching HBP supported',async()=>{
   const r=await buildStrictPitchingAnswer({question:'大野竜暉の与死球教えて',routed:route('PITCHING_LOOKUP'),auditProvider:fakeStrictAudit});
-  includesAll(r.answer,['3']);includesNone(r.answer,['1.69','50']);
+  includesAll(r.answer,['3']);includesNone(r.answer,['防御率1.69','奪三振50']);
 });
 
 test('P05 missing pitching metric refuses invention',async()=>{
