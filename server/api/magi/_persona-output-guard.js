@@ -1,4 +1,5 @@
 import { CURRENT_ROSTER } from './_roster.js';
+import { validatePitchingPlanPersonaOutput } from './_pitching-plan-output-guard.js';
 
 function text(value){return String(value ?? '').trim();}
 function numberValue(value){
@@ -245,5 +246,6 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     }
   }
 
+  issues.push(...validatePitchingPlanPersonaOutput(caseData,result));
   return [...new Set(issues)];
 }
