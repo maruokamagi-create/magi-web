@@ -189,11 +189,15 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   const hasSluggingEvidence=/(?:"SLG"|"slugging"|長打率|二塁打|三塁打|本塁打|ホームラン)/i.test(evidenceText);
   if(!hasSluggingEvidence){
+    const unsupportedLabel=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&/長打率/.test(sentence));
+    if(unsupportedLabel)issues.push('Evidenceにない長打率を、存在する指標として述べている');
     const unsupported=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&/(?:長打力|長打能力|長打性能)/.test(sentence));
     if(unsupported)issues.push('OPS等の合成指標だけから長打力を単独で推定している');
   }
   const hasOnBaseEvidence=/(?:"OBP"|"onBase"|出塁率)/i.test(evidenceText);
   if(!hasOnBaseEvidence){
+    const unsupportedLabel=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&/出塁率/.test(sentence));
+    if(unsupportedLabel)issues.push('Evidenceにない出塁率を、存在する指標として述べている');
     const unsupported=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&/(?:出塁力|出塁能力)/.test(sentence));
     if(unsupported)issues.push('OPSや打率だけから出塁能力を単独で推定している');
   }
