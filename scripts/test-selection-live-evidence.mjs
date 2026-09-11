@@ -27,7 +27,7 @@ const fakeAudit=async({season})=>{
 assert.equal(selectionEvidenceKind('1番は誰がいい？',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
 assert.equal(selectionEvidenceKind('2番どう組む？',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
 assert.equal(selectionEvidenceKind('5番は誰がいい？',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
-assert.equal(selectionEvidenceKind('ベストオーダーを組んで',{players:[],domains:['LINEUP']}),'BATTING_ORDER');
+assert.equal(selectionEvidenceKind('ベストオーダーを組んで',{players:[],domains:['LINEUP']}),'FULL_LINEUP');
 assert.equal(selectionEvidenceKind('先発投手は誰がいい？',{players:[],domains:['PITCHING']}),'PITCHING_ROLE');
 assert.equal(selectionEvidenceKind('クローザーは誰がいい？',{players:[],domains:['PITCHING']}),'PITCHING_ROLE');
 assert.equal(shouldBuildCurrentSelectionEvidence('3番は誰がいい？',{players:[],domains:['LINEUP']}),true);
@@ -75,8 +75,10 @@ const withoutOld=await buildCurrentSelectionEvidence({
     return {seasonLabel:'2026-2027現チーム',source:{name:'current-master.xlsm'},extracted:{playersByName:currentPlayers}};
   }
 });
+assert.equal(withoutOld.selectionKind,'FULL_LINEUP');
 assert.equal(withoutOld.historicalReference.status,'UNAVAILABLE');
 assert.equal(withoutOld.count,14);
 assert.ok(withoutOld.text.includes('今回は現チーム正本だけで判断する'));
+assert.ok(withoutOld.text.includes('3賢人は独立して全打順を作り'));
 
 console.log('SELECTION LIVE EVIDENCE RESULT: PASS');
