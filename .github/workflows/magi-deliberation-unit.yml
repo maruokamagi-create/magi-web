@@ -6,9 +6,11 @@ on:
     paths:
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_persona-output-guard.js'
+      - 'server/api/magi/_cross-output-guard.js'
       - 'server/api/magi/_roster.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
+      - 'scripts/test-cross-output-guard.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
   workflow_dispatch:
 
@@ -33,3 +35,6 @@ jobs:
 
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
+
+      - name: Run cross-examination evidence guard cases
+        run: node --experimental-default-type=module scripts/test-cross-output-guard.mjs
