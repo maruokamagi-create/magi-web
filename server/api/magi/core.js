@@ -10,8 +10,9 @@ import { resolveQuestionEvidence } from './_evidence-resolver.js';
 import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
 import { understandRequest } from './_semantic-request.js';
 import { applySemanticGuard } from './_semantic-postguard.js';
+import { isPitchingPlanQuestion } from './_pitching-plan.js';
 
-const CORE_VERSION='magi-core-semantic-first-v2';
+const CORE_VERSION='magi-core-semantic-first-v3-pitching-plan';
 
 function text(v){return String(v||'').trim()}
 function hasPdfModifier(q){return /(?:PDF|ＰＤＦ)/i.test(String(q||''))}
@@ -42,6 +43,15 @@ function reportKind(semantic){
   if(ds.includes('FIELDING'))return'FIELDING';
   if(ds.includes('BATTING'))return'BATTING';
   return'';
+}
+function pitchingPlanSemantic(question){
+  return {
+    semanticVersion:'semantic-pitching-plan-direct-v1',mode:'DELIBERATION',confidence:'HIGH',
+    understoodRequest:'7回制の投手運用を、先発・第2投手・終盤・クローザーの4役で審議する',
+    routeReason:'複数投手の役割配置を決める明示的な投手運用相談。',players:[],domains:['PITCHING','TACTICS'],
+    timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],clarificationQuestion:'',needsData:true,
+    groundedPlayers:[],preflightApplied:true,originalQuestion:question
+  };
 }
 async function deliberationPayload({question,semantic,routed}){
   const resolution=await resolveQuestionEvidence({question,routed});
@@ -85,8 +95,10 @@ export default async function handler(req,res){
 
     if(hasPdfModifier(question))return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK'});
 
-    // Accuracy-first: every normal question is semantically understood before selecting an execution path.
-    const semantic=applySemanticGuard(question,context,await understandRequest(question,context));
+    // Accuracy-first: explicit structured pitching plans are deterministic; all other normal questions use semantic understanding first.
+    const semantic=isPitchingPlanQuestion({question})
+      ? pitchingPlanSemantic(question)
+      : applySemanticGuard(question,context,await understandRequest(question,context));
 
     if(semantic.mode==='CLARIFY'){
       const answer=clarificationAnswer(semantic.clarificationQuestion);
@@ -118,7 +130,6 @@ export default async function handler(req,res){
     if(['SINGLE_VALUE','SUMMARY'].includes(semantic.mode)){
       const kind=reportKind(semantic);
       if(kind==='FIELDING'){
-        // Fielding currently has one verified report engine. Use it instead of inventing a separate scalar path.
         return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'FIELDING_REPORT',action:'FULL_REPORT',reportKind:'FIELDING',understoodRequest:semantic.understoodRequest,players:semantic.players,domains:semantic.domains,timeScope:semantic.timeScope,specificSeason:semantic.specificSeason,opponent:semantic.opponent,breakdowns:semantic.breakdowns,semantic,fastPath:false});
       }
       const routed=routedFromSemantic(semantic);
@@ -130,7 +141,6 @@ export default async function handler(req,res){
       return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,semantic,fastPath:false});
     }
 
-    // Existing mature paths remain available for comparison/document/general requests after semantic understanding.
     const routed=await classify(question,context);
     if(routed?.route==='DELIBERATION')return sendJson(res,200,await deliberationPayload({question,semantic,routed}));
     return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:`SEMANTIC_${semantic.mode}_LEGACY_FALLBACK`,semantic,routed,fastPath:false});
