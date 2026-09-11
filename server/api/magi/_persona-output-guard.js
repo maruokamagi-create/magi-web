@@ -108,7 +108,7 @@ function hasUnhedgedOutcomePrediction(sentence){
   const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|場合|なら|次第|し得る|あり得る)/.test(s);
   const hard=/(?:絶対|必ず|確実に)/.test(s);
   if(hard)return true;
-  const causalGuarantee=/(?:することで|すれば|なら).{0,36}(?:成長する|定着する|勝てる|勝利できる|維持できる|改善する|回復する)/.test(s);
+  const causalGuarantee=/(?:ことで|すれば|なら).{0,48}(?:成長する|定着する|勝てる|勝利できる|維持できる|改善する|回復する)/.test(s);
   return causalGuarantee&&!hedge;
 }
 
