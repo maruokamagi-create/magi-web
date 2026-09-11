@@ -73,13 +73,31 @@ test('G10 stat quality adjective without baseline is blocked',()=>{
 test('G11 unsupported historical closer performance is blocked',()=>{
   const r=result({prediction:['旧チーム同様に重要な場面で試合を締めくくるだろう。']});
   const issues=validatePersonaOutput(CASE,r,{focused:true});
-  assert.ok(issues.some(x=>x.includes('クローザー・終盤実績')));
+  assert.ok(issues.some(x=>x.includes('役割経験')));
 });
 
 test('G12 explicit comparison baseline permits stat-quality language',()=>{
   const compared={...CASE,evidence:{...CASE.evidence,comparison:'チーム平均より与四球が少ない'}};
   const r=result({analysis:['与四球が少ない点は比較上の強みです。']});
   assert.deepEqual(validatePersonaOutput(compared,r,{focused:true}),[]);
+});
+
+test('G13 strikeout-walk ratio qualitative claim without baseline is blocked',()=>{
+  const r=result({analysis:['奪三振7と与四球2の割合は悪くない。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('比較基準')));
+});
+
+test('G14 unsupported pressure-experience inference is blocked',()=>{
+  const r=result({analysis:['旧チーム54.0回の実績はプレッシャーのかかる場面での経験値として軽視できない。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('役割経験')));
+});
+
+test('G15 raw strikeout count cannot become generic strikeout ability without baseline',()=>{
+  const r=result({publicStatement:'三振が取れる力は買いです。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('比較基準')));
 });
 
 let passed=0;
