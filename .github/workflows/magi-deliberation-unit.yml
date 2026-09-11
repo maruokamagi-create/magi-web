@@ -1,0 +1,30 @@
+name: MAGI Deliberation Final Selftest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_roster.js'
+      - 'scripts/test-deliberation-final.mjs'
+      - '.github/workflows/magi-deliberation-unit.yml'
+  workflow_dispatch:
+
+jobs:
+  deterministic-deliberation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Run deliberation final cases
+        run: node --experimental-default-type=module scripts/test-deliberation-final.mjs
