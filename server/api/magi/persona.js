@@ -3,6 +3,7 @@ import { PERSONA_PROMPTS } from './_prompts.js';
 import { validatePersonaOutput } from './_persona-output-guard.js';
 import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
+import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
 
 const schema = {
   type: 'OBJECT',
@@ -37,7 +38,7 @@ function validCase(body) {
 export function isCandidateCase(body) {
   const caseData = body?.case || {};
   if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
-  if (isFullLineupQuestion(caseData)) return true;
+  if (isFullLineupQuestion(caseData) || isPitchingPlanQuestion(caseData)) return true;
   const q = String(caseData?.question || '');
   const battingSlot = /(?:[1-9１-９一二三四五六七八九](?:番|ばん)(?:打者)?)/;
   const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
@@ -73,6 +74,12 @@ function fullLineupIssues(rawResult, fullLineupCase) {
   if (!fullLineupCase) return [];
   const check = validateFullLineupOrder(rawResult?.candidatePlayers);
   return check.issues.map(x => `FULL_LINEUP: ${x}`);
+}
+
+function pitchingPlanIssues(rawResult, pitchingPlanCase) {
+  if (!pitchingPlanCase) return [];
+  const check = validatePitchingPlanOrder(rawResult?.candidatePlayers);
+  return check.issues.map(x => `PITCHING_PLAN: ${x}`);
 }
 
 export function normalizeConditionalJudgment(result, selectionMode) {
@@ -169,6 +176,9 @@ function correctionDirective(issues) {
   if (list.some(x => /FULL_LINEUP/.test(String(x)))) {
     directives.push('This is a full batting-order task. candidatePlayers MUST contain exactly nine distinct current-team players in batting order from No.1 through No.9. Do not return a shortlist, extra bench players, duplicate players, or historical players.');
   }
+  if (list.some(x => /PITCHING_PLAN/.test(String(x)))) {
+    directives.push('This is a four-role pitching-plan task. candidatePlayers MUST contain exactly four distinct current-team players in this exact role order: STARTER, SECOND PITCHER, LATE, CLOSER. Do not add extra pitchers, duplicate a pitcher, or include retired players.');
+  }
   return directives.join(' ');
 }
 
@@ -180,6 +190,7 @@ export default async function handler(req, res) {
     const phase = body?.phase === 'SECOND' ? 'SECOND' : 'PRIMARY';
     const candidateCase = isCandidateCase(body);
     const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
+    const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
@@ -191,16 +202,22 @@ export default async function handler(req, res) {
     const selectionEvidenceRule = 'SELECTION EVIDENCE RULE: Candidate attributes must come from CASE.evidence only. Persona identity does not authorize invented attributes. If development, mental, leadership, practice-attitude, future-growth or role-suitability evidence is absent, CASPER must not infer growth potential, future team strengthening, human traits, leadership, mental strength, development trajectory or role suitability from AVG/OPS or positions alone; it must say those development factors are unverified and rank only from supported evidence. If tactical expected-runs, clutch, pressure, opponent, lineup-combination or game-state evidence is absent, BALTHASAR must not state those as facts or certainty; any tactical forecast must be explicitly probabilistic. MELCHIOR may compare supplied peer metrics but must not decompose OPS into OBP or SLG qualities unless those components are supplied. candidateBasis, primaryReason and publicStatement are assertive fields and must not contain unsupported future outcomes.';
     const fullLineupPrimaryRule = 'This is a FULL LINEUP task. After checking all 14 current players, candidatePlayers must contain exactly nine distinct current-team players in your proposed batting order, where candidatePlayers[0] is 1番 and candidatePlayers[8] is 9番. This is not a top-nine ranking: treat adjacent hitters and lineup flow as part of your own persona domain. Do not include bench players after the ninth slot. Do not include retired old-team players. Historical evidence may inform current-player continuity only as historicalWeightingRule allows.';
     const fullLineupSecondRule = 'This remains a FULL LINEUP task after cross-examination. Reconsider the actual 1番〜9番 sequence, not just the names. candidatePlayers must still contain exactly nine distinct current-team players in batting-order sequence. Reply to the other Wise Men’s concrete challenges about slots and combinations, then keep or revise your order independently. Do not converge merely to create consensus.';
+    const pitchingPlanPrimaryRule = 'This is a PITCHING PLAN task for a 7-inning game. After checking all 14 current players, candidatePlayers must contain exactly four distinct current-team players in this exact role order: candidatePlayers[0]=先発, candidatePlayers[1]=第2投手, candidatePlayers[2]=終盤, candidatePlayers[3]=クローザー. This is a role assignment, not a generic pitcher ranking. Use only supplied pitching evidence and its sample size. Do not invent exact inning limits, consecutive-use tolerance, saves, closer history, high-leverage success, pressure handling, or fatigue status unless CASE.evidence explicitly supplies them. Historical innings and rates may show past pitching volume only; they do not prove a past role.';
+    const pitchingPlanSecondRule = 'This remains a 7-inning four-role PITCHING PLAN task after cross-examination. Reconsider the exact role sequence 先発→第2投手→終盤→クローザー. candidatePlayers must still contain exactly four distinct current-team players in that role order. Answer the concrete role-player challenges, then keep or revise your plan independently. Do not converge merely to create consensus, and never invent unsupported closer history, pressure ability, fatigue, or exact inning ceilings.';
 
     const primaryInstruction = candidateCase
       ? fullLineupCase
         ? `${fullLineupPrimaryRule} Do not phrase the user-facing answer as 賛成・反対・可決・否決. FIRST inspect exactly the authoritativeCurrentRoster 14 players using ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. ${selectionEvidenceRule} candidateBasis must explain the evidence-grounded idea behind your 1〜9 order. In publicStatement, state your batting order clearly enough that the user can see the sequence and the key reason for it. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.`
-        : `This is a SELECTION question, not a yes/no proposal. Do not phrase the user-facing answer as 賛成・反対・可決・否決. The judgment enum is only an internal protocol field and must not be treated as the answer. FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. Do not add any fifteenth player or omit anyone. SECOND, independently choose candidatePlayers using only your persona domain and only supplied evidence. Rank candidatePlayers in your preferred order. candidateBasis must explain your own evidence-grounded selection standard. Apply historicalWeightingRule only to historical facts actually supplied. ${selectionEvidenceRule} In publicStatement, directly answer who you select and why, using the exact official player names from authoritativeCurrentRoster. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.`
+        : pitchingPlanCase
+          ? `${pitchingPlanPrimaryRule} Do not phrase the user-facing answer as 賛成・反対・可決・否決. FIRST inspect exactly the authoritativeCurrentRoster 14 players using ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. ${selectionEvidenceRule} candidateBasis must explain why each of the four role assignments is defensible from the supplied records and sample sizes. In publicStatement, clearly state 先発、第2投手、終盤、クローザー with exact official names. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.`
+          : `This is a SELECTION question, not a yes/no proposal. Do not phrase the user-facing answer as 賛成・反対・可決・否決. The judgment enum is only an internal protocol field and must not be treated as the answer. FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. Do not add any fifteenth player or omit anyone. SECOND, independently choose candidatePlayers using only your persona domain and only supplied evidence. Rank candidatePlayers in your preferred order. candidateBasis must explain your own evidence-grounded selection standard. Apply historicalWeightingRule only to historical facts actually supplied. ${selectionEvidenceRule} In publicStatement, directly answer who you select and why, using the exact official player names from authoritativeCurrentRoster. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.`
       : focusedProposalRule + 'Give the independent judgment on the exact proposal. Separate supplied fact from analysis and prediction. Historical evidence is governed strictly by historicalWeightingRule. Do not infer prior role, leverage situation, success condition, or qualitative statistical strength from raw counts alone. If the evidence is incomplete, say exactly what remains uncertain while still answering the current choice boundary. Write primaryReason and publicStatement in natural spoken Japanese, usually 1–3 short sentences. Do not expose hidden chain-of-thought.';
     const secondInstruction = candidateCase
       ? fullLineupCase
         ? `${fullLineupSecondRule} Keep checkedPlayers exactly equal to the authoritative 14-player roster. Continue historicalWeightingRule, selectionEvidenceRule and temporalContext. ${selectionEvidenceRule} If crossExamination introduces an unsupported premise, identify it as unverified instead of adopting it. In publicStatement, state what changed or stayed in your 1〜9 order and why. Do not expose hidden chain-of-thought.`
-        : `This remains a SELECTION question, not a yes/no vote. Do not say you are 賛成 or 反対 to the question. Keep checkedPlayers exactly equal to the authoritative 14-player roster. Reconsider your own candidatePlayers only from concrete evidence and cross-examination; do not change merely to join a majority. Rank candidatePlayers in your current preferred order. Continue historicalWeightingRule, selectionEvidenceRule and temporalContext. ${selectionEvidenceRule} If crossExamination introduces a development, tactical or historical premise absent from CASE.evidence, treat it as unverified rather than adopting it. In publicStatement, state plainly which candidates you retain, add, or remove and why, using exact official player names from authoritativeCurrentRoster. The actual answer is the candidate shortlist, not the judgment enum. Keep it concise and natural. Do not expose hidden chain-of-thought.`
+        : pitchingPlanCase
+          ? `${pitchingPlanSecondRule} Keep checkedPlayers exactly equal to the authoritative 14-player roster. Continue historicalWeightingRule, selectionEvidenceRule and temporalContext. If crossExamination introduces an unsupported premise, identify it as unverified instead of adopting it. In publicStatement, state what changed or stayed in the four roles and why, using exact official player names. Do not expose hidden chain-of-thought.`
+          : `This remains a SELECTION question, not a yes/no vote. Do not say you are 賛成 or 反対 to the question. Keep checkedPlayers exactly equal to the authoritative 14-player roster. Reconsider your own candidatePlayers only from concrete evidence and cross-examination; do not change merely to join a majority. Rank candidatePlayers in your current preferred order. Continue historicalWeightingRule, selectionEvidenceRule and temporalContext. ${selectionEvidenceRule} If crossExamination introduces a development, tactical or historical premise absent from CASE.evidence, treat it as unverified rather than adopting it. In publicStatement, state plainly which candidates you retain, add, or remove and why, using exact official player names from authoritativeCurrentRoster. The actual answer is the candidate shortlist, not the judgment enum. Keep it concise and natural. Do not expose hidden chain-of-thought.`
       : focusedProposalRule + 'Rejudge the exact focused proposal independently. Answer the evidence-grounded challenge, but do not adopt an unsupported claim merely because it appeared in crossExamination or another persona output. CASE/evidence remains authoritative. Historical evidence is governed strictly by historicalWeightingRule. If a challenge mentions a role, rate, strength, weakness, pressure situation, or past usage not explicitly in CASE/evidence, identify it as unverified and do not repeat it as fact. State plainly whether your judgment changed and why. Keep it concise and natural. Do not expose hidden chain-of-thought.';
 
     const payload = phase === 'PRIMARY'
@@ -235,7 +252,8 @@ export default async function handler(req, res) {
     );
     let guardIssues = [
       ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-      ...fullLineupIssues(rawResult, fullLineupCase)
+      ...fullLineupIssues(rawResult, fullLineupCase),
+      ...pitchingPlanIssues(rawResult, pitchingPlanCase)
     ];
 
     for (let attempt = 0; guardIssues.length && attempt < 3; attempt++) {
@@ -259,7 +277,8 @@ export default async function handler(req, res) {
       );
       guardIssues = [
         ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-        ...fullLineupIssues(rawResult, fullLineupCase)
+        ...fullLineupIssues(rawResult, fullLineupCase),
+        ...pitchingPlanIssues(rawResult, pitchingPlanCase)
       ];
     }
 
@@ -306,6 +325,21 @@ export default async function handler(req, res) {
             result.candidateBasis = '9人の打順構成エラーのため再審議';
           } else {
             result.candidatePlayers = lineupCheck.order;
+          }
+        } else if (pitchingPlanCase) {
+          const planCheck = validatePitchingPlanOrder(result.candidatePlayers);
+          if (!planCheck.ok) {
+            result.judgment = 'YELLOW';
+            result.confidence = 'LOW';
+            result.reviewRequested = true;
+            result.reviewReason = `7回制4役の投手運用を確定できません。${planCheck.issues.join('。')}`;
+            result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), result.reviewReason])];
+            result.primaryReason = result.reviewReason;
+            result.publicStatement = '現チーム14名は確認できましたが、先発・第2投手・終盤・クローザーの4役が正しく構成できていないため、この案は確定しません。';
+            result.candidatePlayers = [];
+            result.candidateBasis = '4役投手運用の構成エラーのため再審議';
+          } else {
+            result.candidatePlayers = planCheck.order;
           }
         }
       }
