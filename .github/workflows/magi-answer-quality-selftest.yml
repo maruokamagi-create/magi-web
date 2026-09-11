@@ -1,0 +1,44 @@
+name: MAGI Answer Quality Selftest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/magi/health.js'
+      - 'server/api/magi/_gemini.js'
+      - '.github/workflows/magi-answer-quality-selftest.yml'
+  workflow_dispatch:
+
+jobs:
+  authoritative-answer-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Run 8 authoritative evidence cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app/api/magi/health'
+          ORIGIN='https://magi-web.vercel.app'
+          run_case(){
+            id="$1"; payload="$2"; shift 2
+            out="/tmp/${id}.json"
+            curl -L --fail --retry 2 --retry-delay 2 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d "$payload" "$BASE" -o "$out"
+            cat "$out"; echo
+            jq -e '.ok == true and (.answerEngineVersion == "fixture-answer-v1")' "$out" >/dev/null
+            for must in "$@"; do
+              jq -e --arg x "$must" '(.answer // "") | contains($x)' "$out" >/dev/null || { echo "$id missing: $must"; exit 1; }
+            done
+            echo "$id PASS"
+          }
+
+          run_case A01 '{"mode":"ANSWER_FIXTURE","question":"新チームの陽翔のOPS教えて","route":"BATTING_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2026-2027.pdf","scope":"R8.8.2-R8.8.11","player":"大久保 陽翔","batting":{"OPS":".912"}}}' '.912'
+          run_case A02 '{"mode":"ANSWER_FIXTURE","question":"旧チームの陽翔のOPS教えて","route":"BATTING_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2025-2026.pdf","scope":"2025-2026","player":"大久保 陽翔","batting":{"OPS":".969"}}}' '.969'
+          run_case A03 '{"mode":"ANSWER_FIXTURE","question":"新チームの大野竜暉の打率教えて","route":"BATTING_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2026-2027.pdf","scope":"R8.8.2-R8.8.11","player":"大野 竜暉","batting":{"AVG":".278"}}}' '.278'
+          run_case A04 '{"mode":"ANSWER_FIXTURE","question":"新チームの大野竜暉のOPS教えて","route":"BATTING_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2026-2027.pdf","scope":"R8.8.2-R8.8.11","player":"大野 竜暉","batting":{"OPS":".924"}}}' '.924'
+          run_case A05 '{"mode":"ANSWER_FIXTURE","question":"旧チームの大野竜暉の防御率と奪三振教えて","route":"PITCHING_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2025-2026.pdf","scope":"2025-2026","player":"大野 竜暉","pitching":{"ERA":"1.69","innings":"54.0","strikeouts":"50"}}}' '1.69' '50'
+          run_case A06 '{"mode":"ANSWER_FIXTURE","question":"新チームは何勝何敗？","route":"TEAM_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2026-2027.pdf","scope":"R8.8.2-R8.8.11","teamRecord":{"games":6,"wins":3,"losses":2,"draws":1}}}' '3勝' '2敗'
+          run_case A07 '{"mode":"ANSWER_FIXTURE","question":"新チームのチームOPS教えて","route":"TEAM_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2026-2027.pdf","scope":"R8.8.2-R8.8.11","teamBatting":{"OPS":".738"}}}' '.738'
+          run_case A08 '{"mode":"ANSWER_FIXTURE","question":"中嶋玲月の打率とOPS教えて","route":"BATTING_LOOKUP","evidence":{"source":"丸岡中軟式野球部_通算成績一覧2026-2027.pdf","scope":"R8.8.2-R8.8.11","player":"中嶋 玲月","batting":{"AVG":".588","OPS":"1.376"}}}' '.588' '1.376'
+
+          echo 'AUTHORITATIVE ANSWER RESULT: 8/8 PASS'
