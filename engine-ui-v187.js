@@ -10,10 +10,12 @@
   const button=()=>document.querySelector('button[onclick="runMagi()"]');
   const candidateText=p=>list(p?.candidatePlayers).join('・')||'候補未確定';
   const selectionMode=q=>{
-    const s=String(q||'');
-    const domain=/クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション/;
-    const cue=/誰|どの|どれ|どちら|どう組|組み合わせ|候補|選ぶ|選定|何番/;
-    return domain.test(s)&&cue.test(s);
+    const s=String(q||'').normalize('NFKC');
+    const pitchingPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(s)&&/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る)/.test(s);
+    const battingSlot=/(?:[1-9一二三四五六七八九](?:番|ばん)(?:打者)?)/;
+    const domain=/クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
+    const cue=/誰|だれ|どの|どれ|どちら|どう組|どうする|組んで|組む|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト|考えて|決めて/;
+    return pitchingPlan||((domain.test(s)||battingSlot.test(s))&&cue.test(s));
   };
 
   const css=`
