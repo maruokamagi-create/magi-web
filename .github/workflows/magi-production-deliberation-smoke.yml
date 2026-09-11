@@ -66,11 +66,11 @@ jobs:
               (.confidence|IN("HIGH","MEDIUM","LOW")) and
               ((.publicStatement//"")|length>0) and
               ((.primaryReason//"")|length>0) and
-              ((.publicStatement//"")|contains("大野 竜暉")) and
               ((.publicStatement//"")|contains("大久保 陽翔")|not) and
               ((.primaryReason//"")|contains("大久保 陽翔")|not) and
               (.checkedPlayers|length==0) and (.candidatePlayers|length==0) and ((.candidateBasis//"")|length==0) and
-              (.facts|type=="array") and (.analysis|type=="array") and (.prediction|type=="array")
+              (.facts|type=="array") and (.analysis|type=="array") and (.prediction|type=="array") and
+              (([.facts[],.analysis[],.prediction[],.primaryReason,.publicStatement]|map(tostring)|join(" "))|contains("四死球")|not)
             ' "/tmp/${p}-primary.json" >/dev/null
           done
 
@@ -89,7 +89,8 @@ jobs:
             (.warnings|type=="array") and (.informationGaps|type=="array") and
             (.challenges.melchior|type=="array") and
             (.challenges.balthasar|type=="array") and
-            (.challenges.casper|type=="array")
+            (.challenges.casper|type=="array") and
+            (([.agreement[],.disagreement[],.domainConflicts[],.warnings[],.informationGaps[],.challenges.melchior[],.challenges.balthasar[],.challenges.casper[]]|map(tostring)|join(" "))|contains("四死球")|not)
           ' /tmp/cross.json >/dev/null
 
           for p in melchior balthasar casper; do
@@ -103,7 +104,8 @@ jobs:
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|contains("大久保 陽翔")|not) and
               ((.primaryReason//"")|contains("大久保 陽翔")|not) and
-              (.checkedPlayers|length==0) and (.candidatePlayers|length==0) and ((.candidateBasis//"")|length==0)
+              (.checkedPlayers|length==0) and (.candidatePlayers|length==0) and ((.candidateBasis//"")|length==0) and
+              (([.facts[],.analysis[],.prediction[],.primaryReason,.publicStatement]|map(tostring)|join(" "))|contains("四死球")|not)
             ' "/tmp/${p}-second.json" >/dev/null
           done
 
@@ -126,7 +128,8 @@ jobs:
             (.status|IN("MAGI_CONSENSUS","MAGI_MAJORITY","MAGI_DEADLOCK","INSUFFICIENT_EVIDENCE","MAGI_REVIEW_REQUIRED")) and
             ((.recommendation//"")|length>0) and
             (.confidence|IN("HIGH","MEDIUM","LOW")) and
-            (.majorReasons|type=="array") and (.warnings|type=="array") and (.reDeliberationConditions|type=="array")
+            (.majorReasons|type=="array") and (.warnings|type=="array") and (.reDeliberationConditions|type=="array") and
+            (([.majorReasons[],.minorityOpinion,.warnings[],.prediction[],.reviewReason,.reDeliberationConditions[]]|map(tostring)|join(" "))|contains("四死球")|not)
           ' /tmp/final.json >/dev/null
 
           m=$(jq -r '.publicStatement' /tmp/melchior-second.json)
