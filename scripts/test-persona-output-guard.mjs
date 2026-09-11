@@ -161,6 +161,29 @@ test('G26 hard future certainty is blocked',()=>{
   assert.ok(issues.some(x=>x.includes('保証できない')));
 });
 
+test('G27 fatigue and burden accumulation is blocked without evidence',()=>{
+  const r=result({warnings:['捕手と投手の兼任による疲労や負担の蓄積に注意が必要です。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('負担の大きさ')));
+});
+
+test('G28 certainty in user-facing action language is blocked',()=>{
+  const r=result({publicStatement:'条件付きで試しながら確実に勝ちを拾っていこう。'});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('保証できない')));
+});
+
+test('G29 unhedged causal growth prediction is blocked',()=>{
+  const r=result({prediction:['慎重な段階的起用を続けることで、選手が成長しチームの戦力として定着する。']});
+  const issues=validatePersonaOutput(CASE,r,{focused:true});
+  assert.ok(issues.some(x=>x.includes('不確実性')));
+});
+
+test('G30 hedged growth prediction is allowed',()=>{
+  const r=result({prediction:['慎重な段階的起用を続けた場合、選手の成長につながる可能性があります。']});
+  assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
