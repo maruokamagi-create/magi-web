@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import vm from 'node:vm';
 import { isPitchingPlanQuestion } from '../server/api/magi/_pitching-plan.js';
 import { isFullLineupQuestion } from '../server/api/magi/_full-lineup.js';
-import { isSelectionCase } from '../server/api/magi/orchestrate.js';
 
 const source = readFileSync(new URL('../engine-ui-v187.js', import.meta.url), 'utf8');
 const start = source.indexOf('  const pitchingPlanMode=');
@@ -10,6 +9,11 @@ const end = source.indexOf('\n\n  const css=`', start);
 if (start < 0 || end < 0) throw new Error('client selection helper block not found');
 const helperBlock = source.slice(start, end);
 const { pitchingPlanMode, fullLineupMode, selectionMode, selectionKind } = vm.runInNewContext(`(()=>{const list=v=>(Array.isArray(v)?v:[]).filter(Boolean);${helperBlock};return{pitchingPlanMode,fullLineupMode,selectionMode,selectionKind};})()`);
+
+const orchestrateSource = readFileSync(new URL('../server/api/magi/orchestrate.js', import.meta.url), 'utf8');
+const selectionMatch = orchestrateSource.match(/export function isSelectionCase\(caseData\) \{([\s\S]*?)\n\}/);
+if (!selectionMatch) throw new Error('server isSelectionCase source not found');
+const isSelectionCase = vm.runInNewContext(`(function(caseData){${selectionMatch[1]}\n})`, { isPitchingPlanQuestion, isFullLineupQuestion });
 
 const cases = [
   ['A01','投手リレーどう組む？','pitching'],
