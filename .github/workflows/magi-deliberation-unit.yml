@@ -27,6 +27,7 @@ on:
       - 'scripts/test-full-lineup-selection.mjs'
       - 'scripts/test-pitching-plan-selection.mjs'
       - 'scripts/test-full-lineup-semantic-route.mjs'
+      - 'scripts/test-pitching-plan-semantic-route.mjs'
       - 'scripts/test-cross-output-guard.mjs'
       - 'scripts/test-persona-case-mode.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
@@ -77,6 +78,9 @@ jobs:
 
       - name: Run full lineup semantic routing cases
         run: node --experimental-default-type=module scripts/test-full-lineup-semantic-route.mjs
+
+      - name: Run pitching-plan semantic routing cases
+        run: node --experimental-default-type=module scripts/test-pitching-plan-semantic-route.mjs
 
       - name: Run cross-examination evidence guard cases
         run: node --experimental-default-type=module scripts/test-cross-output-guard.mjs
