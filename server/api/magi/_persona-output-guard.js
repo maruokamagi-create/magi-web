@@ -101,6 +101,17 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
   }
 }
 
+function hasUnhedgedOutcomePrediction(sentence){
+  const s=String(sentence||'');
+  const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|コンディション|パフォーマンス|故障|低下|改善|回復)/.test(s);
+  if(!outcome)return false;
+  const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|場合|なら|次第|し得る|あり得る)/.test(s);
+  const hard=/(?:絶対|必ず|確実に)/.test(s);
+  if(hard)return true;
+  const causalGuarantee=/(?:することで|すれば|なら).{0,36}(?:成長する|定着する|勝てる|勝利できる|維持できる|改善する|回復する)/.test(s);
+  return causalGuarantee&&!hedge;
+}
+
 export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const issues=[];
   const all=outputText(result);
@@ -108,6 +119,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const assertive=assertiveOutputText(result);
   const assertiveParts=sentenceParts(assertive);
   const prediction=predictionOutputText(result);
+  const predictionParts=sentenceParts(prediction);
   const caseText=JSON.stringify(caseData||{});
   const evidenceText=JSON.stringify(caseData?.evidence||{});
   const metrics=collectMetrics(caseData||{});
@@ -158,11 +170,11 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(unsupportedSentence)issues.push('旧チームのクローザー・終盤・高圧場面の実績がEvidenceにないのに、その役割経験を前提にしている');
   }
 
-  const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
+  const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
   if(!hasStrongBurdenEvidence){
     const unsupportedBurden=[
       /負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度)/,
-      /蓄積疲労|疲労蓄積/,
+      /蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)/,
       /(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/,
       /(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/
     ];
@@ -170,8 +182,11 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(unsupportedSentence)issues.push('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
   }
 
-  if(/(?:絶対|必ず|確実に).{0,24}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事)/.test(prediction)){
-    issues.push('Evidenceから保証できない将来結果を断定している');
+  if(parts.some(sentence=>/(?:絶対|必ず|確実に).{0,24}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事|拾)/.test(sentence))){
+    issues.push('Evidenceから保証できない結果を断定している');
+  }
+  if(predictionParts.some(hasUnhedgedOutcomePrediction)){
+    issues.push('将来予測を不確実性の表現なしに確定結果として述べている');
   }
 
   if(focused){
