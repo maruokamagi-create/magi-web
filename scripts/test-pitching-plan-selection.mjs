@@ -4,7 +4,11 @@ import { buildPitchingPlanResult } from '../server/api/magi/orchestrate.js';
 
 assert.equal(isPitchingPlanQuestion('7回制の投手運用を先発→第2投手→終盤→クローザーで組んで'),true);
 assert.equal(isPitchingPlanQuestion({selectionKind:'PITCHING_PLAN',question:'投手を考えて'}),true);
+assert.equal(isPitchingPlanQuestion('投手リレーどう組む？'),true);
+assert.equal(isPitchingPlanQuestion('継投どうする？'),true);
+assert.equal(isPitchingPlanQuestion('先発とクローザーどう組む？'),true);
 assert.equal(isPitchingPlanQuestion('クローザーは誰がいい？'),false);
+assert.equal(isPitchingPlanQuestion('先発は誰がいい？'),false);
 
 const good=['橋向 結都','大久保 陽翔','坂田 暉馬','大野 竜暉'];
 assert.equal(validatePitchingPlanOrder(good).ok,true);
