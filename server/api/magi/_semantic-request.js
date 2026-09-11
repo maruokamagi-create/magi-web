@@ -120,7 +120,7 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
   const q=clean(question,4000);
   const grounded=directGrounded.length?directGrounded:contextGrounded;
 
-  if(/絶対.{0,6}勝てる/.test(q)&&!/(?:対|vs\.?|ＶＳ|戦|試合|相手)/i.test(q)&&!hasGameAnchor(suppliedContext)){
+  if(/絶対.{0,6}勝てる/.test(q)&&!/(?:対戦|vs\.?|ＶＳ|(?:^|[^絶])戦|試合|相手)/i.test(q)&&!hasGameAnchor(suppliedContext)){
     return clarifyResult(q,'どの試合についてですか？','対象試合が特定できないため、勝敗予測へ進まない。',grounded);
   }
   if(/(?:2|二)\s*打席/.test(q)&&/評価/.test(q)&&grounded.length!==1){
