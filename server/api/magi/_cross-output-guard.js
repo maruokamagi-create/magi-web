@@ -5,6 +5,26 @@ import { isFullLineupQuestion } from './_full-lineup.js';
 function list(value){
   return Array.isArray(value) ? value.map(v=>String(v||'').trim()).filter(Boolean) : [];
 }
+function crossTexts(cross){
+  const challenges=cross?.challenges||{};
+  return [
+    ...list(cross?.agreement),
+    ...list(cross?.disagreement),
+    ...list(cross?.domainConflicts),
+    ...list(cross?.warnings),
+    ...list(cross?.informationGaps),
+    ...list(challenges?.melchior),
+    ...list(challenges?.balthasar),
+    ...list(challenges?.casper)
+  ];
+}
+function japaneseEnough(value){
+  const s=String(value||'');
+  const jp=(s.match(/[ぁ-んァ-ヶ一-龯々ー]/g)||[]).length;
+  const latin=(s.match(/[A-Za-z]/g)||[]).length;
+  if(!jp)return false;
+  return latin<=Math.max(12,jp*0.9);
+}
 
 export function crossToGuardResult(cross){
   const challenges=cross?.challenges||{};
@@ -39,6 +59,16 @@ export function validateDialoguePresence(cross){
   return issues;
 }
 
+export function validateCrossLanguage(cross){
+  const issues=[];
+  for(const row of crossTexts(cross)){
+    if(!japaneseEnough(row)){
+      issues.push(`公開クロス審議が自然な日本語になっていません: ${row.slice(0,80)}`);
+    }
+  }
+  return issues;
+}
+
 export function validateFullLineupDialogueSpecificity(caseData,cross){
   if(!isFullLineupQuestion(caseData))return[];
   const challenges=cross?.challenges||{};
@@ -63,6 +93,7 @@ export function validateFullLineupDialogueSpecificity(caseData,cross){
 export function validateCrossOutput(caseData,cross,{focused=false}={}){
   return [
     ...validateDialoguePresence(cross),
+    ...validateCrossLanguage(cross),
     ...validateFullLineupDialogueSpecificity(caseData,cross),
     ...validatePersonaOutput(caseData,crossToGuardResult(cross),{focused})
   ];
