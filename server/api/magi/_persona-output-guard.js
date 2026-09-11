@@ -58,6 +58,20 @@ function outputText(result){
     result?.changeReason
   ].map(text).filter(Boolean).join('。');
 }
+function assertiveOutputText(result){
+  return [
+    ...(Array.isArray(result?.facts)?result.facts:[]),
+    ...(Array.isArray(result?.analysis)?result.analysis:[]),
+    result?.primaryReason,
+    result?.publicStatement,
+    ...(Array.isArray(result?.warnings)?result.warnings:[]),
+    result?.reviewReason,
+    result?.changeReason
+  ].map(text).filter(Boolean).join('。');
+}
+function predictionOutputText(result){
+  return (Array.isArray(result?.prediction)?result.prediction:[]).map(text).filter(Boolean).join('。');
+}
 
 function validatePattern({all,metric,label,re,metrics,issues}){
   const expected=metrics[metric]||[];
@@ -91,6 +105,9 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const issues=[];
   const all=outputText(result);
   const parts=sentenceParts(all);
+  const assertive=assertiveOutputText(result);
+  const assertiveParts=sentenceParts(assertive);
+  const prediction=predictionOutputText(result);
   const caseText=JSON.stringify(caseData||{});
   const evidenceText=JSON.stringify(caseData?.evidence||{});
   const metrics=collectMetrics(caseData||{});
@@ -139,6 +156,22 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     ];
     const unsupportedSentence=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedRole.some(re=>re.test(sentence)));
     if(unsupportedSentence)issues.push('旧チームのクローザー・終盤・高圧場面の実績がEvidenceにないのに、その役割経験を前提にしている');
+  }
+
+  const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
+  if(!hasStrongBurdenEvidence){
+    const unsupportedBurden=[
+      /負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度)/,
+      /蓄積疲労|疲労蓄積/,
+      /(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/,
+      /(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/
+    ];
+    const unsupportedSentence=assertiveParts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedBurden.some(re=>re.test(sentence)));
+    if(unsupportedSentence)issues.push('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
+  }
+
+  if(/(?:絶対|必ず|確実に).{0,24}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事)/.test(prediction)){
+    issues.push('Evidenceから保証できない将来結果を断定している');
   }
 
   if(focused){
