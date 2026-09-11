@@ -13,6 +13,13 @@ function pushMetric(map,key,value){
   if(!map[key])map[key]=[];
   if(!map[key].some(x=>sameNumber(x,n)))map[key].push(n);
 }
+function sentenceParts(value){
+  return String(value||'').split(/[。！？!?\n]+/).map(s=>s.trim()).filter(Boolean);
+}
+function isEvidenceGapStatement(sentence){
+  const s=String(sentence||'');
+  return /(?:確認でき(?:ない|ません)|裏付け(?:られない|られません)|証明でき(?:ない|ません)|断定でき(?:ない|ません)|とは言え(?:ない|ません)|根拠(?:が|は)?(?:ない|ありません)|記録(?:が|は)?(?:ない|ありません|含まれていない|含まれていません)|Evidence(?:に|上に)?(?:ない|ありません)|未確認|不明|示されていない|示されていません|前提にでき(?:ない|ません)|直接.{0,12}でき(?:ない|ません))/.test(s);
+}
 
 const KEY_MAP=new Map([
   ['appearances','APP'],['appearance','APP'],['app','APP'],['登板数','APP'],
@@ -49,7 +56,7 @@ function outputText(result){
     ...(Array.isArray(result?.warnings)?result.warnings:[]),
     result?.reviewReason,
     result?.changeReason
-  ].map(text).filter(Boolean).join(' ');
+  ].map(text).filter(Boolean).join('。');
 }
 
 function validatePattern({all,metric,label,re,metrics,issues}){
@@ -67,6 +74,7 @@ function validatePattern({all,metric,label,re,metrics,issues}){
 export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const issues=[];
   const all=outputText(result);
+  const parts=sentenceParts(all);
   const caseText=JSON.stringify(caseData||{});
   const evidenceText=JSON.stringify(caseData?.evidence||{});
   const metrics=collectMetrics(caseData||{});
@@ -82,6 +90,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     {metric:'IP',label:'投球回',re:/([0-9]+(?:\.[0-9]+)?)\s*イニング/g},
     {metric:'SO',label:'奪三振',re:/奪三振(?:数)?(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g},
     {metric:'BB',label:'与四球',re:/与四球(?:数)?(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g},
+    {metric:'BB',label:'与四球',re:/四球(?:数)?(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g},
     {metric:'HBP',label:'与死球',re:/与死球(?:数)?(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g},
     {metric:'ERA',label:'防御率',re:/防御率(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g},
     {metric:'WHIP',label:'WHIP',re:/WHIP(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/gi},
@@ -100,9 +109,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       /(?:打率|OPS|出塁率|長打率)(?:の|が|は)?(?:高い|低い|良い|悪い|優秀)/i,
       /(?:圧倒的|抜群|非常に優秀|極めて優秀)(?:な|の)?(?:投球|成績|数字|実績|防御率|奪三振|制球)?/
     ];
-    for(const re of unsupportedQuality){
-      if(re.test(all)){issues.push('比較基準のない統計値を定性的な強弱・優劣へ変換している');break;}
-    }
+    const unsupportedSentence=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedQuality.some(re=>re.test(sentence)));
+    if(unsupportedSentence)issues.push('比較基準のない統計値を定性的な強弱・優劣へ変換している');
   }
 
   const hasHistoricalCloserEvidence=/(?:セーブ|クローザー|抑え|守護神|終盤|締め(?:た|る|くく)|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
@@ -112,9 +120,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       /旧チーム.{0,40}(?:プレッシャー|勝負どころ|重要な場面|高レバレッジ).{0,24}(?:経験|実績|対応|強い|慣れ)/,
       /(?:54(?:\.0)?回|投球回).{0,40}(?:プレッシャー|勝負どころ|重要な場面|終盤).{0,24}(?:経験|実績|対応|強い|慣れ)/
     ];
-    for(const re of unsupportedRole){
-      if(re.test(all)){issues.push('旧チームのクローザー・終盤・高圧場面の実績がEvidenceにないのに、その役割経験を前提にしている');break;}
-    }
+    const unsupportedSentence=parts.find(sentence=>!isEvidenceGapStatement(sentence)&&unsupportedRole.some(re=>re.test(sentence)));
+    if(unsupportedSentence)issues.push('旧チームのクローザー・終盤・高圧場面の実績がEvidenceにないのに、その役割経験を前提にしている');
   }
 
   if(focused){
