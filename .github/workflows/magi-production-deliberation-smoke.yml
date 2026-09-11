@@ -70,6 +70,7 @@ jobs:
               (.judgment|IN("GREEN","BLUE","YELLOW","RED")) and
               (.confidence|IN("HIGH","MEDIUM","LOW")) and
               (.reviewRequested==false) and (.dataConflict==false) and
+              (.changedFromPrimary==false) and ((.changeReason//"")|length==0) and
               ((.publicStatement//"")|length>0) and
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|contains("大久保 陽翔")|not) and
@@ -114,6 +115,23 @@ jobs:
               (.checkedPlayers|length==0) and (.candidatePlayers|length==0) and ((.candidateBasis//"")|length==0) and
               (([.facts[],.analysis[],.prediction[],.primaryReason,.publicStatement]|map(tostring)|join(" "))|contains("四死球")|not)
             ' "/tmp/${p}-second.json" >/dev/null
+
+            primary_judgment=$(jq -r '.judgment' "/tmp/${p}-primary.json")
+            second_judgment=$(jq -r '.judgment' "/tmp/${p}-second.json")
+            changed=$(jq -r '.changedFromPrimary' "/tmp/${p}-second.json")
+            change_reason=$(jq -r '.changeReason // ""' "/tmp/${p}-second.json")
+            if [ "$primary_judgment" = "$second_judgment" ]; then
+              [ "$changed" = "false" ]
+              [ -z "$change_reason" ]
+            else
+              [ "$changed" = "true" ]
+              [ -n "$change_reason" ]
+            fi
+
+            stance=$(jq -r '[(.publicStatement//""),(.primaryReason//"")]|join(" ")' "/tmp/${p}-second.json")
+            if echo "$stance" | grep -Eq '判断.{0,6}変え(ない|ません|られない|られません)'; then
+              [ "$primary_judgment" = "$second_judgment" ]
+            fi
           done
 
           jq -n \
