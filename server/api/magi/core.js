@@ -8,6 +8,7 @@ import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
 import { resolveQuestionEvidence } from './_evidence-resolver.js';
 import { understandRequest } from './_semantic-request.js';
+import { applySemanticGuard } from './_semantic-postguard.js';
 
 const CORE_VERSION='magi-core-semantic-first-v2';
 
@@ -69,7 +70,7 @@ export default async function handler(req,res){
     if(hasPdfModifier(question))return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK'});
 
     // Accuracy-first: every normal question is semantically understood before selecting an execution path.
-    const semantic=await understandRequest(question,context);
+    const semantic=applySemanticGuard(question,context,await understandRequest(question,context));
 
     if(semantic.mode==='CLARIFY'){
       const answer=clarificationAnswer(semantic.clarificationQuestion);
