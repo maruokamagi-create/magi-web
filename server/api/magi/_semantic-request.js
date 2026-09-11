@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, THIRD_YEAR_ROSTER, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v2-input-safety';
+export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v2-input-safety-r2';
 
 const MODES = ['SINGLE_VALUE','SUMMARY','FULL_REPORT','COMPARISON','DELIBERATION','DOCUMENT_SEARCH','GENERAL','CLARIFY'];
 const DOMAINS = ['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM','DOCUMENTS','OTHER'];
@@ -53,6 +53,7 @@ const SYSTEM = `
 - 「成績」だけで打撃・投手・守備を一意に決められないなら CLARIFY。勝手に打撃へ寄せない。
 - 選手名は officialPlayers を基準にする。typedGroundedPlayers は現在の入力文字列から機械的に確認済み、contextGroundedPlayers は直前文脈から安全に引き継げる候補である。
 - 読み・音が似ているだけの別人や存在しない選手を作らない。ひらがな・カタカナだけから漢字名を確定するのは、登録済み別名などの根拠がある場合だけ。
+- 読みが未登録の仮名入力では、clarificationQuestion の中にも「たぶんこの選手」という候補名を勝手に並べない。入力文字そのものを使って誰を指すか確認する。
 - 前後文脈がある場合は直近の確定事項を保持するが、矛盾する最新の明示指示を優先する。
 - 旧チーム選手を「次の試合」「今のチーム」の起用候補として扱う場合、仮定の話だと文脈で明確でない限り確認する。
 - 「今日」「昨日」などの相対日時は currentDateJst を基準に解釈する。別の日の「直近の試合」「直近の敗戦」へ勝手に読み替えない。
@@ -108,6 +109,25 @@ function currentDateJst(){
   const map=Object.fromEntries(parts.map(x=>[x.type,x.value]));
   return `${map.year}-${map.month}-${map.day}`;
 }
+function ambiguousOfficialPart(question){
+  const raw=clean(question,4000), hits=[];
+  for(const name of OFFICIAL_PLAYER_REGISTRY){
+    for(const part of name.split(' ').filter(Boolean)){
+      if(part.length<2||!raw.includes(part))continue;
+      const owners=OFFICIAL_PLAYER_REGISTRY.filter(x=>x.split(' ').includes(part));
+      if(owners.length>1&&!hits.some(x=>x.part===part))hits.push({part,owners});
+    }
+  }
+  return hits[0]||null;
+}
+function leadingKanaNameToken(question){
+  const q=clean(question,4000);
+  const m=q.match(/^([ぁ-んァ-ヶー]{2,8})(?=(?:最近|先発|登板|投手|捕手|クローザー|抑え|固定|スタメン|打順|成績|評価|どう))/);
+  if(!m)return'';
+  const token=m[1];
+  if(['これ','それ','あれ','どれ','ここ','そこ','どう','みんな','なんで','なぜ'].includes(token))return'';
+  return token;
+}
 function clarifyResult(question,message,reason,players=[]){
   return {
     semanticVersion:SEMANTIC_REQUEST_VERSION,
@@ -120,6 +140,16 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
   const q=clean(question,4000);
   const grounded=directGrounded.length?directGrounded:contextGrounded;
 
+  if(!grounded.length){
+    const ambiguous=ambiguousOfficialPart(q);
+    if(ambiguous){
+      return clarifyResult(q,`「${ambiguous.part}」は複数の選手がいます。${ambiguous.owners.join(' と ')}のどちらですか？`,'公式名の一部が複数選手に一致するため、人物を自動確定しない。',[]);
+    }
+    const kana=leadingKanaNameToken(q);
+    if(kana){
+      return clarifyResult(q,`「${kana}」は誰のことですか？ 選手名を確認させてください。`,'読み仮名・音声別名が未登録の仮名入力から漢字名を推測しない。',[]);
+    }
+  }
   if(/絶対.{0,6}勝てる/.test(q)&&!/(?:対戦|vs\.?|ＶＳ|(?:^|[^絶])戦|試合|相手)/i.test(q)&&!hasGameAnchor(suppliedContext)){
     return clarifyResult(q,'どの試合についてですか？','対象試合が特定できないため、勝敗予測へ進まない。',grounded);
   }
@@ -181,7 +211,7 @@ export async function understandRequest(questionValue,contextValue=[]){
     userPayload:{
       question:canonicalizeKnownNameText(question),suppliedContext,officialPlayers:OFFICIAL_PLAYER_REGISTRY,
       typedGroundedPlayers:directGrounded,contextGroundedPlayers:contextGrounded,currentDateJst:currentDateJst(),mode:'ACCURACY_FIRST',
-      instruction:'質問に答えず、意味だけを構造化してください。速度より正確性を優先してください。読みだけから未登録の漢字名を作らないでください。相対日時を別の直近試合へ置換しないでください。'
+      instruction:'質問に答えず、意味だけを構造化してください。速度より正確性を優先してください。読みだけから未登録の漢字名を作らないでください。読み未登録の仮名入力では候補名も勝手に挙げないでください。相対日時を別の直近試合へ置換しないでください。'
     },
     responseSchema
   });
