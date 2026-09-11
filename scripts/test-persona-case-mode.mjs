@@ -73,6 +73,44 @@ test('M16 primary phase always resets change tracking',()=>{
   assert.equal(r.changeReason,'');
 });
 
+test('M17 pitching-plan change is tracked even when judgment enum stays the same',()=>{
+  const primary={
+    judgment:'BLUE',
+    candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','坂田 暉馬']
+  };
+  const r={
+    judgment:'BLUE',changedFromPrimary:false,changeReason:'',
+    candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','大久保 夢翔']
+  };
+  normalizeChangeTracking(r,'SECOND',primary);
+  assert.equal(r.changedFromPrimary,true);
+  assert.match(r.changeReason,/候補・配置/);
+});
+
+test('M18 identical pitching plan is not falsely marked changed',()=>{
+  const plan=['橋向 結都','大久保 陽翔','大野 竜暉','坂田 暉馬'];
+  const primary={judgment:'BLUE',candidatePlayers:plan};
+  const r={judgment:'BLUE',changedFromPrimary:true,changeReason:'変えた',candidatePlayers:[...plan]};
+  normalizeChangeTracking(r,'SECOND',primary);
+  assert.equal(r.changedFromPrimary,false);
+  assert.equal(r.changeReason,'');
+});
+
+test('M19 batting-order reorder counts as deliberation change',()=>{
+  const primary={judgment:'BLUE',candidatePlayers:['長侶 穹','武澤 大翔','大久保 陽翔','中嶋 玲月','大野 竜暉','橋向 結都','井坂 悠聖','坂田 暉馬','嶋田 栄志']};
+  const r={judgment:'BLUE',changedFromPrimary:false,changeReason:'',candidatePlayers:['長侶 穹','武澤 大翔','大久保 陽翔','大野 竜暉','中嶋 玲月','橋向 結都','井坂 悠聖','坂田 暉馬','嶋田 栄志']};
+  normalizeChangeTracking(r,'SECOND',primary);
+  assert.equal(r.changedFromPrimary,true);
+});
+
+test('M20 model-provided changeReason survives when a plan really changed',()=>{
+  const primary={judgment:'BLUE',candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','坂田 暉馬']};
+  const r={judgment:'BLUE',changedFromPrimary:false,changeReason:'クロス審議で母数の指摘を受け、クローザーだけ見直した。',candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','大久保 夢翔']};
+  normalizeChangeTracking(r,'SECOND',primary);
+  assert.equal(r.changedFromPrimary,true);
+  assert.equal(r.changeReason,'クロス審議で母数の指摘を受け、クローザーだけ見直した。');
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{
