@@ -227,7 +227,9 @@ export function buildFinalResult(second, cross) {
   const judgments = list.map(x => String(x?.judgment || '').toUpperCase());
   const counts = judgments.reduce((m,x)=>(m[x]=(m[x]||0)+1,m),{});
   const majorityJudgment = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
-  const minority = list.find(x => String(x?.judgment || '').toUpperCase() !== majorityJudgment);
+  const minority = enforced.status === 'MAGI_MAJORITY'
+    ? list.find(x => String(x?.judgment || '').toUpperCase() !== majorityJudgment)
+    : null;
 
   let recommendation = '三賢人の二次判定を基に判断する。';
   if (enforced.status === 'MAGI_REVIEW_REQUIRED') recommendation = '重大警告を確認し、追加確認後に再審議する。';
