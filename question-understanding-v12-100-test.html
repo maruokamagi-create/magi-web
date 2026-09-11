@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>MAGI-WEB 質問理解100ケース実測</title><style>:root{color-scheme:dark}*{box-sizing:border-box}body{margin:0;background:#06111f;color:#eef7ff;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans JP",sans-serif}.wrap{max-width:920px;margin:auto;padding:22px 14px 48px}h1{font-size:27px;line-height:1.35;margin:0 0 8px}.sub{color:#9db4c7;line-height:1.65}.card{background:#0a1c2e;border:1px solid #315574;border-radius:18px;padding:14px;margin:14px 0}button{border:0;border-radius:12px;padding:12px 16px;font-weight:850;background:#edf6ff;color:#07111f;margin:4px 6px 4px 0}.danger{background:#ffdddd}.summary{font-size:19px;font-weight:900;line-height:1.55;margin-top:12px}.progress{height:9px;background:#13283a;border-radius:99px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0;background:#8ce0b4;transition:width .25s}.meta{font:12px ui-monospace,SFMono-Regular,Menlo,monospace;color:#9db4c7;line-height:1.6;word-break:break-word}.row{background:#071827;border:1px solid #284966;border-radius:14px;padding:12px;margin:10px 0}.row.pass{border-color:#2c6a4b}.row.fail{border-color:#8b4040}.row.skip{border-color:#75642c}.ok{color:#8ce0b4}.bad{color:#ff9898}.warn{color:#f3d779}.top{display:flex;justify-content:space-between;gap:10px}.q{font-size:16px;font-weight:850;margin:8px 0}.note{font-size:12px;line-height:1.55;color:#bad0e1}.sticky{position:sticky;top:0;z-index:5;background:rgba(6,17,31,.96);padding:8px 0 10px;backdrop-filter:blur(8px)}.authHelp{display:none;margin-top:12px;padding:12px;border:1px solid #8b4040;border-radius:12px;background:#2a1218;line-height:1.6}.small{font-size:12px;color:#9db4c7;line-height:1.6}</style></head><body><div class="wrap"><h1>MAGI-WEB 質問理解<br>100ケース拡張実測</h1><div class="sub">MASTER v1.2 の100ケースを本番 <code>/api/magi/core</code> に流します。添付が必要な081〜085はこの画面ではSKIPし、残り95ケースを実測します。18回/分の保護制限を超えないよう自動で休止します。</div><div class="sticky"><div class="card"><button id="runAll">95ケース実測開始</button><button id="stop" class="danger">停止</button><button id="copy">結果をコピー</button><div id="summary" class="summary">未実行</div><div class="progress"><div id="bar" class="bar"></div></div><div id="version" class="meta"></div><div id="cooldown" class="small"></div><div id="authHelp" class="authHelp">認証が必要です。MAGI-WEB本体と同じChromeでログインしてから、このページを再読み込みしてください。</div></div></div><div id="list"></div></div><script>
+const Q=[
+'次の試合の打順どうする？','大野をクローザー固定どう？','橋向と大久保ならどっちを先発？','最近の中嶋どう？','昨日の試合の負けた原因は？','4番は陽翔のままでいい？','武田をレフトで使うのどう？','今のチームの弱点は？','次の公式戦で勝つには？','この試合の総括して',
+'大野竜輝をクローザー固定で','おおのをクローザーで','大野くん最近どう？','大久保どう？','陽翔どう？','ゆめと最近どう？','嶋田英志どう？','橋向ゆいと先発どう？','長侶って今どう？','山田太郎どう？',
+'おおの くろざ こてい どう','打順どすする','はしむかいせんぱつど','ちゅうしま最近どう','クローザ固定あり？','次の試合誰せんぱつ','昨日のしあいなんでまけた','3ばんだれがいい','キャプテンだれがい','丸岡中学校の交渉の画像',
+'大野固定どう？','あいつ最近どう？','どう思う？','先発どっち？','これでいい？','次どうする？','一番いいの誰？','固定した方がいい？','最近ダメじゃない？','使うならどこ？',
+'じゃあ3番は？','なんで？','それなら大野は？','でも橋向先発やぞ','いや大久保で','それ前のチームの話やろ','今の成績だけで','直近6試合で見て','その条件なしで','さっきの案、近藤先生向けに',
+'大野の防御率1.20やろ？','宮嵜を次の試合先発でどう？','3年生も入れてベストオーダー','昨日の勝山戦どうだった？','大野は捕手やってないよな？','陽翔は1番固定やろ？','橋向は投手じゃないやろ？','今14人じゃなく15人やぞ','次の試合は7回じゃなく9回','その試合公式戦やで',
+'今日のベストオーダーは？','誰を先発にする？','次の試合勝てる？','大野をクローザー固定していい？データはまだない','1年で一番いい選手は？','この選手伸びる？','守備うまい順にして','投手誰が一番いい？','打撃だけでベスト9','今のチーム優勝できる？',
+'大野クローザーで決まりやろ？','絶対勝てるよな？','陽翔が一番うまいよな？','中嶋はメンタル弱いやろ？','長侶は遅刻したからダメやろ','近藤先生なら絶対こうするやろ','この子はやる気ないよな','2年はこの2人以外使えん','俺の案に賛成して','反対意見いらんから賛成だけ出して',
+'これどう？＋スコア画像','この動画の守備どう？','このPDFの試合だけ見て','この写真の選手誰？','さっき送った画像の続き','🥺','あああ','それそれそれ','？？？？','もうあれでええ',
+'打順と先発と守備位置まとめて考えて','大野クローザーどう？あと3番誰？','昨日の敗因と次戦対策','陽翔4番固定と主将適性どう？','橋向先発、大野捕手、武田レフトで勝てる？','大野クローザー固定案を審議して','陽翔4番固定を審議して','主将候補を審議して','データが2打席しかないけど評価して','3人の意見が全部違ったら？'
+];
+const STRICT_CLARIFY=new Set([3,5,9,10,12,14,16,20,21,23,24,25,27,30,31,32,33,34,35,36,37,38,39,40,45,52,53,61,62,63,65,66,67,68,69,70,72,73,76,77,78,79,86,87,88,89,93,95,99]);
+const STRICT_DELIB=new Set([2,4,6,7,13,15,18,19,29,64,71,94,96,97,98]);
+const CLARIFY_OR_DELIB=new Set([1,11,17,22,26,28,41,43,91,92]);
+const NON_CLARIFY=new Set([8,42,44,46,47,48,49,50,51,54,55,56,57,58,59,60,74,75,80,90,100]);
+const SKIP=new Set([81,82,83,84,85]);
+const CTX={
+41:[{role:'user',text:'次の試合の打順を相談したい。1番は武澤、2番は嶋田で考えている。'},{role:'assistant',text:'その打順案を前提に続けます。'}],
+42:[{role:'user',text:'大野をクローザー固定する案どう？'},{role:'assistant',text:'条件付き賛成です。捕手との兼任負担が条件です。'}],
+43:[{role:'user',text:'橋向を先発で考えてる'},{role:'assistant',text:'橋向 結都を先発候補として評価します。'}],
+44:[{role:'user',text:'次の試合は大久保 陽翔を先発にしようと思う'},{role:'assistant',text:'その前提で考えます。'}],
+45:[{role:'user',text:'橋向 結都を先発にする案で考える'},{role:'assistant',text:'橋向先発案で整理します。'}],
+46:[{role:'user',text:'宮嵜 翔を今のチームの先発候補に入れる'},{role:'assistant',text:'宮嵜 翔を候補に含めて考えます。'}],
+47:[{role:'user',text:'大野 竜暉のクローザー適性を評価して'},{role:'assistant',text:'通算も含めて評価します。'}],
+48:[{role:'user',text:'大野 竜暉のクローザー適性を評価して'},{role:'assistant',text:'期間を指定できます。'}],
+49:[{role:'user',text:'橋向 結都先発で、相手は左打者が多い条件で考えて'},{role:'assistant',text:'その条件を前提にします。'}],
+50:[{role:'user',text:'主将は大久保 陽翔、副主将は大野 竜暉と嶋田 栄志の案です。'},{role:'assistant',text:'案を整理しました。'}],
+60:[{role:'user',text:'8月2日の勝山との第1試合を見て'},{role:'assistant',text:'その試合を対象にします。'}],
+90:[{role:'user',text:'橋向 結都先発、大野 竜暉捕手の案でいく？'},{role:'assistant',text:'その案を前提に整理します。'}]
+};
+const SPECIAL={
+3:d=>isClarify(d)&&includesAll(answerOf(d),['大久保 陽翔','大久保 夢翔']),
+14:d=>isClarify(d)&&includesAll(answerOf(d),['大久保 陽翔','大久保 夢翔']),
+16:d=>isClarify(d)&&/ゆめと/.test(answerOf(d))&&!/(?:前川 夢斗|大久保 夢翔)/.test(answerOf(d)),
+20:d=>isClarify(d)&&playersOf(d).length===0,
+31:d=>isClarify(d)&&playerOf(d)==='大野 竜暉',
+47:d=>String(d?.semantic?.timeScope||'')==='CURRENT_SEASON' || !isClarify(d),
+48:d=>String(d?.semantic?.timeScope||'')==='RECENT_6',
+52:d=>isClarify(d)&&playerOf(d)==='宮嵜 翔'&&/(?:旧チーム|仮定)/.test(answerOf(d)),
+54:d=>!/(?:対戦相手を教えてください)/.test(answerOf(d)),
+72:d=>isClarify(d)&&/どの試合/.test(answerOf(d)),
+99:d=>isClarify(d)&&/(?:誰の2打席|誰)/.test(answerOf(d)),
+100:d=>!isClarify(d)&&String(d?.semantic?.mode||'')==='GENERAL'
+};
+let cancelled=false,lastResults=[];
+const list=document.getElementById('list'),summary=document.getElementById('summary'),bar=document.getElementById('bar'),version=document.getElementById('version'),cooldown=document.getElementById('cooldown'),authHelp=document.getElementById('authHelp');
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+function answerOf(d){return String(d?.answer||d?.clarificationQuestion||d?.semantic?.clarificationQuestion||'')}
+function playersOf(d){const a=d?.players||d?.semantic?.players||d?.routed?.players||[];return Array.isArray(a)?a:[]}
+function playerOf(d){return playersOf(d)[0]||''}
+function isClarify(d){return d?.route==='CLARIFY'||d?.action==='CLARIFY'||d?.semantic?.mode==='CLARIFY'}
+function isDelib(d){return d?.route==='DELIBERATION'||d?.action==='DELIBERATE'||d?.semantic?.mode==='DELIBERATION'}
+function includesAll(s,arr){return arr.every(x=>String(s).includes(x))}
+function judge(id,d){if(SPECIAL[id])return !!SPECIAL[id](d);if(STRICT_CLARIFY.has(id))return isClarify(d);if(STRICT_DELIB.has(id))return isDelib(d);if(CLARIFY_OR_DELIB.has(id))return isClarify(d)||isDelib(d);if(NON_CLARIFY.has(id))return !isClarify(d);return !!d?.ok}
+function esc(s){return String(s).replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+async function call(id){const body={question:Q[id-1],context:CTX[id]||[]};let last;for(let a=0;a<2;a++){try{const r=await fetch('/api/magi/core',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',cache:'no-store',body:JSON.stringify(body)});let d={};try{d=await r.json()}catch{}if(!r.ok||!d.ok){const e=new Error(d.error||`HTTP ${r.status}`);e.status=r.status;throw e}return d}catch(e){last=e;if(e.status===401||e.status===403||e.status===429)throw e;if(a===0)await sleep(1600)}}throw last}
+function row(id,state,d,msg){const el=document.createElement('div');el.className='row '+state;const label=state==='pass'?'PASS':state==='skip'?'SKIP':state==='fail'?'FAIL':'API ERROR';const cls=state==='pass'?'ok':state==='skip'?'warn':'bad';const meta=d?`route=${d.route||d.routed?.route||'?'} / action=${d.action||'?'} / semantic=${d.semantic?.semanticVersion||'?'}<br>mode=${d.semantic?.mode||'?'} / players=${esc(JSON.stringify(playersOf(d)))}<br>answer=${esc(answerOf(d)||'(none)')}`:esc(msg||'');el.innerHTML=`<div class="top"><b>${String(id).padStart(3,'0')}</b><b class="${cls}">${label}</b></div><div class="q">${esc(Q[id-1])}</div><div class="meta">${meta}</div>`;list.appendChild(el);return el}
+async function wake(){try{if('wakeLock'in navigator)return await navigator.wakeLock.request('screen')}catch{}return null}
+async function runAll(){cancelled=false;authHelp.style.display='none';list.innerHTML='';lastResults=[];let pass=0,fail=0,api=0,skip=0,done=0,batchCount=0,batchStart=Date.now();const lock=await wake();for(let id=1;id<=100;id++){if(cancelled)break;if(SKIP.has(id)){skip++;done++;lastResults.push({id,state:'SKIP',q:Q[id-1]});row(id,'skip',null,'添付素材が必要なため別テストへ');bar.style.width=`${done}%`;continue}if(batchCount>=15){const wait=Math.max(0,62000-(Date.now()-batchStart));if(wait>0){for(let r=Math.ceil(wait/1000);r>0&&!cancelled;r--){cooldown.textContent=`保護制限回避のため ${r}秒休止中…`;await sleep(1000)}}cooldown.textContent='';batchCount=0;batchStart=Date.now()}summary.textContent=`実行中… ${done}/100  PASS ${pass} / FAIL ${fail} / API ${api} / SKIP ${skip}`;try{const d=await call(id);const ok=judge(id,d);if(ok){pass++;row(id,'pass',d)}else{fail++;row(id,'fail',d)}lastResults.push({id,state:ok?'PASS':'FAIL',q:Q[id-1],route:d.route||d.routed?.route||'',action:d.action||'',semanticMode:d.semantic?.mode||'',semanticVersion:d.semantic?.semanticVersion||'',players:playersOf(d),answer:answerOf(d)});version.textContent=`Core: ${d.coreVersion||'?'} / Semantic: ${d.semantic?.semanticVersion||'?'}`}catch(e){api++;row(id,'fail',null,e.message||e);lastResults.push({id,state:'API_ERROR',q:Q[id-1],error:String(e.message||e)});if(e.status===401||e.status===403){authHelp.style.display='block';cancelled=true}if(e.status===429){cooldown.textContent='429検出。70秒待って再開します…';await sleep(70000);batchCount=0;batchStart=Date.now()}}done++;batchCount++;bar.style.width=`${done}%`;await sleep(800)}try{if(lock)await lock.release()}catch{}const executed=pass+fail+api;summary.innerHTML=`<span class="${fail||api?'bad':'ok'}">${pass}/${executed} EXECUTED PASS</span> / FAIL ${fail} / API ERROR ${api} / SKIP ${skip}`;cooldown.textContent=cancelled?'停止しました。':'完了しました。';sessionStorage.setItem('magi-q100-last',JSON.stringify(lastResults))}
+document.getElementById('runAll').onclick=runAll;document.getElementById('stop').onclick=()=>{cancelled=true;cooldown.textContent='停止指示を受けました。'};document.getElementById('copy').onclick=async()=>{const text=JSON.stringify({at:new Date().toISOString(),summary:summary.textContent,results:lastResults},null,2);try{await navigator.clipboard.writeText(text);cooldown.textContent='結果JSONをコピーしました。'}catch{cooldown.textContent='コピーできませんでした。'}};
+</script></body></html>
