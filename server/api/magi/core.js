@@ -10,9 +10,9 @@ import { resolveQuestionEvidence } from './_evidence-resolver.js';
 import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
 import { understandRequest } from './_semantic-request.js';
 import { applySemanticGuard } from './_semantic-postguard.js';
-import { isPitchingPlanQuestion } from './_pitching-plan.js';
+import { isExplicitPitchingPlanQuestion } from './_pitching-plan.js';
 
-const CORE_VERSION='magi-core-semantic-first-v3-pitching-plan';
+const CORE_VERSION='magi-core-semantic-first-v4-pitching-plan-routing';
 
 function text(v){return String(v||'').trim()}
 function hasPdfModifier(q){return /(?:PDF|ＰＤＦ)/i.test(String(q||''))}
@@ -95,8 +95,9 @@ export default async function handler(req,res){
 
     if(hasPdfModifier(question))return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK'});
 
-    // Accuracy-first: explicit structured pitching plans are deterministic; all other normal questions use semantic understanding first.
-    const semantic=isPitchingPlanQuestion({question})
+    // Accuracy-first: only explicit structured pitching plans bypass semantic interpretation.
+    // Generic requests such as 「継投どうする？」 still pass through semantic/context checks first.
+    const semantic=isExplicitPitchingPlanQuestion({question})
       ? pitchingPlanSemantic(question)
       : applySemanticGuard(question,context,await understandRequest(question,context));
 
