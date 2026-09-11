@@ -16,9 +16,10 @@ export function isPitchingPlanQuestion(input){
   const q=text(caseData?.question).normalize('NFKC');
   if(!q) return false;
   const hasPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(q);
+  const buildCue=/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る)/.test(q);
   const hasMultipleRoles=[/先発/,/(?:第?2投手|二番手|2番手|第二投手)/,/(?:終盤|つなぎ|ブリッジ)/,/(?:クローザー|抑え|守護神)/].filter(re=>re.test(q)).length>=2;
   const sevenInning=/(?:7回制|七回制|7イニング|七イニング)/.test(q);
-  return (hasPlan&&hasMultipleRoles)||(sevenInning&&hasMultipleRoles);
+  return (hasPlan&&buildCue)||(hasMultipleRoles&&buildCue)||(sevenInning&&hasMultipleRoles);
 }
 
 export function validatePitchingPlanOrder(values){
