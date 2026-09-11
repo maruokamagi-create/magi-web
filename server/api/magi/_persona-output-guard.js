@@ -71,6 +71,22 @@ function validatePattern({all,metric,label,re,metrics,issues}){
   }
 }
 
+function validateAmbiguousInningLanguage(parts,metrics,issues){
+  const innings=metrics.IP||[];
+  const appearances=metrics.APP||[];
+  if(!innings.length)return;
+  for(const sentence of parts){
+    if(/投球回|イニング/.test(sentence))continue;
+    const m=sentence.match(/(?:サンプル|現チーム).{0,24}?([0-9]+(?:\.[0-9]+)?)\s*回/);
+    if(!m)continue;
+    const n=numberValue(m[1]);
+    if(n===null)continue;
+    if(innings.some(x=>sameNumber(x,n))&&!appearances.some(x=>sameNumber(x,n))){
+      issues.push(`投球回${m[1]} を単位不明の「${m[1]}回」と表現している`);
+    }
+  }
+}
+
 export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const issues=[];
   const all=outputText(result);
@@ -97,6 +113,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     {metric:'SV',label:'セーブ',re:/セーブ(?:数)?(?:は|が|：|:|=|\s){0,6}([0-9]+(?:\.[0-9]+)?)/g}
   ];
   for(const p of patterns)validatePattern({all,...p,metrics,issues});
+  validateAmbiguousInningLanguage(parts,metrics,issues);
 
   const hasComparisonBaseline=/(?:比較|平均|基準|順位|上位|下位|チーム内|リーグ|相手別|平均との差|多い|少ない|高い|低い|良い|悪い)/.test(evidenceText);
   if(!hasComparisonBaseline){
