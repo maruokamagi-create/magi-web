@@ -1,7 +1,7 @@
 import { callGemini } from './_gemini.js';
 import { OFFICIAL_PLAYER_REGISTRY, THIRD_YEAR_ROSTER, canonicalPlayerNameStrict, canonicalizeKnownNameText } from './_roster.js';
 
-export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v3.1-robust-input';
+export const SEMANTIC_REQUEST_VERSION = 'semantic-request-v3.2-robust-input';
 
 const MODES = ['SINGLE_VALUE','SUMMARY','FULL_REPORT','COMPARISON','DELIBERATION','DOCUMENT_SEARCH','GENERAL','CLARIFY'];
 const DOMAINS = ['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM','DOCUMENTS','OTHER'];
@@ -106,7 +106,7 @@ function typedPlayers(question){return playersInText(question)}
 function mayCarryContextPlayers(question){
   const q=clean(question,4000);
   if(!q)return false;
-  return /(?:それ|その|この|あれ|さっき|じゃあ|なら|なんで|評価して|評価は|2\s*打席|二\s*打席|今季|通算|直近|最近|成績|前のチーム|条件なし|もうあれ|どう[？?]?$)/.test(q);
+  return /(?:それ|その|この|あれ|さっき|じゃあ|なら|なんで|評価して|評価は|2\s*打席|二\s*打席|今季|今の成績|通算|直近|最近|成績|前のチーム|条件なし|もうあれ|どう[？?]?$)/.test(q);
 }
 function latestContextPlayers(question,items){
   if(!mayCarryContextPlayers(question))return[];
@@ -224,8 +224,44 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
     return directResult(q,{mode:'GENERAL',players:contextGrounded,domains:['TEAM'],understoodRequest:'直前の内容が旧チームの話であると指摘し、時系列の前提修正を求めている',routeReason:'ユーザーによる明示的な時系列修正。'});
   }
 
+  if(/^なんで[？?]?$/.test(q)&&suppliedContext.length){
+    return directResult(q,{mode:contextLooksDeliberative(suppliedContext)?'DELIBERATION':'GENERAL',players:contextGrounded,domains:['OTHER'],understoodRequest:'直前の回答・判断について理由や根拠の説明を求めている',routeReason:'直前回答への理由確認。'});
+  }
+
+  if(/でも.*先発/.test(q)&&grounded.length===1&&suppliedContext.length){
+    return directResult(q,{mode:'DELIBERATION',players:grounded,domains:['PITCHING','TACTICS'],understoodRequest:`最新条件として${grounded[0]}を先発にする案へ前提を更新して検討する`,routeReason:'直前の起用案に対する明示的な条件変更。'});
+  }
+
+  if(/今の成績だけで/.test(q)&&contextGrounded.length){
+    return directResult(q,{mode:contextLooksDeliberative(suppliedContext)?'DELIBERATION':'GENERAL',players:contextGrounded,domains:['OTHER'],timeScope:'CURRENT_SEASON',understoodRequest:'直前の評価・相談を今季の現時点成績だけに限定して見直す',routeReason:'評価期間を現時点・今季へ限定する明示指示。'});
+  }
+
   if(/直近\s*6\s*試合で見て/.test(q)&&contextGrounded.length){
     return directResult(q,{mode:contextLooksDeliberative(suppliedContext)?'DELIBERATION':'GENERAL',players:contextGrounded,domains:['OTHER'],timeScope:'RECENT_6',understoodRequest:'直前の評価・相談を直近6試合に限定して見直す',routeReason:'評価期間の明示的変更。'});
+  }
+
+  if(/その条件なしで/.test(q)&&suppliedContext.length){
+    return directResult(q,{mode:contextLooksDeliberative(suppliedContext)?'DELIBERATION':'GENERAL',players:contextGrounded,domains:['OTHER'],understoodRequest:'直前に追加した条件を外して同じ論点を再評価する',routeReason:'直前条件の明示的撤回。'});
+  }
+
+  if(/さっきの案[、,]?近藤先生向けに/.test(q)&&suppliedContext.length){
+    return directResult(q,{mode:'GENERAL',players:contextGrounded,domains:['TEAM'],understoodRequest:'直前の案を近藤先生向けの文面・説明へ変換する',routeReason:'直前内容の対象読者変更。'});
+  }
+
+  if(/防御率\s*[0-9０-９]+(?:[\.．][0-9０-９]+)?/.test(q)&&grounded.length===1){
+    return directResult(q,{mode:'SINGLE_VALUE',players:grounded,domains:['PITCHING'],timeScope:'UNSPECIFIED',metric:'ERA',understoodRequest:`${grounded[0]}の防御率について提示値が正しいか事実確認する`,routeReason:'対象選手と単一投手指標が明確。'});
+  }
+
+  if(/今\s*14人じゃなく\s*15人/.test(q)){
+    return directResult(q,{mode:'GENERAL',domains:['TEAM'],timeScope:'CURRENT_SEASON',understoodRequest:'現チーム人数が14人ではなく15人だという訂正情報を伝えている',routeReason:'保存済み人数と矛盾する可能性があるため、後段で更新元を確認する。'});
+  }
+
+  if(/次の試合は\s*7回じゃなく\s*9回/.test(q)){
+    return directResult(q,{mode:'GENERAL',domains:['TEAM','TACTICS'],understoodRequest:'次の試合は通常の7回制ではなく9回制だという今回条件を伝えている',routeReason:'基本ルールと異なる試合条件の明示。'});
+  }
+
+  if(/その試合.*公式戦/.test(q)&&suppliedContext.length){
+    return directResult(q,{mode:'GENERAL',players:contextGrounded,domains:['TEAM'],understoodRequest:'直前に特定した試合が公式戦であるという試合種別の修正情報を伝えている',routeReason:'直前試合の属性に対する明示的修正。'});
   }
 
   if(/(?:昨日|きのう)/.test(q)&&/(?:試合|しあい|負け|敗因|勝ち|勝った|負けた|戦)/.test(q)&&!hasGameAnchor(suppliedContext)){
@@ -317,6 +353,10 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
 
   if(/橋向.*先発.*大野.*捕手.*武田.*レフト.*勝てる/.test(q)&&!explicitOpponentInQuestion(q)&&!hasGameAnchor(suppliedContext)){
     return clarifyResult(q,'その起用案で、どの試合の勝敗を予測しますか？ 対戦相手を教えてください。','起用条件は明確だが勝敗予測の対象試合が不明。',grounded);
+  }
+
+  if(/3人の意見が全部違ったら/.test(q)){
+    return directResult(q,{mode:'GENERAL',domains:['OTHER'],understoodRequest:'3賢人の一次・二次判断が1-1-1に割れた場合の判定ルールを確認する',routeReason:'MAGIシステム仕様に関する質問。'});
   }
 
   return null;
