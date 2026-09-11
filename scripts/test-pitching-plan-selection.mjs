@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict';
-import { buildConsensusPitchingPlan, isPitchingPlanQuestion, validatePitchingPlanOrder } from '../server/api/magi/_pitching-plan.js';
+import { buildConsensusPitchingPlan, isExplicitPitchingPlanQuestion, isPitchingPlanQuestion, validatePitchingPlanOrder } from '../server/api/magi/_pitching-plan.js';
 import { buildPitchingPlanResult } from '../server/api/magi/orchestrate.js';
 
 assert.equal(isPitchingPlanQuestion('7回制の投手運用を先発→第2投手→終盤→クローザーで組んで'),true);
+assert.equal(isExplicitPitchingPlanQuestion('7回制の投手運用を先発→第2投手→終盤→クローザーで組んで'),true);
 assert.equal(isPitchingPlanQuestion({selectionKind:'PITCHING_PLAN',question:'投手を考えて'}),true);
+assert.equal(isExplicitPitchingPlanQuestion({selectionKind:'PITCHING_PLAN',question:'投手を考えて'}),true);
 assert.equal(isPitchingPlanQuestion('投手リレーどう組む？'),true);
+assert.equal(isExplicitPitchingPlanQuestion('投手リレーどう組む？'),false);
 assert.equal(isPitchingPlanQuestion('継投どうする？'),true);
+assert.equal(isExplicitPitchingPlanQuestion('継投どうする？'),false);
 assert.equal(isPitchingPlanQuestion('先発とクローザーどう組む？'),true);
+assert.equal(isExplicitPitchingPlanQuestion('先発とクローザーどう組む？'),false);
 assert.equal(isPitchingPlanQuestion('クローザーは誰がいい？'),false);
 assert.equal(isPitchingPlanQuestion('先発は誰がいい？'),false);
 
