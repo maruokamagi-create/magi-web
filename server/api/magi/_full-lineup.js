@@ -55,6 +55,7 @@ export function buildConsensusLineup(second){
       table.set(k,row);
     });
   }
+
   const ranked=[...table.values()].map(row=>({
     ...row,
     averageRank:Number((row.rankTotal/row.support).toFixed(2))
@@ -64,19 +65,39 @@ export function buildConsensusLineup(second){
     b.firstPlaceCount-a.firstPlaceCount ||
     a.name.localeCompare(b.name,'ja')
   );
-  const selected=ranked.slice(0,9).sort((a,b)=>
-    a.averageRank-b.averageRank ||
-    b.support-a.support ||
-    b.firstPlaceCount-a.firstPlaceCount ||
-    a.name.localeCompare(b.name,'ja')
+
+  const proposalScores=entries.map(([key])=>{
+    const order=personaLineups[key];
+    let agreementScore=0;
+    let totalDeviation=0;
+    order.forEach((name,index)=>{
+      const row=table.get(playerKey(name));
+      const slot=index+1;
+      const deviation=Math.abs(slot-(row?.averageRank||slot));
+      agreementScore+=(row?.support||0)*100-deviation*10;
+      totalDeviation+=deviation;
+    });
+    return {persona:key,order,agreementScore:Number(agreementScore.toFixed(2)),totalDeviation:Number(totalDeviation.toFixed(2))};
+  }).sort((a,b)=>
+    b.agreementScore-a.agreementScore ||
+    a.totalDeviation-b.totalDeviation ||
+    a.persona.localeCompare(b.persona,'ja')
   );
-  const lineup=selected.map((row,index)=>({slot:index+1,name:row.name,support:row.support,averageRank:row.averageRank,ranks:row.ranks}));
+
+  // Important MAGI rule: the final order must come from an actual second-round Wise Man proposal.
+  // Do not invent a fourth compromise lineup by averaging slots across the three proposals.
+  const selectedProposal=proposalScores[0];
+  const lineup=selectedProposal.order.map((name,index)=>{
+    const row=table.get(playerKey(name));
+    return {slot:index+1,name,support:row?.support||0,averageRank:row?Number((row.rankTotal/row.support).toFixed(2)):null,ranks:row?.ranks||[]};
+  });
+
   const slotConflicts=[];
   for(let i=0;i<9;i++){
     const choices=entries.map(([key])=>({persona:key,name:personaLineups[key][i]}));
     if(new Set(choices.map(x=>x.name)).size>1) slotConflicts.push({slot:i+1,choices});
   }
-  return {lineup,personaLineups,slotConflicts,playerSupport:ranked};
+  return {lineup,personaLineups,slotConflicts,playerSupport:ranked,selectedFromPersona:selectedProposal.persona,proposalScores};
 }
 
 export const FULL_LINEUP_ROSTER=Object.freeze(CURRENT_ROSTER.slice());
