@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'server/api/magi/_semantic-request.js'
       - 'api/magi-question-selftest.js'
       - '.github/workflows/magi-question-selftest.yml'
   workflow_dispatch:
