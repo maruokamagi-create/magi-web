@@ -1,5 +1,6 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { ORCHESTRATOR } from './_prompts.js';
+import { failClosedCross, validateCrossOutput } from './_cross-output-guard.js';
 import { canonicalizePlayerData, playerKey } from './_roster.js';
 
 const crossSchema = {
@@ -103,17 +104,18 @@ export function buildSelectionResult(second, cross) {
   const entries = Array.isArray(normalizedSecond) ? normalizedSecond.map((v,i)=>[String(i),v]) : Object.entries(normalizedSecond || {});
   if (entries.length !== 3) return null;
 
+  const crossReviewReason = normalizedCross?.reviewRequired === true ? String(normalizedCross?.reviewReason || 'クロス審議の再確認が必要です。') : '';
   const critical = entries.find(([,x]) => x?.reviewRequested === true && String(x?.reviewReason || '').trim());
   const dataConflict = entries.find(([,x]) => String(x?.persona || '').toUpperCase().startsWith('MELCHIOR') && x?.dataConflict === true);
-  if (critical || dataConflict) {
+  if (critical || dataConflict || crossReviewReason) {
     return canonicalizePlayerData({
       mode: 'SELECTION', status: 'SELECTION_REVIEW_REQUIRED', recommendation: '候補を確定せず、未解決の確認事項を解消して再審議する。',
       centerCandidates: [], recommendedCandidates: [], alternateCandidates: [], candidateSupport: [],
       personaSelections: Object.fromEntries(entries.map(([k,v])=>[k, Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),
-      confidence: lowestConfidence(entries.map(([,v])=>v)), majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
+      confidence: 'LOW', majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
       warnings: compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]),
       reDeliberationConditions: compactUnique([...(normalizedCross?.informationGaps||[]), ...(normalizedCross?.warnings||[])],5),
-      reviewReason: String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.')
+      reviewReason: crossReviewReason || String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.')
     });
   }
 
@@ -223,18 +225,20 @@ export function buildFinalResult(second, cross) {
   const prediction = compactUnique(list.flatMap(x => Array.isArray(x?.prediction) ? x.prediction : []));
   const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
   const reDeliberationConditions = compactUnique([...informationGaps, ...warnings], 5);
+  const crossReviewReason = normalizedCross?.reviewRequired === true ? String(normalizedCross?.reviewReason || 'クロス審議の再確認が必要です。') : '';
+  const effectiveStatus = crossReviewReason ? 'MAGI_REVIEW_REQUIRED' : enforced.status;
 
   const judgments = list.map(x => String(x?.judgment || '').toUpperCase());
   const counts = judgments.reduce((m,x)=>(m[x]=(m[x]||0)+1,m),{});
   const majorityJudgment = Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0] || '';
-  const minority = enforced.status === 'MAGI_MAJORITY'
+  const minority = effectiveStatus === 'MAGI_MAJORITY'
     ? list.find(x => String(x?.judgment || '').toUpperCase() !== majorityJudgment)
     : null;
 
   let recommendation = '三賢人の二次判定を基に判断する。';
-  if (enforced.status === 'MAGI_REVIEW_REQUIRED') recommendation = '重大警告を確認し、追加確認後に再審議する。';
-  else if (enforced.status === 'MAGI_DEADLOCK') recommendation = '結論を強制せず、追加情報を取得して再審議する。';
-  else if (enforced.status === 'INSUFFICIENT_EVIDENCE') recommendation = '現時点では判断材料不足。必要情報を追加して再審議する。';
+  if (effectiveStatus === 'MAGI_REVIEW_REQUIRED') recommendation = '重大警告を確認し、追加確認後に再審議する。';
+  else if (effectiveStatus === 'MAGI_DEADLOCK') recommendation = '結論を強制せず、追加情報を取得して再審議する。';
+  else if (effectiveStatus === 'INSUFFICIENT_EVIDENCE') recommendation = '現時点では判断材料不足。必要情報を追加して再審議する。';
   else if (majorityJudgment === 'GREEN') recommendation = '賛成判断を採用する。';
   else if (majorityJudgment === 'BLUE') recommendation = '条件付きで採用し、条件を確認しながら運用する。';
   else if (majorityJudgment === 'RED') recommendation = '現時点では採用しない。';
@@ -242,15 +246,15 @@ export function buildFinalResult(second, cross) {
 
   return canonicalizePlayerData({
     mode: 'PROPOSAL',
-    status: enforced.status,
+    status: effectiveStatus,
     vote: enforced.vote,
     recommendation,
-    confidence: lowestConfidence(list),
+    confidence: crossReviewReason ? 'LOW' : lowestConfidence(list),
     majorReasons,
     minorityOpinion: minority ? `${minority.persona || 'MINORITY'}: ${minority.primaryReason || minority.changeReason || '少数意見あり'}` : '',
     warnings,
     prediction,
-    reviewReason: enforced.reviewReason || '',
+    reviewReason: crossReviewReason || enforced.reviewReason || '',
     reDeliberationConditions
   });
 }
@@ -263,20 +267,45 @@ export default async function handler(req, res) {
 
     if (body.phase === 'CROSS_EXAMINATION') {
       if (!body.primary) return sendJson(res, 400, { error: 'Locked primary judgments are required' });
-      const rawResult = await callGemini({
+      const selectionCase = isSelectionCase(body.case);
+      const baseInstruction = selectionCase
+        ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
+        : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. CASE/evidence remains authoritative: do not introduce unsupported statistics, unrelated players, or historical roles that are not explicitly supported. Resolve all relative date and season expressions from temporalContext.';
+      const basePayload = {
+        phase: 'CROSS_EXAMINATION',
+        temporalContext: jstContext(),
+        case: canonicalizePlayerData(body.case),
+        lockedPrimaryJudgments: canonicalizePlayerData(body.primary),
+        instruction: baseInstruction
+      };
+
+      let rawResult = await callGemini({
         systemInstruction: ORCHESTRATOR,
-        userPayload: {
-          phase: 'CROSS_EXAMINATION',
-          temporalContext: jstContext(),
-          case: canonicalizePlayerData(body.case),
-          lockedPrimaryJudgments: canonicalizePlayerData(body.primary),
-          instruction: isSelectionCase(body.case)
-            ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
-            : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
-        },
+        userPayload: basePayload,
         responseSchema: crossSchema
       });
-      return sendJson(res, 200, canonicalizePlayerData(rawResult));
+      let result = canonicalizePlayerData(rawResult);
+      let guardIssues = validateCrossOutput(body.case, result, { focused: !selectionCase });
+
+      for (let attempt = 0; guardIssues.length && attempt < 2; attempt++) {
+        const correctionPayload = {
+          ...basePayload,
+          invalidDraft: result,
+          correctionIssues: guardIssues,
+          correctionAttempt: attempt + 1,
+          instruction: `${baseInstruction} CORRECTION PASS ${attempt + 1}: The previous cross-examination draft failed deterministic evidence validation. Correct every item in correctionIssues. Remove unsupported claims instead of paraphrasing them. Missing information may be named as a gap, but must never be presented as an existing fact. Return the complete schema again.`
+        };
+        rawResult = await callGemini({
+          systemInstruction: ORCHESTRATOR,
+          userPayload: correctionPayload,
+          responseSchema: crossSchema
+        });
+        result = canonicalizePlayerData(rawResult);
+        guardIssues = validateCrossOutput(body.case, result, { focused: !selectionCase });
+      }
+
+      if (guardIssues.length) result = failClosedCross(guardIssues);
+      return sendJson(res, 200, canonicalizePlayerData(result));
     }
 
     if (body.phase === 'FINAL') {
