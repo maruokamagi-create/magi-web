@@ -26,31 +26,39 @@ const CTX={
 60:[{role:'user',text:'8月2日の勝山との第1試合を見て'},{role:'assistant',text:'その試合を対象にします。'}],
 90:[{role:'user',text:'橋向 結都先発、大野 竜暉捕手の案でいく？'},{role:'assistant',text:'その案を前提に整理します。'}]
 };
-const STRICT_CLARIFY=new Set([3,5,9,10,12,14,16,20,21,23,24,25,27,30,31,32,33,34,35,36,37,38,39,40,45,52,53,61,62,63,65,66,67,68,69,70,72,73,76,77,78,79,86,87,88,89,93,95,99]);
-const STRICT_DELIB=new Set([2,4,6,7,13,15,18,19,29,64,71,94,96,97,98]);
-const CLARIFY_OR_DELIB=new Set([1,11,17,22,26,28,41,43,91,92]);
-const NON_CLARIFY=new Set([8,42,44,46,47,48,49,50,51,54,55,56,57,58,59,60,74,75,80,90,100]);
+const STRICT_CLARIFY=new Set([5,9,10,14,16,20,23,24,25,27,30,31,32,33,34,35,36,37,38,39,40,45,52,53,61,62,63,65,66,67,68,69,70,72,76,77,78,80,86,87,88,89,93,95,99]);
+const STRICT_DELIB=new Set([2,6,7,18,29,64,71,94,96,97,98]);
+const NON_CLARIFY=new Set([4,8,13,19,42,44,46,47,48,49,50,51,55,56,57,58,59,60,74,75,90,100]);
+const FLEX_ACTION=new Set([1,11,15,17,21,22,26,28,41,43,73,79,91,92]);
 const SKIP=new Set([81,82,83,84,85]);
 function answerOf(s){return String(s?.clarificationQuestion||'')}
 function playerOf(s){return Array.isArray(s?.players)&&s.players[0]||''}
 function includesAll(s,a){return a.every(x=>String(s).includes(x))}
+function isActionMode(m){return ['GENERAL','DELIBERATION','COMPARISON','SINGLE_VALUE','SUMMARY','FULL_REPORT'].includes(m)}
 function judge(id,s){
   const m=s?.mode;
-  if(id===3||id===14)return m==='CLARIFY'&&includesAll(answerOf(s),['大久保 陽翔','大久保 夢翔']);
+  if(id===3)return m==='CLARIFY'&&includesAll(answerOf(s),['大久保 陽翔','大久保 夢翔'])&&playerOf(s)==='橋向 結都';
+  if(id===12)return playerOf(s)==='大野 竜暉'&&!/誰のこと/.test(answerOf(s));
+  if(id===14)return m==='CLARIFY'&&includesAll(answerOf(s),['大久保 陽翔','大久保 夢翔']);
   if(id===16)return m==='CLARIFY'&&/ゆめと/.test(answerOf(s))&&!/(?:前川 夢斗|大久保 夢翔)/.test(answerOf(s));
+  if(id===17)return playerOf(s)==='嶋田 栄志'&&(m==='CLARIFY'||isActionMode(m));
   if(id===20)return m==='CLARIFY'&&(!s.players||s.players.length===0);
+  if(id===21)return playerOf(s)==='大野 竜暉'&&!/誰のこと/.test(answerOf(s));
   if(id===31)return m==='CLARIFY'&&playerOf(s)==='大野 竜暉';
-  if(id===47)return s?.timeScope==='CURRENT_SEASON'||m!=='CLARIFY';
-  if(id===48)return s?.timeScope==='RECENT_6';
+  if(id===47)return s?.timeScope==='CURRENT_SEASON'&&m!=='CLARIFY';
+  if(id===48)return s?.timeScope==='RECENT_6'&&m!=='CLARIFY';
   if(id===52)return m==='CLARIFY'&&playerOf(s)==='宮嵜 翔'&&/(?:旧チーム|仮定)/.test(answerOf(s));
-  if(id===54)return !/(?:対戦相手を教えてください)/.test(answerOf(s));
+  if(id===54)return m==='CLARIFY'&&/(?:勝山|昨日|前日|試合記録)/.test(answerOf(s))&&!/対戦相手を教えて/.test(answerOf(s));
+  if(id===57)return m!=='CLARIFY'&&playerOf(s)==='橋向 結都';
   if(id===72)return m==='CLARIFY'&&/どの試合/.test(answerOf(s));
+  if(id===73)return m==='DELIBERATION'||m==='CLARIFY';
+  if(id===79)return m==='DELIBERATION'||m==='CLARIFY';
   if(id===99)return m==='CLARIFY'&&/(?:誰の2打席|誰)/.test(answerOf(s));
   if(id===100)return m==='GENERAL';
   if(STRICT_CLARIFY.has(id))return m==='CLARIFY';
   if(STRICT_DELIB.has(id))return m==='DELIBERATION';
-  if(CLARIFY_OR_DELIB.has(id))return m==='CLARIFY'||m==='DELIBERATION';
   if(NON_CLARIFY.has(id))return m!=='CLARIFY';
+  if(FLEX_ACTION.has(id))return m==='CLARIFY'||isActionMode(m);
   return true;
 }
 const IDS=Array.from({length:100},(_,i)=>i+1).filter(id=>!SKIP.has(id));
@@ -63,7 +71,7 @@ export default async function handler(req,res){
   for(const id of ids){
     try{
       const semantic=await understandRequest(Q[id-1],CTX[id]||[]);
-      results.push({id,question:Q[id-1],pass:judge(id,semantic),mode:semantic.mode,players:semantic.players||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||'',understoodRequest:semantic.understoodRequest||''});
+      results.push({id,question:Q[id-1],pass:judge(id,semantic),semanticVersion:semantic.semanticVersion||'',mode:semantic.mode,players:semantic.players||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||'',understoodRequest:semantic.understoodRequest||'',preflightApplied:semantic.preflightApplied===true});
     }catch(error){results.push({id,question:Q[id-1],pass:false,error:error?.message||String(error)});}
   }
   res.status(200).json({ok:true,batch,ids,total:IDS.length,results});
