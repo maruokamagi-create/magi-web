@@ -36,17 +36,18 @@ async function rest(query = '', options = {}) {
 export function cacheableDriveFile(file) {
   if (!file || file.mimeType === 'application/vnd.google-apps.folder') return false;
   const name = String(file.name || '');
-  const mime = String(file.mimeType || '');
+  const mime = String(file.mimeType || '').toLowerCase();
   return [
     'application/vnd.google-apps.spreadsheet',
     'application/vnd.google-apps.document',
     'text/csv',
     'application/json',
     'text/plain',
+    'application/pdf',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
     'application/vnd.ms-excel',
-    'application/vnd.ms-excel.sheet.macroEnabled.12'
-  ].includes(mime) || /\.(csv|json|txt|xls|xlsx|xlsm)$/i.test(name);
+    'application/vnd.ms-excel.sheet.macroenabled.12'
+  ].includes(mime) || /\.(csv|json|txt|pdf|xls|xlsx|xlsm)$/i.test(name);
 }
 
 function decodeCachedRow(row) {
