@@ -13,10 +13,19 @@ import { applySemanticGuard } from './_semantic-postguard.js';
 import { isExplicitPitchingPlanQuestion } from './_pitching-plan.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 
-const CORE_VERSION='magi-core-semantic-first-v6-structured-selection-direct';
+const CORE_VERSION='magi-core-semantic-first-v7-role-aware-pdf-evidence';
 
 function text(v){return String(v||'').trim()}
-function hasPdfModifier(q){return /(?:PDF|ＰＤＦ)/i.test(String(q||''))}
+function isExistingPdfReference(q){
+  const s=String(q||'');
+  return /(?:\.pdf\b|PDF(?:ファイル|資料|文書|レポート)?)[^。！？!?]{0,40}(?:見て|確認して|読んで|参照して|中身|内容|記載|探して|検索して|開いて)/i.test(s)
+    || /(?:見て|確認して|読んで|参照して|探して|検索して|開いて)[^。！？!?]{0,40}(?:\.pdf\b|PDF(?:ファイル|資料|文書|レポート)?)/i.test(s);
+}
+function hasPdfModifier(q){
+  const s=String(q||'');
+  if(!/(?:PDF|ＰＤＦ)/i.test(s)||isExistingPdfReference(s))return false;
+  return /(?:PDF|ＰＤＦ)(?:形式)?(?:にして|化して|で出して|で見せて|で保存して|で作って|でお願い|で表示して|で出力して|で)?/i.test(s);
+}
 function questionGameInnings(q){
   const n=String(q||'').normalize('NFKC');
   if(/(?:9回制|9イニング|九回制|九イニング)/.test(n))return 9;
@@ -80,8 +89,8 @@ function fullLineupSemantic(question){
     groundedPlayers:[],preflightApplied:true,originalQuestion:question
   };
 }
-async function deliberationPayload({question,semantic,routed}){
-  const resolution=await resolveQuestionEvidence({question,routed});
+async function deliberationPayload({question,semantic,routed,role='member'}){
+  const resolution=await resolveQuestionEvidence({question,routed,role});
   if(resolution?.requestedDocument&&resolution.status!=='RESOLVED'){
     const names=(resolution?.candidates||[]).slice(0,3).map(x=>x.name).filter(Boolean);
     const answer=names.length?`参照する資料を一意に決められませんでした。候補は「${names.join('」「')}」です。どれを使うか教えてください。`:'参照する資料を一意に決められませんでした。資料名をもう少し具体的に教えてください。';
@@ -122,8 +131,6 @@ export default async function handler(req,res){
 
     if(hasPdfModifier(question))return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK'});
 
-    // Structured selection requests are deterministic and must not depend on an
-    // additional language-model routing pass before authoritative evidence is read.
     const explicitPitchingPlan=isExplicitPitchingPlanQuestion({question});
     const explicitFullLineup=isFullLineupQuestion({question});
     const structuredSelection=explicitPitchingPlan||explicitFullLineup;
@@ -158,7 +165,7 @@ export default async function handler(req,res){
       if(semantic.specificSeason)routed.specificSeason=semantic.specificSeason;
       if(semantic.opponent)routed.opponent=semantic.opponent;
       if(semantic.gameInnings)routed.gameInnings=semantic.gameInnings;
-      return sendJson(res,200,await deliberationPayload({question,semantic,routed}));
+      return sendJson(res,200,await deliberationPayload({question,semantic,routed,role:member.role}));
     }
 
     if(['SINGLE_VALUE','SUMMARY'].includes(semantic.mode)){
@@ -176,7 +183,7 @@ export default async function handler(req,res){
     }
 
     const routed=await classify(question,context);
-    if(routed?.route==='DELIBERATION')return sendJson(res,200,await deliberationPayload({question,semantic,routed}));
+    if(routed?.route==='DELIBERATION')return sendJson(res,200,await deliberationPayload({question,semantic,routed,role:member.role}));
     return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:`SEMANTIC_${semantic.mode}_LEGACY_FALLBACK`,semantic,routed,fastPath:false});
   }catch(error){
     console.error('[MAGI CORE]',error?.message||error);
