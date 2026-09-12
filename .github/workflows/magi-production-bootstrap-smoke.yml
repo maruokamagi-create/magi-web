@@ -1,0 +1,45 @@
+name: MAGI Production Browser Bootstrap Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'index.html'
+      - 'runmagi-ready-bridge-v330.js'
+      - 'main-live-answer-v329.js'
+      - 'api/magi-selection-live-selftest.js'
+      - '.github/workflows/magi-production-bootstrap-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  production-browser-bootstrap:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Wait for production deployment
+        run: sleep 45
+
+      - name: Verify production bootstrap order and live master evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/runmagi-ready-bridge-v330.js?v=330" -o /tmp/bridge.js
+          grep -q 'MAGI_RUNMAGI_READY_BRIDGE_V330' /tmp/bridge.js
+          node - <<'NODE'
+          const fs=require('fs');
+          const html=fs.readFileSync('/tmp/index.html','utf8');
+          const bridge=html.indexOf('/runmagi-ready-bridge-v330.js?v=330');
+          const semantic=html.indexOf('/main-live-answer-v329.js?v=330');
+          if(bridge<0||semantic<0||bridge>=semantic)throw new Error('production script order is not bridge -> semantic handler');
+          console.log('PRODUCTION BOOTSTRAP ORDER: PASS');
+          NODE
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
+          cat /tmp/selection.json; echo
+          jq -e '.ok==true and .rosterExact==true and .count==14 and .playersWithBatting==14 and .hasEvidenceText==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
+          node scripts/test-runmagi-ready-bridge.mjs
+          echo 'PRODUCTION BROWSER BOOTSTRAP + LIVE MASTER: PASS'
