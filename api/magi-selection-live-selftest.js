@@ -9,15 +9,16 @@ export default async function handler(req,res){
     const names=packet?.allCurrentTeamCheck?.players?.map(x=>x.name)||[];
     const exact=names.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>names.includes(name));
     const hasBatting=packet?.allCurrentTeamCheck?.players?.filter(x=>x?.batting&&Object.keys(x.batting).length).length||0;
+    const hasEvidenceText=Boolean(packet?.text&&packet.text.includes('【現チーム全14選手・打撃】'));
     res.status(200).json({
-      ok:Boolean(packet)&&exact&&hasBatting>0,
+      ok:Boolean(packet)&&exact&&hasBatting>0&&hasEvidenceText,
       version:packet?.resolverVersion||'',
       count:packet?.count||0,
       rosterExact:exact,
       names,
       playersWithBatting:hasBatting,
       sourceName:packet?.sources?.[0]?.name||'',
-      hasEvidenceText:Boolean(packet?.text&&packet.text.includes('【全14選手・打撃】'))
+      hasEvidenceText
     });
   }catch(error){
     res.status(200).json({ok:false,error:error?.message||String(error)});
