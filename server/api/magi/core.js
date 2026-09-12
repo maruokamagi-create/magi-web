@@ -11,8 +11,9 @@ import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
 import { understandRequest } from './_semantic-request.js';
 import { applySemanticGuard } from './_semantic-postguard.js';
 import { isExplicitPitchingPlanQuestion } from './_pitching-plan.js';
+import { isFullLineupQuestion } from './_full-lineup.js';
 
-const CORE_VERSION='magi-core-semantic-first-v5-pitching-plan-innings';
+const CORE_VERSION='magi-core-semantic-first-v6-structured-selection-direct';
 
 function text(v){return String(v||'').trim()}
 function hasPdfModifier(q){return /(?:PDF|ＰＤＦ)/i.test(String(q||''))}
@@ -43,6 +44,16 @@ function routedFromSemantic(semantic){
     safeToExecute:true,safetyStatus:'READY',routerVersion:semantic?.semanticVersion||'semantic-request'
   };
 }
+function deliberationRouteFromSemantic(semantic){
+  return {
+    route:'DELIBERATION',modelRoute:'DELIBERATION',confidence:'HIGH',
+    understoodRequest:semantic?.understoodRequest||'',routeReason:semantic?.routeReason||'',
+    players:Array.isArray(semantic?.players)?semantic.players:[],domains:Array.isArray(semantic?.domains)?semantic.domains:[],
+    timeScope:semantic?.timeScope||'UNSPECIFIED',specificSeason:semantic?.specificSeason||'',opponent:semantic?.opponent||'',gameInnings:semantic?.gameInnings||null,
+    needsDeliberation:true,needsClarification:false,clarificationQuestion:'',contextRequired:false,contextReferences:[],ambiguities:[],unresolvedEntities:[],validationIssues:[],
+    safeToExecute:true,safetyStatus:'READY',routerVersion:semantic?.semanticVersion||'semantic-structured-selection'
+  };
+}
 function reportKind(semantic){
   const ds=Array.isArray(semantic?.domains)?semantic.domains:[];
   if(ds.includes('PITCHING'))return'PITCHING';
@@ -57,6 +68,15 @@ function pitchingPlanSemantic(question){
     understoodRequest:`${gameInnings}回制の投手運用を、先発・第2投手・終盤・クローザーの4役で審議する`,
     routeReason:'複数投手の役割配置を決める明示的な投手運用相談。',players:[],domains:['PITCHING','TACTICS'],
     timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],clarificationQuestion:'',needsData:true,gameInnings,
+    groundedPlayers:[],preflightApplied:true,originalQuestion:question
+  };
+}
+function fullLineupSemantic(question){
+  return {
+    semanticVersion:'semantic-full-lineup-direct-v1',mode:'DELIBERATION',confidence:'HIGH',
+    understoodRequest:'現チーム14名から公式戦を想定した1番〜9番のベストオーダーを、根拠付きで審議する',
+    routeReason:'現チーム全体から1〜9番の打順を選ぶ明示的なベストオーダー相談。',players:[],domains:['LINEUP','TACTICS'],
+    timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],clarificationQuestion:'',needsData:true,
     groundedPlayers:[],preflightApplied:true,originalQuestion:question
   };
 }
@@ -102,11 +122,16 @@ export default async function handler(req,res){
 
     if(hasPdfModifier(question))return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK'});
 
-    // Accuracy-first: only explicit structured pitching plans bypass semantic interpretation.
-    // Generic requests such as 「継投どうする？」 still pass through semantic/context checks first.
-    const semantic=isExplicitPitchingPlanQuestion({question})
+    // Structured selection requests are deterministic and must not depend on an
+    // additional language-model routing pass before authoritative evidence is read.
+    const explicitPitchingPlan=isExplicitPitchingPlanQuestion({question});
+    const explicitFullLineup=isFullLineupQuestion({question});
+    const structuredSelection=explicitPitchingPlan||explicitFullLineup;
+    const semantic=explicitPitchingPlan
       ? pitchingPlanSemantic(question)
-      : applySemanticGuard(question,context,await understandRequest(question,context));
+      : explicitFullLineup
+        ? fullLineupSemantic(question)
+        : applySemanticGuard(question,context,await understandRequest(question,context));
 
     if(semantic.mode==='CLARIFY'){
       const answer=clarificationAnswer(semantic.clarificationQuestion);
@@ -125,7 +150,7 @@ export default async function handler(req,res){
     }
 
     if(semantic.mode==='DELIBERATION'){
-      const routed=await classify(question,context);
+      const routed=structuredSelection?deliberationRouteFromSemantic(semantic):await classify(question,context);
       routed.route='DELIBERATION';routed.modelRoute='DELIBERATION';routed.needsDeliberation=true;routed.needsClarification=false;
       if(semantic.players?.length)routed.players=semantic.players;
       if(semantic.domains?.length)routed.domains=semantic.domains;
