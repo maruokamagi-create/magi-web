@@ -1,11 +1,19 @@
-const STAFF_PREFIX = 'ROOT/50_STAFF_顧問・指導者';
+const STAFF_FOLDER = '50_STAFF_顧問・指導者';
+
+function normalizePath(path) {
+  return String(path || '').replace(/\\/g, '/').replace(/\/{2,}/g, '/').replace(/^\/+|\/+$/g, '');
+}
+
+export function isStaffDrivePath(path) {
+  const p = normalizePath(path);
+  if (!p) return false;
+  return p === STAFF_FOLDER || p.startsWith(`${STAFF_FOLDER}/`) || p.includes(`/${STAFF_FOLDER}/`) || p.endsWith(`/${STAFF_FOLDER}`);
+}
 
 export function canAccessDrivePath(role, path) {
   const r = String(role || 'member');
-  const p = String(path || '');
   if (r === 'admin' || r === 'coach') return true;
-  if (p === STAFF_PREFIX || p.startsWith(`${STAFF_PREFIX}/`)) return false;
-  return true;
+  return !isStaffDrivePath(path);
 }
 
 export function filterDriveFilesForRole(role, files = []) {
