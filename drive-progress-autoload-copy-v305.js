@@ -2,7 +2,7 @@
 'use strict';
 if(window.MAGI_DRIVE_AUTOLOAD_COPY_V305)return;
 window.MAGI_DRIVE_AUTOLOAD_COPY_V305=true;
-const SCOPE='20_TEAM_DATA_チームデータ';
+const SCOPE='MAGIの重要資料';
 let observer=null;
 function fix(){
   const note=document.getElementById('driveProgressNote');
@@ -14,14 +14,14 @@ function fix(){
     if(/押す|再認証|接続を許可|Google認証/.test(t)){
       note.textContent=box?.classList.contains('error')
         ? '自動読み込みに失敗しました。ページを開き直すと再試行します。'
-        : SCOPE+' を自動で読み込みます。操作は不要です。';
+        : SCOPE+'だけを自動で準備します。操作は不要です。';
     }
   }
   if(label&&/Google Drive未接続|Google認証を待っています|接続準備中/.test(String(label.textContent||''))){
-    label.textContent=SCOPE+' を読み込んでいます';
+    label.textContent=SCOPE+'を準備しています';
   }
   if(state&&/押してください|もう一度押してください|再認証/.test(String(state.textContent||''))){
-    state.textContent=SCOPE+' を自動で読み込んでいます。操作は不要です。';
+    state.textContent=SCOPE+'を自動で準備しています。操作は不要です。';
     state.className='driveState ready';
   }
   return !!(note||label||state);
