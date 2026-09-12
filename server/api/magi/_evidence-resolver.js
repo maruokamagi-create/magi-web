@@ -1,13 +1,17 @@
 import * as XLSX from 'xlsx';
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import pdfParseImport from 'pdf-parse';
+import { fetchDriveFileContent } from '../drive/_service.js';
+import { listMagiKnowledgeTree } from '../drive/_knowledge-scope.js';
 
-const VERSION = 'evidence-resolver-v1-purpose-first';
+const VERSION = 'evidence-resolver-v2-role-aware-pdf';
 const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const GOOGLE_SHEET = 'application/vnd.google-apps.spreadsheet';
 const GOOGLE_DOC = 'application/vnd.google-apps.document';
+const PDF_MIME = 'application/pdf';
 const MAX_TEXT = 24000;
 const MAX_ROWS = 180;
 const MAX_COLS = 24;
+const pdfParse = pdfParseImport?.default || pdfParseImport;
 
 function text(v){ return String(v ?? '').trim(); }
 function norm(v){
@@ -65,7 +69,7 @@ function fileScore(file,hint,question){
   for(const term of questionTerms(question)){
     const tn=norm(term); if(tn.length>=2&&nn.includes(tn)) score+=12;
   }
-  if(/一覧|レポート|資料|シート|表/.test(name)) score+=4;
+  if(/一覧|レポート|資料|シート|表|提言|起用案/.test(name)) score+=4;
   return score;
 }
 
@@ -93,25 +97,37 @@ function textFileContent(buffer,fileName){
   try{s=new TextDecoder('utf-8',{fatal:false}).decode(buffer)}catch(_){s=buffer.toString('utf8')}
   return {content:clamp(`【資料】${fileName}\n${s}`),rowCount:s.split(/\r?\n/).length,sheets:[]};
 }
+async function pdfFileContent(buffer,fileName){
+  if(typeof pdfParse!=='function') throw new Error('PDF parser unavailable');
+  const parsed=await pdfParse(buffer);
+  const body=text(parsed?.text);
+  if(!body) throw new Error('PDFからテキストを抽出できませんでした');
+  return {
+    content:clamp(`【資料】${fileName}\n${body}`),
+    rowCount:Number(parsed?.numpages||0)||body.split(/\r?\n/).length,
+    sheets:[]
+  };
+}
 function readable(file){
-  const name=text(file?.name), mime=text(file?.mimeType);
-  return mime===GOOGLE_SHEET||mime===GOOGLE_DOC||/\.(xlsx|xlsm|xls|csv|tsv|txt|md|json)$/i.test(name)||/^text\//i.test(mime);
+  const name=text(file?.name), mime=text(file?.mimeType).toLowerCase();
+  return mime===GOOGLE_SHEET||mime===GOOGLE_DOC||mime===PDF_MIME||/\.(xlsx|xlsm|xls|csv|tsv|txt|md|json|pdf)$/i.test(name)||/^text\//i.test(mime);
 }
 async function readFile(file){
   const fetched=await fetchDriveFileContent(file);
-  const name=text(file.name), mime=text(file.mimeType);
+  const name=text(file.name), mime=text(file.mimeType).toLowerCase();
   if(mime===GOOGLE_SHEET||/\.(xlsx|xlsm|xls)$/i.test(name)) return workbookText(fetched.buffer,name);
+  if(mime===PDF_MIME||/\.pdf$/i.test(name)) return pdfFileContent(fetched.buffer,name);
   return textFileContent(fetched.buffer,name);
 }
 
-export async function resolveQuestionEvidence({question,routed}={}){
+export async function resolveQuestionEvidence({question,routed,role='member'}={}){
   const q=text(question);
   const domains=Array.isArray(routed?.domains)?routed.domains:[];
   const hint=extractDocumentHint(q);
   const requestsDocument=Boolean(hint)||domains.includes('DOCUMENT')||domains.includes('DOCUMENTS');
   if(!requestsDocument) return {version:VERSION,status:'NONE',requestedDocument:false,hint:'',evidence:null};
 
-  const tree=await listMagiDriveTree({fresh:false,maxItems:2500,maxDepth:14});
+  const tree=await listMagiKnowledgeTree({role,fresh:false,maxItems:2500,maxDepth:14});
   const files=tree.filter(f=>f?.mimeType!==FOLDER_MIME);
   const ranked=files.map(file=>({file,score:fileScore(file,hint,q)})).filter(x=>x.score>0).sort((a,b)=>b.score-a.score||String(a.file.path||'').localeCompare(String(b.file.path||''),'ja'));
   const top=ranked[0]||null, second=ranked[1]||null;
