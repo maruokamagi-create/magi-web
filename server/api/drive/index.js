@@ -1,7 +1,7 @@
 import { sendJson } from '../auth/line/_line.js';
 import { requireApprovedMember } from './_access.js';
-import { filterDriveFilesForRole } from './_permissions.js';
-import { driveServiceAccountEmail, driveServiceConfigured, listMagiDriveTree, MAGI_DRIVE_ROOT_ID } from './_service.js';
+import { driveServiceAccountEmail, driveServiceConfigured, MAGI_DRIVE_ROOT_ID } from './_service.js';
+import { listMagiKnowledgeTree, MAGI_KNOWLEDGE_SCOPE_VERSION } from './_knowledge-scope.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {
@@ -17,18 +17,17 @@ export default async function handler(req, res) {
         ok: true,
         configured: false,
         rootId: MAGI_DRIVE_ROOT_ID,
+        knowledgeScope: MAGI_KNOWLEDGE_SCOPE_VERSION,
         files: []
       });
     }
 
-    // Use the short-lived server-side tree cache. The browser only needs the
-    // Drive catalogue here; individual file contents are fetched on demand.
-    const allFiles = await listMagiDriveTree();
-    const files = filterDriveFilesForRole(member.role, allFiles);
+    const files = await listMagiKnowledgeTree({ role: member.role });
     return sendJson(res, 200, {
       ok: true,
       configured: true,
       rootId: MAGI_DRIVE_ROOT_ID,
+      knowledgeScope: MAGI_KNOWLEDGE_SCOPE_VERSION,
       serviceAccount: driveServiceAccountEmail(),
       role: member.role,
       count: files.length,
