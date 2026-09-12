@@ -6,7 +6,11 @@ on:
     paths:
       - 'server/api/magi/_live-answer.js'
       - 'server/api/magi/_strict-pitching-answer.js'
+      - 'main-live-answer-v329.js'
+      - 'runmagi-ready-bridge-v330.js'
+      - 'index.html'
       - 'scripts/test-live-answer-routing.mjs'
+      - 'scripts/test-runmagi-ready-bridge.mjs'
       - '.github/workflows/magi-live-answer-unit.yml'
   workflow_dispatch:
 
@@ -28,3 +32,6 @@ jobs:
 
       - name: Run live answer unit cases
         run: node --experimental-default-type=module scripts/test-live-answer-routing.mjs
+
+      - name: Run delayed engine bootstrap regression
+        run: node scripts/test-runmagi-ready-bridge.mjs
