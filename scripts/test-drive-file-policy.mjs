@@ -49,11 +49,18 @@ const service = fs.readFileSync(new URL('../server/api/drive/_service.js', impor
 const cache = fs.readFileSync(new URL('../server/api/drive/_cache.js', import.meta.url), 'utf8');
 const scope = fs.readFileSync(new URL('../server/api/drive/_knowledge-scope.js', import.meta.url), 'utf8');
 const fileApi = fs.readFileSync(new URL('../server/api/drive/file.js', import.meta.url), 'utf8');
+const warm = fs.readFileSync(new URL('../server/api/drive/warm.js', import.meta.url), 'utf8');
+const clientWarm = fs.readFileSync(new URL('../drive-server-cache-v307.js', import.meta.url), 'utf8');
 assert.match(service, /assertAllowedDriveDataFile\(meta\)/);
 assert.match(service, /withDriveAllowedTypes/);
 assert.doesNotMatch(service, /google-apps\.document|export\?mimeType/);
 assert.match(cache, /isAllowedDriveDataFile/);
 assert.match(scope, /knowledge-scope-v2-xlsm-csv-only/);
 assert.match(fileApi, /Drive file type not allowed/);
+assert.match(warm, /isAllowedDriveDataFile/);
+assert.match(warm, /strategy: 'XLSM_CSV_ONLY'/);
+assert.doesNotMatch(warm, /00_MASTER_正本|AUTHORITATIVE_ONLY/);
+assert.match(clientWarm, /\(\?:xlsm\|csv\)/);
+assert.match(clientWarm, /XLSM・CSV準備完了/);
 
-console.log(`PASS ${MAGI_DRIVE_FILE_POLICY_VERSION}: only .xlsm and .csv content is ingestible`);
+console.log(`PASS ${MAGI_DRIVE_FILE_POLICY_VERSION}: only .xlsm and .csv content is ingestible and all allowed files are prewarmed`);
