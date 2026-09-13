@@ -3,6 +3,7 @@ import { canAccessDrivePath } from './_permissions.js';
 import { getCachedDriveFile, getCachedDriveFileById, putCachedDriveFile } from './_cache.js';
 import { driveServiceConfigured, fetchDriveFileContent } from './_service.js';
 import { listMagiKnowledgeTree } from './_knowledge-scope.js';
+import { isAllowedDriveDataFile } from './_file-policy.js';
 
 const SAFE_ID = /^[A-Za-z0-9_-]{10,200}$/;
 const UPSTREAM_TIMEOUT_MS = 15000;
@@ -37,7 +38,7 @@ export default async function handler(req, res) {
     }
 
     const directCached = await getCachedDriveFileById(id).catch(() => null);
-    if (directCached?.buffer) {
+    if (directCached?.buffer && isAllowedDriveDataFile(directCached)) {
       if (!canAccessDrivePath(member.role, directCached.path)) {
         res.statusCode = 403;
         return res.end('Drive file access denied');
@@ -50,6 +51,10 @@ export default async function handler(req, res) {
     if (!indexed || !canAccessDrivePath(member.role, indexed.path)) {
       res.statusCode = 403;
       return res.end('Drive file access denied');
+    }
+    if (!isAllowedDriveDataFile(indexed)) {
+      res.statusCode = 415;
+      return res.end('Drive file type not allowed');
     }
 
     const cached = await getCachedDriveFile(indexed).catch(() => null);
@@ -70,8 +75,9 @@ export default async function handler(req, res) {
     return sendBuffer(res, fetched.buffer, fetched.contentType, 'MISS');
   } catch (error) {
     const timedOut = error?.name === 'AbortError';
+    const blockedType = error?.code === 'DRIVE_FILE_TYPE_NOT_ALLOWED';
     console.error('[MAGI server Drive file]', timedOut ? 'timeout' : (error?.message || error), error?.details || '');
-    if (!res.headersSent) res.statusCode = timedOut ? 504 : 502;
-    res.end(timedOut ? 'Drive file fetch timed out' : 'Google Drive file unavailable');
+    if (!res.headersSent) res.statusCode = blockedType ? 415 : (timedOut ? 504 : 502);
+    res.end(blockedType ? 'Drive file type not allowed' : (timedOut ? 'Drive file fetch timed out' : 'Google Drive file unavailable'));
   }
 }
