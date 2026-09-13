@@ -1,0 +1,51 @@
+name: MAGI Gemini-First Semantic Authority Guard
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/magi/core.js'
+      - 'server/api/magi/_semantic-authority.js'
+      - 'server/api/magi/_semantic-request.js'
+      - 'server/api/magi/_semantic-postguard.js'
+      - '.github/workflows/magi-semantic-authority-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  semantic-authority:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enforce single Gemini-first semantic entry
+        shell: bash
+        run: |
+          set -euo pipefail
+          CORE='server/api/magi/core.js'
+          AUTH='server/api/magi/_semantic-authority.js'
+
+          grep -q "understandRequestGeminiFirst" "$CORE"
+          grep -q "const semantic=await understandRequestGeminiFirst(question,context)" "$CORE"
+          grep -q "semanticAuthority:'GEMINI_FIRST'" "$AUTH"
+          grep -q "await callGemini" "$AUTH"
+
+          if grep -q "_semantic-request.js" "$CORE"; then
+            echo 'FAIL: production core imported the old semantic request router.'
+            exit 1
+          fi
+          if grep -q "_semantic-postguard.js" "$CORE"; then
+            echo 'FAIL: production core imported semantic override rules.'
+            exit 1
+          fi
+          if grep -q "isFullLineupQuestion\|isExplicitPitchingPlanQuestion\|fullLineupSemantic\|pitchingPlanSemantic" "$CORE"; then
+            echo 'FAIL: production core contains a pre-Gemini intent bypass.'
+            exit 1
+          fi
+          if grep -q "routeQuestion" "$CORE"; then
+            echo 'FAIL: a second semantic router is active in production core.'
+            exit 1
+          fi
+
+          echo 'PASS: every production question enters Gemini semantic authority first; code remains validation/execution only.'
