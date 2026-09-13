@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
     paths:
+      - 'api/magi-gateway.js'
       - 'server/api/magi/persona.js'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_full-lineup.js'
