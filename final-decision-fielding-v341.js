@@ -1,17 +1,20 @@
 (()=>{
 'use strict';
-if(window.MAGI_FINAL_DECISION_FIELDING_V343)return;
-window.MAGI_FINAL_DECISION_FIELDING_V343=true;
+if(window.MAGI_FINAL_DECISION_FIELDING_V344)return;
+window.MAGI_FINAL_DECISION_FIELDING_V344=true;
 const STANDARD=['投','捕','一','二','三','遊','左','中','右'];
 const LABEL={投:'投手',捕:'捕手',一:'一塁',二:'二塁',三:'三塁',遊:'遊撃',左:'左翼',中:'中堅',右:'右翼'};
 const NAME_ALIASES=['選手名','氏名','名前','選手'];
 const POS_ALIASES=['守備位置','守備'];
+const CURRENT_ROLE_POLICY={
+ '大久保 陽翔':{allowed:['投','遊','三'],preferred:['遊','三','投'],note:'現行起用方針：投手・遊撃・三塁。外野起用は想定しない。'}
+};
 let running=false;
 
 function injectStyle(){
- if(document.getElementById('magi-final-fielding-v343-style'))return;
+ if(document.getElementById('magi-final-fielding-v344-style'))return;
  const s=document.createElement('style');
- s.id='magi-final-fielding-v343-style';
+ s.id='magi-final-fielding-v344-style';
  s.textContent=`
  .magiFinalDecisionRow{grid-template-columns:38px minmax(0,1fr) auto!important}
  .magiFinalDecisionPos{display:inline-flex;align-items:center;justify-content:center;min-width:66px;padding:6px 9px;border-radius:999px;background:#e7f3fb;border:1px solid #b8d3e7;color:#16476c;font-size:12px;font-weight:900;white-space:nowrap}
@@ -85,6 +88,16 @@ function mergeCounts(base,extra){
  }
  return base;
 }
+function applyCurrentRolePolicy(counts,names){
+ for(const rawName of names){
+  const name=normName(rawName),policy=CURRENT_ROLE_POLICY[name];if(!policy)continue;
+  const allowed=new Set(policy.allowed||[]),map=counts.get(name)||new Map();
+  for(const p of [...map.keys()])if(!allowed.has(p))map.delete(p);
+  (policy.preferred||policy.allowed||[]).forEach((p,i)=>{if(allowed.has(p))map.set(p,Math.max(map.get(p)||0,100-i))});
+  counts.set(name,map);
+ }
+ return counts;
+}
 function hasCoverage(names,counts){return names.every(n=>(counts.get(normName(n))?.size||0)>0)}
 function solve(names,counts){
  const order=names.map(normName);let best=null,bestScore=-1;
@@ -102,14 +115,18 @@ async function fieldingFile(){
  }catch(_){return null}
 }
 function noteNode(hero){let note=hero.querySelector('.magiFinalFieldingNote');if(!note){note=document.createElement('div');note.className='magiFinalFieldingNote';hero.appendChild(note)}return note}
+function policyNote(names){
+ const notes=names.map(normName).map(n=>CURRENT_ROLE_POLICY[n]?.note).filter(Boolean);
+ return notes.length?` 現在の起用方針も優先しています（${notes.join(' / ')}）`:'';
+}
 function renderAssignment(hero,rows,names,assignment,sourceLabel){
  const note=noteNode(hero);
  if(!assignment){
   rows.forEach(r=>{let p=r.querySelector('.magiFinalDecisionPos');if(!p){p=document.createElement('span');p.className='magiFinalDecisionPos';r.appendChild(p)}p.textContent='守備未成立'});
-  note.classList.add('magiFinalFieldingError');note.textContent=`この9人では、${sourceLabel}に記録された守備位置だけで投・捕・一・二・三・遊・左・中・右を重複なく成立させられません。最終ベストオーダーとしては守備構成の再審議が必要です。`;
+  note.classList.add('magiFinalFieldingError');note.textContent=`この9人では、${sourceLabel}と現在の起用方針を合わせても、投・捕・一・二・三・遊・左・中・右を重複なく成立させられません。最終ベストオーダーとしては守備構成の再審議が必要です。`;
  }else{
   rows.forEach((r,i)=>{const name=normName(names[i]),code=assignment[name];let p=r.querySelector('.magiFinalDecisionPos');if(!p){p=document.createElement('span');p.className='magiFinalDecisionPos';r.appendChild(p)}p.textContent=LABEL[code]||code});
-  note.classList.remove('magiFinalFieldingError');note.textContent=`守備位置は${sourceLabel}の実記録だけを使い、投・捕・一・二・三・遊・左・中・右が重複しない組み合わせで表示しています。打順は3賢人の最終判断です。`;
+  note.classList.remove('magiFinalFieldingError');note.textContent=`守備位置は${sourceLabel}を土台に、確認済みの現在の起用方針を優先して、投・捕・一・二・三・遊・左・中・右が重複しない組み合わせで表示しています。${policyNote(names)} 打順は3賢人の最終判断です。`;
  }
 }
 async function apply(){
@@ -119,7 +136,7 @@ async function apply(){
  const names=rows.map(r=>r.querySelector('.magiFinalDecisionName')?.textContent?.trim()).filter(Boolean);if(names.length!==9)return false;
  running=true;
  try{
-  const loaded=collectLoadedDriveRecords(names);
+  const loaded=applyCurrentRolePolicy(collectLoadedDriveRecords(names),names);
   if(hasCoverage(names,loaded)){
    renderAssignment(hero,rows,names,solve(names,loaded),'読み込み済みの2026-2027 XLSM/CSV');
    hero.dataset.magiFieldingDone='1';return true;
@@ -135,11 +152,11 @@ async function apply(){
    const note=noteNode(hero);note.classList.add('magiFinalFieldingError');note.textContent='守備位置データの追加取得に失敗しました。打順判定は完了していますが、守備位置は未確定です。';hero.dataset.magiFieldingDone='1';return false;
   }
   const csvCounts=collect(parseCsv(decode(await res.arrayBuffer())),names);
-  const merged=mergeCounts(loaded,csvCounts);
+  const merged=applyCurrentRolePolicy(mergeCounts(loaded,csvCounts),names);
   renderAssignment(hero,rows,names,solve(names,merged),'2026-2027のXLSM/守備詳細CSV');
   hero.dataset.magiFieldingDone='1';return true;
  }catch(e){
-  const note=noteNode(hero);note.classList.add('magiFinalFieldingError');note.textContent='守備位置を確定できませんでした。打順判定は完了していますが、守備位置は未確定です。';hero.dataset.magiFieldingDone='1';console.warn('[MAGI final fielding v343]',e?.message||e);return false;
+  const note=noteNode(hero);note.classList.add('magiFinalFieldingError');note.textContent='守備位置を確定できませんでした。打順判定は完了していますが、守備位置は未確定です。';hero.dataset.magiFieldingDone='1';console.warn('[MAGI final fielding v344]',e?.message||e);return false;
  }finally{running=false}
 }
 function run(){apply().catch(()=>{})}
