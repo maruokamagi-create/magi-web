@@ -20,8 +20,14 @@ function crossTexts(cross){
     ...list(challenges?.casper)
   ];
 }
+
+// Protocol/persona/stat names are intentionally written in Latin characters in otherwise
+// natural Japanese MAGI dialogue. Exclude only these known tokens from the language ratio
+// so valid text such as "CASPERはGREEN、MELCHIORはBLUE" is not rejected.
+const ALLOWED_LATIN_TOKENS=/\b(?:MELCHIOR(?:-1)?|BALTHASAR(?:-2)?|CASPER(?:-3)?|MAGI|GREEN|BLUE|YELLOW|RED|DATA|EVIDENCE|Evidence|AVG|OPS|OBP|SLG|ERA|WHIP|BB|HBP|SO|IP|RBI|CSV|XLSM)\b/gi;
 function japaneseEnough(value){
-  const s=String(value||'');
+  const original=String(value||'');
+  const s=original.replace(ALLOWED_LATIN_TOKENS,'');
   const jp=(s.match(/[ぁ-んァ-ヶ一-龯々ー]/g)||[]).length;
   const latin=(s.match(/[A-Za-z]/g)||[]).length;
   if(!jp)return false;
