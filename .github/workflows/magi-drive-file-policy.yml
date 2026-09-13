@@ -1,0 +1,42 @@
+name: MAGI Drive XLSM CSV Policy
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/drive/_file-policy.js'
+      - 'server/api/drive/_service.js'
+      - 'server/api/drive/_cache.js'
+      - 'server/api/drive/_knowledge-scope.js'
+      - 'server/api/drive/file.js'
+      - 'scripts/test-drive-file-policy.mjs'
+      - '.github/workflows/magi-drive-file-policy.yml'
+  workflow_dispatch:
+
+jobs:
+  xlsm-csv-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Verify Drive file policy
+        run: node --experimental-default-type=module scripts/test-drive-file-policy.mjs
+
+      - name: Wait for production deployment
+        run: sleep 45
+
+      - name: Verify production can still read current XLSM master
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 3 --retry-delay 3 -sS 'https://magi-web.vercel.app/api/magi-selection-live-selftest' -o /tmp/selection.json
+          cat /tmp/selection.json; echo
+          jq -e '.ok==true and .rosterExact==true and .count==14 and .playersWithBatting==14 and (.sourceName|endswith(".xlsm"))' /tmp/selection.json >/dev/null
+          echo 'PRODUCTION XLSM MASTER: PASS'
