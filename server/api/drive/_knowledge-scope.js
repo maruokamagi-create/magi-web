@@ -1,17 +1,17 @@
 import { googleDriveFetch, listMagiDriveTree } from './_service.js';
 import { filterDriveFilesForRole } from './_permissions.js';
+import { isDriveFolder, isDriveTraversalItem, withDriveAllowedTypes } from './_file-policy.js';
 
 export const MAGI_STAFF_ROOT_ID = '1H2AXlCa8DCLMl7rtE3OWI4qcM8sRswsi';
 export const MAGI_STAFF_ROOT_LABEL = '50_STAFF_顧問・指導者';
-export const MAGI_KNOWLEDGE_SCOPE_VERSION = 'knowledge-scope-v1-team-plus-staff';
+export const MAGI_KNOWLEDGE_SCOPE_VERSION = 'knowledge-scope-v2-xlsm-csv-only';
 
-const FOLDER_MIME = 'application/vnd.google-apps.folder';
 const CACHE_MS = 300_000;
 let cachedStaffTree = null;
 let cachedStaffTreeAt = 0;
 
 function filesListUrl(folderId, pageToken = '') {
-  const q = `'${folderId}' in parents and trashed=false`;
+  const q = withDriveAllowedTypes(`'${folderId}' in parents and trashed=false`);
   const fields = encodeURIComponent('nextPageToken,files(id,name,mimeType,modifiedTime,size,webViewLink,parents)');
   return `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&pageSize=1000&fields=${fields}&spaces=drive&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`;
 }
@@ -28,7 +28,7 @@ async function listChildren(folderId) {
       error.details = data;
       throw error;
     }
-    out.push(...(Array.isArray(data.files) ? data.files : []));
+    out.push(...(Array.isArray(data.files) ? data.files.filter(isDriveTraversalItem) : []));
     pageToken = String(data.nextPageToken || '');
   } while (pageToken && out.length < 2000);
   return out;
@@ -36,7 +36,7 @@ async function listChildren(folderId) {
 
 async function listStaffTree({ fresh = false, maxItems = 800, maxDepth = 10 } = {}) {
   const age = Date.now() - cachedStaffTreeAt;
-  if (cachedStaffTree && !fresh && age < CACHE_MS) return cachedStaffTree;
+  if (cachedStaffTree && !fresh && age < CACHE_MS) return cachedStaffTree.filter(isDriveTraversalItem);
 
   const out = [];
   const queue = [{ id: MAGI_STAFF_ROOT_ID, path: MAGI_STAFF_ROOT_LABEL, depth: 0 }];
@@ -48,23 +48,24 @@ async function listStaffTree({ fresh = false, maxItems = 800, maxDepth = 10 } = 
     seen.add(current.id);
     const children = await listChildren(current.id);
     for (const source of children) {
+      if (!isDriveTraversalItem(source)) continue;
       const item = { ...source, path: `${current.path}/${source.name}` };
       out.push(item);
-      if (source.mimeType === FOLDER_MIME) {
+      if (isDriveFolder(source)) {
         queue.push({ id: source.id, path: item.path, depth: current.depth + 1 });
       }
       if (out.length >= maxItems) break;
     }
   }
 
-  cachedStaffTree = out;
+  cachedStaffTree = out.filter(isDriveTraversalItem);
   cachedStaffTreeAt = Date.now();
-  return out;
+  return cachedStaffTree;
 }
 
 export async function listMagiKnowledgeTree({ role = 'member', fresh = false, maxItems = 2500, maxDepth = 14 } = {}) {
   const team = await listMagiDriveTree({ fresh, maxItems, maxDepth });
-  let combined = Array.isArray(team) ? team.slice() : [];
+  let combined = Array.isArray(team) ? team.filter(isDriveTraversalItem) : [];
 
   if (role === 'admin' || role === 'coach') {
     try {
@@ -77,6 +78,7 @@ export async function listMagiKnowledgeTree({ role = 'member', fresh = false, ma
 
   const seen = new Set();
   combined = combined.filter(file => {
+    if (!isDriveTraversalItem(file)) return false;
     const id = String(file?.id || '');
     if (!id || seen.has(id)) return false;
     seen.add(id);
