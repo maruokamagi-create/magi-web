@@ -1,4 +1,5 @@
 import zlib from 'node:zlib';
+import { isAllowedDriveDataFile } from './_file-policy.js';
 
 const SUPABASE_URL = (process.env.SUPABASE_URL || 'https://stqekbjijufefrykksji.supabase.co').replace(/\/$/, '');
 const SERVICE_KEY = process.env.SUPABASE_SECRET_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || '';
@@ -34,20 +35,7 @@ async function rest(query = '', options = {}) {
 }
 
 export function cacheableDriveFile(file) {
-  if (!file || file.mimeType === 'application/vnd.google-apps.folder') return false;
-  const name = String(file.name || '');
-  const mime = String(file.mimeType || '').toLowerCase();
-  return [
-    'application/vnd.google-apps.spreadsheet',
-    'application/vnd.google-apps.document',
-    'text/csv',
-    'application/json',
-    'text/plain',
-    'application/pdf',
-    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-    'application/vnd.ms-excel',
-    'application/vnd.ms-excel.sheet.macroenabled.12'
-  ].includes(mime) || /\.(csv|json|txt|pdf|xls|xlsx|xlsm)$/i.test(name);
+  return isAllowedDriveDataFile(file);
 }
 
 function decodeCachedRow(row) {
@@ -79,17 +67,19 @@ export async function getCachedDriveFileById(id) {
   params.set('limit', '1');
   const rows = await rest(params.toString());
   const row = Array.isArray(rows) && rows.length ? rows[0] : null;
-  return decodeCachedRow(row);
+  const cached = decodeCachedRow(row);
+  return isAllowedDriveDataFile(cached) ? cached : null;
 }
 
 export async function getCachedDriveFile(file) {
-  if (!driveCacheConfigured() || !file?.id) return null;
+  if (!driveCacheConfigured() || !file?.id || !isAllowedDriveDataFile(file)) return null;
   const cached = await getCachedDriveFileById(file.id);
   if (!cached || cached.modifiedTime !== String(file.modifiedTime || '')) return null;
   return cached;
 }
 
 export async function putCachedDriveFile(file, buffer, contentType = 'application/octet-stream') {
+  if (!isAllowedDriveDataFile(file)) return { ok: false, reason: 'file_type_not_allowed' };
   if (!driveCacheConfigured() || !file?.id || !Buffer.isBuffer(buffer)) return { ok: false, reason: 'unavailable' };
   if (buffer.length > MAX_CACHE_BYTES) return { ok: false, reason: 'too_large', sizeBytes: buffer.length };
   const packed = zlib.gzipSync(buffer, { level: 6 });
