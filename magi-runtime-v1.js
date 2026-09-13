@@ -3,17 +3,24 @@
 if(window.MAGI_RUNTIME_V1_BOOTING)return;
 window.MAGI_RUNTIME_V1_BOOTING=true;
 
-const RUNTIME_VERSION='1.1.0';
-const ASSET_REV='353';
+const RUNTIME_VERSION='1.2.0';
+const ASSET_REV='354';
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const load=src=>new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error(`load failed: ${src}`));document.body.appendChild(s)});
 let ready=false;
 let formalRunner=null;
 let observer=null;
 
-function isFormalRunner(fn){
-  if(typeof fn!=='function'||!window.MAGI_ENGINE_V1)return false;
-  try{return /MAGI_ENGINE_V1\.deliberate/.test(Function.prototype.toString.call(fn))}catch(_){return false}
+function formalUiReady(){
+  return Boolean(
+    window.MAGI_ENGINE_UI_V187===true &&
+    typeof window.runMagi==='function' &&
+    window.MAGI_ENGINE_V1 &&
+    typeof window.MAGI_ENGINE_V1.deliberate==='function'
+  );
+}
+function loaderFailed(){
+  return /MAGI\s+v[^\n]*読み込みに失敗しました/.test(String(document.body?.textContent||''));
 }
 function integrityReady(){
   const engine=window.MAGI_ENGINE_V1;
@@ -69,14 +76,15 @@ async function waitFor(predicate,ms){
   return false;
 }
 async function waitForFormalRunner(){
-  const started=Date.now();
-  while(Date.now()-started<45000){
+  // loader-v130.js is asynchronous. Do not use a wall-clock timeout here:
+  // on mobile the legacy UI may legitimately take longer to finish loading.
+  // The explicit MAGI_ENGINE_UI_V187 marker is set only after the formal UI runner exists.
+  while(true){
     quarantineButton();
-    const fn=window.runMagi;
-    if(window.MAGI_ACTIVE_VERSION&&isFormalRunner(fn))return fn.bind(window);
-    await sleep(50);
+    if(formalUiReady())return window.runMagi.bind(window);
+    if(loaderFailed())throw new Error('MAGI画面基盤の読み込みに失敗しました');
+    await sleep(100);
   }
-  return null;
 }
 function lockCompatibilityEntry(){
   const compatibilityRun=function(){return window.MAGI_FORMAL_UI_RUNNER_V1.apply(window,arguments)};
@@ -87,7 +95,6 @@ function lockCompatibilityEntry(){
 async function boot(){
   installQuarantine();
   formalRunner=await waitForFormalRunner();
-  if(!formalRunner)return setRuntimeError('正式3賢人UIランナーを取得できません');
 
   Object.defineProperty(window,'MAGI_FORMAL_UI_RUNNER_V1',{value:formalRunner,writable:false,configurable:false,enumerable:false});
   lockCompatibilityEntry();
