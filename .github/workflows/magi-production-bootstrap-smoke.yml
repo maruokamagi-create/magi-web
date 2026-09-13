@@ -30,10 +30,10 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-runtime-v1.js?v=353" -o /tmp/runtime.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=353" -o /tmp/semantic.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=353" -o /tmp/integrity.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/lineup-finalizer-v350.js?v=353" -o /tmp/finalizer.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-runtime-v1.js?v=354" -o /tmp/runtime.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=354" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=354" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/lineup-finalizer-v350.js?v=354" -o /tmp/finalizer.js
 
           node - <<'NODE'
           const fs=require('fs');
@@ -44,11 +44,14 @@ jobs:
           const finalizer=fs.readFileSync('/tmp/finalizer.js','utf8');
 
           const loader=html.indexOf('/loader-v130.js?v=294');
-          const canonical=html.indexOf('/magi-runtime-v1.js?v=353');
+          const canonical=html.indexOf('/magi-runtime-v1.js?v=354');
           if(loader<0||canonical<0||loader>=canonical)throw new Error('canonical runtime must load after legacy UI loader');
           if(html.includes('/formal-runtime-bootstrap-v351.js'))throw new Error('obsolete overlay bootstrap is still loaded');
 
           if(!runtime.includes('MAGI_FORMAL_UI_RUNNER_V1'))throw new Error('formal runner is not captured');
+          if(!runtime.includes('MAGI_ENGINE_UI_V187===true'))throw new Error('runtime does not wait for explicit formal UI readiness marker');
+          if(runtime.includes('Function.prototype.toString'))throw new Error('runtime still uses brittle function-source detection');
+          if(runtime.includes('45000'))throw new Error('runtime still has the mobile startup wall-clock timeout');
           if(!runtime.includes("Object.defineProperty(window,'runMagi'"))throw new Error('runMagi compatibility entry is not locked to formal runner');
           if(!runtime.includes('writable:false')||!runtime.includes('configurable:false'))throw new Error('formal runMagi lock is not immutable');
           if(!runtime.includes("mode:'FORMAL_ONLY'"))throw new Error('runtime is not formal-only');
