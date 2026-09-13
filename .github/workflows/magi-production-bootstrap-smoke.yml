@@ -56,7 +56,7 @@ jobs:
 
           const integrityVersion=(integrity.match(/version:'([^']*integrity)'/)||[])[1];
           if(!integrityVersion)throw new Error('integrity engine version marker missing');
-          if(!runtime.includes('MAGI_DELIBERATION_INTEGRITY_V349')||!/integrity\/i/.test(runtime))throw new Error('runtime integrity readiness is not capability-based');
+          if(!runtime.includes('MAGI_DELIBERATION_INTEGRITY_V349')||!runtime.includes('/integrity/i'))throw new Error('runtime integrity readiness is not capability-based');
           if(runtime.includes("includes('1.1.0-integrity')"))throw new Error('runtime still hardcodes obsolete integrity version');
 
           if(!finalizer.includes('MAGI_LINEUP_FINALIZER_V350')||!finalizer.includes('lineup-finalizer-v350'))throw new Error('lineup finalizer marker missing');
