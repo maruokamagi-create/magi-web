@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.MAGI_BEST_ORDER_EVIDENCE_V342)return;
-window.MAGI_BEST_ORDER_EVIDENCE_V342=true;
+if(window.MAGI_BEST_ORDER_EVIDENCE_V343)return;
+window.MAGI_BEST_ORDER_EVIDENCE_V343=true;
 const PLAYERS=['大久保 陽翔','大野 竜暉','嶋田 栄志','井坂 悠聖','橋向 結都','坂田 暉馬','武澤 大翔','大久保 夢翔','吉田 真翔','武田 晴琉翔','鰐渕 将太','上村 蓮','中嶋 玲月','長侶 穹'];
 const norm=s=>String(s??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
 const aliases={
@@ -40,17 +40,19 @@ function build(q,base){const all=((typeof dataRecords!=='undefined'?dataRecords:
 '【BEST ORDER専用・回答形式は絶対遵守】',
 '関連選手を挙げるだけで終えてはならない。最終判断に、1番から9番までの選手名と基本守備位置を番号付きで必ず明示する。',
 'さらに先発投手、投手交代時の守備変更、入替候補2名、見直し条件を明示する。抽象的な「軸にする」「様子を見る」だけの回答は禁止。',
-'打順判断は必ず3層で行う。①2025-2026の過去実績＝実績・再現性・経験、②2026-2027通算＝現在地、③直近6試合＝最近の調子・短期トレンド。どれか1層だけで決めてはならない。',
+'打順判断は必ず4層で行う。①2025-2026の過去実績＝実績・再現性・経験、②2026-2027通算＝現在地、③直近6試合＝最近の調子・短期トレンド、④確認済みのチーム内役割＝キャプテン・精神的支柱など。どれか1層だけで決めてはならない。',
 '過去実績は「参考資料だから弱く扱う」のではなく、現在選手について再現性を測る重要なベースラインとして明示的に評価する。ただし過去だけで現状を上書きしない。',
 '直近6試合は必ず打撃詳細2026-2027.csvの試合別記録から集計した値を使う。短期成績は調子判断に使うが、打席が少ない場合は母数不足を明示する。',
-'最終打順では各選手について、少なくとも「過去実績」「今季通算」「直近6試合」のうち利用できる数値を理由に含める。「信頼」「役割」「バランス」だけで打順を説明してはならない。',
-'4番や中軸を変更する場合は、過去実績・今季通算・直近6の3層から、従来の中軸候補を上回る具体的根拠を示す。根拠が弱ければ変更しない。',
+'最終打順では各選手について、少なくとも「過去実績」「今季通算」「直近6試合」のうち利用できる数値と、確認済みのチーム内役割を理由に含める。定性要素だけ、または率系数字だけで打順を決めてはならない。',
+'大久保 陽翔は現チームのキャプテンであり精神的な柱。成績と同時にこの役割を必ず加味する。ただしキャプテンだから自動的に特定打順へ固定しない。主軸として評価したうえで、調子を落としている場合は下位へ落とすだけでなく、近藤先生の起用思想として1番に置いて打席数を増やし復調を促す案も戦術的に比較する。',
+'大久保 陽翔を4番から動かす場合は、評価低下による降格なのか、1番起用による復調促進なのか、先発投手時の負担調整なのかを明確に区別し、過去実績・今季通算・直近6・チーム内役割の根拠を示す。何となく5番・6番へ下げる案は禁止。',
+'4番や中軸を変更する場合は、過去実績・今季通算・直近6の3層から従来の中軸候補を上回る具体的根拠を示し、さらにチーム内役割への影響も説明する。根拠が弱ければ変更しない。',
 '候補14名全員を比較してから9名を選ぶ。守備位置の成立と投手・捕手兼任を必ず確認する。',
-'チーム方針：4番は大久保陽翔、5番は中嶋玲月を原則固定する。3番は判断材料不足のため固定しない。大久保陽翔が先発投手の日のみ5〜6番へ下げ、中嶋を4番にする選択肢を持つ。左翼はフライ対応力と脚力を評価して武田晴琉翔を有力候補とする。大久保夢翔は能力を否定せず、役割を絞り、ミス・失点後の切り替えを観察しながら段階起用する。性格を固定評価しない。'
+'チーム方針：3番は判断材料不足のため固定しない。中嶋玲月は中軸候補として評価する。左翼はフライ対応力と脚力を評価して武田晴琉翔を有力候補とする。大久保夢翔は能力を否定せず、役割を絞り、ミス・失点後の切り替えを観察しながら段階起用する。性格を固定評価しない。'
 ];
 const recentHeader=recent.games.length?`【直近6試合 対象】${recent.games.map(g=>g.label).join(' / ')}`:'【直近6試合 対象】打撃詳細CSVから試合を抽出できず';
 const text=[...(base?.text?[base.text]:[]),...mandate,'【2025-2026 過去実績・再現性】',...old.map(x=>battingLine(...x)),'【2026-2027 今季通算】',...cur.map(x=>battingLine(...x)),recentHeader,'【直近6試合 最近の調子】',...(recent.lines.length?recent.lines:['集計不能。直近6試合を推測で補わないこと。']),'【2026-2027 守備候補】',...pos].join('\n');
-return{...(base||{}),count:(base?.count||0)+old.length+cur.length+recent.lines.length+pos.length,files:[...new Set([...(base?.files||[]),...all.map(r=>r.fileName).filter(Boolean)])],evidenceLayers:[...(base?.evidenceLayers||[]),'PAST PERFORMANCE / REPEATABILITY','CURRENT SEASON','RECENT SIX FORM','ALL 14 PLAYERS','DEFENSIVE CONSTRAINTS'],summary:`過去実績${old.length}名・今季通算${cur.length}名・直近6集計${recent.lines.length}名・守備${pos.length}名を比較。過去の再現性と最近の調子を両方使って1〜9番を審議する。`,text};}
-function install(){if(typeof window.searchDataEvidence!=='function')return false;if(window.searchDataEvidence.__bestOrderV342)return true;const prev=window.searchDataEvidence;window.searchDataEvidence=function(q){const base=prev(q);return isBestOrder(q)?build(q,base):base};window.searchDataEvidence.__bestOrderV342=true;window.MAGI_BEST_ORDER_EVIDENCE_V268=true;return true}
+return{...(base||{}),count:(base?.count||0)+old.length+cur.length+recent.lines.length+pos.length,files:[...new Set([...(base?.files||[]),...all.map(r=>r.fileName).filter(Boolean)])],evidenceLayers:[...(base?.evidenceLayers||[]),'PAST PERFORMANCE / REPEATABILITY','CURRENT SEASON','RECENT SIX FORM','TEAM ROLE / CAPTAINCY','ALL 14 PLAYERS','DEFENSIVE CONSTRAINTS'],summary:`過去実績${old.length}名・今季通算${cur.length}名・直近6集計${recent.lines.length}名・守備${pos.length}名に、確認済みのチーム内役割も重ねて1〜9番を審議する。`,text};}
+function install(){if(typeof window.searchDataEvidence!=='function')return false;if(window.searchDataEvidence.__bestOrderV343)return true;const prev=window.searchDataEvidence;window.searchDataEvidence=function(q){const base=prev(q);return isBestOrder(q)?build(q,base):base};window.searchDataEvidence.__bestOrderV343=true;window.MAGI_BEST_ORDER_EVIDENCE_V268=true;return true}
 let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>300)clearInterval(timer)},100);install();
 })();
