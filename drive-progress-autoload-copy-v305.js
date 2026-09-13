@@ -2,7 +2,7 @@
 'use strict';
 if(window.MAGI_DRIVE_AUTOLOAD_COPY_V305)return;
 window.MAGI_DRIVE_AUTOLOAD_COPY_V305=true;
-const SCOPE='MAGIの重要資料';
+const SCOPE='Google DriveのXLSM・CSV';
 let observer=null;
 function fix(){
   const note=document.getElementById('driveProgressNote');
