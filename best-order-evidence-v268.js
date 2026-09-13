@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.MAGI_BEST_ORDER_EVIDENCE_V344)return;
-window.MAGI_BEST_ORDER_EVIDENCE_V344=true;
+if(window.MAGI_BEST_ORDER_EVIDENCE_V345)return;
+window.MAGI_BEST_ORDER_EVIDENCE_V345=true;
 const PLAYERS=['大久保 陽翔','大野 竜暉','嶋田 栄志','井坂 悠聖','橋向 結都','坂田 暉馬','武澤 大翔','大久保 夢翔','吉田 真翔','武田 晴琉翔','鰐渕 将太','上村 蓮','中嶋 玲月','長侶 穹'];
 const norm=s=>String(s??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
 const aliases={
@@ -44,8 +44,10 @@ function build(q,base){const all=((typeof dataRecords!=='undefined'?dataRecords:
 '過去実績は「参考資料だから弱く扱う」のではなく、現在選手について再現性を測る重要なベースラインとして明示的に評価する。ただし過去だけで現状を上書きしない。',
 '直近6試合は必ず打撃詳細2026-2027.csvの試合別記録から集計した値を使う。短期成績は調子判断に使うが、打席が少ない場合は母数不足を明示する。',
 '最終打順では各選手について、少なくとも「過去実績」「今季通算」「直近6試合」のうち利用できる数値と、確認済みのチーム内役割を理由に含める。定性要素だけ、または率系数字だけで打順を決めてはならない。',
+'【理由説明の必須深度】打順だけを列挙して「結果を残している」「打席を増やす」「得点力を高める」で終えるのは禁止。一次判断・二次判断とも、1〜2番の狙い、3〜5番をその順にした比較理由、6〜9番のつながりを説明する。利用可能な数値がある場合、少なくとも3選手・合計4個以上の正確な数値を理由文に入れ、打席/打数など母数も一緒に示す。二次判断で一次案を維持する場合も、クロス審議の指摘に答え、最低2つの具体的数値を使って維持理由を説明する。「変えない」「維持する」だけは禁止。',
 '大久保 陽翔は現チームのキャプテンであり精神的な柱。成績と同時にこの役割を必ず加味する。ただしキャプテンだから自動的に特定打順へ固定しない。主軸として評価したうえで、調子を落としている場合は下位へ落とすだけでなく、近藤先生の起用思想として1番に置いて打席数を増やし復調を促す案も戦術的に比較する。',
 '大久保 陽翔を4番から動かす場合は、評価低下による降格なのか、1番起用による復調促進なのか、先発投手時の負担調整なのかを明確に区別し、過去実績・今季通算・直近6・チーム内役割の根拠を示す。何となく5番・6番へ下げる案は禁止。',
+'【大久保陽翔1番時の説明義務】1番にする場合は「なぜ4番継続ではなく今は1番なのか」を具体的に説明する。キャプテン/精神的支柱、打席数を増やす戦術意図、過去実績・今季通算・直近6試合の数字を照合する。直近6と今季通算が同じ対象期間なら、それを独立した不調トレンドとして二重評価しない。',
 '【現在の守備起用方針】大久保 陽翔の守備は投手・遊撃・三塁を候補とし、外野起用は想定しない。過去に外野の実記録があっても、現在のベストオーダーでは外野へ配置しない。',
 '4番や中軸を変更する場合は、過去実績・今季通算・直近6の3層から従来の中軸候補を上回る具体的根拠を示し、さらにチーム内役割への影響も説明する。根拠が弱ければ変更しない。',
 '候補14名全員を比較してから9名を選ぶ。守備位置の成立と投手・捕手兼任を必ず確認する。',
@@ -53,7 +55,7 @@ function build(q,base){const all=((typeof dataRecords!=='undefined'?dataRecords:
 ];
 const recentHeader=recent.games.length?`【直近6試合 対象】${recent.games.map(g=>g.label).join(' / ')}`:'【直近6試合 対象】打撃詳細CSVから試合を抽出できず';
 const text=[...(base?.text?[base.text]:[]),...mandate,'【2025-2026 過去実績・再現性】',...old.map(x=>battingLine(...x)),'【2026-2027 今季通算】',...cur.map(x=>battingLine(...x)),recentHeader,'【直近6試合 最近の調子】',...(recent.lines.length?recent.lines:['集計不能。直近6試合を推測で補わないこと。']),'【2026-2027 守備候補】',...pos].join('\n');
-return{...(base||{}),count:(base?.count||0)+old.length+cur.length+recent.lines.length+pos.length,files:[...new Set([...(base?.files||[]),...all.map(r=>r.fileName).filter(Boolean)])],evidenceLayers:[...(base?.evidenceLayers||[]),'PAST PERFORMANCE / REPEATABILITY','CURRENT SEASON','RECENT SIX FORM','TEAM ROLE / CAPTAINCY','CURRENT FIELDING POLICY','ALL 14 PLAYERS','DEFENSIVE CONSTRAINTS'],summary:`過去実績${old.length}名・今季通算${cur.length}名・直近6集計${recent.lines.length}名・守備${pos.length}名に、確認済みのチーム内役割と現在の守備起用方針も重ねて1〜9番を審議する。`,text};}
-function install(){if(typeof window.searchDataEvidence!=='function')return false;if(window.searchDataEvidence.__bestOrderV344)return true;const prev=window.searchDataEvidence;window.searchDataEvidence=function(q){const base=prev(q);return isBestOrder(q)?build(q,base):base};window.searchDataEvidence.__bestOrderV344=true;window.MAGI_BEST_ORDER_EVIDENCE_V268=true;return true}
+return{...(base||{}),count:(base?.count||0)+old.length+cur.length+recent.lines.length+pos.length,files:[...new Set([...(base?.files||[]),...all.map(r=>r.fileName).filter(Boolean)])],evidenceLayers:[...(base?.evidenceLayers||[]),'PAST PERFORMANCE / REPEATABILITY','CURRENT SEASON','RECENT SIX FORM','TEAM ROLE / CAPTAINCY','RATIONALE DEPTH','CURRENT FIELDING POLICY','ALL 14 PLAYERS','DEFENSIVE CONSTRAINTS'],summary:`過去実績${old.length}名・今季通算${cur.length}名・直近6集計${recent.lines.length}名・守備${pos.length}名に、確認済みのチーム内役割と現在の守備起用方針を重ね、具体的な数値比較まで示して1〜9番を審議する。`,text};}
+function install(){if(typeof window.searchDataEvidence!=='function')return false;if(window.searchDataEvidence.__bestOrderV345)return true;const prev=window.searchDataEvidence;window.searchDataEvidence=function(q){const base=prev(q);return isBestOrder(q)?build(q,base):base};window.searchDataEvidence.__bestOrderV345=true;window.MAGI_BEST_ORDER_EVIDENCE_V268=true;return true}
 let tries=0;const timer=setInterval(()=>{tries++;if(install()||tries>300)clearInterval(timer)},100);install();
 })();
