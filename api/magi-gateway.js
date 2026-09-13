@@ -4,6 +4,11 @@ import magiHealth from '../server/api/magi/health.js';
 import magiOrchestrate from '../server/api/magi/orchestrate.js';
 import magiPersona from '../server/api/magi/persona.js';
 
+// A full three-wise-men deliberation can require a model correction pass when the
+// deterministic evidence guard catches unsupported wording. Give the gateway enough
+// execution time to finish that safe correction instead of terminating mid-persona.
+export const config = { maxDuration: 60 };
+
 const routes = {
   'magi-core': magiCore,
   'magi-fielding-report': fieldingReport,
