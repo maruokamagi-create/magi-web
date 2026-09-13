@@ -30,27 +30,44 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-runtime-v1.js?v=1" -o /tmp/runtime.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=352" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-runtime-v1.js?v=353" -o /tmp/runtime.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=353" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=353" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/lineup-finalizer-v350.js?v=353" -o /tmp/finalizer.js
 
           node - <<'NODE'
           const fs=require('fs');
           const html=fs.readFileSync('/tmp/index.html','utf8');
           const runtime=fs.readFileSync('/tmp/runtime.js','utf8');
           const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
+          const integrity=fs.readFileSync('/tmp/integrity.js','utf8');
+          const finalizer=fs.readFileSync('/tmp/finalizer.js','utf8');
 
           const loader=html.indexOf('/loader-v130.js?v=294');
-          const canonical=html.indexOf('/magi-runtime-v1.js?v=1');
-          if(loader<0||canonical<0||loader>=canonical)throw new Error('canonical runtime must start immediately after legacy UI loader');
+          const canonical=html.indexOf('/magi-runtime-v1.js?v=353');
+          if(loader<0||canonical<0||loader>=canonical)throw new Error('canonical runtime must load after legacy UI loader');
           if(html.includes('/formal-runtime-bootstrap-v351.js'))throw new Error('obsolete overlay bootstrap is still loaded');
+
           if(!runtime.includes('MAGI_FORMAL_UI_RUNNER_V1'))throw new Error('formal runner is not captured');
-          if(!runtime.includes("removeAttribute('onclick')"))throw new Error('legacy inline runMagi button is not quarantined');
+          if(!runtime.includes("Object.defineProperty(window,'runMagi'"))throw new Error('runMagi compatibility entry is not locked to formal runner');
+          if(!runtime.includes('writable:false')||!runtime.includes('configurable:false'))throw new Error('formal runMagi lock is not immutable');
           if(!runtime.includes("mode:'FORMAL_ONLY'"))throw new Error('runtime is not formal-only');
+          if(!runtime.includes('localFallback:false'))throw new Error('runtime does not explicitly disable LOCAL fallback');
+
+          const integrityVersion=(integrity.match(/version:'([^']*integrity)'/)||[])[1];
+          if(!integrityVersion)throw new Error('integrity engine version marker missing');
+          if(!runtime.includes('MAGI_DELIBERATION_INTEGRITY_V349')||!/integrity\/i/.test(runtime))throw new Error('runtime integrity readiness is not capability-based');
+          if(runtime.includes("includes('1.1.0-integrity')"))throw new Error('runtime still hardcodes obsolete integrity version');
+
+          if(!finalizer.includes('MAGI_LINEUP_FINALIZER_V350')||!finalizer.includes('lineup-finalizer-v350'))throw new Error('lineup finalizer marker missing');
+          if(!runtime.includes('MAGI_LINEUP_FINALIZER_V350')||!runtime.includes('lineup-finalizer-v350'))throw new Error('runtime does not verify lineup finalizer readiness');
+
           if(!semantic.includes('MAGI_FORMAL_UI_RUNNER_V1'))throw new Error('semantic router does not call canonical formal runner');
           if(!semantic.includes('MAGI_SEMANTIC_RUN_V1'))throw new Error('semantic entrypoint is not exported');
           if(/\blegacyRun\b/.test(semantic))throw new Error('legacy local runner fallback still exists');
           if(/['"]LEGACY['"]/.test(semantic))throw new Error('legacy route still exists');
-          console.log('FORMAL-ONLY BROWSER RUNTIME: PASS');
+
+          console.log(`FORMAL-ONLY BROWSER RUNTIME: PASS (${integrityVersion})`);
           NODE
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
