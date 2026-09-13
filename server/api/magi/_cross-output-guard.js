@@ -119,14 +119,27 @@ export function validatePitchingPlanDialogueSpecificity(caseData,cross){
   return issues;
 }
 
+function fullLineupCrossIssueIsFalsePositive(issue){
+  const s=String(issue||'');
+  // Cross-examination is allowed to ask about future risk/benefit. The persona guard treats
+  // those questions as if they were final predictive assertions, which can incorrectly turn
+  // a valid standard lineup into LINEUP_REVIEW_REQUIRED. Keep all factual/numeric guards,
+  // but do not fail the whole cross round on these prediction-wording-only issues.
+  return /(?:分析・回答で将来結果|将来予測を不確実性|Evidenceから保証できない結果)/.test(s);
+}
+
 export function validateCrossOutput(caseData,cross,{focused=false}={}){
+  const personaIssues=validatePersonaOutput(caseData,crossToGuardResult(cross),{focused});
+  const guardedPersonaIssues=isFullLineupQuestion(caseData)
+    ? personaIssues.filter(issue=>!fullLineupCrossIssueIsFalsePositive(issue))
+    : personaIssues;
   return [
     ...validateDialoguePresence(cross),
     ...validateCrossLanguage(cross),
     ...validateFullLineupDialogueSpecificity(caseData,cross),
     ...validatePitchingPlanDialogueSpecificity(caseData,cross),
     ...validatePitchingPlanCrossOutput(caseData,cross),
-    ...validatePersonaOutput(caseData,crossToGuardResult(cross),{focused})
+    ...guardedPersonaIssues
   ];
 }
 
