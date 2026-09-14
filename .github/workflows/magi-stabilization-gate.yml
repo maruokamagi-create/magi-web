@@ -1,0 +1,67 @@
+name: MAGI Stabilization Gate
+
+on:
+  push:
+    branches:
+      - 'stabilize/runtime-evidence-20260914'
+  workflow_dispatch:
+
+jobs:
+  stabilization-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout stabilization branch
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Exact live-answer routing
+        run: node --experimental-default-type=module scripts/test-live-answer-routing.mjs
+
+      - name: Drive file policy
+        run: node scripts/test-drive-file-policy.mjs
+
+      - name: Client/server selection alignment
+        run: node scripts/test-client-server-selection-alignment.mjs
+
+      - name: Full-lineup selection contract
+        run: node scripts/test-full-lineup-selection.mjs
+
+      - name: Full-lineup semantic route
+        run: node scripts/test-full-lineup-semantic-route.mjs
+
+      - name: Deliberation Evidence object contract
+        run: node scripts/test-deliberation-evidence-bridge.mjs
+
+      - name: Formal server Evidence handoff
+        run: node scripts/test-formal-evidence-handoff-v357.mjs
+
+      - name: Persona output guard
+        run: node scripts/test-persona-output-guard.mjs
+
+      - name: Cross-examination guard
+        run: node scripts/test-cross-output-guard.mjs
+
+      - name: Final deliberation contract
+        run: node scripts/test-deliberation-final.mjs
+
+      - name: Stabilization architecture guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '/magi-app-bootstrap-v357.js?v=357' index.html
+          ! grep -q '/magi-app-bootstrap-v356.js' index.html
+          ! grep -q 'MAGI_FORMAL_UI_RUNNER_V1' main-live-answer-v329.js
+          ! grep -q 'window.searchDataEvidence=' main-live-answer-v329.js
+          ! grep -q 'window.routeQuestion=' main-live-answer-v329.js
+          grep -q 'MAGI_FORMAL_UI_RUNNER_V2' main-live-answer-v329.js
+          grep -q 'explicitEvidence:true' magi-formal-runner-v357.js
+          grep -q "localFallback:false" magi-formal-runner-v357.js
+          echo 'STABILIZATION ARCHITECTURE: PASS'
