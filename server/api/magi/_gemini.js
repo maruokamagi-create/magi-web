@@ -7,7 +7,10 @@ const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
-const GEMINI_TIMEOUT_MS = 30_000;
+// Keep model attempts short enough that all same-request retries finish before the
+// serverless request ceiling. The browser/CI layer may still retry the whole request.
+const GEMINI_TIMEOUT_MS = 13_000;
+const RETRY_DELAY_MS = 600;
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
@@ -240,7 +243,7 @@ async function tryModel({ model, apiKey, systemInstruction, userPayload, respons
     } catch (error) {
       lastError = error;
       if (!isRetryableError(error) || attempt === retries) break;
-      await sleep(900);
+      await sleep(RETRY_DELAY_MS);
     }
   }
   throw lastError;
@@ -282,7 +285,9 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
         systemInstruction,
         userPayload,
         responseSchema,
-        retries: index === 0 ? 1 : 0
+        // Strict mode deliberately stays on the same model for consistency, but gets
+        // one extra short retry. Non-strict mode retains model fallbacks.
+        retries: strict ? 2 : (index === 0 ? 1 : 0)
       });
     } catch (error) {
       lastError = error;
