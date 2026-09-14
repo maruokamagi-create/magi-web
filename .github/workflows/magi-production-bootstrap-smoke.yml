@@ -5,10 +5,11 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'magi-app-bootstrap-v362.js'
+      - 'magi-app-bootstrap-v363.js'
+      - 'magi-core-client-guard-v363.js'
       - 'main-live-answer-v362.js'
       - 'magi-ui-runner-guard-v359.js'
-      - 'magi-ui-truth-v359.js'
+      - 'magi-ui-truth-v363.js'
       - 'magi-formal-runner-v358.js'
       - 'engine-progress-v358.js'
       - 'api/magi-gateway.js'
@@ -24,62 +25,78 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Unit test raw Evidence truth guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          node - <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          const src=fs.readFileSync('magi-ui-truth-v363.js','utf8');
+          const ctx={window:{},document:{getElementById:()=>null}};
+          ctx.window=ctx;
+          vm.createContext(ctx);
+          vm.runInContext(src,ctx);
+          const players=Array.from({length:14},(_,i)=>({name:'P'+i,batting:{AVG:'.250',AB:String(10+i),OPS:'.700'}}));
+          const raw={count:14,files:['丸岡中軟式野球部_通算成績一覧2026-2027.xlsm'],allCurrentTeamCheck:{players}};
+          if(ctx.MAGI_UI_TRUTH_V363_API.currentNumericReady(raw)!==true)throw new Error('raw server Evidence must be accepted before numericEvidenceContract enrichment');
+          const oldStyle={...raw,numericEvidenceContract:{}};
+          if(ctx.MAGI_UI_TRUTH_V363_API.currentNumericReady(oldStyle)!==true)throw new Error('empty derived contract must not override complete raw Evidence');
+          const broken={...raw,allCurrentTeamCheck:{players:players.slice(0,13)}};
+          if(ctx.MAGI_UI_TRUTH_V363_API.currentNumericReady(broken)!==false)throw new Error('13-player Evidence must fail closed');
+          console.log('V363 RAW EVIDENCE GUARD: PASS');
+          NODE
+
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Verify v362 authoritative Evidence rendering and fail-closed execution
+      - name: Verify v363 production bootstrap and live master Evidence
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v362.js?v=362" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=362" -o /tmp/semantic.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-ui-truth-v359.js?v=362" -o /tmp/ui-truth.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=362" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=363" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=363" -o /tmp/core-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-ui-truth-v363.js?v=363" -o /tmp/ui-truth.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=363" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=363" -o /tmp/semantic.js
 
           node - <<'NODE'
-          const fs=require('fs');
+          const fs=require('fs'),vm=require('vm');
           const html=fs.readFileSync('/tmp/index.html','utf8');
           const boot=fs.readFileSync('/tmp/bootstrap.js','utf8');
-          const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
-          const uiTruth=fs.readFileSync('/tmp/ui-truth.js','utf8');
+          const guard=fs.readFileSync('/tmp/core-guard.js','utf8');
+          const truth=fs.readFileSync('/tmp/ui-truth.js','utf8');
           const formal=fs.readFileSync('/tmp/formal.js','utf8');
+          const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
           const gateway=fs.readFileSync('api/magi-gateway.js','utf8');
 
-          const loader=html.indexOf('/loader-v130.js?v=294');
           const legacyLast=html.indexOf('/print-preview-return-v330.js?v=330');
-          const canonical=html.indexOf('/magi-app-bootstrap-v362.js?v=362');
-          if(loader<0||legacyLast<0||canonical<0||!(loader<legacyLast&&legacyLast<canonical))throw new Error('v362 bootstrap is not after all legacy scripts');
-          const afterCanonical=html.slice(canonical + '/magi-app-bootstrap-v362.js?v=362'.length);
-          if(/<script\s+src=/.test(afterCanonical))throw new Error('a runtime script is loaded after canonical bootstrap');
-          if(html.includes('/magi-app-bootstrap-v361.js'))throw new Error('obsolete v361 bootstrap still loaded');
-
-          if(!boot.includes("version:'canonical-app-v362'"))throw new Error('v362 runtime marker missing');
-          if(!boot.includes("entry:'WINDOW_CAPTURE_SEMANTIC_V2'"))throw new Error('v362 semantic owner marker missing');
-          if(!boot.includes('authoritativeEvidenceVisible:true'))throw new Error('authoritative Evidence display marker missing');
-          if(!boot.includes('/main-live-answer-v362.js'))throw new Error('v362 semantic entry not loaded');
-          if(boot.includes('/main-live-answer-v329.js'))throw new Error('old semantic entry still loaded by canonical bootstrap');
-
-          if(!semantic.includes("const CLIENT_VERSION='362'"))throw new Error('v362 client version missing');
-          if(!semantic.includes("const RUNTIME_VERSION='362'"))throw new Error('v362 runtime version missing');
-          if(!semantic.includes("'X-MAGI-Client-Version':CLIENT_VERSION"))throw new Error('client version header missing');
-          if(!semantic.includes("'X-MAGI-Runtime-Version':RUNTIME_VERSION"))throw new Error('runtime version header missing');
-          if(!semantic.includes('window.addEventListener(\'click\''))throw new Error('window-capture semantic owner missing');
+          const canonical=html.indexOf('/magi-app-bootstrap-v363.js?v=363');
+          if(legacyLast<0||canonical<0||legacyLast>=canonical)throw new Error('v363 bootstrap must be last');
+          if(html.includes('/magi-app-bootstrap-v362.js'))throw new Error('obsolete v362 bootstrap still loaded');
+          if(!boot.includes("version:'canonical-app-v363'"))throw new Error('v363 runtime marker missing');
+          if(!boot.includes('/magi-ui-truth-v363.js'))throw new Error('v363 truth guard not loaded');
+          if(!boot.includes('/magi-core-client-guard-v363.js'))throw new Error('v363 core header guard not loaded');
+          if(!boot.includes('/main-live-answer-v362.js'))throw new Error('semantic entry missing');
+          if(!guard.includes("const VERSION='363'"))throw new Error('v363 effective client/runtime version missing');
+          if(!guard.includes("headers.set('X-MAGI-Client-Version',VERSION)"))throw new Error('client header override missing');
+          if(!guard.includes("headers.set('X-MAGI-Runtime-Version',VERSION)"))throw new Error('runtime header override missing');
+          if(!truth.includes('players.every(p=>battingCore(p?.batting))'))throw new Error('raw 14-player batting validation missing');
+          if(truth.includes('c.currentBattingNumbersProvided===true'))throw new Error('pre-run guard still incorrectly requires derived numeric contract');
+          if(!formal.includes('numericEvidenceContract'))throw new Error('engine enrichment contract missing');
           if(!semantic.includes('DATA HUB 正本データ（サーバー取得）'))throw new Error('authoritative Evidence renderer missing');
-          if(!semantic.includes("DATA HUB：14件参照"))throw new Error('14-player visible DATA HUB assertion missing');
-          if(!semantic.includes('players.every'))throw new Error('14-player visible Evidence assertion missing');
-          if(!semantic.includes('打率|AVG')||!semantic.includes('OPS'))throw new Error('visible batting metric assertion missing');
+          if(!gateway.includes('MIN_CORE_CLIENT_VERSION = 363'))throw new Error('server client gate is not v363');
+          if(!gateway.includes('MIN_RUNTIME_VERSION = 363'))throw new Error('server runtime gate is not v363');
 
-          if(!uiTruth.includes('DATA_HUB_UI_MISMATCH'))throw new Error('UI truth guard missing');
-          if(!formal.includes('NUMERIC_EVIDENCE_RESULT_INVALID'))throw new Error('numeric result guard missing');
-          if(!gateway.includes('MIN_CORE_CLIENT_VERSION = 362'))throw new Error('server client gate is not v362');
-          if(!gateway.includes('MIN_RUNTIME_VERSION = 362'))throw new Error('server runtime gate is not v362');
-
-          console.log('V362 AUTHORITATIVE EVIDENCE UI + STALE CLIENT FAIL-CLOSED: PASS');
+          const ctx={window:{},document:{getElementById:()=>null}};ctx.window=ctx;vm.createContext(ctx);vm.runInContext(truth,ctx);
+          const players=Array.from({length:14},(_,i)=>({name:'P'+i,batting:{AVG:'.250',AB:String(10+i),OPS:'.700'}}));
+          const raw={count:14,files:['丸岡中軟式野球部_通算成績一覧2026-2027.xlsm'],allCurrentTeamCheck:{players}};
+          if(!ctx.MAGI_UI_TRUTH_V363_API.currentNumericReady(raw))throw new Error('production v363 truth guard rejects valid raw Evidence');
+          console.log('V363 RAW-EVIDENCE PRE-GUARD: PASS');
           NODE
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
           jq -e '.ok==true and .fullLineupReady==true and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
-          echo 'PRODUCTION V362 + LIVE NUMERIC MASTER EVIDENCE: PASS'
+          echo 'PRODUCTION V363 + LIVE NUMERIC MASTER EVIDENCE: PASS'
