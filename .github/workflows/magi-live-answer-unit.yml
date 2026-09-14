@@ -7,11 +7,12 @@ on:
       - 'server/api/magi/_live-answer.js'
       - 'server/api/magi/_strict-pitching-answer.js'
       - 'main-live-answer-v329.js'
-      - 'magi-formal-runner-v357.js'
-      - 'magi-app-bootstrap-v357.js'
+      - 'magi-formal-runner-v358.js'
+      - 'magi-app-bootstrap-v358.js'
+      - 'engine-progress-v358.js'
       - 'index.html'
       - 'scripts/test-live-answer-routing.mjs'
-      - 'scripts/test-formal-evidence-handoff-v357.mjs'
+      - 'scripts/test-formal-evidence-handoff-v358.mjs'
       - '.github/workflows/magi-live-answer-unit.yml'
   workflow_dispatch:
 
@@ -34,5 +35,5 @@ jobs:
       - name: Run live answer unit cases
         run: node --experimental-default-type=module scripts/test-live-answer-routing.mjs
 
-      - name: Run formal Evidence handoff regression
-        run: node scripts/test-formal-evidence-handoff-v357.mjs
+      - name: Run engine-boundary numeric Evidence and progress regression
+        run: node scripts/test-formal-evidence-handoff-v358.mjs
