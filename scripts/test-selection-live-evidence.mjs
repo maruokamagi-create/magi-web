@@ -59,7 +59,7 @@ assert.ok(packet.text.includes('大野 竜暉'));
 assert.equal(packet.sources[0].name,'current-master.xlsm');
 assert.equal(packet.sources[0].priority,'PRIMARY');
 assert.equal(packet.sources[1].name,'old-master.xlsm');
-assert.equal(packet.sources[1].priority,'REFERENCE');
+assert.equal(packet.sources[1].priority,'HISTORICAL');
 assert.deepEqual(calls.sort(),['current','old']);
 
 const pitchingPacket=await buildCurrentSelectionEvidence({question:'先発投手は誰がいい？',routed:{players:[],domains:['PITCHING']},auditProvider:fakeAudit});
