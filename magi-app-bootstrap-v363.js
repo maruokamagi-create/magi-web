@@ -30,7 +30,7 @@ async function boot(){
   await load(`/lineup-finalizer-v350.js?v=${REV}`);await waitCapability(finalizerReady);
   await load(`/engine-progress-v358.js?v=${REV}`);await waitCapability(progressReady);
   await load(`/magi-ui-runner-guard-v359.js?v=${REV}`);await waitCapability(uiRunnerGuardReady);
-  await load(`/magi-formal-runner-v358.js?v=${REV}`);await waitCapability(formalReady);
+  await load('/magi-formal-runner-v358.js?v=366');await waitCapability(formalReady);
   await load(`/magi-ui-truth-v363.js?v=${REV}`);await waitCapability(truthReady);
   const guarded=window.MAGI_UI_TRUTH_V363_API.installFormalRunnerGuard();
   if(typeof guarded!=='function'||guarded?.meta?.rawPacketValidated!==true)throw new Error('v363 UI truth guardを起動できません');
