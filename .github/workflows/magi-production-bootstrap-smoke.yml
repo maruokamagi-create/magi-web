@@ -5,8 +5,9 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'magi-app-bootstrap-v357.js'
-      - 'magi-formal-runner-v357.js'
+      - 'magi-app-bootstrap-v358.js'
+      - 'magi-formal-runner-v358.js'
+      - 'engine-progress-v358.js'
       - 'main-live-answer-v329.js'
       - 'deliberation-integrity-v348.js'
       - 'lineup-finalizer-v350.js'
@@ -25,49 +26,58 @@ jobs:
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Verify semantic-first production and live master Evidence
+      - name: Verify v358 engine-boundary Evidence and event progress
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v357.js?v=357" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v357.js?v=357" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=357" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v358.js?v=358" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=358" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=358" -o /tmp/progress.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=358" -o /tmp/semantic.js
 
           node - <<'NODE'
           const fs=require('fs');
           const html=fs.readFileSync('/tmp/index.html','utf8');
           const boot=fs.readFileSync('/tmp/bootstrap.js','utf8');
           const formal=fs.readFileSync('/tmp/formal.js','utf8');
+          const progress=fs.readFileSync('/tmp/progress.js','utf8');
           const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
 
           const loader=html.indexOf('/loader-v130.js?v=294');
-          const canonical=html.indexOf('/magi-app-bootstrap-v357.js?v=357');
-          if(loader<0||canonical<0||loader>=canonical)throw new Error('v357 bootstrap must load after UI loader');
-          if(html.includes('/magi-app-bootstrap-v356.js'))throw new Error('obsolete v356 bootstrap still loaded');
+          const canonical=html.indexOf('/magi-app-bootstrap-v358.js?v=358');
+          if(loader<0||canonical<0||loader>=canonical)throw new Error('v358 bootstrap must load after UI loader');
+          if(html.includes('/magi-app-bootstrap-v357.js'))throw new Error('obsolete v357 bootstrap still loaded');
           if(html.includes('/magi-runtime-v1.js'))throw new Error('obsolete layered runtime is still loaded');
 
-          if(!boot.includes('/magi-formal-runner-v357.js'))throw new Error('bootstrap does not load explicit Evidence runner');
+          const p=boot.indexOf('/engine-progress-v358.js');
+          const f=boot.indexOf('/magi-formal-runner-v358.js');
+          const s=boot.indexOf('/main-live-answer-v329.js');
+          if(p<0||f<0||s<0||!(p<f&&f<s))throw new Error('v358 app layers are not loaded in deterministic order');
           if(!boot.includes("entry:'GEMINI_SEMANTIC_FIRST'"))throw new Error('Gemini-first entry marker missing');
-          if(!boot.includes("formalRunner:'V2_EXPLICIT_EVIDENCE'"))throw new Error('explicit Evidence runner marker missing');
+          if(!boot.includes("formalRunner:'V3_ENGINE_BOUNDARY_EVIDENCE'"))throw new Error('engine-boundary Evidence runner marker missing');
+          if(!boot.includes("progress:'EVENT_DRIVEN_V358'"))throw new Error('event progress marker missing');
+          if(!boot.includes('numericFailClosed:true'))throw new Error('numeric fail-closed marker missing');
           if(!boot.includes('localFallback:false'))throw new Error('LOCAL fallback is not disabled');
-          if(boot.includes('captureFormalRunner'))throw new Error('bootstrap still captures mutable global runMagi');
 
-          if(!formal.includes('MAGI_FORMAL_UI_RUNNER_V2'))throw new Error('formal runner V2 missing');
-          if(!formal.includes('explicitEvidence:true'))throw new Error('formal runner does not require explicit Evidence');
-          if(!formal.includes('Number(evidence.count)!==14'))throw new Error('14-player Evidence fail-closed guard missing');
-          if(!formal.includes('DATA HUB\\s*：\\s*14件参照'))throw new Error('rendered Evidence verification missing');
+          if(!formal.includes('MAGI_FORMAL_UI_RUNNER_V3'))throw new Error('formal runner V3 missing');
+          if(!formal.includes('engineBoundaryEnforced:true'))throw new Error('engine-boundary enforcement missing');
+          if(!formal.includes('currentPlayersWithCoreBatting'))throw new Error('14-player numeric coverage guard missing');
+          if(!formal.includes('NUMERIC_EVIDENCE_RESULT_INVALID'))throw new Error('false missing-data result guard missing');
+          if(!formal.includes('attempt<=2'))throw new Error('single safe re-deliberation path missing');
 
-          if(!semantic.includes('MAGI_FORMAL_UI_RUNNER_V2'))throw new Error('semantic router does not use V2 runner');
-          if(semantic.includes('window.searchDataEvidence='))throw new Error('semantic router still monkeypatches Evidence lookup');
-          if(semantic.includes('window.routeQuestion='))throw new Error('semantic router still monkeypatches legacy routing');
+          if(!progress.includes('progress-v358-event-driven'))throw new Error('event-driven progress implementation missing');
+          for(const pct of ['28','54','72','88'])if(!formal.includes(`${pct},`))throw new Error(`formal stage ${pct}% missing`);
+
+          if(!semantic.includes('MAGI_FORMAL_UI_RUNNER_V2'))throw new Error('semantic entry no longer uses stable formal-runner symbol');
+          if(semantic.includes('window.searchDataEvidence='))throw new Error('semantic entry must not monkeypatch Evidence lookup');
           if(!semantic.includes('MAGI_SEMANTIC_RUN_V1'))throw new Error('semantic entrypoint missing');
 
-          console.log('SEMANTIC-FIRST EXPLICIT EVIDENCE PIPELINE: PASS');
+          console.log('V358 ENGINE-BOUNDARY EVIDENCE + EVENT PROGRESS: PASS');
           NODE
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
-          jq -e '.ok==true and .rosterExact==true and .count==14 and .playersWithBatting==14 and .hasEvidenceText==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
-          echo 'PRODUCTION SEMANTIC + LIVE MASTER EVIDENCE: PASS'
+          jq -e '.ok==true and .fullLineupReady==true and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
+          echo 'PRODUCTION V358 + LIVE NUMERIC MASTER EVIDENCE: PASS'
