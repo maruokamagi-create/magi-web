@@ -129,6 +129,40 @@ style.textContent=`
 `;
 document.head.appendChild(style);
 
+function normalizeWiseNamesText(value){
+  return String(value??'')
+    .replace(/MELCHIOR(?:-1)?(?:殿|さん|氏)?/gi,'メルキオール')
+    .replace(/BALTHASAR(?:-2)?(?:殿|さん|氏)?/gi,'バルタザール')
+    .replace(/CASPER(?:-3)?(?:殿|さん|氏)?/gi,'カスパー')
+    .replace(/メルキオール(?:殿|さん|氏)/g,'メルキオール')
+    .replace(/バルタザール(?:殿|さん|氏)/g,'バルタザール')
+    .replace(/カスパー(?:殿|さん|氏)/g,'カスパー');
+}
+function normalizeWiseNames(root=document){
+  const nodes=[];
+  if(root?.matches?.('.magiSpeechText,.magiSpeech'))nodes.push(root);
+  root?.querySelectorAll?.('.magiSpeechText,.magiSpeech').forEach(el=>nodes.push(el));
+  nodes.forEach(el=>{
+    const before=el.textContent||'';
+    const after=normalizeWiseNamesText(before);
+    if(after!==before)el.textContent=after;
+  });
+}
+normalizeWiseNames(document);
+const wiseNameObserver=new MutationObserver(mutations=>{
+  for(const mutation of mutations){
+    if(mutation.type==='characterData'){
+      normalizeWiseNames(mutation.target?.parentElement);
+      continue;
+    }
+    mutation.addedNodes.forEach(node=>{
+      if(node.nodeType===Node.ELEMENT_NODE)normalizeWiseNames(node);
+      else if(node.nodeType===Node.TEXT_NODE)normalizeWiseNames(node.parentElement);
+    });
+  }
+});
+if(document.documentElement)wiseNameObserver.observe(document.documentElement,{childList:true,subtree:true,characterData:true});
+
 function ensureProgressVisible(){
   const api=window.MAGI_PROGRESS_V358;
   if(!api||typeof api.update!=='function')return false;
