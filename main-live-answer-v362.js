@@ -4,6 +4,7 @@ if(window.MAGI_MAIN_SEMANTIC_V362)return;
 window.MAGI_MAIN_SEMANTIC_V362=true;
 const $=id=>document.getElementById(id),txt=v=>String(v??'').trim();
 const CLIENT_VERSION='362';
+const RUNTIME_VERSION='362';
 const CONTEXT_KEY='magi-semantic-context-v362';
 let busy=false;
 
@@ -15,7 +16,7 @@ function setRouter(title,badge,help){if($('routeValue'))$('routeValue').textCont
 function ensurePanel(){let p=$('magiLiveAnswerV362');if(p)return p;const judge=$('judge'),card=judge?.querySelector?.('.card');if(!judge||!card)return null;p=document.createElement('div');p.id='magiLiveAnswerV362';p.style.cssText='display:none;margin-top:12px;padding:16px;border:1px solid #2f5578;border-left:5px solid #37b579;border-radius:16px;background:rgba(10,27,46,.98);color:#f7f9fc;box-shadow:0 12px 30px rgba(0,0,0,.18)';p.innerHTML='<div style="font-size:11px;letter-spacing:.14em;color:#8db0d1;margin-bottom:8px">MAGI ANSWER</div><div id="magiUnderstoodV362" style="font-size:11px;line-height:1.55;color:#8db0d1;margin-bottom:8px"></div><div id="magiLiveAnswerTextV362" style="font-size:17px;font-weight:850;line-height:1.65"></div><div id="magiLiveAnswerMetaV362" style="margin-top:10px;font-size:11px;line-height:1.65;color:#a9bdd0"></div>';card.insertAdjacentElement('afterend',p);return p}
 function hidePanel(){const p=$('magiLiveAnswerV362');if(p)p.style.display='none'}
 function showAnswer(result,totalMs){const p=ensurePanel();if(!p)return;const answer=txt(result?.answer||result?.clarificationQuestion)||'回答を取得できませんでした。',semantic=result?.semantic||{},understood=txt(semantic?.understoodRequest||result?.understoodRequest);$('magiUnderstoodV362').textContent=understood?`質問理解：${understood}`:'';$('magiLiveAnswerTextV362').textContent=answer;const bits=[];if(semantic?.mode)bits.push(`意図：${semantic.mode}`);if(result?.source?.name)bits.push(`参照：${result.source.name}`);if(result?.answerEngineVersion)bits.push(`回答：${result.answerEngineVersion}`);if(Number.isFinite(totalMs))bits.push(`処理：${(totalMs/1000).toFixed(1)}秒`);$('magiLiveAnswerMetaV362').textContent=bits.join(' ｜ ');$('response')?.classList.remove('show');p.style.display='block';if($('status'))$('status').textContent='MAGI 回答完了';setRouter('質問理解 → 検証回答','ACCURACY','質問の意味を先に確認し、その意図に合うデータ処理を実行しました。');p.scrollIntoView({behavior:'smooth',block:'center'});contextPush('assistant',`${understood?understood+'。':''}${answer}`)}
-async function requestCore(question){const c=new AbortController(),t=setTimeout(()=>c.abort(),70000);try{const r=await fetch('/api/magi/core',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-MAGI-Client-Version':CLIENT_VERSION},body:JSON.stringify({question,context:contextLoad()}),signal:c.signal});const d=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(txt(d?.error)||`CORE ${r.status}`),{status:r.status,requiredClientVersion:d?.requiredClientVersion||null});return d}finally{clearTimeout(t)}}
+async function requestCore(question){const c=new AbortController(),t=setTimeout(()=>c.abort(),70000);try{const r=await fetch('/api/magi/core',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-MAGI-Client-Version':CLIENT_VERSION,'X-MAGI-Runtime-Version':RUNTIME_VERSION},body:JSON.stringify({question,context:contextLoad()}),signal:c.signal});const d=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(txt(d?.error)||`CORE ${r.status}`),{status:r.status,requiredClientVersion:d?.requiredClientVersion||null});return d}finally{clearTimeout(t)}}
 function packetPlayers(packet){return Array.isArray(packet?.allCurrentTeamCheck?.players)?packet.allCurrentTeamCheck.players:[]}
 function fullLineupPacketReady(packet){return Number(packet?.count)===14&&packetPlayers(packet).length===14&&Array.isArray(packet?.files)&&packet.files.some(name=>/2026-2027.*\.xlsm$/i.test(String(name)))}
 function renderAuthoritativeEvidence(packet){
@@ -68,6 +69,7 @@ async function execute(btn){const q=txt($('q')?.value);if(!q){if($('status'))$('
 window.MAGI_SEMANTIC_RUN_V2=execute;
 window.MAGI_SEMANTIC_RUN_V1=execute;
 window.MAGI_CLIENT_VERSION=CLIENT_VERSION;
+window.MAGI_RUNTIME_CLIENT_VERSION=RUNTIME_VERSION;
 window.addEventListener('click',event=>{const btn=mainButton(event.target);if(!btn)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();execute(btn)},true);
 const observer=new MutationObserver(()=>{if($('judge'))ensurePanel()});observer.observe(document.documentElement,{childList:true,subtree:true});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel,{once:true});else ensurePanel();
 })();
