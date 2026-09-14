@@ -108,6 +108,15 @@ style.textContent=`
   background:#0b2444!important;
 }
 
+/* MAGI CONTROL: use the same message font size as the three Wise Men. */
+#magiChatView .magiMsg.system .magiBubble,
+#magiChatView .magiMsg.system .magiSpeechText{
+  font-size:14px!important;
+}
+#magiChatView .magiMsg.system .magiSpeechText{
+  line-height:1.58!important;
+}
+
 @media(max-width:430px){
   #magiDeliberationProgress .magiProgressTrack{height:11px!important;}
 }
