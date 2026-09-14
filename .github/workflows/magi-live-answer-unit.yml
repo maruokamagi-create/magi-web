@@ -7,10 +7,11 @@ on:
       - 'server/api/magi/_live-answer.js'
       - 'server/api/magi/_strict-pitching-answer.js'
       - 'main-live-answer-v329.js'
-      - 'runmagi-ready-bridge-v330.js'
+      - 'magi-formal-runner-v357.js'
+      - 'magi-app-bootstrap-v357.js'
       - 'index.html'
       - 'scripts/test-live-answer-routing.mjs'
-      - 'scripts/test-runmagi-ready-bridge.mjs'
+      - 'scripts/test-formal-evidence-handoff-v357.mjs'
       - '.github/workflows/magi-live-answer-unit.yml'
   workflow_dispatch:
 
@@ -33,5 +34,5 @@ jobs:
       - name: Run live answer unit cases
         run: node --experimental-default-type=module scripts/test-live-answer-routing.mjs
 
-      - name: Run delayed engine bootstrap regression
-        run: node scripts/test-runmagi-ready-bridge.mjs
+      - name: Run formal Evidence handoff regression
+        run: node scripts/test-formal-evidence-handoff-v357.mjs
