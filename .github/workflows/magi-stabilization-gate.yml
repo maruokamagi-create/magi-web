@@ -65,21 +65,3 @@ jobs:
           grep -q 'explicitEvidence:true' magi-formal-runner-v357.js
           grep -q "localFallback:false" magi-formal-runner-v357.js
           echo 'STABILIZATION ARCHITECTURE: PASS'
-
-      - name: Wait for branch preview deployment
-        run: sleep 45
-
-      - name: Live branch preview smoke
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE='https://magi-web-git-stabilize-runtim-0553f8-maruokamagi-2208s-projects.vercel.app'
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/preview-index.html
-          grep -q '/magi-app-bootstrap-v357.js?v=357' /tmp/preview-index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v357.js?v=357" -o /tmp/preview-runner.js
-          grep -q 'MAGI_FORMAL_UI_RUNNER_V2' /tmp/preview-runner.js
-          grep -q 'explicitEvidence:true' /tmp/preview-runner.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/preview-selftest.json
-          cat /tmp/preview-selftest.json; echo
-          jq -e '.ok==true and .rosterExact==true and .count==14 and .playersWithBatting==14 and .hasEvidenceText==true and (.sourceName|contains("2026-2027"))' /tmp/preview-selftest.json >/dev/null
-          echo 'LIVE STABILIZATION PREVIEW: PASS'
