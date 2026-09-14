@@ -21,6 +21,23 @@ function crossTexts(cross){
   ];
 }
 
+function falseMissingDataIssues(caseData,cross){
+  if(!isFullLineupQuestion(caseData))return[];
+  const contract=caseData?.evidence?.numericEvidenceContract||{};
+  const issues=[];
+  const rows=crossTexts(cross);
+  const currentMissing=/(?:2026-2027|今季通算|今季|数値データ|打撃成績).{0,80}(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|欠損している|欠けている|十分に揃っていない)/s;
+  const historicalMissing=/(?:2025-2026|過去実績).{0,80}(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|欠損している|欠けている|十分に揃っていない)/s;
+  const recentMissing=/(?:直近6試合|直近六試合|打撃詳細CSV).{0,80}(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|抽出できず|欠損している|欠けている|十分に揃っていない)/s;
+  for(const row of rows){
+    const s=String(row||'');
+    if(contract.currentBattingNumbersProvided===true&&currentMissing.test(s))issues.push(`提供済みの2026-2027今季通算数値を未提供扱いしている: ${s.slice(0,100)}`);
+    if(contract.historicalNumbersProvided===true&&historicalMissing.test(s))issues.push(`提供済みの2025-2026過去実績を未提供扱いしている: ${s.slice(0,100)}`);
+    if(contract.recentSixNumbersProvided===true&&recentMissing.test(s))issues.push(`提供済みの直近6試合データを未提供扱いしている: ${s.slice(0,100)}`);
+  }
+  return [...new Set(issues)];
+}
+
 // Protocol/persona/stat names are intentionally written in Latin characters in otherwise
 // natural Japanese MAGI dialogue. Exclude only these known tokens from the language ratio
 // so valid text such as "CASPERはGREEN、MELCHIORはBLUE" is not rejected.
@@ -139,6 +156,7 @@ export function validateCrossOutput(caseData,cross,{focused=false}={}){
     ...validateFullLineupDialogueSpecificity(caseData,cross),
     ...validatePitchingPlanDialogueSpecificity(caseData,cross),
     ...validatePitchingPlanCrossOutput(caseData,cross),
+    ...falseMissingDataIssues(caseData,cross),
     ...guardedPersonaIssues
   ];
 }
