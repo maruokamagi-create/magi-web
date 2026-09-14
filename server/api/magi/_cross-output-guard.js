@@ -103,13 +103,16 @@ export function validateFullLineupDialogueSpecificity(caseData,cross){
     ['balthasar','BALTHASAR-2'],
     ['casper','CASPER-3']
   ];
-  const slotRe=/(?:^|[^0-9])([1-9])番(?:打者)?/;
+  const lineupCue=/(?:[1-9]番|一番|二番|三番|四番|五番|六番|七番|八番|九番|打順|並び|上位|中軸|下位|クリーンナップ|得点経路|つながり|起用|打線|オーダー)/;
   for(const [key,label] of targets){
     const rows=list(challenges[key]);
     if(!rows.length)continue;
-    const concrete=rows.some(line=>slotRe.test(line)&&CURRENT_ROSTER.some(name=>line.includes(name)));
+    // Full 1-9 completeness is validated in the primary/second lineup outputs.
+    // Cross-examination only needs to challenge a concrete current player in a lineup/tactical context.
+    // Requiring an explicit "N番 + 選手名" pair in every challenge produced false review holds.
+    const concrete=rows.some(line=>CURRENT_ROSTER.some(name=>line.includes(name))&&lineupCue.test(line));
     if(!concrete){
-      issues.push(`${label}への打順クロス審議に、具体的な打順番号と選手名の組み合わせがありません`);
+      issues.push(`${label}への打順クロス審議に、現チーム選手を特定した打順・戦術上の具体的な問いがありません`);
     }
   }
   return issues;
