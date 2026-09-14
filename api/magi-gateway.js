@@ -9,6 +9,8 @@ import magiPersona from '../server/api/magi/persona.js';
 // execution time to finish that safe correction instead of terminating mid-persona.
 export const config = { maxDuration: 60 };
 
+const MIN_CORE_CLIENT_VERSION = 360;
+
 const routes = {
   'magi-core': magiCore,
   'magi-fielding-report': fieldingReport,
@@ -22,6 +24,30 @@ function routeKey(req) {
   return Array.isArray(value) ? String(value[0] || '') : String(value || '');
 }
 
+function clientVersion(req) {
+  const raw = req.headers?.['x-magi-client-version'];
+  const value = Array.isArray(raw) ? raw[0] : raw;
+  const n = Number(value || 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function rejectStaleCoreClient(req, res, key) {
+  if (key !== 'magi-core') return false;
+  const version = clientVersion(req);
+  if (version >= MIN_CORE_CLIENT_VERSION) return false;
+  res.statusCode = 426;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-store');
+  res.end(JSON.stringify({
+    ok: false,
+    error: 'MAGIが更新されました。ページを再読み込みしてください。古い画面では審議結果を出しません。',
+    code: 'MAGI_CLIENT_UPDATE_REQUIRED',
+    clientVersion: version,
+    requiredClientVersion: MIN_CORE_CLIENT_VERSION
+  }));
+  return true;
+}
+
 export default async function handler(req, res) {
   const key = routeKey(req);
   const fn = routes[key];
@@ -30,6 +56,7 @@ export default async function handler(req, res) {
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
     return res.end(JSON.stringify({ ok: false, error: 'Unknown MAGI route' }));
   }
+  if (rejectStaleCoreClient(req, res, key)) return;
   try {
     return await fn(req, res);
   } catch (error) {
