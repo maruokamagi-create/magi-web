@@ -5,12 +5,15 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'magi-app-bootstrap-v358.js'
+      - 'magi-app-bootstrap-v359.js'
+      - 'magi-ui-runner-guard-v359.js'
+      - 'magi-ui-truth-v359.js'
       - 'magi-formal-runner-v358.js'
       - 'engine-progress-v358.js'
       - 'main-live-answer-v329.js'
       - 'deliberation-integrity-v348.js'
       - 'lineup-finalizer-v350.js'
+      - 'server/api/magi/_cross-output-guard.js'
       - 'api/magi-selection-live-selftest.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
@@ -26,58 +29,69 @@ jobs:
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Verify v358 engine-boundary Evidence and event progress
+      - name: Verify v359 UI truth, numeric Evidence and single progress runtime
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v358.js?v=358" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=358" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=358" -o /tmp/progress.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=358" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v359.js?v=359" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-ui-runner-guard-v359.js?v=359" -o /tmp/ui-runner-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-ui-truth-v359.js?v=359" -o /tmp/ui-truth.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=359" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=359" -o /tmp/progress.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=359" -o /tmp/semantic.js
 
           node - <<'NODE'
           const fs=require('fs');
           const html=fs.readFileSync('/tmp/index.html','utf8');
           const boot=fs.readFileSync('/tmp/bootstrap.js','utf8');
+          const uiGuard=fs.readFileSync('/tmp/ui-runner-guard.js','utf8');
+          const uiTruth=fs.readFileSync('/tmp/ui-truth.js','utf8');
           const formal=fs.readFileSync('/tmp/formal.js','utf8');
           const progress=fs.readFileSync('/tmp/progress.js','utf8');
           const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
 
           const loader=html.indexOf('/loader-v130.js?v=294');
-          const canonical=html.indexOf('/magi-app-bootstrap-v358.js?v=358');
-          if(loader<0||canonical<0||loader>=canonical)throw new Error('v358 bootstrap must load after UI loader');
-          if(html.includes('/magi-app-bootstrap-v357.js'))throw new Error('obsolete v357 bootstrap still loaded');
-          if(html.includes('/magi-runtime-v1.js'))throw new Error('obsolete layered runtime is still loaded');
+          const canonical=html.indexOf('/magi-app-bootstrap-v359.js?v=359');
+          if(loader<0||canonical<0||loader>=canonical)throw new Error('v359 bootstrap must load after UI loader');
+          if(html.includes('/magi-app-bootstrap-v358.js'))throw new Error('obsolete v358 bootstrap still loaded');
+          if(html.includes('/engine-progress-v188.js'))throw new Error('legacy progress runtime still loaded');
+          if(html.includes('/magi-runtime-v1.js'))throw new Error('obsolete layered runtime still loaded');
 
           const p=boot.indexOf('/engine-progress-v358.js');
+          const u=boot.indexOf('/magi-ui-runner-guard-v359.js');
           const f=boot.indexOf('/magi-formal-runner-v358.js');
+          const t=boot.indexOf('/magi-ui-truth-v359.js');
           const s=boot.indexOf('/main-live-answer-v329.js');
-          if(p<0||f<0||s<0||!(p<f&&f<s))throw new Error('v358 app layers are not loaded in deterministic order');
+          if([p,u,f,t,s].some(x=>x<0)||!(p<u&&u<f&&f<t&&t<s))throw new Error('v359 app layers are not loaded in deterministic order');
           if(!boot.includes("entry:'GEMINI_SEMANTIC_FIRST'"))throw new Error('Gemini-first entry marker missing');
-          if(!boot.includes("formalRunner:'V3_ENGINE_BOUNDARY_EVIDENCE'"))throw new Error('engine-boundary Evidence runner marker missing');
-          if(!boot.includes("progress:'EVENT_DRIVEN_V358'"))throw new Error('event progress marker missing');
-          if(!boot.includes('numericFailClosed:true'))throw new Error('numeric fail-closed marker missing');
+          if(!boot.includes("formalRunner:'V4_UI_TRUTH_FAIL_CLOSED'"))throw new Error('v359 guarded formal runner marker missing');
+          if(!boot.includes("progress:'EVENT_DRIVEN_ONLY'"))throw new Error('single event-driven progress marker missing');
+          if(!boot.includes('numericFailClosed:true')||!boot.includes('uiTruthFailClosed:true'))throw new Error('fail-closed markers missing');
           if(!boot.includes('localFallback:false'))throw new Error('LOCAL fallback is not disabled');
 
-          if(!formal.includes('MAGI_FORMAL_UI_RUNNER_V3'))throw new Error('formal runner V3 missing');
+          if(!uiGuard.includes('propagatesErrors:true'))throw new Error('legacy UI error propagation guard missing');
+          if(!uiTruth.includes('DATA_HUB_UI_MISMATCH'))throw new Error('DATA HUB truth guard missing');
+          if(!uiTruth.includes('FALSE_MISSING_DATA_RESULT_BLOCKED'))throw new Error('false missing-data visible-result guard missing');
+          if(!uiTruth.includes('MAGI_FORMAL_UI_RUNNER_V4'))throw new Error('formal runner V4 missing');
+
+          if(!formal.includes('MAGI_FORMAL_UI_RUNNER_V3'))throw new Error('numeric Evidence runner V3 missing');
           if(!formal.includes('engineBoundaryEnforced:true'))throw new Error('engine-boundary enforcement missing');
           if(!formal.includes('currentPlayersWithCoreBatting'))throw new Error('14-player numeric coverage guard missing');
           if(!formal.includes('NUMERIC_EVIDENCE_RESULT_INVALID'))throw new Error('false missing-data result guard missing');
-          if(!formal.includes('attempt<=2'))throw new Error('single safe re-deliberation path missing');
 
           if(!progress.includes('progress-v358-event-driven'))throw new Error('event-driven progress implementation missing');
           for(const pct of ['28','54','72','88'])if(!formal.includes(`${pct},`))throw new Error(`formal stage ${pct}% missing`);
 
-          if(!semantic.includes('MAGI_FORMAL_UI_RUNNER_V2'))throw new Error('semantic entry no longer uses stable formal-runner symbol');
+          if(!semantic.includes('MAGI_FORMAL_UI_RUNNER_V2'))throw new Error('semantic entry no longer uses stable guarded formal-runner symbol');
           if(semantic.includes('window.searchDataEvidence='))throw new Error('semantic entry must not monkeypatch Evidence lookup');
           if(!semantic.includes('MAGI_SEMANTIC_RUN_V1'))throw new Error('semantic entrypoint missing');
 
-          console.log('V358 ENGINE-BOUNDARY EVIDENCE + EVENT PROGRESS: PASS');
+          console.log('V359 UI TRUTH + NUMERIC EVIDENCE + SINGLE PROGRESS: PASS');
           NODE
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
           jq -e '.ok==true and .fullLineupReady==true and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
-          echo 'PRODUCTION V358 + LIVE NUMERIC MASTER EVIDENCE: PASS'
+          echo 'PRODUCTION V359 + LIVE NUMERIC MASTER EVIDENCE: PASS'
