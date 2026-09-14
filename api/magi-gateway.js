@@ -10,6 +10,7 @@ import magiPersona from '../server/api/magi/persona.js';
 export const config = { maxDuration: 60 };
 
 const MIN_CORE_CLIENT_VERSION = 360;
+const MIN_RUNTIME_VERSION = 361;
 
 const routes = {
   'magi-core': magiCore,
@@ -24,8 +25,8 @@ function routeKey(req) {
   return Array.isArray(value) ? String(value[0] || '') : String(value || '');
 }
 
-function clientVersion(req) {
-  const raw = req.headers?.['x-magi-client-version'];
+function numericHeader(req, name) {
+  const raw = req.headers?.[name];
   const value = Array.isArray(raw) ? raw[0] : raw;
   const n = Number(value || 0);
   return Number.isFinite(n) ? n : 0;
@@ -33,8 +34,9 @@ function clientVersion(req) {
 
 function rejectStaleCoreClient(req, res, key) {
   if (key !== 'magi-core') return false;
-  const version = clientVersion(req);
-  if (version >= MIN_CORE_CLIENT_VERSION) return false;
+  const clientVersion = numericHeader(req, 'x-magi-client-version');
+  const runtimeVersion = numericHeader(req, 'x-magi-runtime-version');
+  if (clientVersion >= MIN_CORE_CLIENT_VERSION && runtimeVersion >= MIN_RUNTIME_VERSION) return false;
   res.statusCode = 426;
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   res.setHeader('Cache-Control', 'no-store');
@@ -42,8 +44,10 @@ function rejectStaleCoreClient(req, res, key) {
     ok: false,
     error: 'MAGIが更新されました。ページを再読み込みしてください。古い画面では審議結果を出しません。',
     code: 'MAGI_CLIENT_UPDATE_REQUIRED',
-    clientVersion: version,
-    requiredClientVersion: MIN_CORE_CLIENT_VERSION
+    clientVersion,
+    runtimeVersion,
+    requiredClientVersion: MIN_CORE_CLIENT_VERSION,
+    requiredRuntimeVersion: MIN_RUNTIME_VERSION
   }));
   return true;
 }
