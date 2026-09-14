@@ -1,0 +1,62 @@
+name: MAGI Evidence Progress v358 Gate
+
+on:
+  push:
+    branches:
+      - 'fix/evidence-progress-20260914'
+  workflow_dispatch:
+
+jobs:
+  v358-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Live answer routing
+        run: node --experimental-default-type=module scripts/test-live-answer-routing.mjs
+
+      - name: Drive xlsm/csv policy
+        run: node scripts/test-drive-file-policy.mjs
+
+      - name: Full lineup contract
+        run: node scripts/test-full-lineup-selection.mjs
+
+      - name: Semantic full lineup route
+        run: node scripts/test-full-lineup-semantic-route.mjs
+
+      - name: Engine-boundary numeric Evidence and progress
+        run: node scripts/test-formal-evidence-handoff-v358.mjs
+
+      - name: Persona output guard
+        run: node scripts/test-persona-output-guard.mjs
+
+      - name: Cross examination guard
+        run: node scripts/test-cross-output-guard.mjs
+
+      - name: Final deliberation contract
+        run: node scripts/test-deliberation-final.mjs
+
+      - name: Architecture guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '/magi-app-bootstrap-v358.js?v=358' index.html
+          ! grep -q '/magi-app-bootstrap-v357.js' index.html
+          grep -q '/engine-progress-v358.js' magi-app-bootstrap-v358.js
+          grep -q '/magi-formal-runner-v358.js' magi-app-bootstrap-v358.js
+          grep -q 'V3_ENGINE_BOUNDARY_EVIDENCE' magi-app-bootstrap-v358.js
+          grep -q 'numericFailClosed:true' magi-app-bootstrap-v358.js
+          grep -q 'engineBoundaryEnforced:true' magi-formal-runner-v358.js
+          grep -q 'currentPlayersWithCoreBatting' magi-formal-runner-v358.js
+          grep -q 'progress-v358-event-driven' engine-progress-v358.js
+          echo 'V358 ARCHITECTURE: PASS'
