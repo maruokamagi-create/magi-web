@@ -1,0 +1,68 @@
+name: MAGI UI Truth v359 Gate
+
+on:
+  push:
+    branches:
+      - 'fix/v359-ui-truth'
+  workflow_dispatch:
+
+jobs:
+  v359-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --ignore-scripts --no-audit --no-fund
+
+      - name: Exact live-answer routing
+        run: node --experimental-default-type=module scripts/test-live-answer-routing.mjs
+
+      - name: Drive xlsm/csv policy
+        run: node scripts/test-drive-file-policy.mjs
+
+      - name: Full lineup contract
+        run: node scripts/test-full-lineup-selection.mjs
+
+      - name: Semantic full lineup route
+        run: node scripts/test-full-lineup-semantic-route.mjs
+
+      - name: Engine-boundary numeric Evidence
+        run: node scripts/test-formal-evidence-handoff-v358.mjs
+
+      - name: UI truth / single progress runtime
+        run: node scripts/test-ui-truth-v359.mjs
+
+      - name: Persona output guard
+        run: node scripts/test-persona-output-guard.mjs
+
+      - name: Cross examination guard
+        run: node scripts/test-cross-output-guard.mjs
+
+      - name: Final deliberation contract
+        run: node scripts/test-deliberation-final.mjs
+
+      - name: v359 architecture guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -q '/magi-app-bootstrap-v359.js?v=359' index.html
+          ! grep -q '/magi-app-bootstrap-v358.js' index.html
+          ! grep -q '/engine-progress-v188.js' index.html
+          grep -q '/engine-progress-v358.js' magi-app-bootstrap-v359.js
+          grep -q '/magi-ui-runner-guard-v359.js' magi-app-bootstrap-v359.js
+          grep -q '/magi-formal-runner-v358.js' magi-app-bootstrap-v359.js
+          grep -q '/magi-ui-truth-v359.js' magi-app-bootstrap-v359.js
+          grep -q 'uiTruthFailClosed:true' magi-app-bootstrap-v359.js
+          grep -q 'FALSE_MISSING_DATA_RESULT_BLOCKED' magi-ui-truth-v359.js
+          grep -q 'DATA_HUB_UI_MISMATCH' magi-ui-truth-v359.js
+          grep -q 'falseMissingDataIssues' server/api/magi/_cross-output-guard.js
+          grep -q 'evidenceCritical' lineup-finalizer-v350.js
+          echo 'V359 ARCHITECTURE: PASS'
