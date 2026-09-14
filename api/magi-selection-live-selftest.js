@@ -9,6 +9,15 @@ function hasCoreBatting(player){
   const b=player?.batting||{};
   return numeric(b.AVG)&&numeric(b.AB)&&numeric(b.OPS);
 }
+function escapeRegExp(value){
+  return String(value||'').replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+}
+function playerLineHasCoreNumbers(body,name){
+  const line=String(body||'').split('\n').find(row=>row.startsWith(`${name}：`))||'';
+  if(!line)return false;
+  const number='[-+]?(?:\\d+(?:\\.\\d+)?|\\.\\d+)';
+  return ['打率','打数','OPS'].every(label=>new RegExp(`${escapeRegExp(label)}\\s*${number}`,'i').test(line));
+}
 
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
@@ -26,9 +35,7 @@ export default async function handler(req,res){
     const textHasCurrentNumbers=Boolean(
       body.includes('【現チーム全14選手・打撃】')&&
       CURRENT_ROSTER.every(name=>body.includes(name))&&
-      /大野 竜暉：.*打率.*打数.*OPS/.test(body)&&
-      /大久保 陽翔：.*打率.*打数.*OPS/.test(body)&&
-      /中嶋 玲月：.*打率.*打数.*OPS/.test(body)
+      ['大野 竜暉','大久保 陽翔','中嶋 玲月'].every(name=>playerLineHasCoreNumbers(body,name))
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
