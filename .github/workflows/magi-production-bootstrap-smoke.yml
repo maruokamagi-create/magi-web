@@ -5,14 +5,12 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'magi-app-bootstrap-v361.js'
-      - 'magi-evidence-hook-v361.js'
-      - 'magi-core-client-guard-v361.js'
+      - 'magi-app-bootstrap-v362.js'
+      - 'main-live-answer-v362.js'
       - 'magi-ui-runner-guard-v359.js'
       - 'magi-ui-truth-v359.js'
       - 'magi-formal-runner-v358.js'
       - 'engine-progress-v358.js'
-      - 'main-live-answer-v329.js'
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
@@ -29,67 +27,59 @@ jobs:
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Verify v361 bootstrap-last Evidence binding
+      - name: Verify v362 authoritative Evidence rendering and fail-closed execution
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v361.js?v=361" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-evidence-hook-v361.js?v=361" -o /tmp/evidence-hook.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v361.js?v=361" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-ui-truth-v359.js?v=361" -o /tmp/ui-truth.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=361" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v329.js?v=361" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v362.js?v=362" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=362" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-ui-truth-v359.js?v=362" -o /tmp/ui-truth.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v358.js?v=362" -o /tmp/formal.js
 
           node - <<'NODE'
           const fs=require('fs');
           const html=fs.readFileSync('/tmp/index.html','utf8');
           const boot=fs.readFileSync('/tmp/bootstrap.js','utf8');
-          const evidenceHook=fs.readFileSync('/tmp/evidence-hook.js','utf8');
-          const coreGuard=fs.readFileSync('/tmp/core-guard.js','utf8');
+          const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
           const uiTruth=fs.readFileSync('/tmp/ui-truth.js','utf8');
           const formal=fs.readFileSync('/tmp/formal.js','utf8');
-          const semantic=fs.readFileSync('/tmp/semantic.js','utf8');
           const gateway=fs.readFileSync('api/magi-gateway.js','utf8');
 
           const loader=html.indexOf('/loader-v130.js?v=294');
           const legacyLast=html.indexOf('/print-preview-return-v330.js?v=330');
-          const canonical=html.indexOf('/magi-app-bootstrap-v361.js?v=361');
-          if(loader<0||legacyLast<0||canonical<0||!(loader<legacyLast&&legacyLast<canonical))throw new Error('v361 bootstrap is not after all legacy scripts');
-          const afterCanonical=html.slice(canonical + '/magi-app-bootstrap-v361.js?v=361'.length);
+          const canonical=html.indexOf('/magi-app-bootstrap-v362.js?v=362');
+          if(loader<0||legacyLast<0||canonical<0||!(loader<legacyLast&&legacyLast<canonical))throw new Error('v362 bootstrap is not after all legacy scripts');
+          const afterCanonical=html.slice(canonical + '/magi-app-bootstrap-v362.js?v=362'.length);
           if(/<script\s+src=/.test(afterCanonical))throw new Error('a runtime script is loaded after canonical bootstrap');
-          if(html.includes('/magi-app-bootstrap-v360.js'))throw new Error('obsolete v360 bootstrap still loaded');
-          if(html.includes('/engine-progress-v188.js'))throw new Error('legacy progress runtime still loaded');
+          if(html.includes('/magi-app-bootstrap-v361.js'))throw new Error('obsolete v361 bootstrap still loaded');
 
-          const p=boot.indexOf('/engine-progress-v358.js');
-          const u=boot.indexOf('/magi-ui-runner-guard-v359.js');
-          const f=boot.indexOf('/magi-formal-runner-v358.js');
-          const e=boot.indexOf('/magi-evidence-hook-v361.js');
-          const t=boot.indexOf('/magi-ui-truth-v359.js');
-          const c=boot.indexOf('/magi-core-client-guard-v361.js');
-          const s=boot.indexOf('/main-live-answer-v329.js');
-          if([p,u,f,e,t,c,s].some(x=>x<0)||!(p<u&&u<f&&f<e&&e<t&&t<c&&c<s))throw new Error('v361 canonical layers are not deterministic');
-          if(!boot.includes("version:'canonical-app-v361'"))throw new Error('v361 runtime marker missing');
-          if(!boot.includes('bootstrapLast:true'))throw new Error('bootstrap-last marker missing');
-          if(!boot.includes("formalRunner:'V5_EXECUTION_BOUND_EVIDENCE'"))throw new Error('execution-bound Evidence marker missing');
+          if(!boot.includes("version:'canonical-app-v362'"))throw new Error('v362 runtime marker missing');
+          if(!boot.includes("entry:'WINDOW_CAPTURE_SEMANTIC_V2'"))throw new Error('v362 semantic owner marker missing');
+          if(!boot.includes('authoritativeEvidenceVisible:true'))throw new Error('authoritative Evidence display marker missing');
+          if(!boot.includes('/main-live-answer-v362.js'))throw new Error('v362 semantic entry not loaded');
+          if(boot.includes('/main-live-answer-v329.js'))throw new Error('old semantic entry still loaded by canonical bootstrap');
 
-          if(!evidenceHook.includes('explicitAtExecution:true'))throw new Error('execution-time Evidence hook missing');
-          if(!evidenceHook.includes('evidence?.selectionKind||args?.selectionKind'))throw new Error('Evidence selectionKind priority missing');
-          if(!evidenceHook.includes('window.searchDataEvidence=explicitSearch'))throw new Error('execution-time DATA HUB binding missing');
-          if(!uiTruth.includes('DATA_HUB_UI_MISMATCH'))throw new Error('DATA HUB UI truth guard missing');
+          if(!semantic.includes("const CLIENT_VERSION='362'"))throw new Error('v362 client version missing');
+          if(!semantic.includes("const RUNTIME_VERSION='362'"))throw new Error('v362 runtime version missing');
+          if(!semantic.includes("'X-MAGI-Client-Version':CLIENT_VERSION"))throw new Error('client version header missing');
+          if(!semantic.includes("'X-MAGI-Runtime-Version':RUNTIME_VERSION"))throw new Error('runtime version header missing');
+          if(!semantic.includes('window.addEventListener(\'click\''))throw new Error('window-capture semantic owner missing');
+          if(!semantic.includes('DATA HUB 正本データ（サーバー取得）'))throw new Error('authoritative Evidence renderer missing');
+          if(!semantic.includes("DATA HUB：14件参照"))throw new Error('14-player visible DATA HUB assertion missing');
+          if(!semantic.includes('players.every'))throw new Error('14-player visible Evidence assertion missing');
+          if(!semantic.includes('打率|AVG')||!semantic.includes('OPS'))throw new Error('visible batting metric assertion missing');
+
+          if(!uiTruth.includes('DATA_HUB_UI_MISMATCH'))throw new Error('UI truth guard missing');
           if(!formal.includes('NUMERIC_EVIDENCE_RESULT_INVALID'))throw new Error('numeric result guard missing');
+          if(!gateway.includes('MIN_CORE_CLIENT_VERSION = 362'))throw new Error('server client gate is not v362');
+          if(!gateway.includes('MIN_RUNTIME_VERSION = 362'))throw new Error('server runtime gate is not v362');
 
-          if(!coreGuard.includes("RUNTIME_VERSION='361'"))throw new Error('runtime version tag missing');
-          if(!coreGuard.includes("X-MAGI-Runtime-Version"))throw new Error('runtime header injection missing');
-          if(!semantic.includes("'X-MAGI-Client-Version':CLIENT_VERSION"))throw new Error('semantic client header missing');
-          if(!gateway.includes('MIN_RUNTIME_VERSION = 361'))throw new Error('server runtime gate missing');
-          if(!gateway.includes("x-magi-runtime-version"))throw new Error('server runtime header check missing');
-
-          console.log('V361 BOOTSTRAP-LAST + EXECUTION-BOUND EVIDENCE: PASS');
+          console.log('V362 AUTHORITATIVE EVIDENCE UI + STALE CLIENT FAIL-CLOSED: PASS');
           NODE
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
           jq -e '.ok==true and .fullLineupReady==true and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
-          echo 'PRODUCTION V361 + LIVE NUMERIC MASTER EVIDENCE: PASS'
+          echo 'PRODUCTION V362 + LIVE NUMERIC MASTER EVIDENCE: PASS'
