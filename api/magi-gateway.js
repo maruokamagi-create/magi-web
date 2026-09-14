@@ -6,8 +6,8 @@ import magiPersona from '../server/api/magi/persona.js';
 
 export const config = { maxDuration: 60 };
 
-const MIN_CORE_CLIENT_VERSION = 362;
-const MIN_RUNTIME_VERSION = 362;
+const MIN_CORE_CLIENT_VERSION = 363;
+const MIN_RUNTIME_VERSION = 363;
 
 const routes = {
   'magi-core': magiCore,
