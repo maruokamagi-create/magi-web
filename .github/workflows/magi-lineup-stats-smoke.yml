@@ -1,0 +1,31 @@
+name: MAGI Production Lineup Stats Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/lineup-batting-stats.js'
+      - 'lineup-stats-v367.js'
+      - 'index.html'
+      - '.github/workflows/magi-lineup-stats-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  lineup-stats:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for production deployment
+        run: sleep 40
+      - name: Verify authoritative batting stats endpoint
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl -L --fail --retry 2 --retry-delay 3 -sS 'https://magi-web.vercel.app/api/lineup-batting-stats' -o /tmp/stats.json
+          cat /tmp/stats.json
+          jq -e '
+            .ok==true and .season=="2026-2027" and
+            (.players|type=="array") and (.players|length==14) and
+            ([.players[] | has("games") and has("AB") and has("H") and has("AVG") and has("OBP") and has("OPS") and has("RBI")] | all)
+          ' /tmp/stats.json >/dev/null
+          echo 'PRODUCTION LINEUP BATTING STATS: PASS'
