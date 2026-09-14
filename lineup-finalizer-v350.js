@@ -49,9 +49,14 @@ function buildConsensus(second,cross){
    crossDiscussion:{agreement:Array.isArray(cross?.agreement)?cross.agreement:[],disagreement:Array.isArray(cross?.disagreement)?cross.disagreement:[],domainConflicts:Array.isArray(cross?.domainConflicts)?cross.domainConflicts:[],challenges:cross?.challenges||{melchior:[],balthasar:[],casper:[]},informationGaps:gaps}
  };
 }
+function evidenceCritical(final){
+ const text=JSON.stringify({reviewReason:final?.reviewReason||'',warnings:final?.warnings||[],reDeliberationConditions:final?.reDeliberationConditions||[],crossDiscussion:final?.crossDiscussion||{}});
+ return /(?:Evidence|EVIDENCE|データ|数値|正本|不整合|未記載|未集計|集計不能|確認でき|提供されていない|供給されていない|欠損)/.test(text);
+}
 function shouldReplace(input,final,second){
  if(!isFullLineupInput(input)||!canFinalize(second))return false;
  const status=String(final?.status||'');
+ if(final&&evidenceCritical(final))return false;
  return !final||status==='LINEUP_REVIEW_REQUIRED'||status==='MAGI_REVIEW_REQUIRED'||status==='INSUFFICIENT_EVIDENCE'||!Array.isArray(final?.lineup)||final.lineup.length!==9;
 }
 function install(){
