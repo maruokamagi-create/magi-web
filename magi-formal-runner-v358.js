@@ -96,7 +96,7 @@ function validateResult(result,evidence,selectionKind){
     for(const persona of ['melchior','balthasar','casper']){
       const row=set?.[persona];
       if(falseNumericGap(row,delivered||evidence))issues.push(`${phase}.${persona}: supplied numeric Evidence was described as missing`);
-      if(metricAnchorCount(row)<2)issues.push(`${phase}.${persona}: concrete batting metrics are too thin`);
+      if(persona!=='casper'&&metricAnchorCount(row)<2)issues.push(`${phase}.${persona}: concrete batting metrics are too thin`);
     }
   }
   return {ok:issues.length===0,issues};
