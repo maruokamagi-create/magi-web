@@ -53,7 +53,7 @@ assert.ok(packet.text.includes('【母数ルール】'));
 assert.ok(packet.text.includes('率系の打撃指標'));
 assert.ok(packet.text.includes('打数'));
 assert.ok(packet.sampleSizeRule.includes('打数'));
-assert.ok(packet.text.includes('【参考】2025-2026旧チーム'));
+assert.ok(packet.text.includes('【過去実績】2025-2026旧チーム'));
 assert.ok(packet.text.includes('旧チームの引退選手を現チーム候補に入れない'));
 assert.ok(packet.text.includes('大野 竜暉'));
 assert.equal(packet.sources[0].name,'current-master.xlsm');
