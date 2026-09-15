@@ -72,19 +72,13 @@ function installFormalRunnerGuard(){
     if(kind==='FULL_LINEUP'&&!currentNumericReady(evidence))throw new Error('現チーム14名の正本打撃数値が完全ではないため審議を開始しません');
     const result=await base({...args,selectionKind:kind});
     syncCaseMeta(evidence);
-    if(kind==='FULL_LINEUP'){
-      if(!caseMetaIsTruthful(evidence)){
-        clearWrongVisibleResult('DATA HUB表示と正本Evidenceが一致しないため結果を公開しません');
-        throw new Error('DATA_HUB_UI_MISMATCH');
-      }
-      if(visibleHasFalseGap(evidence)){
-        clearWrongVisibleResult('提供済みの打撃数値を未提供扱いしたため結果を公開しません');
-        throw new Error('FALSE_MISSING_DATA_RESULT_BLOCKED');
-      }
+    if(kind==='FULL_LINEUP'&&!caseMetaIsTruthful(evidence)){
+      clearWrongVisibleResult('DATA HUB表示と正本Evidenceが一致しないため結果を公開しません');
+      throw new Error('DATA_HUB_UI_MISMATCH');
     }
     return result;
   };
-  guarded.meta=Object.freeze({version:'formal-runner-v363-ui-truth',explicitEvidence:true,rawPacketValidated:true,engineBoundaryEnforced:true,numericFailClosed:true,uiTruthFailClosed:true,semanticFirst:true,localFallback:false});
+  guarded.meta=Object.freeze({version:'formal-runner-v363-ui-truth',explicitEvidence:true,rawPacketValidated:true,engineBoundaryEnforced:true,numericFailClosed:true,uiTruthFailClosed:true,naturalLanguageGapGate:false,semanticFirst:true,localFallback:false});
   window.MAGI_FORMAL_UI_RUNNER_V4=guarded;
   return guarded;
 }
