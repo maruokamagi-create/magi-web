@@ -1,20 +1,21 @@
 (()=>{
 'use strict';
-if(window.MAGI_FINAL_DECISION_FIELDING_V344)return;
-window.MAGI_FINAL_DECISION_FIELDING_V344=true;
+if(window.MAGI_FINAL_DECISION_FIELDING_V345)return;
+window.MAGI_FINAL_DECISION_FIELDING_V345=true;
 const STANDARD=['投','捕','一','二','三','遊','左','中','右'];
 const LABEL={投:'投手',捕:'捕手',一:'一塁',二:'二塁',三:'三塁',遊:'遊撃',左:'左翼',中:'中堅',右:'右翼'};
 const NAME_ALIASES=['選手名','氏名','名前','選手'];
 const POS_ALIASES=['守備位置','守備'];
 const CURRENT_ROLE_POLICY={
- '大久保 陽翔':{allowed:['投','遊','三'],preferred:['遊','三','投'],note:'現行起用方針：投手・遊撃・三塁。外野起用は想定しない。'}
+ '大久保 陽翔':{allowed:['投','遊','三'],preferred:['遊','三','投'],note:'現行起用方針：投手・遊撃・三塁。外野起用は想定しない。'},
+ '武田 晴琉翔':{allowed:['左','中','右'],preferred:['左'],note:'現行起用方針：左翼が第一適性。打順は固定せず、打撃成績・相手・直近状態で審議する。'}
 };
 let running=false;
 
 function injectStyle(){
- if(document.getElementById('magi-final-fielding-v344-style'))return;
+ if(document.getElementById('magi-final-fielding-v345-style'))return;
  const s=document.createElement('style');
- s.id='magi-final-fielding-v344-style';
+ s.id='magi-final-fielding-v345-style';
  s.textContent=`
  .magiFinalDecisionRow{grid-template-columns:38px minmax(0,1fr) auto!important}
  .magiFinalDecisionPos{display:inline-flex;align-items:center;justify-content:center;min-width:66px;padding:6px 9px;border-radius:999px;background:#e7f3fb;border:1px solid #b8d3e7;color:#16476c;font-size:12px;font-weight:900;white-space:nowrap}
@@ -156,7 +157,7 @@ async function apply(){
   renderAssignment(hero,rows,names,solve(names,merged),'2026-2027のXLSM/守備詳細CSV');
   hero.dataset.magiFieldingDone='1';return true;
  }catch(e){
-  const note=noteNode(hero);note.classList.add('magiFinalFieldingError');note.textContent='守備位置を確定できませんでした。打順判定は完了していますが、守備位置は未確定です。';hero.dataset.magiFieldingDone='1';console.warn('[MAGI final fielding v344]',e?.message||e);return false;
+  const note=noteNode(hero);note.classList.add('magiFinalFieldingError');note.textContent='守備位置を確定できませんでした。打順判定は完了していますが、守備位置は未確定です。';hero.dataset.magiFieldingDone='1';console.warn('[MAGI final fielding v345]',e?.message||e);return false;
  }finally{running=false}
 }
 function run(){apply().catch(()=>{})}
