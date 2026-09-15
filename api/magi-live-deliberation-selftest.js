@@ -47,12 +47,15 @@ function allSame(set){
 }
 function stableDigest(value){return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);}
 
+async function serialPersonaSet(base,buildBody){
+  const out={};
+  for(const p of PERSONAS)out[p]=await post(base,'/api/magi/persona',buildBody(p));
+  return out;
+}
+
 async function runOnce(base,packet){
   const caseData={mode:'selection',selectionKind:'FULL_LINEUP',question:QUESTION,evidence:packet};
-  const primary=Object.fromEntries(await Promise.all(PERSONAS.map(async p=>[
-    p,
-    await post(base,'/api/magi/persona',{persona:p,phase:'PRIMARY',case:caseData})
-  ])));
+  const primary=await serialPersonaSet(base,p=>({persona:p,phase:'PRIMARY',case:caseData}));
   for(const p of PERSONAS){
     if(primary[p]?.reviewRequested===true||primary[p]?.dataConflict===true||!validNine(primary[p]))throw new Error(`PRIMARY_${p.toUpperCase()}_INVALID`);
   }
@@ -60,10 +63,7 @@ async function runOnce(base,packet){
   const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary});
   for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);}
 
-  const doSecond=async(note='')=>Object.fromEntries(await Promise.all(PERSONAS.map(async p=>[
-    p,
-    await post(base,'/api/magi/persona',{persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross,note)})
-  ])));
+  const doSecond=async(note='')=>serialPersonaSet(base,p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross,note)}));
 
   let second=await doSecond();
   if(allSame(second)){
