@@ -1,0 +1,42 @@
+name: MAGI Cross Dialogue Guard
+
+on:
+  pull_request:
+    paths:
+      - 'server/api/magi/dialogue.js'
+      - 'cross-dialogue-router-v380.js'
+      - 'cross-dialogue-ui-v380.js'
+      - 'api/magi-gateway.js'
+      - 'vercel.json'
+      - 'index.html'
+      - 'scripts/test-cross-dialogue-v380.mjs'
+      - '.github/workflows/magi-cross-dialogue-guard.yml'
+  push:
+    branches:
+      - main
+      - 'safe/**'
+    paths:
+      - 'server/api/magi/dialogue.js'
+      - 'cross-dialogue-router-v380.js'
+      - 'cross-dialogue-ui-v380.js'
+      - 'api/magi-gateway.js'
+      - 'vercel.json'
+      - 'index.html'
+      - 'scripts/test-cross-dialogue-v380.mjs'
+      - '.github/workflows/magi-cross-dialogue-guard.yml'
+
+jobs:
+  grounded-cross-dialogue:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check
+        run: |
+          node --check server/api/magi/dialogue.js
+          node --check cross-dialogue-router-v380.js
+          node --check cross-dialogue-ui-v380.js
+      - name: Regression guard
+        run: node scripts/test-cross-dialogue-v380.mjs
