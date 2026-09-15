@@ -12,6 +12,7 @@
     ['カスパール','カスパー'],['キャスパー','カスパー'],
     ['BALTHAZAR','BALTHASAR'],['CASPAR','CASPER']
   ];
+  const HAND_RE=/(?:対右|対左|右投手|左投手|右腕|左腕|左右別|左右の相性|相手投手.{0,12}(?:右|左)|(?:右|左).{0,8}相手投手)/;
   const escRe=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
 
   function normalizeNames(text){
@@ -66,11 +67,22 @@
     return PLAYERS.filter(p=>s.includes(p));
   }
 
+  function threshold(){return Number(window.MAGI_CONTROL_SUMMARY_V377?.threshold?.(window.MAGI_LAST_DELIBERATION_RESULT))||15}
+  function structuredConditions(){
+    const result=window.MAGI_LAST_DELIBERATION_RESULT;
+    const model=window.MAGI_CONTROL_SUMMARY_V377?.build?.(result);
+    return model?.mode==='FULL_LINEUP'&&Array.isArray(model.reDeliberationConditions)?model.reDeliberationConditions:[];
+  }
   function compactCondition(raw){
     const s=normalizeNames(String(raw||'').trim());
-    if(!s)return'';
-    if(/小標本|サンプル|試合数|打席数|母数/.test(s)) return '現チームの試合数・打席数が増えたとき';
-    if(/対戦相手|相手投手|対戦レベル|公式戦|レベルが上/.test(s)) return '対戦レベルが上がった後の成績を確認できたとき';
+    if(!s||HAND_RE.test(s))return'';
+    if(/小標本|サンプル|試合数|打席数|母数|打数/.test(s)){
+      const nums=[...s.matchAll(/(\d+)\s*打数/g)].map(m=>Number(m[1])).filter(Number.isFinite);
+      const tens=/10打数台/.test(s)?10:null;if(tens!==null)nums.push(tens);
+      if(nums.length&&Math.min(...nums)<threshold())return `${threshold()}打数未満の選手が${threshold()}打数に達したとき`;
+      return'';
+    }
+    if(/対戦レベル|公式戦|レベルが上/.test(s)) return '対戦レベルが上がった後の成績を確認できたとき';
     if(/大久保 陽翔/.test(s)&&/低下|不振|状態|波|変化|ムラ|調子/.test(s)) return '大久保 陽翔の打撃状態がさらに変化したとき';
     if(/再現|継続|好成績|数値/.test(s)) return '現在の好成績が継続・再現できるか確認できたとき';
     const first=s.split(/[。]/)[0].trim();
@@ -82,8 +94,7 @@
     const s=normalizeNames(root?.innerText||'');
     const out=[];
     const add=v=>{if(v&&!out.includes(v)&&out.length<3)out.push(v)};
-    if(/小標本|サンプル|試合数|打席数|母数|序盤/.test(s)) add('現チームの試合数・打席数が増えたとき');
-    if(/対戦相手|相手投手|対戦レベル|公式戦|レベルが上/.test(s)) add('対戦レベルが上がった後の成績を確認できたとき');
+    if(/対戦レベル|公式戦|レベルが上/.test(s)) add('対戦レベルが上がった後の成績を確認できたとき');
     if((/大久保 陽翔.{0,60}(低下|不振|状態|波|変化|ムラ|調子)/s.test(s))||(/(低下|不振|状態|波|変化|ムラ|調子).{0,60}大久保 陽翔/s.test(s))) add('大久保 陽翔の打撃状態がさらに変化したとき');
     if(/再現|継続して.*成績|好成績.*継続|数値変化|データ推移/.test(s)) add('現在の好成績が継続・再現できるか確認できたとき');
     return out;
@@ -118,6 +129,11 @@
     }
 
     if(next){
+      const structured=structuredConditions();
+      if(structured.length){
+        next.textContent=`再検討条件：${structured.slice(0,3).map((x,i)=>`${['①','②','③'][i]} ${x}`).join('　')}`;
+        return;
+      }
       let t=disambiguateDuplicateSurnames(normalizeNames(next.textContent||''));
       const marker='再検討条件：';
       const pos=t.indexOf(marker);
@@ -158,5 +174,6 @@
   new MutationObserver(schedule).observe(document.documentElement,{subtree:true,childList:true,characterData:true});
   const status=document.getElementById('status');
   if(status)new MutationObserver(schedule).observe(status,{subtree:true,childList:true,characterData:true});
+  document.addEventListener('magi:deliberation-result',schedule);
   schedule();
 })();
