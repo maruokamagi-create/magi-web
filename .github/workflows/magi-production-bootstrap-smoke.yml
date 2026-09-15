@@ -34,10 +34,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=375' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=376' index.html
           grep -q '/chat-ui-v196.js?v=208' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
-          grep -q "const REV='375'" magi-app-bootstrap-v363.js
+          grep -q "const REV='376'" magi-app-bootstrap-v363.js
           grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
           grep -q '1.1.2-serial-integrity' deliberation-integrity-v348.js
           ! grep -q 'Promise.all(jobs)' deliberation-integrity-v348.js
@@ -68,8 +68,14 @@ jobs:
           grep -Fq "function answerComplete(label='MAGI 回答完了')" engine-progress-v358.js
           grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" engine-progress-v358.js
           ! grep -Fq '/回答完了|審議完了/' engine-progress-v358.js
+          grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" main-live-answer-v362.js
+          grep -Fq 'practicalBattingAtBatsSufficient:15' main-live-answer-v362.js
+          grep -Fq '相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない' main-live-answer-v362.js
+          grep -Fq '15打数以上を実用上十分な母数として扱う' main-live-answer-v362.js
+          grep -Fq 'practicalDeliberationPriorities' main-live-answer-v362.js
+          grep -Fq 'const governedPacket=applyTeamPolicy(packet)' main-live-answer-v362.js
           ! grep -q 'function evidenceCritical' lineup-finalizer-v350.js
-          echo 'CANONICAL V375 + RESILIENT SEMANTIC + PROGRESS FIX: PASS'
+          echo 'CANONICAL V376 + MARUOKA PRACTICAL LINEUP POLICY: PASS'
 
       - name: Wait for production deployment
         run: sleep 45
@@ -81,14 +87,14 @@ jobs:
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=208" -o /tmp/chat-ui.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=375" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=375" -o /tmp/integrity.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=375" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=375" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=375" -o /tmp/semantic.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=375" -o /tmp/progress.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=376" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=376" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=376" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=376" -o /tmp/core-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=376" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=376" -o /tmp/progress.js
 
-          grep -Fq '/magi-app-bootstrap-v363.js?v=375' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=376' /tmp/index.html
           grep -Fq '/chat-ui-v196.js?v=208' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
           grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" /tmp/chat-ui.js
@@ -104,22 +110,27 @@ jobs:
           grep -Fq 'MAGI CONTROL<span>最終総括</span>' /tmp/chat-ui.js
           ! grep -Fq '宛先：' /tmp/chat-ui.js
           grep -Fq 'magiMsg ${isControl?' /tmp/chat-ui.js
-          grep -Fq "const REV='375'" /tmp/bootstrap.js
+          grep -Fq "const REV='376'" /tmp/bootstrap.js
           grep -Fq 'MAGI_DELIBERATION_SERIAL_V374' /tmp/integrity.js
           grep -Fq '1.1.2-serial-integrity' /tmp/integrity.js
           ! grep -Fq 'Promise.all(jobs)' /tmp/integrity.js
           grep -Fq 'magi-formal-runner-v373.js' /tmp/bootstrap.js
           ! grep -Fq 'magi-formal-runner-v358.js' /tmp/bootstrap.js
           ! grep -Fq 'magi-ui-truth-v363.js' /tmp/bootstrap.js
-          grep -Fq "version:'canonical-app-v375'" /tmp/bootstrap.js
+          grep -Fq "version:'canonical-app-v376'" /tmp/bootstrap.js
+          grep -Fq "teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" /tmp/bootstrap.js
           grep -Fq 'V373_SINGLE_PATH' /tmp/bootstrap.js
           grep -Fq 'structuredValidationOnly:true' /tmp/formal.js
           grep -Fq 'proseBlocking:false' /tmp/formal.js
           grep -Fq "const VERSION='363'" /tmp/core-guard.js
           grep -Fq 'DATA HUB 正本データ（サーバー取得）' /tmp/semantic.js
+          grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" /tmp/semantic.js
+          grep -Fq 'practicalBattingAtBatsSufficient:15' /tmp/semantic.js
+          grep -Fq '相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない' /tmp/semantic.js
+          grep -Fq '15打数以上を実用上十分な母数として扱う' /tmp/semantic.js
           grep -Fq "function answerComplete(label='MAGI 回答完了')" /tmp/progress.js
           grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" /tmp/progress.js
-          echo 'PRODUCTION CANONICAL V375 + RESILIENT SEMANTIC + PROGRESS FIX: PASS'
+          echo 'PRODUCTION CANONICAL V376 + MARUOKA PRACTICAL LINEUP POLICY: PASS'
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
