@@ -121,8 +121,8 @@ function isModelUnavailableMessage(message) {
 }
 
 function canFallback(error) {
-  if (!error || error?.timedOut === true) return false;
-  return isModelUnavailableMessage(error?.message) || error?.retryable === true;
+  if (!error) return false;
+  return error?.timedOut === true || isModelUnavailableMessage(error?.message) || error?.retryable === true;
 }
 
 export function getGeminiModel() {
@@ -212,7 +212,7 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
     if (error?.name === 'AbortError') {
       const err = new Error('Gemini request timed out');
       err.timedOut = true;
-      err.retryable = false;
+      err.retryable = true;
       throw err;
     }
     throw error;
@@ -265,7 +265,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
     } catch (error) {
       lastError = error;
       if (strict || !canFallback(error) || index === models.length - 1) break;
-      console.warn(`[MAGI Gemini] ${model} failed quickly, trying fallback ${models[index + 1]}: ${error?.message || error}`);
+      console.warn(`[MAGI Gemini] ${model} failed, trying fallback ${models[index + 1]}: ${error?.message || error}`);
     }
   }
 
