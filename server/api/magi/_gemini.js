@@ -7,18 +7,16 @@ const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
-// Keep model attempts short enough that all same-request retries finish before the
-// serverless request ceiling. The browser/CI layer may still retry the whole request.
-const GEMINI_TIMEOUT_MS = 13_000;
-const RETRY_DELAY_MS = 600;
+// One Gemini attempt must finish well inside the 60s Vercel function ceiling.
+// Higher layers may perform deterministic correction passes, so do not nest
+// same-model retries here. Whole-request retry is owned by the browser engine.
+const GEMINI_TIMEOUT_MS = 12_000;
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
 
-// Canonical cache now provides cross-user consistency, so resilience is preferred
-// over failing the whole deliberation when the primary model has a transient error.
-// A fallback result is stored under the same canonical input key and is therefore
-// reused exactly on later identical requests.
+// Canonical cache provides cross-user consistency. Fallback models are used only
+// when a model is actually unavailable, never merely because a request timed out.
 const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'off').trim().toLowerCase();
 
 export function sendJson(res, status, body) {
@@ -114,30 +112,9 @@ function extractText(data) {
     .trim();
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-function isRetryableStatus(status) {
-  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
-}
-
 function isModelUnavailableMessage(message) {
   const text = String(message || '').toLowerCase();
   return text.includes('no longer available') || text.includes('not found') || text.includes('unsupported') || text.includes('not available to new users');
-}
-
-function isTransientOutputMessage(message) {
-  const text = String(message || '').toLowerCase();
-  return text.includes('returned no text') || text.includes('invalid structured json');
-}
-
-function isRetryableError(error) {
-  return error?.retryable === true || error?.message === 'Gemini request timed out' || isTransientOutputMessage(error?.message);
-}
-
-function shouldTryNextModel(error) {
-  return isRetryableError(error) || isModelUnavailableMessage(error?.message);
 }
 
 export function getGeminiModel() {
@@ -207,49 +184,22 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
       const message = data?.error?.message || `Gemini API error ${response.status}`;
       const err = new Error(message);
       err.status = response.status;
-      err.retryable = isRetryableStatus(response.status);
       throw err;
     }
 
     const text = extractText(data);
-    if (!text) {
-      const err = new Error('Gemini returned no text');
-      err.retryable = true;
-      throw err;
-    }
+    if (!text) throw new Error('Gemini returned no text');
     try { return JSON.parse(text); }
-    catch {
-      const err = new Error('Gemini returned invalid structured JSON');
-      err.retryable = true;
-      throw err;
-    }
+    catch { throw new Error('Gemini returned invalid structured JSON'); }
   } catch (error) {
-    if (error?.name === 'AbortError') {
-      const err = new Error('Gemini request timed out');
-      err.retryable = true;
-      throw err;
-    }
+    if (error?.name === 'AbortError') throw new Error('Gemini request timed out');
     throw error;
   } finally {
     clearTimeout(timer);
   }
 }
 
-async function tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, retries }) {
-  let lastError;
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
-    } catch (error) {
-      lastError = error;
-      if (!isRetryableError(error) || attempt === retries) break;
-      await sleep(RETRY_DELAY_MS);
-    }
-  }
-  throw lastError;
-}
-
-async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema, retries }) {
+async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
   const key = buildCanonicalKey({ model, systemInstruction, userPayload, responseSchema });
   const fingerprint = canonicalFingerprint(key);
   const cached = await readCanonicalResult(key);
@@ -259,7 +209,7 @@ async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, us
   }
 
   console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint} model=${model}`);
-  const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, retries });
+  const result = await callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
   const stored = await writeCanonicalResult(key, result);
   console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint} model=${model}`);
   return result;
@@ -284,14 +234,14 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
         apiKey,
         systemInstruction,
         userPayload,
-        responseSchema,
-        // Strict mode deliberately stays on the same model for consistency, but gets
-        // one extra short retry. Non-strict mode retains model fallbacks.
-        retries: strict ? 2 : (index === 0 ? 1 : 0)
+        responseSchema
       });
     } catch (error) {
       lastError = error;
-      if (strict || !shouldTryNextModel(error)) break;
+      // A timeout/5xx is retried once by the browser as a complete persona/orchestrator
+      // request. Switching models here would multiply waits and can exceed Vercel's 60s
+      // ceiling. Only an explicitly unavailable model is eligible for fallback.
+      if (strict || !isModelUnavailableMessage(error?.message)) break;
       console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
     }
   }
