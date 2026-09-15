@@ -9,22 +9,34 @@ const PERSONAS=['melchior','balthasar','casper'];
 const TARGETS={melchior:'MELCHIOR-1',balthasar:'BALTHASAR-2',casper:'CASPER-3'};
 const norm=v=>String(v||'').normalize('NFKC').replace(/[\s　]/g,'');
 const rosterKeys=new Set(CURRENT_ROSTER.map(norm));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 
-async function post(base,path,body){
-  const response=await fetch(`${base}${path}`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','Origin':base},
-    body:JSON.stringify(body),
-    cache:'no-store'
-  });
-  const raw=await response.text();
-  let parsed={};
-  try{parsed=raw?JSON.parse(raw):{};}catch(_){parsed={raw:raw.slice(0,300)};}
-  if(!response.ok){
-    const detail=parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`;
-    throw new Error(`${path} ${response.status}: ${detail}`);
+async function post(base,path,body,label=path){
+  let lastError=null;
+  for(let attempt=1;attempt<=3;attempt++){
+    if(attempt>1)await sleep(900*Math.pow(2,attempt-2));
+    try{
+      const response=await fetch(`${base}${path}`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','Origin':base},
+        body:JSON.stringify(body),
+        cache:'no-store'
+      });
+      const raw=await response.text();
+      let parsed={};
+      try{parsed=raw?JSON.parse(raw):{};}catch(_){parsed={raw:raw.slice(0,300)};}
+      if(response.ok)return parsed;
+      const detail=parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`;
+      const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);
+      error.status=response.status;
+      lastError=error;
+      if(!(response.status===408||response.status===429||response.status>=500))throw error;
+    }catch(error){
+      lastError=error;
+      if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error;
+    }
   }
-  return parsed;
+  throw lastError||new Error(`${label}: request failed`);
 }
 
 function crossFor(persona,cross,independenceReview=''){
@@ -47,23 +59,23 @@ function allSame(set){
 }
 function stableDigest(value){return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);}
 
-async function serialPersonaSet(base,buildBody){
+async function serialPersonaSet(base,phase,buildBody){
   const out={};
-  for(const p of PERSONAS)out[p]=await post(base,'/api/magi/persona',buildBody(p));
+  for(const p of PERSONAS)out[p]=await post(base,'/api/magi/persona',buildBody(p),`${phase}_${p.toUpperCase()}`);
   return out;
 }
 
 async function runOnce(base,packet){
   const caseData={mode:'selection',selectionKind:'FULL_LINEUP',question:QUESTION,evidence:packet};
-  const primary=await serialPersonaSet(base,p=>({persona:p,phase:'PRIMARY',case:caseData}));
+  const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
   for(const p of PERSONAS){
     if(primary[p]?.reviewRequested===true||primary[p]?.dataConflict===true||!validNine(primary[p]))throw new Error(`PRIMARY_${p.toUpperCase()}_INVALID`);
   }
 
-  const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary});
+  const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'CROSS');
   for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);}
 
-  const doSecond=async(note='')=>serialPersonaSet(base,p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross,note)}));
+  const doSecond=async(note='')=>serialPersonaSet(base,note?'SECOND_RECHECK':'SECOND',p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross,note)}));
 
   let second=await doSecond();
   if(allSame(second)){
@@ -73,7 +85,7 @@ async function runOnce(base,packet){
     if(second[p]?.reviewRequested===true||second[p]?.dataConflict===true||!validNine(second[p]))throw new Error(`SECOND_${p.toUpperCase()}_INVALID`);
   }
 
-  const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second});
+  const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second},'FINAL');
   const names=Array.isArray(final?.lineup)?final.lineup.map(x=>x?.name).filter(Boolean):[];
   const legal=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)));
   if(!legal)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}`);
