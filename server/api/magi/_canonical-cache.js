@@ -1,20 +1,37 @@
 import { createHash } from 'node:crypto';
 import { getCache } from '@vercel/functions';
 
-const CACHE_VERSION = 'magi-canonical-v3';
+const CACHE_VERSION = 'magi-canonical-v4';
 const CACHE_TTL_SECONDS = 60 * 60 * 24 * 60; // 60 days
+const VOLATILE_KEYS = new Set([
+  'createdAt','currentDateTime','generatedAt','fetchedAt','resolvedAt','requestedAt',
+  'completedAt','modifiedAt','updatedAt','requestId','traceId','timestamp'
+]);
+const SET_LIKE_ARRAY_KEYS = new Set(['files']);
 
 function normalizeString(value) {
-  return String(value).normalize('NFKC').replace(/\r\n/g, '\n').trim();
+  const s = String(value).normalize('NFKC').replace(/\r\n/g, '\n').trim();
+  if (/^MAGI-\d{10,}$/.test(s)) return 'MAGI-CANONICAL';
+  return s;
 }
 
-function stableValue(value) {
+function stableValue(value, keyName = '') {
+  if (VOLATILE_KEYS.has(keyName)) return null;
   if (value === null || value === undefined) return value ?? null;
   if (typeof value === 'string') return normalizeString(value);
   if (typeof value !== 'object') return value;
-  if (Array.isArray(value)) return value.map(stableValue);
+  if (Array.isArray(value)) {
+    const rows = value.map(v => stableValue(v, ''));
+    if (SET_LIKE_ARRAY_KEYS.has(keyName)) {
+      return rows.slice().sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b),'ja'));
+    }
+    return rows;
+  }
   const out = {};
-  for (const key of Object.keys(value).sort()) out[key] = stableValue(value[key]);
+  for (const key of Object.keys(value).sort()) {
+    if (VOLATILE_KEYS.has(key)) continue;
+    out[key] = stableValue(value[key], key);
+  }
   return out;
 }
 
@@ -22,10 +39,11 @@ function stableStringify(value) {
   return JSON.stringify(stableValue(value));
 }
 
-// Canonical identity intentionally does NOT include the runtime model that happened
-// to answer. The requested CASE/EVIDENCE + MAGI rules define the canonical result.
-// This lets MAGI recover through a fallback model on the first successful run, then
-// return that exact stored result to every later user under the same conditions.
+// Canonical identity is defined by MAGI rules + question + substantive Evidence.
+// Runtime timestamps, generated case IDs and fetch-time metadata are excluded so
+// an unchanged Evidence snapshot produces the exact same cached deliberation input.
+// The runtime model name is intentionally excluded: the first successful canonical
+// result becomes the stable result for later runs under the same conditions.
 export function buildCanonicalKey({ systemInstruction, userPayload, responseSchema }) {
   const material = stableStringify({
     cacheVersion: CACHE_VERSION,
