@@ -15,15 +15,20 @@ function fullLineup(caseData){
 function payloadFrom(init){
   try{return typeof init?.body==='string'?JSON.parse(init.body):null}catch(_){return null}
 }
-window.fetch=function(input,init={}){
+window.fetch=async function(input,init={}){
   const url=requestUrl(input);
   if(/\/api\/magi\/orchestrate(?:\?|$)/.test(url)){
     const payload=payloadFrom(init);
     if(payload?.phase==='CROSS_EXAMINATION'&&fullLineup(payload?.case)){
-      return nativeFetch('/api/magi/dialogue',init);
+      try{
+        const direct=await nativeFetch('/api/magi/dialogue',init);
+        if(direct?.ok)return direct;
+        if(Number(direct?.status)<500)return direct;
+      }catch(_){ }
+      return nativeFetch(input,init);
     }
   }
   return nativeFetch(input,init);
 };
-window.MAGI_CROSS_DIALOGUE_ROUTER_META=Object.freeze({version:'cross-dialogue-router-v380',fullLineupOnly:true});
+window.MAGI_CROSS_DIALOGUE_ROUTER_META=Object.freeze({version:'cross-dialogue-router-v380',fullLineupOnly:true,safeFallback:true});
 })();
