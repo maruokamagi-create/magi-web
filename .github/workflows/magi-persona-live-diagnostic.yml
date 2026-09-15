@@ -1,0 +1,27 @@
+name: MAGI Persona Live Diagnostic
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/magi-persona-live-diagnostic.js'
+      - '.github/workflows/magi-persona-live-diagnostic.yml'
+  workflow_dispatch:
+
+jobs:
+  diagnose:
+    runs-on: ubuntu-latest
+    timeout-minutes: 6
+    steps:
+      - name: Wait for production deployment
+        run: sleep 35
+      - name: Run persona diagnostics
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          for p in melchior balthasar casper; do
+            echo "=== $p ==="
+            curl -L --fail --max-time 70 -sS "$BASE/api/magi-persona-live-diagnostic?persona=$p"
+            echo
+          done
