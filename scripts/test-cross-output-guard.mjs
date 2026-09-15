@@ -100,7 +100,7 @@ test('X10 generic full-lineup challenges are rejected as too vague',()=>{
   }});
   const issues=validateFullLineupDialogueSpecificity(FULL_LINEUP_CASE,r);
   assert.equal(issues.length,3);
-  assert.ok(issues.every(x=>x.includes('打順番号と選手名')));
+  assert.ok(issues.every(x=>x.includes('現チーム選手を特定した打順・戦術上の具体的な問い')));
 });
 
 test('X11 full-lineup challenges must name a player and exact batting slot',()=>{
