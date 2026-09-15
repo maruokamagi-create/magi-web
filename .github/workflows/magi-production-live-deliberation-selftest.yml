@@ -1,0 +1,44 @@
+name: MAGI Production Live Deliberation Selftest
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/magi-live-deliberation-selftest.js'
+      - 'server/api/magi/persona.js'
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_canonical-cache.js'
+      - 'magi-formal-runner-v373.js'
+      - 'magi-app-bootstrap-v363.js'
+      - 'main-live-answer-v362.js'
+      - '.github/workflows/magi-production-live-deliberation-selftest.yml'
+  workflow_dispatch:
+
+jobs:
+  exact-live-best-order:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - name: Wait for production deployment
+        run: sleep 45
+
+      - name: Execute exact live best-order question twice inside production
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --max-time 70 --retry 1 --retry-delay 3 -sS "$BASE/api/magi-live-deliberation-selftest" -o /tmp/result.json
+          cat /tmp/result.json; echo
+          jq -e '
+            .ok==true and
+            .question=="今の丸岡中のベストオーダーを、守備位置込みで審議して" and
+            .evidence.count==14 and
+            .evidence.selectionKind=="FULL_LINEUP" and
+            .finalStatus=="LINEUP_RESULT" and
+            (.lineup|length==9) and
+            (([.lineup[].name]|unique|length)==9) and
+            .reproducible==true and
+            (.digest|length==16)
+          ' /tmp/result.json >/dev/null
+          echo 'PRODUCTION EXACT LIVE BEST-ORDER DELIBERATION: PASS'
