@@ -1,0 +1,84 @@
+name: MAGI CONTROL Summary Guard
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'magi-control-summary-v377.js'
+      - 'chat-ui-v196.js'
+      - 'result-layout-v189.js'
+      - 'selection-polish-v218.js'
+      - 'magi-formal-runner-v373.js'
+      - 'magi-app-bootstrap-v363.js'
+      - 'index.html'
+      - '.github/workflows/magi-control-summary-guard.yml'
+  workflow_dispatch:
+
+jobs:
+  control-summary:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Syntax and architecture checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --check magi-control-summary-v377.js
+          node --check chat-ui-v196.js
+          node --check result-layout-v189.js
+          node --check selection-polish-v218.js
+          node --check magi-formal-runner-v373.js
+          node --check magi-app-bootstrap-v363.js
+          grep -Fq '/magi-control-summary-v377.js?v=377' index.html
+          grep -Fq '/chat-ui-v196.js?v=209' index.html
+          grep -Fq '/result-layout-v189.js?v=201' index.html
+          grep -Fq '/selection-polish-v218.js?v=221' index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=377' index.html
+          grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' magi-formal-runner-v373.js
+          grep -Fq "new CustomEvent('magi:deliberation-result'" magi-formal-runner-v373.js
+          grep -Fq "label='2対1 MAJORITY'" magi-control-summary-v377.js
+          grep -Fq "label='3対0 CONSENSUS'" magi-control-summary-v377.js
+          grep -Fq "label='1対1対1 DEADLOCK'" magi-control-summary-v377.js
+          grep -Fq 'function sanitizeSpeech(value,result)' magi-control-summary-v377.js
+          grep -Fq 'structuredSummaryHtml(model)' chat-ui-v196.js
+          grep -Fq "summarySection('決め手'" chat-ui-v196.js
+          grep -Fq "summarySection('最大の争点'" chat-ui-v196.js
+          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-v196.js
+          grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
+          grep -Fq 'structuredConditions()' selection-polish-v218.js
+
+      - name: Deterministic summary policy test
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs'),vm=require('vm');
+          vm.runInThisContext(fs.readFileSync('magi-control-summary-v377.js','utf8'));
+          const api=globalThis.MAGI_CONTROL_SUMMARY_V377;
+          if(!api)throw new Error('summary API missing');
+          const majority=['大野 竜暉','坂田 暉馬','中嶋 玲月','嶋田 栄志','大久保 陽翔','鰐渕 将太','橋向 結都','武澤 大翔','武田 晴琉翔'];
+          const casper=['大野 竜暉','坂田 暉馬','嶋田 栄志','中嶋 玲月','大久保 陽翔','橋向 結都','鰐渕 将太','大久保 夢翔','武田 晴琉翔'];
+          const players=[...new Set([...majority,...casper])].map((name,i)=>({name,batting:{AB:String(15+i),AVG:name==='中嶋 玲月'?'.542':'.300',OPS:name==='中嶋 玲月'?'1.268':'.800'}}));
+          const result={
+            case:{question:'ベストオーダーは？',evidence:{teamPolicy:{sampleSize:{practicalBattingAtBatsSufficient:15}},numericEvidenceContract:{recentSixNumbersProvided:false},recentSix:{status:'INCOMPLETE'},allCurrentTeamCheck:{players}}},
+            primary:{melchior:{candidatePlayers:majority},balthasar:{candidatePlayers:majority},casper:{candidatePlayers:casper}},
+            second:{
+              melchior:{persona:'MELCHIOR-1',candidatePlayers:majority,candidateBasis:'今季通算の出塁とOPS、上位から中軸へのつながりを重視する。'},
+              balthasar:{persona:'BALTHASAR-2',candidatePlayers:majority,candidateBasis:'得点につなげる上位と中軸の並びを優先し、この打順を維持する。'},
+              casper:{persona:'CASPER-3',candidatePlayers:casper,candidateBasis:'中軸の役割分担と全体の起用バランスを優先する。'}
+            },
+            final:{mode:'FULL_LINEUP',lineup:majority.map((name,i)=>({slot:i+1,name})),reDeliberationConditions:['各選手の対右投手・対左投手別の詳細な打撃成績','現チームの打数がまだ10打数台の選手が多く、母数の蓄積が必要','今季通算のOPSが大きく変化した場合']}
+          };
+          const s=api.build(result);
+          if(s?.label!=='2対1 MAJORITY')throw new Error('majority label failed');
+          if(s?.minorityPersona!=='CASPER')throw new Error('minority not preserved');
+          if(!String(s?.mainDisagreement).includes('4番'))throw new Error('4th-slot disagreement not surfaced');
+          const conditions=(s?.reDeliberationConditions||[]).join(' ');
+          if(/対右|対左|左右|相手投手|母数|10打数台/.test(conditions))throw new Error('forbidden condition survived: '+conditions);
+          const corrected=api.sanitizeSpeech('メルキオール、直近で中嶋 玲月が打率.542・OPS 1.268を記録している。',result);
+          if(!corrected.includes('今季通算')||corrected.includes('直近で'))throw new Error('recent/current label correction failed: '+corrected);
+          if((s.decisiveReasons||[]).some(x=>/1番[\s\S]*9番/.test(x)))throw new Error('lineup recital leaked into reasons');
+          console.log('MAGI CONTROL SUMMARY GUARD: PASS');
+          NODE
