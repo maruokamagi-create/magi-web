@@ -6,6 +6,28 @@ const $=id=>document.getElementById(id),txt=v=>String(v??'').trim();
 const CLIENT_VERSION='362';
 const RUNTIME_VERSION='362';
 const CONTEXT_KEY='magi-semantic-context-v362';
+const TEAM_POLICY=Object.freeze({
+  id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916',
+  authority:'AUTHORITATIVE_TEAM_POLICY',
+  opponentPitcherHandedness:{
+    relevance:'LOW_FOR_THIS_TEAM',
+    rule:'相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない。左右別打撃成績を通常の相互検証・最終総括・再検討条件に持ち込まない。'
+  },
+  sampleSize:{
+    practicalBattingAtBatsSufficient:15,
+    rule:'現チームの打撃評価では15打数以上を実用上十分な母数として扱う。15打数以上の選手について、母数不足だけを理由に評価保留・警告・再検討条件にしない。15打数未満は必要に応じて慎重に扱う。'
+  },
+  practicalDeliberationPriorities:[
+    '出塁する打者、進める打者、返す打者のつながりと得点の作りやすさ',
+    '1〜3番、4〜6番、7〜9番の役割と上下打線のつながり',
+    '今季通算成績を軸に、Evidenceがある場合は直近6試合の変化も別枠で確認する',
+    '四球、長打、得点圏、盗塁・走塁などEvidenceにある実戦的な得点要素',
+    '守備位置、捕手・投手などの兼任、起用方針との整合',
+    '固定する打順と動かす打順を分け、変更するなら具体的な実戦条件を示す',
+    '少数意見を残しつつ、今のチームで実際に使える代替案を示す'
+  ],
+  instruction:'このチーム方針を相互検証、二次判定、最終総括、再検討条件まで一貫して適用する。Evidenceにない事実は作らない。'
+});
 let busy=false;
 
 function mainButton(node){return node?.closest?.('#magiRunButton,[data-magi-run="formal"]')||null}
@@ -19,6 +41,7 @@ function showAnswer(result,totalMs){const p=ensurePanel();if(!p)return;const ans
 async function requestCore(question){const c=new AbortController(),t=setTimeout(()=>c.abort(),70000);try{const r=await fetch('/api/magi/core',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-MAGI-Client-Version':CLIENT_VERSION,'X-MAGI-Runtime-Version':RUNTIME_VERSION},body:JSON.stringify({question,context:contextLoad()}),signal:c.signal});const d=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(txt(d?.error)||`CORE ${r.status}`),{status:r.status,requiredClientVersion:d?.requiredClientVersion||null});return d}finally{clearTimeout(t)}}
 function packetPlayers(packet){return Array.isArray(packet?.allCurrentTeamCheck?.players)?packet.allCurrentTeamCheck.players:[]}
 function fullLineupPacketReady(packet){return Number(packet?.count)===14&&packetPlayers(packet).length===14&&Array.isArray(packet?.files)&&packet.files.some(name=>/2026-2027.*\.xlsm$/i.test(String(name)))}
+function applyTeamPolicy(packet){return packet&&typeof packet==='object'?{...packet,teamPolicy:TEAM_POLICY}:packet}
 function renderAuthoritativeEvidence(packet){
   if(!packet)return;
   const box=$('dataEvidence');
@@ -55,12 +78,13 @@ async function deliberate(result){
   const runner=formalRunner();if(!runner)throw new Error('正式MAGI審議ランナーを呼び出せません');
   const packet=result?.evidencePacket||null,kind=result?.selectionKind||packet?.selectionKind||'',question=txt($('q')?.value);
   if(String(kind).toUpperCase()==='FULL_LINEUP'&&!fullLineupPacketReady(packet))throw new Error('ベストオーダー用の正本14名データを取得できなかったため審議を開始しません');
-  renderAuthoritativeEvidence(packet);
+  const governedPacket=applyTeamPolicy(packet);
+  renderAuthoritativeEvidence(governedPacket);
   setRouter('質問理解 → 正本Evidence → 3賢人審議','MAGI',txt(result?.understoodRequest)||'質問の意味を確定し、正本Evidenceを直接3賢人へ渡します。');
   if($('status'))$('status').textContent='正本成績を確認。3賢人審議を開始します…';
-  const out=await runner({question,evidence:packet,selectionKind:kind,semantic:result?.semantic||null});
-  renderAuthoritativeEvidence(packet);
-  assertVisibleEvidence(packet,kind);
+  const out=await runner({question,evidence:governedPacket,selectionKind:kind,semantic:result?.semantic||null});
+  renderAuthoritativeEvidence(governedPacket);
+  assertVisibleEvidence(governedPacket,kind);
   contextPush('assistant',`${txt(result?.understoodRequest)||question}について正本成績を使って3賢人審議を実行した。`);
   return out;
 }
