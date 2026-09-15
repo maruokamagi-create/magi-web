@@ -8,15 +8,14 @@ const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
 // One Gemini attempt must finish well inside the 60s Vercel function ceiling.
-// Higher layers may perform deterministic correction passes, so do not nest
-// same-model retries here. Whole-request retry is owned by the browser engine.
+// Timeout failures are retried only by the browser as a whole request. Fast HTTP
+// 5xx/429 and malformed-output failures get one short same-model retry here.
 const GEMINI_TIMEOUT_MS = 12_000;
+const FAST_RETRY_DELAY_MS = 450;
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
 
-// Canonical cache provides cross-user consistency. Fallback models are used only
-// when a model is actually unavailable, never merely because a request timed out.
 const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'off').trim().toLowerCase();
 
 export function sendJson(res, status, body) {
@@ -112,9 +111,22 @@ function extractText(data) {
     .trim();
 }
 
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+function isRetryableStatus(status) {
+  return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
+}
+
 function isModelUnavailableMessage(message) {
   const text = String(message || '').toLowerCase();
   return text.includes('no longer available') || text.includes('not found') || text.includes('unsupported') || text.includes('not available to new users');
+}
+
+function canFastRetry(error) {
+  if (error?.timedOut === true) return false;
+  return error?.retryable === true;
 }
 
 export function getGeminiModel() {
@@ -184,19 +196,47 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
       const message = data?.error?.message || `Gemini API error ${response.status}`;
       const err = new Error(message);
       err.status = response.status;
+      err.retryable = isRetryableStatus(response.status);
       throw err;
     }
 
     const text = extractText(data);
-    if (!text) throw new Error('Gemini returned no text');
+    if (!text) {
+      const err = new Error('Gemini returned no text');
+      err.retryable = true;
+      throw err;
+    }
     try { return JSON.parse(text); }
-    catch { throw new Error('Gemini returned invalid structured JSON'); }
+    catch {
+      const err = new Error('Gemini returned invalid structured JSON');
+      err.retryable = true;
+      throw err;
+    }
   } catch (error) {
-    if (error?.name === 'AbortError') throw new Error('Gemini request timed out');
+    if (error?.name === 'AbortError') {
+      const err = new Error('Gemini request timed out');
+      err.timedOut = true;
+      err.retryable = false;
+      throw err;
+    }
     throw error;
   } finally {
     clearTimeout(timer);
   }
+}
+
+async function tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
+  let lastError;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      return await callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
+    } catch (error) {
+      lastError = error;
+      if (!canFastRetry(error) || attempt === 1) break;
+      await sleep(FAST_RETRY_DELAY_MS);
+    }
+  }
+  throw lastError;
 }
 
 async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
@@ -209,7 +249,7 @@ async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, us
   }
 
   console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint} model=${model}`);
-  const result = await callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
+  const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
   const stored = await writeCanonicalResult(key, result);
   console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint} model=${model}`);
   return result;
@@ -238,9 +278,8 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
     } catch (error) {
       lastError = error;
-      // A timeout/5xx is retried once by the browser as a complete persona/orchestrator
-      // request. Switching models here would multiply waits and can exceed Vercel's 60s
-      // ceiling. Only an explicitly unavailable model is eligible for fallback.
+      // Transient failures stay on the same model and are handled above once.
+      // Fallback models are only for an explicitly unavailable model.
       if (strict || !isModelUnavailableMessage(error?.message)) break;
       console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
     }
