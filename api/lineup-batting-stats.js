@@ -44,8 +44,9 @@ function displayDecimal(value){
   if(!s||isFormulaError(s))return '';
   const n=Number(s.replace(/,/g,''));
   if(!Number.isFinite(n))return '';
-  if(Math.abs(n)<1&&n!==0)return n.toFixed(3).replace(/^0/,'').replace(/-0\./,'-.');
-  return String(n);
+  const fixed=n.toFixed(3);
+  if(Math.abs(n)<1)return fixed.replace(/^0/,'').replace(/-0\./,'-.');
+  return fixed;
 }
 
 function headerIndexAliases(row,aliases){
