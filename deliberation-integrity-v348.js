@@ -2,6 +2,7 @@
 'use strict';
 if(window.MAGI_DELIBERATION_INTEGRITY_V349)return;
 window.MAGI_DELIBERATION_INTEGRITY_V349=true;
+window.MAGI_DELIBERATION_SERIAL_V374=true;
 
 const PERSONAS=['melchior','balthasar','casper'];
 const TARGETS={
@@ -91,7 +92,14 @@ function recoverSoftLineup(v,persona,caseData){
 }
 function recoverSet(set,caseData){const out={};for(const p of PERSONAS)out[p]=recoverSoftLineup(set?.[p],p,caseData);return out}
 
-async function runPrimary(caseData,options){const jobs=PERSONAS.map(persona=>postJSON('/api/magi/persona',{phase:'PRIMARY',persona,case:caseData},options).then(result=>[persona,result]));return recoverSet(Object.fromEntries(await Promise.all(jobs)),caseData)}
+async function runPrimary(caseData,options){
+  const rows=[];
+  for(const persona of PERSONAS){
+    const result=await postJSON('/api/magi/persona',{phase:'PRIMARY',persona,case:caseData},options);
+    rows.push([persona,result]);
+  }
+  return recoverSet(Object.fromEntries(rows),caseData);
+}
 async function runCross(caseData,primaryLocked,options){return postJSON('/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary:reveal(primaryLocked)},options)}
 function crossForPersona(cross,persona,independenceReview=''){
   const c=clone(cross||{}),all=clone(c?.challenges||{}),toSelf=Array.isArray(all?.[persona])?all[persona]:[];
@@ -104,8 +112,12 @@ function crossForPersona(cross,persona,independenceReview=''){
 }
 async function runSecond(caseData,primaryLocked,cross,options,independenceReview=''){
   const revealed=reveal(primaryLocked);
-  const jobs=PERSONAS.map(persona=>postJSON('/api/magi/persona',{phase:'SECOND',persona,case:caseData,primarySelf:revealed[persona],crossExamination:crossForPersona(cross,persona,independenceReview)},options).then(result=>[persona,result]));
-  return recoverSet(Object.fromEntries(await Promise.all(jobs)),caseData);
+  const rows=[];
+  for(const persona of PERSONAS){
+    const result=await postJSON('/api/magi/persona',{phase:'SECOND',persona,case:caseData,primarySelf:revealed[persona],crossExamination:crossForPersona(cross,persona,independenceReview)},options);
+    rows.push([persona,result]);
+  }
+  return recoverSet(Object.fromEntries(rows),caseData);
 }
 function allSameLineup(second,caseData){
   if(!isFullLineup(caseData))return false;
@@ -132,13 +144,13 @@ async function deliberate(input,options={}){
   emit(options,'onSecondComplete',second);
   emit(options,'onStage',{stage:'FINAL',message:caseData.mode==='selection'?'選択結果を集約':'最終決定を開始'});
   const final=await finalize(caseData,primaryLocked,cross,second,options);emit(options,'onFinalComplete',final);
-  return deepFreeze({engineVersion:'1.1.1-integrity',case:clone(caseData),primary:reveal(primaryLocked),crossExamination:clone(cross),second:clone(second),final:clone(final)});
+  return deepFreeze({engineVersion:'1.1.2-serial-integrity',case:clone(caseData),primary:reveal(primaryLocked),crossExamination:clone(cross),second:clone(second),final:clone(final)});
 }
 
 function installEngine(){
   if(!window.MAGI_ENGINE_V1)return false;
-  if(window.MAGI_ENGINE_V1?.version==='1.1.1-integrity')return true;
-  window.MAGI_ENGINE_V1=deepFreeze({version:'1.1.1-integrity',personas:PERSONAS.slice(),deliberate});
+  if(window.MAGI_ENGINE_V1?.version==='1.1.2-serial-integrity')return true;
+  window.MAGI_ENGINE_V1=deepFreeze({version:'1.1.2-serial-integrity',personas:PERSONAS.slice(),deliberate});
   return true;
 }
 let engineTries=0;const engineTimer=setInterval(()=>{engineTries++;if(installEngine()||engineTries>400)clearInterval(engineTimer)},50);installEngine();
