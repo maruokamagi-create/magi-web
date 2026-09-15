@@ -7,7 +7,7 @@ import {
   canonicalizeKnownNameText
 } from './_roster.js';
 
-export const SEMANTIC_AUTHORITY_VERSION='semantic-authority-v1-gemini-first';
+export const SEMANTIC_AUTHORITY_VERSION='semantic-authority-v2-resilient-gemini-first';
 
 const MODES=['SINGLE_VALUE','SUMMARY','FULL_REPORT','COMPARISON','DELIBERATION','DOCUMENT_SEARCH','GENERAL','CLARIFY'];
 const DOMAINS=['BATTING','PITCHING','FIELDING','RUNNING','LINEUP','TACTICS','DEVELOPMENT','TEAM','DOCUMENTS','OTHER'];
@@ -215,6 +215,24 @@ function normalizeModel(raw,question,context){
   return base;
 }
 
+function emergencySemanticFallback(question,error){
+  const q=String(question||'').normalize('NFKC').replace(/\s+/g,' ').trim();
+  const conditionSpecific=/(?:今日|本日|明日|次の試合|次戦|対戦相手|相手投手|欠場|出場不可|左投手|右投手)/.test(q);
+  const asksFullLineup=/ベストオーダー/.test(q)||/(?:1番|1〜9番|1-9番).*(?:9番|打順).*(?:組|考|決)/.test(q);
+  if(asksFullLineup&&!conditionSpecific){
+    return {
+      semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-safe-fallback`,
+      mode:'DELIBERATION',confidence:'HIGH',
+      understoodRequest:'現チーム14名から標準の1番〜9番ベストオーダーを審議する。',
+      routeReason:`質問理解モデルが一時的に利用できないため、曖昧性のない標準ベストオーダー要求だけを安全フォールバックした: ${clean(error?.message,120)}`,
+      players:[],domains:['LINEUP','TEAM'],timeScope:'CURRENT_SEASON',
+      specificSeason:'',metric:'',opponent:'',breakdowns:[],selectionKind:'FULL_LINEUP',clarificationQuestion:'',needsData:true,
+      gameInnings:null,groundedPlayers:[],validated:true,semanticAuthority:'SAFE_EMERGENCY_FALLBACK'
+    };
+  }
+  return null;
+}
+
 export async function understandRequestGeminiFirst(questionValue,contextValue=[]){
   const question=clean(questionValue,4000);
   if(!question)throw new Error('question is required');
@@ -235,6 +253,8 @@ export async function understandRequestGeminiFirst(questionValue,contextValue=[]
     });
     return normalizeModel(raw,question,context);
   }catch(error){
+    const fallback=emergencySemanticFallback(question,error);
+    if(fallback)return fallback;
     return clarification('質問理解エンジンを安全に実行できませんでした。もう一度実行してください。',`Gemini質問理解失敗: ${clean(error?.message,180)}`,{
       understoodRequest:question,players:[],domains:['OTHER'],timeScope:'UNSPECIFIED',specificSeason:'',metric:'',opponent:'',breakdowns:[]
     });
