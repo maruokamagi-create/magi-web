@@ -9,7 +9,9 @@ const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
 // One Gemini attempt must finish well inside the 60s Vercel function ceiling.
 // Timeout failures are retried only by the browser as a whole request. Fast HTTP
-// 5xx/429 and malformed-output failures get one short same-model retry here.
+// 5xx/429 and malformed-output failures get one short same-model retry here, then
+// canonical mode may move to a fallback model. The canonical cache key deliberately
+// ignores which model answered, so the first successful result stays stable later.
 const GEMINI_TIMEOUT_MS = 12_000;
 const FAST_RETRY_DELAY_MS = 450;
 const RATE_WINDOW_MS = 60_000;
@@ -127,6 +129,11 @@ function isModelUnavailableMessage(message) {
 function canFastRetry(error) {
   if (error?.timedOut === true) return false;
   return error?.retryable === true;
+}
+
+function canFallback(error) {
+  if (!error || error?.timedOut === true) return false;
+  return isModelUnavailableMessage(error?.message) || error?.retryable === true;
 }
 
 export function getGeminiModel() {
@@ -278,10 +285,8 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
     } catch (error) {
       lastError = error;
-      // Transient failures stay on the same model and are handled above once.
-      // Fallback models are only for an explicitly unavailable model.
-      if (strict || !isModelUnavailableMessage(error?.message)) break;
-      console.warn(`[MAGI Gemini] ${model} unavailable, trying fallback: ${error?.message || error}`);
+      if (strict || !canFallback(error) || index === models.length - 1) break;
+      console.warn(`[MAGI Gemini] ${model} failed quickly, trying fallback ${models[index + 1]}: ${error?.message || error}`);
     }
   }
 
