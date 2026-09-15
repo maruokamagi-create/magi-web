@@ -6,10 +6,11 @@ window.MAGI_FORMAL_HOTFIX_V369=true;
 const $=id=>document.getElementById(id);
 const clone=v=>JSON.parse(JSON.stringify(v??null));
 const text=v=>String(v??'').trim();
-const priorSearch=typeof window.searchDataEvidence==='function'?window.searchDataEvidence.bind(window):null;
-const engineUiRunner=(window.MAGI_ENGINE_UI_V187===true&&typeof window.runMagi==='function')?window.runMagi.bind(window):null;
 let activeEvidence=null;
 let running=false;
+let installed=false;
+let priorSearch=null;
+let engineUiRunner=null;
 
 function progress(pct,label,step){
   const api=window.MAGI_PROGRESS_V358;
@@ -107,50 +108,70 @@ function replay(original,result){
   try{original?.onFinalComplete?.(clone(result?.final));}catch(_){ }
 }
 
-if(!engineUiRunner)return;
-window.searchDataEvidence=function(question){if(activeEvidence)return activeEvidence;return priorSearch?priorSearch(question):null;};
+function install(){
+  if(installed)return true;
+  if(!window.MAGI_APP_RUNTIME?.ready)return false;
+  if(window.MAGI_ENGINE_UI_V187!==true||typeof window.runMagi!=='function')return false;
+  if(!window.MAGI_ENGINE_V1||typeof window.MAGI_ENGINE_V1.deliberate!=='function')return false;
+  if(!window.MAGI_UI_TRUTH_V363_API||typeof window.MAGI_UI_TRUTH_V363_API.installFormalRunnerGuard!=='function')return false;
 
-const runner=async function({question,evidence=null,selectionKind='',semantic=null}={}){
-  if(running)throw new Error('MAGI審議はすでに実行中です');
-  const q=$('q');if(!q)throw new Error('MAGI入力欄を取得できません');
-  const nextQuestion=text(question||q.value);if(!nextQuestion)throw new Error('相談内容を入力してください');
-  validateEvidence(evidence,selectionKind);
-  const oldQuestion=q.value;
-  const baseEngine=window.MAGI_ENGINE_V1;
-  if(!baseEngine||typeof baseEngine.deliberate!=='function')throw new Error('正式3賢人エンジンを取得できません');
-  running=true;q.value=nextQuestion;
-  try{
-    progress(18,'正本Evidenceを確認。3賢人へ数値を直接渡します','CASE / EVIDENCE');
-    activeEvidence=reinforceEvidence(evidence);
-    const evidenceEngine=Object.freeze({
-      version:`${String(baseEngine.version||'MAGI')}+explicit-evidence-v369`,
-      personas:Array.isArray(baseEngine.personas)?baseEngine.personas.slice():[],
-      deliberate:async(input,options={})=>{
-        const enforcedInput={...input,evidence:clone(activeEvidence)};
-        const result=await baseEngine.deliberate(enforcedInput,bufferedOptions(options));
-        validateDelivered(result,selectionKind);
-        replay(options,result);
-        return result;
-      }
-    });
-    window.MAGI_ENGINE_V1=evidenceEngine;
-    const result=await engineUiRunner();
-    progress(99,'最終結果のEvidence整合性を確認済み','FINAL VALIDATION');
-    return result;
-  }catch(error){
-    progressError('正式審議を完了できませんでした');
-    throw error;
-  }finally{
-    activeEvidence=null;
-    q.value=oldQuestion;
-    window.MAGI_ENGINE_V1=baseEngine;
-    running=false;
-  }
-};
-runner.meta=Object.freeze({version:'formal-runner-v369',explicitEvidence:true,engineBoundaryEnforced:true,numericFailClosed:true,semanticFirst:true,localFallback:false,singlePass:true});
-window.MAGI_FORMAL_UI_RUNNER_V3=runner;
+  priorSearch=typeof window.searchDataEvidence==='function'?window.searchDataEvidence.bind(window):null;
+  engineUiRunner=window.runMagi.bind(window);
+  window.searchDataEvidence=function(question){if(activeEvidence)return activeEvidence;return priorSearch?priorSearch(question):null;};
 
-const guard=window.MAGI_UI_TRUTH_V363_API?.installFormalRunnerGuard?.();
-if(typeof guard==='function')window.MAGI_FORMAL_UI_RUNNER_V2=guard;
-console.info('[MAGI formal hotfix v369] active: single-pass evidence validation');
+  const runner=async function({question,evidence=null,selectionKind='',semantic=null}={}){
+    if(running)throw new Error('MAGI審議はすでに実行中です');
+    const q=$('q');if(!q)throw new Error('MAGI入力欄を取得できません');
+    const nextQuestion=text(question||q.value);if(!nextQuestion)throw new Error('相談内容を入力してください');
+    validateEvidence(evidence,selectionKind);
+    const oldQuestion=q.value;
+    const baseEngine=window.MAGI_ENGINE_V1;
+    if(!baseEngine||typeof baseEngine.deliberate!=='function')throw new Error('正式3賢人エンジンを取得できません');
+    running=true;q.value=nextQuestion;
+    try{
+      progress(18,'正本Evidenceを確認。3賢人へ数値を直接渡します','CASE / EVIDENCE');
+      activeEvidence=reinforceEvidence(evidence);
+      const evidenceEngine=Object.freeze({
+        version:`${String(baseEngine.version||'MAGI')}+explicit-evidence-v369`,
+        personas:Array.isArray(baseEngine.personas)?baseEngine.personas.slice():[],
+        deliberate:async(input,options={})=>{
+          const enforcedInput={...input,evidence:clone(activeEvidence)};
+          const result=await baseEngine.deliberate(enforcedInput,bufferedOptions(options));
+          validateDelivered(result,selectionKind);
+          replay(options,result);
+          return result;
+        }
+      });
+      window.MAGI_ENGINE_V1=evidenceEngine;
+      const result=await engineUiRunner();
+      progress(99,'最終結果のEvidence整合性を確認済み','FINAL VALIDATION');
+      return result;
+    }catch(error){
+      progressError('正式審議を完了できませんでした');
+      throw error;
+    }finally{
+      activeEvidence=null;
+      q.value=oldQuestion;
+      window.MAGI_ENGINE_V1=baseEngine;
+      running=false;
+    }
+  };
+  runner.meta=Object.freeze({version:'formal-runner-v369',explicitEvidence:true,engineBoundaryEnforced:true,numericFailClosed:true,semanticFirst:true,localFallback:false,singlePass:true,postBootstrap:true});
+  window.MAGI_FORMAL_UI_RUNNER_V3=runner;
+  const guard=window.MAGI_UI_TRUTH_V363_API.installFormalRunnerGuard();
+  if(typeof guard!=='function')return false;
+  window.MAGI_FORMAL_UI_RUNNER_V2=guard;
+  window.MAGI_FORMAL_HOTFIX_V369_ACTIVE=true;
+  installed=true;
+  console.info('[MAGI formal hotfix v369] active after bootstrap: single-pass evidence validation');
+  return true;
+}
+
+window.addEventListener('magi:app-ready',()=>install(),{once:true});
+if(window.MAGI_APP_RUNTIME?.ready)queueMicrotask(()=>install());
+let tries=0;
+const timer=setInterval(()=>{
+  tries++;
+  if(install()||tries>=200)clearInterval(timer);
+},50);
 })();
