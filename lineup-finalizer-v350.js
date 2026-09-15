@@ -43,20 +43,16 @@ function buildConsensus(second,cross){
    mode:'FULL_LINEUP',status:'LINEUP_RESULT',
    recommendation:lineup.map(x=>`${x.slot}番 ${x.name}`).join(' / '),
    lineup,personaLineups,slotConflicts,playerSupport,selectedFromPersona:selected.persona,
+   decisionRule:'SECOND_ROUND_PROPOSAL_CLOSEST_TO_THREE_WISE_MEN_CONSENSUS',
    confidence:confidences[0]||'LOW',
    majorReasons:compact(entries.map(([,v])=>v?.primaryReason)),
    warnings,reDeliberationConditions:compact([...gaps,...warnings],5),reviewReason:'',
    crossDiscussion:{agreement:Array.isArray(cross?.agreement)?cross.agreement:[],disagreement:Array.isArray(cross?.disagreement)?cross.disagreement:[],domainConflicts:Array.isArray(cross?.domainConflicts)?cross.domainConflicts:[],challenges:cross?.challenges||{melchior:[],balthasar:[],casper:[]},informationGaps:gaps}
  };
 }
-function evidenceCritical(final){
- const text=JSON.stringify({reviewReason:final?.reviewReason||'',warnings:final?.warnings||[],reDeliberationConditions:final?.reDeliberationConditions||[],crossDiscussion:final?.crossDiscussion||{}});
- return /(?:Evidence|EVIDENCE|データ|数値|正本|不整合|未記載|未集計|集計不能|確認でき|提供されていない|供給されていない|欠損)/.test(text);
-}
 function shouldReplace(input,final,second){
  if(!isFullLineupInput(input)||!canFinalize(second))return false;
  const status=String(final?.status||'');
- if(final&&evidenceCritical(final))return false;
  return !final||status==='LINEUP_REVIEW_REQUIRED'||status==='MAGI_REVIEW_REQUIRED'||status==='INSUFFICIENT_EVIDENCE'||!Array.isArray(final?.lineup)||final.lineup.length!==9;
 }
 function install(){
@@ -74,9 +70,9 @@ function install(){
    const result=await original(input,o);
    const second=capturedSecond||result?.second,cross=capturedCross||result?.crossExamination;
    const final=correctedFinal||(shouldReplace(input,result?.final,second)?buildConsensus(second,cross):result?.final);
-   return Object.freeze({...result,engineVersion:`${String(result?.engineVersion||base.version||'MAGI')}+lineup-finalizer-v350`,final});
+   return Object.freeze({...result,engineVersion:`${String(result?.engineVersion||base.version||'MAGI')}+lineup-finalizer-v350-structural`,final});
  };
- window.MAGI_ENGINE_V1=Object.freeze({version:`${String(base.version||'MAGI')}+lineup-finalizer-v350`,personas:Array.isArray(base.personas)?base.personas.slice():PERSONAS.slice(),deliberate:wrapped});
+ window.MAGI_ENGINE_V1=Object.freeze({version:`${String(base.version||'MAGI')}+lineup-finalizer-v350-structural`,personas:Array.isArray(base.personas)?base.personas.slice():PERSONAS.slice(),deliberate:wrapped});
  return true;
 }
 let n=0;const t=setInterval(()=>{n++;if(install()||n>400)clearInterval(t)},50);install();
