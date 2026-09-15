@@ -90,8 +90,15 @@ function ensureWrap(row){
 }
 
 function fmt(v){return v===null||v===undefined||v===''?'—':String(v);}
+function fmtRate(v){
+  if(v===null||v===undefined||v==='')return '—';
+  const n=Number(String(v).replace(/,/g,''));
+  if(!Number.isFinite(n))return String(v);
+  const fixed=n.toFixed(3);
+  return Math.abs(n)<1?fixed.replace(/^0/,'').replace(/-0\./,'-.'):fixed;
+}
 function rowText(st){
-  return `<div class="magiLineupStatsLine"><span class="magiLineupStat magiLineupSeason">今季</span><span class="magiLineupStat">${fmt(st.games)}試合</span><span class="magiLineupStat">${fmt(st.PA)}打席</span><span class="magiLineupStat">${fmt(st.AB)}打数</span><span class="magiLineupStat">${fmt(st.H)}安打</span></div><div class="magiLineupStatsLine magiLineupRate"><span class="magiLineupStat">打率 <b>${fmt(st.AVG)}</b></span><span class="magiLineupStat">出塁率 <b>${fmt(st.OBP)}</b></span><span class="magiLineupStat">長打率 <b>${fmt(st.SLG)}</b></span><span class="magiLineupStat">OPS <b>${fmt(st.OPS)}</b></span></div><div class="magiLineupStatsLine magiLineupRate"><span class="magiLineupStat">得点圏打率 <b>${fmt(st.RISP)}</b></span><span class="magiLineupStat">${fmt(st.RBI)}打点</span><span class="magiLineupStat">四球 ${fmt(st.BB)}</span><span class="magiLineupStat">死球 ${fmt(st.HBP)}</span><span class="magiLineupStat">盗塁 ${fmt(st.SB)}</span></div>`;
+  return `<div class="magiLineupStatsLine"><span class="magiLineupStat magiLineupSeason">今季</span><span class="magiLineupStat">${fmt(st.games)}試合</span><span class="magiLineupStat">${fmt(st.PA)}打席</span><span class="magiLineupStat">${fmt(st.AB)}打数</span><span class="magiLineupStat">${fmt(st.H)}安打</span></div><div class="magiLineupStatsLine magiLineupRate"><span class="magiLineupStat">打率 <b>${fmtRate(st.AVG)}</b></span><span class="magiLineupStat">出塁率 <b>${fmtRate(st.OBP)}</b></span><span class="magiLineupStat">長打率 <b>${fmtRate(st.SLG)}</b></span><span class="magiLineupStat">OPS <b>${fmtRate(st.OPS)}</b></span></div><div class="magiLineupStatsLine magiLineupRate"><span class="magiLineupStat">得点圏打率 <b>${fmtRate(st.RISP)}</b></span><span class="magiLineupStat">${fmt(st.RBI)}打点</span><span class="magiLineupStat">四球 ${fmt(st.BB)}</span><span class="magiLineupStat">死球 ${fmt(st.HBP)}</span><span class="magiLineupStat">盗塁 ${fmt(st.SB)}</span></div>`;
 }
 
 async function apply(){
