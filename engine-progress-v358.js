@@ -58,13 +58,15 @@ function reset(label='質問を理解中'){
 }
 function update(pct,label,step){render({pct,label,step});}
 function complete(label='MAGI 審議完了'){render({pct:100,label,step:'FINAL DECISION'});}
+function answerComplete(label='MAGI 回答完了'){render({pct:100,label,step:'ANSWER'});}
 function error(label='審議を停止しました'){render({pct:Math.max(last.pct,10),label,step:'ERROR'},{force:true});}
 
-window.MAGI_PROGRESS_V358=Object.freeze({version:'progress-v358-event-driven',reset,update,complete,error});
+window.MAGI_PROGRESS_V358=Object.freeze({version:'progress-v358-event-driven',reset,update,complete,answerComplete,error});
 document.addEventListener('magi:progress',event=>{
   const d=event?.detail||{};
   if(d.reset)return reset(d.label||'質問を理解中');
   if(d.error)return error(d.label||'審議を停止しました');
+  if(d.answerDone)return answerComplete(d.label||'MAGI 回答完了');
   if(d.done)return complete(d.label||'MAGI 審議完了');
   update(d.pct,d.label,d.step);
 });
@@ -79,12 +81,13 @@ function fromStatus(text){
   if(/質問内容を理解|質問の意味/.test(t))return{pct:8,label:'質問全体の意味を理解中',step:'SEMANTIC UNDERSTANDING'};
   if(/正本Evidence|正本データ/.test(t))return{pct:18,label:'正本Evidenceを確認中',step:'CASE / EVIDENCE'};
   if(/処理を停止|エラー|失敗/.test(t))return{error:true,label:'処理を停止しました'};
-  if(/回答完了|審議完了/.test(t))return{done:true,label:'MAGI 審議完了'};
+  if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'};
+  if(/審議完了/.test(t))return{done:true,label:'MAGI 審議完了'};
   return null;
 }
 function observeStatus(){
   const s=document.getElementById('status');if(!s)return false;
-  const sync=()=>{const d=fromStatus(s.textContent);if(!d)return;if(d.error)error(d.label);else if(d.done)complete(d.label);else update(d.pct,d.label,d.step)};
+  const sync=()=>{const d=fromStatus(s.textContent);if(!d)return;if(d.error)error(d.label);else if(d.answerDone)answerComplete(d.label);else if(d.done)complete(d.label);else update(d.pct,d.label,d.step)};
   new MutationObserver(sync).observe(s,{childList:true,subtree:true,characterData:true});sync();return true;
 }
 let tries=0;const boot=setInterval(()=>{tries++;injectCss();ensure();if(observeStatus()||tries>100)clearInterval(boot)},100);
