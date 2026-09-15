@@ -3,6 +3,7 @@ import fieldingReport from '../server/api/magi/fielding-report.js';
 import magiHealth from '../server/api/magi/health.js';
 import magiOrchestrate from '../server/api/magi/orchestrate.js';
 import magiPersona from '../server/api/magi/persona.js';
+import magiDialogue from '../server/api/magi/dialogue.js';
 
 export const config = { maxDuration: 60 };
 
@@ -14,7 +15,8 @@ const routes = {
   'magi-fielding-report': fieldingReport,
   'magi-health': magiHealth,
   'magi-orchestrate': magiOrchestrate,
-  'magi-persona': magiPersona
+  'magi-persona': magiPersona,
+  'magi-dialogue': magiDialogue
 };
 
 function routeKey(req) {
