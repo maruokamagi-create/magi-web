@@ -9,13 +9,22 @@ const STATS_TOKEN='03_STATS_成績データ';
 const MASTER_TOKEN='00_MASTER_正本';
 
 const BATTING_FIELDS={
+  PA:['打席','打席数'],
   AB:['打数'],
   H:['安打'],
   AVG:['打率','AVG'],
   OBP:['出塁率'],
+  SLG:['長打率'],
   OPS:['OPS'],
-  RBI:['打点']
+  RBI:['打点'],
+  RISP:['得点圏打率','得点圏'],
+  BB:['四球'],
+  HBP:['死球'],
+  SB:['盗塁'],
+  SAC:['犠打'],
+  SF:['犠飛']
 };
+const INTEGER_FIELDS=new Set(['PA','AB','H','RBI','BB','HBP','SB','SAC','SF']);
 
 const norm=v=>String(v??'').replace(/[\s　]+/g,'').trim();
 const text=v=>String(v??'').trim();
@@ -105,7 +114,7 @@ function readBattingFields(header,row){
     const col=headerIndexAliases(header,aliases);
     if(col<0)continue;
     const raw=row[col];
-    if(key==='AB'||key==='H'||key==='RBI'){
+    if(INTEGER_FIELDS.has(key)){
       const value=toInt(raw);
       if(value!==null)stats[key]=value;
     }else{
@@ -142,6 +151,44 @@ function findBatting(sheets,playerName){
   return candidates[0]||null;
 }
 
+function findBattingSupplement(sheets,playerName){
+  const target=norm(playerName);
+  const preferred=sheets.find(item=>norm(item.sheetName)===norm('得点圏打率一覧'));
+  if(!preferred)return null;
+  const rows=preferred.rows||[];
+  for(let h=0;h<rows.length;h++){
+    const header=rows[h]||[];
+    const playerCol=headerIndexAliases(header,['選手名','選手']);
+    if(playerCol<0)continue;
+    for(let i=h+1;i<rows.length;i++){
+      const row=rows[i]||[];
+      if(norm(row[playerCol])!==target)continue;
+      return {stats:readBattingFields(header,row),sheetName:preferred.sheetName,row:i+1,headerRow:h+1};
+    }
+  }
+  return null;
+}
+
+function mergeMissing(primary,supplement){
+  const out={...(primary||{})};
+  for(const [key,value] of Object.entries(supplement||{})){
+    if(out[key]===undefined||out[key]===null||out[key]==='')out[key]=value;
+  }
+  return out;
+}
+
+function derivedPlateAppearances(stats){
+  if(Number.isInteger(stats.PA))return stats.PA;
+  const parts=['AB','BB','HBP','SAC','SF'].map(key=>stats[key]);
+  if(parts.every(Number.isInteger))return parts.reduce((sum,value)=>sum+value,0);
+  return null;
+}
+
+function combinedWalksHbp(stats){
+  if(Number.isInteger(stats.BB)&&Number.isInteger(stats.HBP))return stats.BB+stats.HBP;
+  return null;
+}
+
 export default async function handler(req,res){
   if(req.method!=='GET'){
     res.statusCode=405;
@@ -158,16 +205,26 @@ export default async function handler(req,res){
     const players=CURRENT_ROSTER.map(name=>{
       const appearance=findAppearanceGames(sheets,name);
       const batting=findBatting(sheets,name);
-      const b=batting?.stats||{};
+      const supplement=findBattingSupplement(sheets,name);
+      const b=mergeMissing(batting?.stats||{},supplement?.stats||{});
+      const PA=derivedPlateAppearances(b);
+      const BBHBP=combinedWalksHbp(b);
       return {
         name,
         games:appearance?.games??null,
+        PA,
         AB:b.AB??null,
         H:b.H??null,
         AVG:b.AVG??'',
         OBP:b.OBP??'',
+        SLG:b.SLG??'',
         OPS:b.OPS??'',
-        RBI:b.RBI??null
+        RISP:b.RISP??'',
+        RBI:b.RBI??null,
+        BB:b.BB??null,
+        HBP:b.HBP??null,
+        BBHBP,
+        SB:b.SB??null
       };
     });
     res.statusCode=200;
