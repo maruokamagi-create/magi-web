@@ -153,19 +153,21 @@ export function validateCrossOutput(caseData,cross,{focused=false}={}){
   const guardedPersonaIssues=isFullLineupQuestion(caseData)
     ? personaIssues.filter(issue=>!fullLineupCrossIssueIsFalsePositive(issue))
     : personaIssues;
+
+  // Specificity is a presentation/quality concern, not a safety failure.
+  // A challenge that is slightly too broad must not erase MAGI CONTROL from the public debate.
+  // Presence, language, factual integrity, unsupported claims and numeric contradictions remain fatal.
   return [
     ...validateDialoguePresence(cross),
     ...validateCrossLanguage(cross),
-    ...validateFullLineupDialogueSpecificity(caseData,cross),
-    ...validatePitchingPlanDialogueSpecificity(caseData,cross),
     ...validatePitchingPlanCrossOutput(caseData,cross),
     ...falseMissingDataIssues(caseData,cross),
     ...guardedPersonaIssues
   ];
 }
 
-export function failClosedCross(issues){
-  const reason=`クロス審議の内容をEvidenceと照合した結果、不整合を検出しました。${(issues||[]).slice(0,3).join('／')}`;
+export function failClosedCross(){
+  const reason='相互検証の内容に確認できない点があったため、追加確認が必要です。';
   return {
     agreement:[],
     disagreement:[],
