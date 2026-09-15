@@ -1,0 +1,155 @@
+name: MAGI Production Reproducibility Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/magi/persona.js'
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_gemini.js'
+      - 'server/api/magi/_canonical-cache.js'
+      - 'server/api/magi/_full-lineup.js'
+      - 'deliberation-integrity-v348.js'
+      - 'lineup-finalizer-v350.js'
+      - 'magi-formal-runner-v373.js'
+      - 'magi-app-bootstrap-v363.js'
+      - 'index.html'
+      - '.github/workflows/magi-production-reproducibility-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  reproducibility:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Wait for production deployment
+        run: sleep 45
+
+      - name: Verify production single-path client
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail -sS "$BASE/" -o /tmp/index.html
+          grep -F '/magi-app-bootstrap-v363.js?v=373' /tmp/index.html
+          if grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html; then
+            echo 'obsolete v369 hotfix is still loaded' >&2
+            exit 1
+          fi
+          curl -L --fail -sS "$BASE/magi-app-bootstrap-v363.js?v=373" -o /tmp/bootstrap.js
+          grep -F 'magi-formal-runner-v373.js' /tmp/bootstrap.js
+          if grep -Fq 'magi-formal-runner-v358.js' /tmp/bootstrap.js; then
+            echo 'obsolete v358 formal runner is still loaded' >&2
+            exit 1
+          fi
+          curl -L --fail -sS "$BASE/magi-formal-runner-v373.js?v=373" -o /tmp/runner.js
+          grep -F 'structuredValidationOnly:true' /tmp/runner.js
+          grep -F 'proseBlocking:false' /tmp/runner.js
+          echo 'PRODUCTION SINGLE-PATH CLIENT: PASS'
+
+      - name: Verify same Evidence produces same deliberation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          ORIGIN='https://magi-web.vercel.app'
+
+          cat > /tmp/case.json <<'JSON'
+          {
+            "mode":"selection",
+            "selectionKind":"FULL_LINEUP",
+            "question":"今の丸岡中のベストオーダーを、守備位置込みで審議して",
+            "evidence":{
+              "scope":"PRODUCTION_REPRODUCIBILITY_FIXED_EVIDENCE",
+              "primarySeason":"current",
+              "selectionKind":"FULL_LINEUP",
+              "count":14,
+              "files":["チーム成績_2026-2027.xlsm"],
+              "allCurrentTeamCheck":{
+                "status":"COMPLETE",
+                "players":[
+                  {"name":"井坂 悠聖","batting":{"AVG":".280","OPS":".690","AB":"25"}},
+                  {"name":"大久保 陽翔","batting":{"AVG":".333","OPS":".812","AB":"30"}},
+                  {"name":"大野 竜暉","batting":{"AVG":".278","OPS":".924","AB":"28"}},
+                  {"name":"坂田 暉馬","batting":{"AVG":".250","OPS":".650","AB":"24"}},
+                  {"name":"嶋田 栄志","batting":{"AVG":".300","OPS":".720","AB":"27"}},
+                  {"name":"武澤 大翔","batting":{"AVG":".286","OPS":".700","AB":"28"}},
+                  {"name":"橋向 結都","batting":{"AVG":".240","OPS":".620","AB":"25"}},
+                  {"name":"上村 蓮","batting":{"AVG":".222","OPS":".600","AB":"18"}},
+                  {"name":"大久保 夢翔","batting":{"AVG":".267","OPS":".680","AB":"15"}},
+                  {"name":"長侶 穹","batting":{"AVG":".350","OPS":".880","AB":"20"}},
+                  {"name":"中嶋 玲月","batting":{"AVG":".320","OPS":".860","AB":"25"}},
+                  {"name":"吉田 真翔","batting":{"AVG":".250","OPS":".640","AB":"16"}},
+                  {"name":"鰐渕 将太","batting":{"AVG":".235","OPS":".610","AB":"17"}},
+                  {"name":"武田 晴琉翔","batting":{"AVG":".260","OPS":".660","AB":"20"}}
+                ]
+              },
+              "historicalReference":{"status":"INCOMPLETE","players":[]},
+              "recentSix":{"status":"INCOMPLETE","players":[]},
+              "dataRule":"現チーム14名から異なる9名を1番〜9番で選ぶ。"
+            }
+          }
+          JSON
+
+          post(){
+            local endpoint="$1" body="$2" out="$3"
+            curl -L --fail --retry 1 --retry-delay 2 -sS \
+              -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+              -d @"$body" "$BASE$endpoint" -o "$out"
+          }
+
+          run_once(){
+            local tag="$1"
+            for p in melchior balthasar casper; do
+              jq -n --arg p "$p" --slurpfile c /tmp/case.json '{persona:$p,phase:"PRIMARY",case:$c[0]}' > "/tmp/${tag}-${p}-primary-body.json"
+              post '/api/magi/persona' "/tmp/${tag}-${p}-primary-body.json" "/tmp/${tag}-${p}-primary.json"
+              jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-primary.json" >/dev/null
+            done
+
+            jq -n --slurpfile c /tmp/case.json \
+              --slurpfile m "/tmp/${tag}-melchior-primary.json" \
+              --slurpfile b "/tmp/${tag}-balthasar-primary.json" \
+              --slurpfile s "/tmp/${tag}-casper-primary.json" \
+              '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > "/tmp/${tag}-cross-body.json"
+            post '/api/magi/orchestrate' "/tmp/${tag}-cross-body.json" "/tmp/${tag}-cross.json"
+
+            for p in melchior balthasar casper; do
+              jq -n --arg p "$p" --slurpfile c /tmp/case.json \
+                --slurpfile self "/tmp/${tag}-${p}-primary.json" \
+                --slurpfile cross "/tmp/${tag}-cross.json" \
+                '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$self[0],crossExamination:$cross[0]}' > "/tmp/${tag}-${p}-second-body.json"
+              post '/api/magi/persona' "/tmp/${tag}-${p}-second-body.json" "/tmp/${tag}-${p}-second.json"
+              jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-second.json" >/dev/null
+            done
+
+            jq -n --slurpfile c /tmp/case.json \
+              --slurpfile pm "/tmp/${tag}-melchior-primary.json" --slurpfile pb "/tmp/${tag}-balthasar-primary.json" --slurpfile pc "/tmp/${tag}-casper-primary.json" \
+              --slurpfile sm "/tmp/${tag}-melchior-second.json" --slurpfile sb "/tmp/${tag}-balthasar-second.json" --slurpfile sc "/tmp/${tag}-casper-second.json" \
+              --slurpfile x "/tmp/${tag}-cross.json" \
+              '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > "/tmp/${tag}-final-body.json"
+            post '/api/magi/orchestrate' "/tmp/${tag}-final-body.json" "/tmp/${tag}-final.json"
+            jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
+          }
+
+          run_once a
+          run_once b
+
+          for p in melchior balthasar casper; do
+            jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/a-${p}-primary.json" > "/tmp/a-${p}-primary-stable.json"
+            jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/b-${p}-primary.json" > "/tmp/b-${p}-primary-stable.json"
+            cmp "/tmp/a-${p}-primary-stable.json" "/tmp/b-${p}-primary-stable.json"
+
+            jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/a-${p}-second.json" > "/tmp/a-${p}-second-stable.json"
+            jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/b-${p}-second.json" > "/tmp/b-${p}-second-stable.json"
+            cmp "/tmp/a-${p}-second-stable.json" "/tmp/b-${p}-second-stable.json"
+          done
+
+          jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/a-cross.json > /tmp/a-cross-stable.json
+          jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/b-cross.json > /tmp/b-cross-stable.json
+          cmp /tmp/a-cross-stable.json /tmp/b-cross-stable.json
+
+          jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/a-final.json > /tmp/a-final-stable.json
+          jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/b-final.json > /tmp/b-final-stable.json
+          cmp /tmp/a-final-stable.json /tmp/b-final-stable.json
+
+          echo 'PRODUCTION SAME QUESTION + SAME EVIDENCE REPRODUCIBILITY: PASS'
