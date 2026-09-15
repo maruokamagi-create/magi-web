@@ -25,14 +25,27 @@ function syncCaseMeta(evidence){
   }
   meta.insertAdjacentHTML('beforeend',`<br>DATA HUB：${Number(evidence.count)||0}件参照<br>参照ファイル：${files}`);
 }
-function currentGapPattern(){return /(?:2026-2027|今季通算|今季|数値データ|打撃成績).{0,90}(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|欠損している|欠けている|十分に揃っていない)/s;}
+const missingPattern=/(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|欠損している|欠けている|十分に揃っていない)/;
+const currentSeasonPattern=/(?:2026-2027|今季通算|今季)/;
+const battingEvidencePattern=/(?:打撃|打率|打数|打席|安打|出塁率|長打率|OPS|打点|得点圏|四球|死球|犠打|犠飛|盗塁)/i;
+const genericNumericPattern=/(?:数値データ|成績データ|正本数値)/;
+const fieldingPattern=/(?:守備|守備位置|ポジション|失策|捕球|送球|刺殺|補殺)/;
+function hasFalseCurrentGap(body){
+  return String(body||'').split(/[。！？\n]+/).some(sentence=>{
+    const s=sentence.trim();
+    if(!s||!missingPattern.test(s))return false;
+    if(currentSeasonPattern.test(s)&&battingEvidencePattern.test(s))return true;
+    if(genericNumericPattern.test(s)&&!fieldingPattern.test(s))return true;
+    return false;
+  });
+}
 function historicalGapPattern(){return /(?:2025-2026|過去実績).{0,90}(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|欠損している|欠けている)/s;}
 function recentGapPattern(){return /(?:直近6試合|直近六試合|打撃詳細データ).{0,90}(?:提供されていない|供給されていない|含まれていない|未記載|未集計|集計不能|確認できない|確認できません|欠損している|欠けている)/s;}
 function visibleHasFalseGap(evidence){
   const response=document.getElementById('response');
   const body=String(response?.textContent||'');
   if(!body)return false;
-  if(currentNumericReady(evidence)&&currentGapPattern().test(body))return true;
+  if(currentNumericReady(evidence)&&hasFalseCurrentGap(body))return true;
   if(String(evidence?.historicalReference?.status||'')==='COMPLETE'&&historicalGapPattern().test(body))return true;
   if(String(evidence?.recentSix?.status||'')==='COMPLETE'&&recentGapPattern().test(body))return true;
   return false;
@@ -65,7 +78,7 @@ function installFormalRunnerGuard(){
         throw new Error('DATA_HUB_UI_MISMATCH');
       }
       if(visibleHasFalseGap(evidence)){
-        clearWrongVisibleResult('提供済みの数値を未提供扱いしたため結果を公開しません');
+        clearWrongVisibleResult('提供済みの打撃数値を未提供扱いしたため結果を公開しません');
         throw new Error('FALSE_MISSING_DATA_RESULT_BLOCKED');
       }
     }
