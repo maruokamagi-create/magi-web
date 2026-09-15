@@ -5,8 +5,10 @@
 (function (global) {
   'use strict';
 
-  const ENGINE_VERSION = '1.0.2';
+  const ENGINE_VERSION = '1.0.3';
   const PERSONAS = ['melchior', 'balthasar', 'casper'];
+  const REQUEST_TIMEOUT_MS = 50_000;
+  const MAX_REQUEST_ATTEMPTS = 2;
 
   const deepFreeze = (value) => {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -38,20 +40,31 @@
     });
   }
 
+  async function fetchWithTimeout(url, payload) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+    try {
+      return await fetch(url, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
   async function postJSON(url, payload, options = {}) {
     let lastError;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt++) {
       if (attempt) {
-        const wait = 900 * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 350);
-        emit(options, 'onRetry', { url, attempt: attempt + 1, waitMs: wait });
+        const wait = 900 + Math.floor(Math.random() * 250);
+        emit(options, 'onRetry', { url, attempt: attempt + 1, maxAttempts: MAX_REQUEST_ATTEMPTS, waitMs: wait });
         await sleep(wait);
       }
       try {
-        const res = await fetch(url, {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
+        const res = await fetchWithTimeout(url, payload);
         const body = await res.json().catch(() => ({}));
         if (res.ok) return body;
         const err = new Error(body?.error || `MAGI API error ${res.status}`);
@@ -59,8 +72,15 @@
         lastError = err;
         if (!(res.status === 408 || res.status === 429 || res.status >= 500)) throw err;
       } catch (error) {
-        lastError = error;
-        if (error?.status && !(error.status === 408 || error.status === 429 || error.status >= 500)) throw error;
+        const timedOut = error?.name === 'AbortError';
+        if (timedOut) {
+          const err = new Error('MAGI API request timed out');
+          err.status = 408;
+          lastError = err;
+        } else {
+          lastError = error;
+        }
+        if (lastError?.status && !(lastError.status === 408 || lastError.status === 429 || lastError.status >= 500)) throw lastError;
       }
     }
     throw lastError || new Error('MAGI API request failed');
