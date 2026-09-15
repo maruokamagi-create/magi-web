@@ -15,6 +15,8 @@ on:
       - 'lineup-finalizer-v350.js'
       - 'engine-progress-v358.js'
       - 'server/api/magi/_canonical-cache.js'
+      - 'server/api/magi/_gemini.js'
+      - 'server/api/magi/_semantic-authority.js'
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
@@ -32,10 +34,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=374' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=375' index.html
           grep -q '/chat-ui-v196.js?v=208' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
-          grep -q "const REV='374'" magi-app-bootstrap-v363.js
+          grep -q "const REV='375'" magi-app-bootstrap-v363.js
           grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
           grep -q '1.1.2-serial-integrity' deliberation-integrity-v348.js
           ! grep -q 'Promise.all(jobs)' deliberation-integrity-v348.js
@@ -59,8 +61,15 @@ jobs:
           ! grep -Fq '宛先：' chat-ui-v196.js
           grep -q "CACHE_VERSION = 'magi-canonical-v4'" server/api/magi/_canonical-cache.js
           grep -q "VOLATILE_KEYS" server/api/magi/_canonical-cache.js
+          grep -Fq 'error?.timedOut === true' server/api/magi/_gemini.js
+          grep -Fq "semantic-authority-v2-resilient-gemini-first" server/api/magi/_semantic-authority.js
+          grep -Fq "semanticAuthority:'SAFE_EMERGENCY_FALLBACK'" server/api/magi/_semantic-authority.js
+          grep -Fq "selectionKind:'FULL_LINEUP'" server/api/magi/_semantic-authority.js
+          grep -Fq "function answerComplete(label='MAGI 回答完了')" engine-progress-v358.js
+          grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" engine-progress-v358.js
+          ! grep -Fq '/回答完了|審議完了/' engine-progress-v358.js
           ! grep -q 'function evidenceCritical' lineup-finalizer-v350.js
-          echo 'CANONICAL V374 + HARD TARGET LABEL REMOVAL + FINAL SUMMARY: PASS'
+          echo 'CANONICAL V375 + RESILIENT SEMANTIC + PROGRESS FIX: PASS'
 
       - name: Wait for production deployment
         run: sleep 45
@@ -72,13 +81,14 @@ jobs:
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=208" -o /tmp/chat-ui.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=374" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=374" -o /tmp/integrity.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=374" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=374" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=374" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=375" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=375" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=375" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=375" -o /tmp/core-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=375" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=375" -o /tmp/progress.js
 
-          grep -Fq '/magi-app-bootstrap-v363.js?v=374' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=375' /tmp/index.html
           grep -Fq '/chat-ui-v196.js?v=208' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
           grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" /tmp/chat-ui.js
@@ -94,20 +104,22 @@ jobs:
           grep -Fq 'MAGI CONTROL<span>最終総括</span>' /tmp/chat-ui.js
           ! grep -Fq '宛先：' /tmp/chat-ui.js
           grep -Fq 'magiMsg ${isControl?' /tmp/chat-ui.js
-          grep -Fq "const REV='374'" /tmp/bootstrap.js
+          grep -Fq "const REV='375'" /tmp/bootstrap.js
           grep -Fq 'MAGI_DELIBERATION_SERIAL_V374' /tmp/integrity.js
           grep -Fq '1.1.2-serial-integrity' /tmp/integrity.js
           ! grep -Fq 'Promise.all(jobs)' /tmp/integrity.js
           grep -Fq 'magi-formal-runner-v373.js' /tmp/bootstrap.js
           ! grep -Fq 'magi-formal-runner-v358.js' /tmp/bootstrap.js
           ! grep -Fq 'magi-ui-truth-v363.js' /tmp/bootstrap.js
-          grep -Fq "version:'canonical-app-v374'" /tmp/bootstrap.js
+          grep -Fq "version:'canonical-app-v375'" /tmp/bootstrap.js
           grep -Fq 'V373_SINGLE_PATH' /tmp/bootstrap.js
           grep -Fq 'structuredValidationOnly:true' /tmp/formal.js
           grep -Fq 'proseBlocking:false' /tmp/formal.js
           grep -Fq "const VERSION='363'" /tmp/core-guard.js
           grep -Fq 'DATA HUB 正本データ（サーバー取得）' /tmp/semantic.js
-          echo 'PRODUCTION CANONICAL V374 + HARD TARGET LABEL REMOVAL + FINAL SUMMARY: PASS'
+          grep -Fq "function answerComplete(label='MAGI 回答完了')" /tmp/progress.js
+          grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" /tmp/progress.js
+          echo 'PRODUCTION CANONICAL V375 + RESILIENT SEMANTIC + PROGRESS FIX: PASS'
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
