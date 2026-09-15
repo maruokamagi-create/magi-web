@@ -33,7 +33,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q '/magi-app-bootstrap-v363.js?v=374' index.html
-          grep -q '/chat-ui-v196.js?v=206' index.html
+          grep -q '/chat-ui-v196.js?v=207' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
           grep -q "const REV='374'" magi-app-bootstrap-v363.js
           grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
@@ -69,7 +69,7 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=206" -o /tmp/chat-ui.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=207" -o /tmp/chat-ui.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=374" -o /tmp/bootstrap.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=374" -o /tmp/integrity.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=374" -o /tmp/formal.js
@@ -77,7 +77,7 @@ jobs:
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=374" -o /tmp/semantic.js
 
           grep -Fq '/magi-app-bootstrap-v363.js?v=374' /tmp/index.html
-          grep -Fq '/chat-ui-v196.js?v=206' /tmp/index.html
+          grep -Fq '/chat-ui-v196.js?v=207' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
           grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" /tmp/chat-ui.js
           grep -Fq 'function controlTargetFor(speaker)' /tmp/chat-ui.js
