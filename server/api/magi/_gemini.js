@@ -7,13 +7,11 @@ const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 const MAX_BODY_BYTES = 220_000;
-// One Gemini attempt must finish well inside the 60s Vercel function ceiling.
-// Timeout failures are retried only by the browser as a whole request. Fast HTTP
-// 5xx/429 and malformed-output failures get one short same-model retry here, then
-// canonical mode may move to a fallback model. The canonical cache key deliberately
-// ignores which model answered, so the first successful result stays stable later.
+// Keep every Gemini call bounded. A persona endpoint can perform deterministic
+// correction passes, so retrying the same model inside every pass can multiply
+// latency beyond the serverless execution window. One model attempt per pass is
+// intentional; canonical mode may still move to a fallback model when allowed.
 const GEMINI_TIMEOUT_MS = 12_000;
-const FAST_RETRY_DELAY_MS = 450;
 const RATE_WINDOW_MS = 60_000;
 const RATE_MAX = 18;
 const buckets = new Map();
@@ -113,10 +111,6 @@ function extractText(data) {
     .trim();
 }
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
-}
-
 function isRetryableStatus(status) {
   return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
 }
@@ -124,11 +118,6 @@ function isRetryableStatus(status) {
 function isModelUnavailableMessage(message) {
   const text = String(message || '').toLowerCase();
   return text.includes('no longer available') || text.includes('not found') || text.includes('unsupported') || text.includes('not available to new users');
-}
-
-function canFastRetry(error) {
-  if (error?.timedOut === true) return false;
-  return error?.retryable === true;
 }
 
 function canFallback(error) {
@@ -233,17 +222,7 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
 }
 
 async function tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
-  let lastError;
-  for (let attempt = 0; attempt < 2; attempt++) {
-    try {
-      return await callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
-    } catch (error) {
-      lastError = error;
-      if (!canFastRetry(error) || attempt === 1) break;
-      await sleep(FAST_RETRY_DELAY_MS);
-    }
-  }
-  throw lastError;
+  return callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
 }
 
 async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
