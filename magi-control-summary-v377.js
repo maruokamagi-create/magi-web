@@ -21,17 +21,6 @@ function personaValue(container,persona,index){
 function orderOf(value){return Array.isArray(value?.candidatePlayers)?value.candidatePlayers.map(txt).filter(Boolean):[]}
 function finalOrder(result){return Array.isArray(result?.final?.lineup)?result.final.lineup.map(x=>txt(x?.name)).filter(Boolean):[]}
 function signature(order){return (order||[]).map(norm).join('|')}
-function cleanReason(value){
-  let s=txt(value?.candidateBasis||value?.primaryReason||value?.publicStatement||value?.changeReason);
-  if(!s)return'';
-  s=s.replace(/\s+/g,' ');
-  if(/^1番/.test(s)){
-    const i=s.indexOf('。');
-    if(i>=0&&i<s.length-3)s=s.slice(i+1).trim();
-  }
-  s=s.replace(/^(?:候補|再選定)\s*[:：]\s*/,'');
-  return limit(s,180);
-}
 function evidence(result){return result?.case?.evidence||{}}
 function question(result){return txt(result?.case?.question)}
 function teamPolicy(result){return evidence(result)?.teamPolicy||{}}
@@ -98,6 +87,23 @@ function sanitizeSpeech(value,result){
   }
   return txt(s)||'打線のつながり、今季通算成績、守備・起用の整合を基準に検証します。';
 }
+function stripLineupRecital(value){
+  let s=txt(value).replace(/^(?:候補|再選定)\s*[:：]\s*/,'');
+  const full=/(?:^|[。！？!?]\s*)1番[\s\S]{0,520}?2番[\s\S]{0,520}?3番[\s\S]{0,520}?4番[\s\S]{0,520}?5番[\s\S]{0,520}?6番[\s\S]{0,520}?7番[\s\S]{0,520}?8番[\s\S]{0,520}?9番[^。！？!?]*(?:[。！？!?]|$)/;
+  s=s.replace(full,' ').replace(/^[/／,，、\s]+|[/／,，、\s]+$/g,'').trim();
+  return s;
+}
+function cleanReason(value,result){
+  const candidates=[value?.candidateBasis,value?.primaryReason,value?.publicStatement,value?.changeReason];
+  for(const raw of candidates){
+    let s=sanitizeSpeech(raw,result);if(!s)continue;
+    const before=s;s=stripLineupRecital(s);
+    if(!s||(/^1番/.test(s)&&/9番/.test(s)))continue;
+    if(s===before&&/^(?:1番|候補|再選定)/.test(s)&&/9番/.test(s))continue;
+    return limit(s,180);
+  }
+  return'';
+}
 function practicalConditions(result,order){
   const raw=Array.isArray(result?.final?.reDeliberationConditions)?result.final.reDeliberationConditions:[];
   const qAsksHand=asksHandedness(result),min=threshold(result),allEnough=allSelectedAtLeast(result,order,min);
@@ -107,7 +113,7 @@ function practicalConditions(result,order){
     if(!qAsksHand&&handRe.test(s))return false;
     if(allEnough&&sampleRe.test(s))return false;
     return true;
-  }).slice(0,3);
+  }).map(s=>sanitizeSpeech(s,result)).filter(Boolean).slice(0,3);
   if(filtered.length)return filtered;
   const bits=['今季通算成績'];
   if(recentProvided(result))bits.push('直近6試合の傾向');
@@ -172,9 +178,9 @@ function buildFullLineup(result){
   else if(decisionType==='MAJORITY')decisionLead=`${supportingLabels.join('と')}が同一の二次打順案を支持し、${minority?.label||'少数側'}は別案を維持しました。`;
   else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立していません。表示中の打順は3案の一致度が最も高い実案として扱います。';
 
-  const decisiveReasons=unique(supportGroup.rows.map(e=>cleanReason(e.value))).filter(Boolean).slice(0,2);
+  const decisiveReasons=unique(supportGroup.rows.map(e=>cleanReason(e.value,result))).filter(Boolean).slice(0,2);
   const mainDisagreement=conflictText(supportGroup.order,others);
-  const minorityOpinion=minority?cleanReason(minority.value):'';
+  const minorityOpinion=minority?cleanReason(minority.value,result):'';
   const majorChanges=primarySecondChanges(result,entries);
   const reDeliberationConditions=practicalConditions(result,supportGroup.order);
 
