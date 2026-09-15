@@ -74,12 +74,13 @@ test('X06 candidate discussion can mention other players when not focused',()=>{
   assert.deepEqual(validateCrossOutput(CASE,r,{focused:false}),[]);
 });
 
-test('X07 fail closed cross keeps no unsafe debate content',()=>{
+test('X07 fail closed cross hides internal wording from users',()=>{
   const r=failClosedCross(['登板数5は不一致']);
   assert.equal(r.reviewRequired,true);
   assert.equal(r.agreement.length,0);
   assert.equal(r.challenges.melchior.length,0);
-  assert.match(r.reviewReason,/不整合/);
+  assert.match(r.reviewReason,/追加確認/);
+  assert.doesNotMatch(r.reviewReason,/Evidence|照合|正式ロスター|クロス審議/);
 });
 
 test('X08 all three Wise Men must receive cross-examination',()=>{
@@ -144,6 +145,16 @@ test('X15 pitching-plan challenges must name exact role and player',()=>{
     casper:['クローザー 大野 竜暉への役割配置を、捕手との兼任も含めてどう見ますか。']
   }});
   assert.deepEqual(validatePitchingPlanDialogueSpecificity(PITCHING_PLAN_CASE,r),[]);
+});
+
+test('X16 a merely broad full-lineup challenge does not erase MAGI CONTROL',()=>{
+  const r=cross({challenges:{
+    melchior:['その打順で上位から中軸へどうつなぐ考えですか。'],
+    balthasar:['攻撃の流れとしてこの並びを選んだ理由を説明してください。'],
+    casper:['育成と負担も含めて、この打順をどう考えたのか説明してください。']
+  }});
+  assert.equal(validateFullLineupDialogueSpecificity(FULL_LINEUP_CASE,r).length,3);
+  assert.deepEqual(validateCrossOutput(FULL_LINEUP_CASE,r,{focused:false}),[]);
 });
 
 let passed=0;
