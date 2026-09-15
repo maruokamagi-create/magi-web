@@ -14,7 +14,8 @@
     { "source": "/api/magi/fielding-report", "destination": "/api/magi-gateway?__magi_route=magi-fielding-report" },
     { "source": "/api/magi/health", "destination": "/api/magi-gateway?__magi_route=magi-health" },
     { "source": "/api/magi/orchestrate", "destination": "/api/magi-gateway?__magi_route=magi-orchestrate" },
-    { "source": "/api/magi/persona", "destination": "/api/magi-gateway?__magi_route=magi-persona" }
+    { "source": "/api/magi/persona", "destination": "/api/magi-gateway?__magi_route=magi-persona" },
+    { "source": "/api/magi/dialogue", "destination": "/api/magi-gateway?__magi_route=magi-dialogue" }
   ],
   "headers": [
     { "source": "/(.*)", "headers": [
