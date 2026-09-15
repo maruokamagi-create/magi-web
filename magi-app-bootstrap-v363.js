@@ -2,7 +2,7 @@
 'use strict';
 if(window.MAGI_APP_BOOTSTRAP_V363)return;
 window.MAGI_APP_BOOTSTRAP_V363=true;
-const REV='376';
+const REV='377';
 let ready=false,failed=false;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const load=src=>new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error(`load failed: ${src}`));document.body.appendChild(s);});
@@ -21,7 +21,7 @@ function formalReady(){return window.MAGI_FORMAL_RUNNER_V373_READY===true&&typeo
 function coreGuardReady(){return window.MAGI_CORE_CLIENT_GUARD_V363_META?.runtimeVersion===363;}
 function semanticReady(){return typeof window.MAGI_SEMANTIC_RUN_V2==='function'&&String(window.MAGI_CLIENT_VERSION||'')==='362'&&String(window.MAGI_EFFECTIVE_RUNTIME_VERSION||'')==='363';}
 async function waitCapability(check){while(!check())await sleep(40);}
-function activateButton(){const b=findButton();if(!b)throw new Error('MAGI実行ボタンを取得できません');b.id='magiRunButton';b.type='button';b.dataset.magiEntry='semantic-v376';b.removeAttribute('onclick');b.disabled=false;b.textContent='MAGI実行';}
+function activateButton(){const b=findButton();if(!b)throw new Error('MAGI実行ボタンを取得できません');b.id='magiRunButton';b.type='button';b.dataset.magiEntry='semantic-v377';b.removeAttribute('onclick');b.disabled=false;b.textContent='MAGI実行';}
 async function boot(){
   document.addEventListener('click',blockLegacyClick,true);quarantineButton();
   await waitLegacyUi();
@@ -33,7 +33,7 @@ async function boot(){
   await load(`/magi-core-client-guard-v363.js?v=${REV}`);await waitCapability(coreGuardReady);
   await load(`/main-live-answer-v362.js?v=${REV}`);await waitCapability(semanticReady);
   ready=true;activateButton();
-  window.MAGI_APP_RUNTIME=Object.freeze({version:'canonical-app-v376',clientVersion:363,runtimeVersion:363,ready:true,entry:'WINDOW_CAPTURE_SEMANTIC_V2',formalRunner:'V373_SINGLE_PATH',progress:'EVENT_DRIVEN_ONLY',rawPacketValidated:true,numericFailClosed:true,structuredValidationOnly:true,proseBlocking:false,authoritativeEvidenceVisible:true,staleClientFailClosed:true,bootstrapLast:true,localFallback:false,teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916',engineVersion:String(window.MAGI_ENGINE_V1?.version||'')});
+  window.MAGI_APP_RUNTIME=Object.freeze({version:'canonical-app-v377',clientVersion:363,runtimeVersion:363,ready:true,entry:'WINDOW_CAPTURE_SEMANTIC_V2',formalRunner:'V373_SINGLE_PATH',progress:'EVENT_DRIVEN_ONLY',rawPacketValidated:true,numericFailClosed:true,structuredValidationOnly:true,proseBlocking:false,authoritativeEvidenceVisible:true,staleClientFailClosed:true,bootstrapLast:true,localFallback:false,teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916',controlSummary:'V377_STRUCTURED',engineVersion:String(window.MAGI_ENGINE_V1?.version||'')});
   document.dispatchEvent(new CustomEvent('magi:app-ready',{detail:window.MAGI_APP_RUNTIME}));
 }
 boot().catch(error=>setError(error?.message||String(error)));

@@ -6,6 +6,9 @@ on:
     paths:
       - 'index.html'
       - 'chat-ui-v196.js'
+      - 'magi-control-summary-v377.js'
+      - 'result-layout-v189.js'
+      - 'selection-polish-v218.js'
       - 'magi-app-bootstrap-v363.js'
       - 'deliberation-integrity-v348.js'
       - 'magi-formal-runner-v373.js'
@@ -34,10 +37,15 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=376' index.html
-          grep -q '/chat-ui-v196.js?v=208' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=377' index.html
+          grep -q '/magi-control-summary-v377.js?v=377' index.html
+          grep -q '/result-layout-v189.js?v=201' index.html
+          grep -q '/chat-ui-v196.js?v=209' index.html
+          grep -q '/selection-polish-v218.js?v=221' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
-          grep -q "const REV='376'" magi-app-bootstrap-v363.js
+          grep -q "const REV='377'" magi-app-bootstrap-v363.js
+          grep -q "version:'canonical-app-v377'" magi-app-bootstrap-v363.js
+          grep -q "controlSummary:'V377_STRUCTURED'" magi-app-bootstrap-v363.js
           grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
           grep -q '1.1.2-serial-integrity' deliberation-integrity-v348.js
           ! grep -q 'Promise.all(jobs)' deliberation-integrity-v348.js
@@ -47,18 +55,42 @@ jobs:
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
           grep -q 'proseBlocking:false' magi-formal-runner-v373.js
           grep -q "version:'formal-runner-v373-single-path'" magi-formal-runner-v373.js
+          grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' magi-formal-runner-v373.js
+          grep -Fq "new CustomEvent('magi:deliberation-result'" magi-formal-runner-v373.js
+          grep -Fq 'exposesFinalResult:true' magi-formal-runner-v373.js
+
+          grep -Fq "label='2対1 MAJORITY'" magi-control-summary-v377.js
+          grep -Fq "label='3対0 CONSENSUS'" magi-control-summary-v377.js
+          grep -Fq "label='1対1対1 DEADLOCK'" magi-control-summary-v377.js
+          grep -Fq 'function sanitizeSpeech(value,result)' magi-control-summary-v377.js
+          grep -Fq 'function practicalConditions(result,order)' magi-control-summary-v377.js
+          grep -Fq 'function mainDisagreement' magi-control-summary-v377.js || grep -Fq 'function conflictText' magi-control-summary-v377.js
+          grep -Fq 'practicalBattingAtBatsSufficient' magi-control-summary-v377.js
+          grep -Fq "bits=['今季通算成績']" magi-control-summary-v377.js
+
           grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" chat-ui-v196.js
           grep -Fq 'function controlTargetFor(speaker)' chat-ui-v196.js
           grep -Fq 'function controlSpeechFor(speech,target)' chat-ui-v196.js
           grep -Fq 'displaySpeech=isControl?controlSpeechFor(speech,controlTarget):speech' chat-ui-v196.js
-          grep -Fq 'senderMeta=isControl?(controlTarget?`→ ${controlTarget.jp}`' chat-ui-v196.js
-          grep -Fq '#magiChatView .magiTarget{display:none!important}' chat-ui-v196.js
-          grep -Fq 'function scrubRedundantTargetLabels(root=document)' chat-ui-v196.js
-          grep -Fq 'new MutationObserver(()=>scrubRedundantTargetLabels(box))' chat-ui-v196.js
-          grep -Fq 'function finalSummaryText()' chat-ui-v196.js
+          grep -Fq 'api?.sanitizeSpeech' chat-ui-v196.js
+          grep -Fq 'structuredSummaryHtml(model)' chat-ui-v196.js
+          grep -Fq "summarySection('決め手'" chat-ui-v196.js
+          grep -Fq "summarySection('最大の争点'" chat-ui-v196.js
+          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-v196.js
           grep -Fq "addPhase(body,'最終総括')" chat-ui-v196.js
-          grep -Fq 'MAGI CONTROL<span>最終総括</span>' chat-ui-v196.js
+          grep -Fq "document.addEventListener('magi:deliberation-result'" chat-ui-v196.js
+          grep -Fq '#magiChatView .magiTarget{display:none!important}' chat-ui-v196.js
           ! grep -Fq '宛先：' chat-ui-v196.js
+
+          grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
+          grep -Fq "/(?:^|\\s)1番\\s/.test(t)" result-layout-v189.js
+          grep -Fq 'updateDecisionBadge()' result-layout-v189.js
+          grep -Fq 'model?.label' result-layout-v189.js
+
+          grep -Fq 'if(!s||HAND_RE.test(s))return' selection-polish-v218.js
+          grep -Fq 'structuredConditions()' selection-polish-v218.js
+          grep -Fq "document.addEventListener('magi:deliberation-result',schedule)" selection-polish-v218.js
+
           grep -q "CACHE_VERSION = 'magi-canonical-v4'" server/api/magi/_canonical-cache.js
           grep -q "VOLATILE_KEYS" server/api/magi/_canonical-cache.js
           grep -Fq 'error?.timedOut === true' server/api/magi/_gemini.js
@@ -72,10 +104,50 @@ jobs:
           grep -Fq 'practicalBattingAtBatsSufficient:15' main-live-answer-v362.js
           grep -Fq '相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない' main-live-answer-v362.js
           grep -Fq '15打数以上を実用上十分な母数として扱う' main-live-answer-v362.js
-          grep -Fq 'practicalDeliberationPriorities' main-live-answer-v362.js
           grep -Fq 'const governedPacket=applyTeamPolicy(packet)' main-live-answer-v362.js
           ! grep -q 'function evidenceCritical' lineup-finalizer-v350.js
-          echo 'CANONICAL V376 + MARUOKA PRACTICAL LINEUP POLICY: PASS'
+          echo 'CANONICAL V377 + STRUCTURED CONTROL SUMMARY: PASS'
+
+      - name: Verify deterministic CONTROL summary policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs=require('fs');
+          const vm=require('vm');
+          vm.runInThisContext(fs.readFileSync('magi-control-summary-v377.js','utf8'));
+          const api=globalThis.MAGI_CONTROL_SUMMARY_V377;
+          if(!api)throw new Error('summary API missing');
+          const majority=['大野 竜暉','坂田 暉馬','中嶋 玲月','嶋田 栄志','大久保 陽翔','鰐渕 将太','橋向 結都','武澤 大翔','武田 晴琉翔'];
+          const casper=['大野 竜暉','坂田 暉馬','嶋田 栄志','中嶋 玲月','大久保 陽翔','橋向 結都','鰐渕 将太','大久保 夢翔','武田 晴琉翔'];
+          const players=[...new Set([...majority,...casper])].map((name,i)=>({name,batting:{AB:String(15+i),AVG:name==='中嶋 玲月'?'.542':'.300',OPS:name==='中嶋 玲月'?'1.268':'.800'}}));
+          const result={
+            case:{question:'ベストオーダーは？',evidence:{teamPolicy:{sampleSize:{practicalBattingAtBatsSufficient:15}},numericEvidenceContract:{recentSixNumbersProvided:false},recentSix:{status:'INCOMPLETE'},allCurrentTeamCheck:{players}}},
+            primary:{
+              melchior:{candidatePlayers:majority},balthasar:{candidatePlayers:majority},casper:{candidatePlayers:casper}
+            },
+            second:{
+              melchior:{persona:'MELCHIOR-1',candidatePlayers:majority,candidateBasis:'今季通算の出塁とOPS、上位から中軸へのつながりを重視する。'},
+              balthasar:{persona:'BALTHASAR-2',candidatePlayers:majority,candidateBasis:'得点につなげる上位と中軸の並びを優先し、この打順を維持する。'},
+              casper:{persona:'CASPER-3',candidatePlayers:casper,candidateBasis:'中軸の役割分担と全体の起用バランスを優先する。'}
+            },
+            final:{mode:'FULL_LINEUP',lineup:majority.map((name,i)=>({slot:i+1,name})),reDeliberationConditions:[
+              '各選手の対右投手・対左投手別の詳細な打撃成績',
+              '現チームの打数がまだ10打数台の選手が多く、母数の蓄積が必要',
+              '今季通算のOPSが大きく変化した場合'
+            ]}
+          };
+          const s=api.build(result);
+          if(s?.label!=='2対1 MAJORITY')throw new Error('majority label failed: '+JSON.stringify(s));
+          if(s?.minorityPersona!=='CASPER')throw new Error('minority preservation failed');
+          if(!String(s?.mainDisagreement).includes('4番'))throw new Error('major disagreement did not prioritize 4th slot');
+          const conditions=(s?.reDeliberationConditions||[]).join(' ');
+          if(/対右|対左|左右|相手投手|母数|10打数台/.test(conditions))throw new Error('forbidden reconsideration condition survived: '+conditions);
+          const corrected=api.sanitizeSpeech('メルキオール、直近で中嶋 玲月が打率.542・OPS 1.268を記録している。',result);
+          if(!corrected.includes('今季通算')||corrected.includes('直近で'))throw new Error('current/recent label correction failed: '+corrected);
+          if((s.decisiveReasons||[]).some(x=>/1番[\s\S]*9番/.test(x)))throw new Error('lineup recital leaked into reasons');
+          console.log('DETERMINISTIC CONTROL SUMMARY POLICY: PASS');
+          NODE
 
       - name: Wait for production deployment
         run: sleep 45
@@ -86,51 +158,47 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=208" -o /tmp/chat-ui.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=376" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=376" -o /tmp/integrity.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=376" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=376" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=376" -o /tmp/semantic.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=376" -o /tmp/progress.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-control-summary-v377.js?v=377" -o /tmp/control-summary.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/result-layout-v189.js?v=201" -o /tmp/result-layout.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=209" -o /tmp/chat-ui.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/selection-polish-v218.js?v=221" -o /tmp/selection-polish.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=377" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=377" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=377" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=377" -o /tmp/core-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=377" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=377" -o /tmp/progress.js
 
-          grep -Fq '/magi-app-bootstrap-v363.js?v=376' /tmp/index.html
-          grep -Fq '/chat-ui-v196.js?v=208' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=377' /tmp/index.html
+          grep -Fq '/magi-control-summary-v377.js?v=377' /tmp/index.html
+          grep -Fq '/result-layout-v189.js?v=201' /tmp/index.html
+          grep -Fq '/chat-ui-v196.js?v=209' /tmp/index.html
+          grep -Fq '/selection-polish-v218.js?v=221' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
-          grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" /tmp/chat-ui.js
-          grep -Fq 'function controlTargetFor(speaker)' /tmp/chat-ui.js
-          grep -Fq 'function controlSpeechFor(speech,target)' /tmp/chat-ui.js
-          grep -Fq 'displaySpeech=isControl?controlSpeechFor(speech,controlTarget):speech' /tmp/chat-ui.js
-          grep -Fq 'senderMeta=isControl?(controlTarget?`→ ${controlTarget.jp}`' /tmp/chat-ui.js
-          grep -Fq '#magiChatView .magiTarget{display:none!important}' /tmp/chat-ui.js
-          grep -Fq 'function scrubRedundantTargetLabels(root=document)' /tmp/chat-ui.js
-          grep -Fq 'new MutationObserver(()=>scrubRedundantTargetLabels(box))' /tmp/chat-ui.js
-          grep -Fq 'function finalSummaryText()' /tmp/chat-ui.js
-          grep -Fq "addPhase(body,'最終総括')" /tmp/chat-ui.js
-          grep -Fq 'MAGI CONTROL<span>最終総括</span>' /tmp/chat-ui.js
+          grep -Fq "label='2対1 MAJORITY'" /tmp/control-summary.js
+          grep -Fq 'function sanitizeSpeech(value,result)' /tmp/control-summary.js
+          grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" /tmp/result-layout.js
+          grep -Fq 'updateDecisionBadge()' /tmp/result-layout.js
+          grep -Fq 'structuredSummaryHtml(model)' /tmp/chat-ui.js
+          grep -Fq 'api?.sanitizeSpeech' /tmp/chat-ui.js
+          grep -Fq "document.addEventListener('magi:deliberation-result'" /tmp/chat-ui.js
           ! grep -Fq '宛先：' /tmp/chat-ui.js
-          grep -Fq 'magiMsg ${isControl?' /tmp/chat-ui.js
-          grep -Fq "const REV='376'" /tmp/bootstrap.js
+          grep -Fq 'structuredConditions()' /tmp/selection-polish.js
+          grep -Fq 'if(!s||HAND_RE.test(s))return' /tmp/selection-polish.js
+          grep -Fq "const REV='377'" /tmp/bootstrap.js
+          grep -Fq "version:'canonical-app-v377'" /tmp/bootstrap.js
+          grep -Fq "controlSummary:'V377_STRUCTURED'" /tmp/bootstrap.js
           grep -Fq 'MAGI_DELIBERATION_SERIAL_V374' /tmp/integrity.js
-          grep -Fq '1.1.2-serial-integrity' /tmp/integrity.js
           ! grep -Fq 'Promise.all(jobs)' /tmp/integrity.js
           grep -Fq 'magi-formal-runner-v373.js' /tmp/bootstrap.js
-          ! grep -Fq 'magi-formal-runner-v358.js' /tmp/bootstrap.js
-          ! grep -Fq 'magi-ui-truth-v363.js' /tmp/bootstrap.js
-          grep -Fq "version:'canonical-app-v376'" /tmp/bootstrap.js
-          grep -Fq "teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" /tmp/bootstrap.js
-          grep -Fq 'V373_SINGLE_PATH' /tmp/bootstrap.js
-          grep -Fq 'structuredValidationOnly:true' /tmp/formal.js
-          grep -Fq 'proseBlocking:false' /tmp/formal.js
+          grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' /tmp/formal.js
+          grep -Fq 'exposesFinalResult:true' /tmp/formal.js
           grep -Fq "const VERSION='363'" /tmp/core-guard.js
           grep -Fq 'DATA HUB 正本データ（サーバー取得）' /tmp/semantic.js
           grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" /tmp/semantic.js
           grep -Fq 'practicalBattingAtBatsSufficient:15' /tmp/semantic.js
-          grep -Fq '相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない' /tmp/semantic.js
-          grep -Fq '15打数以上を実用上十分な母数として扱う' /tmp/semantic.js
           grep -Fq "function answerComplete(label='MAGI 回答完了')" /tmp/progress.js
-          grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" /tmp/progress.js
-          echo 'PRODUCTION CANONICAL V376 + MARUOKA PRACTICAL LINEUP POLICY: PASS'
+          echo 'PRODUCTION CANONICAL V377 + STRUCTURED CONTROL SUMMARY: PASS'
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo

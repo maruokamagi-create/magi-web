@@ -120,7 +120,9 @@ const runner=async function({question,evidence=null,selectionKind='',semantic=nu
   validateEvidence(evidence,selectionKind);
   const oldQuestion=q.value;
   const baseEngine=window.MAGI_ENGINE_V1;
+  let capturedResult=null;
   running=true;q.value=nextQuestion;
+  window.MAGI_LAST_DELIBERATION_RESULT=null;
   try{
     progress(18,'正本Evidenceを固定。3賢人審議を開始します','CASE / EVIDENCE');
     activeEvidence=reinforceEvidence(evidence);
@@ -130,15 +132,20 @@ const runner=async function({question,evidence=null,selectionKind='',semantic=nu
       deliberate:async(input,options={})=>{
         const enforcedInput={...input,evidence:clone(activeEvidence)};
         const result=await baseEngine.deliberate(enforcedInput,bufferedOptions(options));
+        capturedResult=clone(result);
         validateDelivered(result,selectionKind);
         replay(options,result);
         return result;
       }
     });
     window.MAGI_ENGINE_V1=evidenceEngine;
-    const result=await engineUiRunner();
+    const uiResult=await engineUiRunner();
+    if(capturedResult){
+      window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult);
+      document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:clone(capturedResult)}));
+    }
     progress(99,'最終結果の構造・Evidence整合性を確認済み','FINAL VALIDATION');
-    return result;
+    return capturedResult||uiResult;
   }catch(error){
     progressError('正式審議を完了できませんでした');
     throw error;
@@ -159,7 +166,8 @@ runner.meta=Object.freeze({
   structuredValidationOnly:true,
   proseBlocking:false,
   singlePass:true,
-  localFallback:false
+  localFallback:false,
+  exposesFinalResult:true
 });
 window.MAGI_FORMAL_UI_RUNNER_V3=runner;
 window.MAGI_FORMAL_UI_RUNNER_V2=runner;
