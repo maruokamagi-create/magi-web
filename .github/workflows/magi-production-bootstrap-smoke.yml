@@ -6,6 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'magi-app-bootstrap-v363.js'
+      - 'deliberation-integrity-v348.js'
       - 'magi-formal-runner-v373.js'
       - 'magi-core-client-guard-v363.js'
       - 'main-live-answer-v362.js'
@@ -30,8 +31,12 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=373' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=374' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
+          grep -q "const REV='374'" magi-app-bootstrap-v363.js
+          grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
+          grep -q '1.1.2-serial-integrity' deliberation-integrity-v348.js
+          ! grep -q 'Promise.all(jobs)' deliberation-integrity-v348.js
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
           ! grep -q 'magi-formal-runner-v358.js' magi-app-bootstrap-v363.js
           ! grep -q 'magi-ui-truth-v363.js' magi-app-bootstrap-v363.js
@@ -41,34 +46,39 @@ jobs:
           grep -q "CACHE_VERSION = 'magi-canonical-v4'" server/api/magi/_canonical-cache.js
           grep -q "VOLATILE_KEYS" server/api/magi/_canonical-cache.js
           ! grep -q 'function evidenceCritical' lineup-finalizer-v350.js
-          echo 'CANONICAL V373 STATIC ARCHITECTURE: PASS'
+          echo 'CANONICAL V374 SERIAL ARCHITECTURE: PASS'
 
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Verify production canonical bootstrap and live master Evidence
+      - name: Verify production serialized bootstrap and live master Evidence
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=373" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=373" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=373" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=373" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=374" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=374" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=374" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=374" -o /tmp/core-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=374" -o /tmp/semantic.js
 
-          grep -Fq '/magi-app-bootstrap-v363.js?v=373' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=374' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
+          grep -Fq "const REV='374'" /tmp/bootstrap.js
+          grep -Fq 'MAGI_DELIBERATION_SERIAL_V374' /tmp/integrity.js
+          grep -Fq '1.1.2-serial-integrity' /tmp/integrity.js
+          ! grep -Fq 'Promise.all(jobs)' /tmp/integrity.js
           grep -Fq 'magi-formal-runner-v373.js' /tmp/bootstrap.js
           ! grep -Fq 'magi-formal-runner-v358.js' /tmp/bootstrap.js
           ! grep -Fq 'magi-ui-truth-v363.js' /tmp/bootstrap.js
-          grep -Fq "version:'canonical-app-v373'" /tmp/bootstrap.js
+          grep -Fq "version:'canonical-app-v374'" /tmp/bootstrap.js
           grep -Fq 'V373_SINGLE_PATH' /tmp/bootstrap.js
           grep -Fq 'structuredValidationOnly:true' /tmp/formal.js
           grep -Fq 'proseBlocking:false' /tmp/formal.js
           grep -Fq "const VERSION='363'" /tmp/core-guard.js
           grep -Fq 'DATA HUB 正本データ（サーバー取得）' /tmp/semantic.js
-          echo 'PRODUCTION CANONICAL V373 BOOTSTRAP: PASS'
+          echo 'PRODUCTION CANONICAL V374 SERIAL BOOTSTRAP: PASS'
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
