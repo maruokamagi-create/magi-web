@@ -6,6 +6,7 @@ on:
       - safe/deadlock-ui-v378
     paths:
       - 'final-decision-emphasis-v340.js'
+      - 'index.html'
       - 'scripts/test-deadlock-ui-v378.mjs'
       - '.github/workflows/magi-deadlock-ui-v378-branch.yml'
 
@@ -27,4 +28,5 @@ jobs:
           grep -Fq "title:'参考案（未確定）'" final-decision-emphasis-v340.js
           grep -Fq "verdict:'最終ベストオーダー'" final-decision-emphasis-v340.js
           grep -Fq "title:'公式戦想定 ベストオーダー'" final-decision-emphasis-v340.js
+          grep -Fq '/final-decision-emphasis-v340.js?v=378' index.html
           echo 'SAFE DEADLOCK-ONLY DISPLAY CHANGE: PASS'
