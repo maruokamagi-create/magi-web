@@ -166,7 +166,7 @@ function buildFullLineup(result){
   const selectedSig=signature(selected);
   const selectedGroup=groups.find(g=>g.sig===selectedSig)||groups[0];
   const top=groups[0];
-  let decisionType='DEADLOCK',vote='1-1-1',label='1対1対1 DEADLOCK',supportGroup=selectedGroup;
+  let decisionType='DEADLOCK',vote='1-1-1',label='3人の意見が分かれました',supportGroup=selectedGroup;
   if(top.rows.length===3){decisionType='CONSENSUS';vote='3-0';label='3対0 CONSENSUS';supportGroup=top}
   else if(top.rows.length===2){decisionType='MAJORITY';vote='2-1';label='2対1 MAJORITY';supportGroup=top}
 
