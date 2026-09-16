@@ -176,9 +176,9 @@ function buildFullLineup(result){
   let decisionLead='';
   if(decisionType==='CONSENSUS')decisionLead='3賢人が二次判定で同一の打順案を支持しました。';
   else if(decisionType==='MAJORITY')decisionLead=`${supportingLabels.join('と')}が同一の二次打順案を支持し、${minority?.label||'少数側'}は別案を維持しました。`;
-  else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立していません。表示中の打順は3案の一致度が最も高い実案として扱います。';
+  else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立しませんでした。表示中の打順は比較のための参考案（暫定）で、正式採用ではありません。';
 
-  const decisiveReasons=unique(supportGroup.rows.map(e=>cleanReason(e.value,result))).filter(Boolean).slice(0,2);
+  const decisiveReasons=decisionType==='DEADLOCK'?[]:unique(supportGroup.rows.map(e=>cleanReason(e.value,result))).filter(Boolean).slice(0,2);
   const mainDisagreement=conflictText(supportGroup.order,others);
   const minorityOpinion=minority?cleanReason(minority.value,result):'';
   const majorChanges=primarySecondChanges(result,entries);
