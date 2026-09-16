@@ -10,7 +10,7 @@ const P={
 };
 const CONTROL={jp:'MAGI CONTROL',img:'/magi-official-symbol-v125.svg?v=195'};
 const JP=Object.fromEntries(Object.entries(P).map(([k,v])=>[k,v.jp]));
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
 let lastResult=null;
 let patchScheduled=false;
