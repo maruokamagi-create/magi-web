@@ -12,10 +12,10 @@ const PLAN = [
   { speaker: 'balthasar', target: 'melchior' },
   { speaker: 'casper', target: 'balthasar' }
 ];
+const DIALOGUE_BUDGET_MS = 26_000;
 const text = v => String(v ?? '').trim();
 const norm = v => text(v).normalize('NFKC').replace(/[\s　]+/g, '');
 
-function parseJson(value) { try { return JSON.parse(String(value || '')); } catch { return null; } }
 function createCaptureResponse() {
   const headers = new Map();
   return {
@@ -104,14 +104,21 @@ export function buildFallbackDialogue(body) {
 
 export default async function handler(req, res) {
   const capture = createCaptureResponse();
-  await magiDialogue(req, capture);
-  if (Number(capture.statusCode) >= 500) {
+  let settled = false;
+  const original = Promise.resolve(magiDialogue(req, capture)).then(() => { settled = true; }).catch(error => {
+    settled = true;
+    capture.statusCode = 500;
+    capture.body = JSON.stringify({ error: String(error?.message || error || 'Wise Men dialogue failed') });
+  });
+  await Promise.race([original, new Promise(resolve => setTimeout(resolve, DIALOGUE_BUDGET_MS))]);
+
+  if (!settled || Number(capture.statusCode) >= 500) {
     const fallback = buildFallbackDialogue(req?.body);
     if (fallback) {
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('X-MAGI-Dialogue-Fallback', 'grounded-lineup-dialogue');
+      res.setHeader('X-MAGI-Dialogue-Fallback', !settled ? 'budget-grounded-lineup-dialogue' : 'grounded-lineup-dialogue');
       return res.end(JSON.stringify(fallback));
     }
   }
