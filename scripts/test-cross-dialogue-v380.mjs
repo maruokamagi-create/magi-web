@@ -45,6 +45,10 @@ assert.match(uiSrc,/speaker\.jp/,'direct dialogue must use the actual Wise Man n
 assert.match(uiSrc,/controlInterventionRestored:true/,'MAGI CONTROL intervention must be restored');
 assert.match(uiSrc,/preservesSecondJudgment:true/,'cross-dialogue patch must preserve second judgments');
 assert.match(uiSrc,/removesDuplicateCrossBlocks:true/,'cross-dialogue patch must remove duplicated cross blocks');
+assert.match(uiSrc,/dialogueHydrationFallback:true/,'missing embedded dialogue must be hydrated from the direct dialogue route');
+assert.match(uiSrc,/persistentChatObserver:true/,'late-render chat must remain patchable');
+assert.match(uiSrc,/new MutationObserver/,'late chat rendering must be observed');
+assert.match(uiSrc,/fetch\('\/api\/magi\/dialogue'/,'UI must recover direct dialogue when the final result lacks it');
 assert.match(uiSrc,/phaseOrder:'PRIMARY_CONTROL_DIALOGUE_SECOND'/,'phase order must be primary -> control/dialogue -> second judgment');
 assert.match(uiSrc,/while\(node&&node!==secondStart\)/,'existing cross section must be replaced rather than appended');
 const opening=uiSrc.indexOf("controlChat(controlOpeningText(result),'争点整理')");
@@ -53,7 +57,7 @@ const closing=uiSrc.indexOf("controlChat(controlClosingText(),'相互検証ま�
 const second=uiSrc.indexOf("phaseNode('二次判定')");
 assert.ok(opening>=0&&dialogue>opening&&closing>dialogue&&second>closing,'MAGI CONTROL and Wise Men dialogue must appear before SECOND JUDGMENT');
 assert.match(languageSrc,/カスペル\/g,'カスパー'/,'CASPER display typo must be normalized in MAGI results');
-assert.match(indexSrc,/cross-dialogue-ui-v380\.js\?v=384/,'production HTML must load cross-dialogue UI revision v384');
-assert.match(indexSrc,/magi-user-language-v382\.js\?v=384/,'production HTML must load language normalization revision v384');
+assert.match(indexSrc,/cross-dialogue-ui-v380\.js\?v=386/,'production HTML must load cross-dialogue UI revision v386');
+assert.match(indexSrc,/magi-user-language-v382\.js\?v=385/,'production HTML must load current language normalization revision');
 
-console.log('CROSS DIALOGUE V384: PASS');
+console.log('CROSS DIALOGUE V386: PASS');
