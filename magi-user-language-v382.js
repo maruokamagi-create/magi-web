@@ -30,7 +30,16 @@ function rewriteTextNode(node){
   if(!node||node.nodeType!==Node.TEXT_NODE)return;
   const before=node.nodeValue||'';
   let after=rewrite(before);
-  if(inMagiResult(node))after=after.replace(/カスペル/g,'カスパー');
+  if(inMagiResult(node)){
+    after=after
+      .replace(/カスペル/g,'カスパー')
+      .replace(/MELCHIOR(?:-1)?/g,'メルキオール')
+      .replace(/BALTHASAR(?:-2)?/g,'バルタザール')
+      .replace(/CASPER(?:-3)?/g,'カスパー')
+      .replace(/基準案：/g,'表示中の参考案：')
+      .replace(/3対0\s*CONSENSUS/g,'3人の意見が一致しました')
+      .replace(/2対1\s*MAJORITY/g,'2人の意見が一致しました');
+  }
   if(after!==before)node.nodeValue=after;
 }
 function rewriteTree(root){
