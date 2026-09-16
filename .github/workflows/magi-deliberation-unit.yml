@@ -4,7 +4,9 @@ on:
   push:
     branches: [main]
     paths:
+      - 'api/magi-gateway.js'
       - 'server/api/magi/persona.js'
+      - 'server/api/magi/persona-resilient.js'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/core.js'
       - 'server/api/magi/_semantic-postguard.js'
@@ -19,6 +21,7 @@ on:
       - 'engine-ui-v187.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
+      - 'scripts/test-persona-second-fallback.mjs'
       - 'scripts/test-pitching-plan-output-guard.mjs'
       - 'scripts/test-derived-metric-label-guard.mjs'
       - 'scripts/test-deliberation-evidence-bridge.mjs'
@@ -54,6 +57,9 @@ jobs:
 
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
+
+      - name: Run SECOND transient fallback cases
+        run: node --experimental-default-type=module scripts/test-persona-second-fallback.mjs
 
       - name: Run pitching-plan evidence-quality guard cases
         run: node --experimental-default-type=module scripts/test-pitching-plan-output-guard.mjs
