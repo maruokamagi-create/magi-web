@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'magi-control-summary-v377.js'
-      - 'chat-ui-v196.js'
+      - 'chat-ui-canonical-v387.js'
       - 'result-layout-v189.js'
       - 'selection-polish-v218.js'
       - 'magi-formal-runner-v373.js'
@@ -26,13 +26,15 @@ jobs:
         run: |
           set -euo pipefail
           node --check magi-control-summary-v377.js
-          node --check chat-ui-v196.js
+          node --check chat-ui-canonical-v387.js
           node --check result-layout-v189.js
           node --check selection-polish-v218.js
           node --check magi-formal-runner-v373.js
           node --check magi-app-bootstrap-v363.js
           grep -Fq '/magi-control-summary-v377.js?v=386' index.html
-          grep -Fq '/chat-ui-v196.js?v=209' index.html
+          grep -Fq '/chat-ui-canonical-v387.js?v=387' index.html
+          ! grep -Fq '/chat-ui-v196.js' index.html
+          ! grep -Fq '/cross-dialogue-ui-v380.js' index.html
           grep -Fq '/result-layout-v189.js?v=201' index.html
           grep -Fq '/selection-polish-v218.js?v=221' index.html
           grep -Fq '/magi-app-bootstrap-v363.js?v=377' index.html
@@ -42,10 +44,10 @@ jobs:
           grep -Fq "label='3対0 CONSENSUS'" magi-control-summary-v377.js
           grep -Fq "label='3人の意見が分かれました'" magi-control-summary-v377.js
           grep -Fq 'function sanitizeSpeech(value,result)' magi-control-summary-v377.js
-          grep -Fq 'structuredSummaryHtml(model)' chat-ui-v196.js
-          grep -Fq "summarySection('決め手'" chat-ui-v196.js
-          grep -Fq "summarySection('最大の争点'" chat-ui-v196.js
-          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-v196.js
+          grep -Fq "summarySection('決め手'" chat-ui-canonical-v387.js
+          grep -Fq "summarySection('最大の争点'" chat-ui-canonical-v387.js
+          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-canonical-v387.js
+          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' chat-ui-canonical-v387.js
           grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
           grep -Fq 'structuredConditions()' selection-polish-v218.js
 
