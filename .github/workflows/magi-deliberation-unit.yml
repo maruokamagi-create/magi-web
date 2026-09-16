@@ -26,6 +26,7 @@ on:
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
       - 'scripts/test-persona-second-fallback.mjs'
+      - 'scripts/test-lineup-persona-grounding.mjs'
       - 'scripts/test-dialogue-resilient-fallback.mjs'
       - 'scripts/test-cross-dialogue-ui-contract.mjs'
       - 'scripts/test-user-language-summary.mjs'
@@ -67,6 +68,9 @@ jobs:
 
       - name: Run SECOND transient fallback cases
         run: node --experimental-default-type=module scripts/test-persona-second-fallback.mjs
+
+      - name: Run current-lineup persona grounding cases
+        run: node --experimental-default-type=module scripts/test-lineup-persona-grounding.mjs
 
       - name: Run direct dialogue fallback cases
         run: node --experimental-default-type=module scripts/test-dialogue-resilient-fallback.mjs
