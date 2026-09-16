@@ -4,6 +4,7 @@ if(window.MAGI_USER_LANGUAGE_V382)return;
 window.MAGI_USER_LANGUAGE_V382=true;
 
 const replacements=[
+  [/正本Evidenceが揃わない、または画面と一致しない場合は結果を出しません。/g,'必要なデータが揃っていない、または画面表示と一致しない場合は結果を出しません。'],
   [/ベストオーダー用の正本14名データ/g,'ベストオーダーに必要な現チーム14名の正式データ'],
   [/現チーム14名の正本打撃数値/g,'現チーム14名の正式な打撃データ'],
   [/現チーム14名の正本Evidence/g,'現チーム14名の正式データ'],
@@ -12,7 +13,8 @@ const replacements=[
   [/正本成績/g,'正式な成績データ'],
   [/正本Evidence/g,'正式データ'],
   [/正本データ/g,'正式データ'],
-  [/正本数値/g,'正式な数値データ']
+  [/正本数値/g,'正式な数値データ'],
+  [/CASE \/ EVIDENCE/g,'データ確認']
 ];
 
 function rewrite(value){
