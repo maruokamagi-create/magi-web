@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.MAGI_USER_LANGUAGE_V382)return;
-window.MAGI_USER_LANGUAGE_V382=true;
+if(window.MAGI_USER_LANGUAGE_V384)return;
+window.MAGI_USER_LANGUAGE_V384=true;
 
 const replacements=[
   [/正本Evidenceが揃わない、または画面と一致しない場合は結果を出しません。/g,'必要なデータが揃っていない、または画面表示と一致しない場合は結果を出しません。'],
@@ -22,10 +22,15 @@ function rewrite(value){
   for(const [pattern,label] of replacements)out=out.replace(pattern,label);
   return out;
 }
+function inMagiResult(node){
+  const el=node?.parentElement;
+  return Boolean(el?.closest?.('#magiResultBundle,#magiChatView,#magiLiveTranscript,.final,.answer'));
+}
 function rewriteTextNode(node){
   if(!node||node.nodeType!==Node.TEXT_NODE)return;
   const before=node.nodeValue||'';
-  const after=rewrite(before);
+  let after=rewrite(before);
+  if(inMagiResult(node))after=after.replace(/カスペル/g,'カスパー');
   if(after!==before)node.nodeValue=after;
 }
 function rewriteTree(root){
