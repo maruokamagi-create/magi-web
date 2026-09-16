@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
-if(window.MAGI_CROSS_DIALOGUE_UI_V384)return;
-window.MAGI_CROSS_DIALOGUE_UI_V384=true;
+if(window.MAGI_CROSS_DIALOGUE_UI_V386)return;
+window.MAGI_CROSS_DIALOGUE_UI_V386=true;
 
 const P={
   'MELCHIOR-1':{jp:'メルキオール',cls:'mel',img:'/portraits/melchior.png?v=195'},
@@ -10,12 +10,20 @@ const P={
 };
 const CONTROL={jp:'MAGI CONTROL',img:'/magi-official-symbol-v125.svg?v=195'};
 const JP=Object.fromEntries(Object.entries(P).map(([k,v])=>[k,v.jp]));
-const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
 const list=v=>(Array.isArray(v)?v:[]).map(x=>String(x||'').trim()).filter(Boolean);
+let lastResult=null;
+let patchScheduled=false;
+let dialogueRequestSeq=0;
 function personaForSpeaker(value){const s=String(value||'').toUpperCase();for(const [key,persona] of Object.entries(P))if(s.includes(key))return persona;return null}
 function dialogueOf(result){return Array.isArray(result?.crossExamination?.dialogue)?result.crossExamination.dialogue.filter(x=>x?.speaker&&x?.statement):[]}
 function crossOf(result){return result?.crossExamination||{}}
 function short(value,max=82){const s=String(value||'').trim();return s.length>max?s.slice(0,max-1)+'…':s}
+function isFullLineup(result){
+  const kind=String(result?.case?.selectionKind||result?.final?.mode||'').toUpperCase();
+  const q=String(result?.case?.question||'').normalize('NFKC');
+  return kind==='FULL_LINEUP'||/(?:ベストオーダー|ベスト打順|1番.{0,40}9番|一番.{0,40}九番)/.test(q);
+}
 function controlOpeningText(result){
   const cross=crossOf(result),agreement=list(cross.agreement),disagreement=list(cross.disagreement);
   const allSame=agreement.some(x=>/1番から9番まで一致|打順案.*一致/.test(x));
@@ -45,11 +53,11 @@ function liveControl(text,label){
 function patchLive(result){
   const dialogue=dialogueOf(result);if(!dialogue.length)return false;
   const body=document.getElementById('magiLiveBody');if(!body)return false;
+  const existing=[...body.querySelectorAll('[data-magi-direct-dialogue="true"]')];
+  const legacy=[...body.querySelectorAll('.magiExchange')].filter(ex=>/^MAGI CONTROL\s*→/.test(ex.querySelector('.magiSpeaker')?.textContent?.trim()||''));
+  if(existing.length===dialogue.length&&!legacy.length&&body.querySelectorAll('[data-magi-control-intervention="true"]').length>=2)return true;
   body.querySelectorAll('[data-magi-direct-dialogue="true"],[data-magi-control-intervention="true"]').forEach(n=>n.remove());
-  [...body.querySelectorAll('.magiExchange')].forEach(ex=>{
-    const speaker=ex.querySelector('.magiSpeaker')?.textContent?.trim()||'';
-    if(/^MAGI CONTROL\s*→/.test(speaker))ex.remove();
-  });
+  legacy.forEach(ex=>ex.remove());
   const anchor=[...body.querySelectorAll('.magiExchange')].find(ex=>ex.querySelector('.magiSpeech')?.classList.contains('magiReply'))||null;
   const nodes=[liveControl(controlOpeningText(result),'争点整理'),...dialogue.map(liveExchange),liveControl(controlClosingText(),'相互検証まとめ')];
   for(const node of nodes)anchor?body.insertBefore(node,anchor):body.appendChild(node);
@@ -71,10 +79,20 @@ function dialogueChat(turn){
 function tagText(row){return String(row?.querySelector?.('.magiJudgeTag')?.textContent||'').normalize('NFKC').trim()}
 function isSecondJudgmentRow(row){return /再選定|判定変更|判定維持/.test(tagText(row))}
 function isPrimarySelectionRow(row){const t=tagText(row);return /候補：/.test(t)&&!/再選定/.test(t)}
+function legacyControlTargetRows(body){
+  return [...body.querySelectorAll('.magiMsg.system .magiSender')].filter(n=>/^MAGI CONTROL\s*→/.test(String(n.textContent||'').normalize('NFKC').trim()));
+}
+function chatNeedsPatch(result){
+  const dialogue=dialogueOf(result);if(!dialogue.length)return false;
+  const body=document.querySelector('#magiChatView .magiChatBody');if(!body)return false;
+  if(legacyControlTargetRows(body).length)return true;
+  return body.querySelectorAll('[data-magi-direct-dialogue="true"]').length!==dialogue.length;
+}
 function patchChat(result){
   const dialogue=dialogueOf(result);if(!dialogue.length)return false;
   const view=document.getElementById('magiChatView');if(!view)return false;
   const body=view.querySelector('.magiChatBody');if(!body)return false;
+  if(!chatNeedsPatch(result)&&body.querySelectorAll('[data-magi-control-intervention="true"]').length>=2)return true;
   const msgs=[...body.querySelectorAll('.magiMsg:not(.finalSummary)')];
   const secondStart=msgs.find(isSecondJudgmentRow);if(!secondStart)return false;
   const secondIndex=msgs.indexOf(secondStart);
@@ -92,11 +110,40 @@ function patchChat(result){
   for(const item of nodes)body.insertBefore(item,secondStart);
   return true;
 }
-function apply(result){
+async function hydrateDialogue(result){
+  if(!result||dialogueOf(result).length||!isFullLineup(result)||!result?.primary)return result;
+  const seq=++dialogueRequestSeq;
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),32000);
+  try{
+    const res=await fetch('/api/magi/dialogue',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phase:'CROSS_EXAMINATION',case:result.case,primary:result.primary}),signal:controller.signal});
+    const direct=await res.json().catch(()=>null);
+    if(seq!==dialogueRequestSeq||!res.ok||!Array.isArray(direct?.dialogue)||!direct.dialogue.length)return result;
+    return {...result,crossExamination:{...(result.crossExamination||{}),...direct}};
+  }catch(_){return result}
+  finally{clearTimeout(timer)}
+}
+function schedulePatch(result){
   if(!result)return;
+  lastResult=result;
   patchLive(result);
-  [30,80,160,300,600,1000].forEach(ms=>setTimeout(()=>{patchLive(result);patchChat(result)},ms));
+  [0,30,80,160,300,600,1000,1800,3000,6000].forEach(ms=>setTimeout(()=>{if(lastResult!==result)return;patchLive(result);patchChat(result)},ms));
+}
+async function apply(result){
+  if(!result)return;
+  const hydrated=await hydrateDialogue(result);
+  schedulePatch(hydrated);
+}
+function installObserver(){
+  const root=document.documentElement;if(!root)return;
+  new MutationObserver(()=>{
+    if(!lastResult||patchScheduled||!chatNeedsPatch(lastResult))return;
+    patchScheduled=true;
+    setTimeout(()=>{patchScheduled=false;if(lastResult){patchLive(lastResult);patchChat(lastResult)}},25);
+  }).observe(root,{childList:true,subtree:true});
 }
 document.addEventListener('magi:deliberation-result',event=>apply(event.detail||window.MAGI_LAST_DELIBERATION_RESULT||null));
-window.MAGI_CROSS_DIALOGUE_UI_META=Object.freeze({version:'cross-dialogue-ui-v384',directPersonaDialogue:true,controlInterventionRestored:true,preservesSecondJudgment:true,removesDuplicateCrossBlocks:true,phaseOrder:'PRIMARY_CONTROL_DIALOGUE_SECOND'});
+installObserver();
+if(window.MAGI_LAST_DELIBERATION_RESULT)apply(window.MAGI_LAST_DELIBERATION_RESULT);
+window.MAGI_CROSS_DIALOGUE_UI_META=Object.freeze({version:'cross-dialogue-ui-v386',directPersonaDialogue:true,dialogueHydrationFallback:true,persistentChatObserver:true,controlInterventionRestored:true,preservesSecondJudgment:true,removesDuplicateCrossBlocks:true,phaseOrder:'PRIMARY_CONTROL_DIALOGUE_SECOND'});
 })();
