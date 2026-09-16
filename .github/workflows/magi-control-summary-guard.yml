@@ -31,7 +31,7 @@ jobs:
           node --check selection-polish-v218.js
           node --check magi-formal-runner-v373.js
           node --check magi-app-bootstrap-v363.js
-          grep -Fq '/magi-control-summary-v377.js?v=377' index.html
+          grep -Fq '/magi-control-summary-v377.js?v=385' index.html
           grep -Fq '/chat-ui-v196.js?v=209' index.html
           grep -Fq '/result-layout-v189.js?v=201' index.html
           grep -Fq '/selection-polish-v218.js?v=221' index.html
@@ -60,9 +60,12 @@ jobs:
           if(!api)throw new Error('summary API missing');
           const majority=['大野 竜暉','坂田 暉馬','中嶋 玲月','嶋田 栄志','大久保 陽翔','鰐渕 将太','橋向 結都','武澤 大翔','武田 晴琉翔'];
           const casper=['大野 竜暉','坂田 暉馬','嶋田 栄志','中嶋 玲月','大久保 陽翔','橋向 結都','鰐渕 将太','大久保 夢翔','武田 晴琉翔'];
-          const players=[...new Set([...majority,...casper])].map((name,i)=>({name,batting:{AB:String(15+i),AVG:name==='中嶋 玲月'?'.542':'.300',OPS:name==='中嶋 玲月'?'1.268':'.800'}}));
+          const melDead=['大野 竜暉','坂田 暉馬','嶋田 栄志','中嶋 玲月','大久保 陽翔','鰐渕 将太','井坂 悠聖','橋向 結都','武田 晴琉翔'];
+          const balDead=['大野 竜暉','坂田 暉馬','中嶋 玲月','大久保 陽翔','嶋田 栄志','鰐渕 将太','橋向 結都','武澤 大翔','武田 晴琉翔'];
+          const players=[...new Set([...majority,...casper,...melDead,...balDead])].map((name,i)=>({name,batting:{AB:String(15+i),AVG:name==='中嶋 玲月'?'.542':'.300',OPS:name==='中嶋 玲月'?'1.268':'.800'}}));
+          const baseCase={question:'ベストオーダーは？',evidence:{teamPolicy:{sampleSize:{practicalBattingAtBatsSufficient:15}},numericEvidenceContract:{recentSixNumbersProvided:false},recentSix:{status:'INCOMPLETE'},allCurrentTeamCheck:{players}}};
           const result={
-            case:{question:'ベストオーダーは？',evidence:{teamPolicy:{sampleSize:{practicalBattingAtBatsSufficient:15}},numericEvidenceContract:{recentSixNumbersProvided:false},recentSix:{status:'INCOMPLETE'},allCurrentTeamCheck:{players}}},
+            case:baseCase,
             primary:{melchior:{candidatePlayers:majority},balthasar:{candidatePlayers:majority},casper:{candidatePlayers:casper}},
             second:{
               melchior:{persona:'MELCHIOR-1',candidatePlayers:majority,candidateBasis:'今季通算の出塁とOPS、上位から中軸へのつながりを重視する。'},
@@ -80,5 +83,22 @@ jobs:
           const corrected=api.sanitizeSpeech('メルキオール、直近で中嶋 玲月が打率.542・OPS 1.268を記録している。',result);
           if(!corrected.includes('今季通算')||corrected.includes('直近で'))throw new Error('recent/current label correction failed: '+corrected);
           if((s.decisiveReasons||[]).some(x=>/1番[\s\S]*9番/.test(x)))throw new Error('lineup recital leaked into reasons');
+
+          const deadlock={
+            case:baseCase,
+            primary:{melchior:{candidatePlayers:melDead},balthasar:{candidatePlayers:balDead},casper:{candidatePlayers:casper}},
+            second:{
+              melchior:{persona:'MELCHIOR-1',candidatePlayers:melDead,candidateBasis:'私はこの並びを維持する。'},
+              balthasar:{persona:'BALTHASAR-2',candidatePlayers:balDead,candidateBasis:'俺は勝ちに行くための並びを曲げない。'},
+              casper:{persona:'CASPER-3',candidatePlayers:casper,candidateBasis:'僕は役割のつながりを重視する。'}
+            },
+            final:{mode:'FULL_LINEUP',lineup:balDead.map((name,i)=>({slot:i+1,name})),reDeliberationConditions:['今季通算のOPSが大きく変化した場合']}
+          };
+          const d=api.build(deadlock);
+          if(d?.label!=='1対1対1 DEADLOCK')throw new Error('deadlock label failed');
+          if((d?.decisiveReasons||[]).length!==0)throw new Error('deadlock must not have decisive reasons: '+JSON.stringify(d.decisiveReasons));
+          if(!String(d?.decisionLead).includes('正式採用ではありません'))throw new Error('deadlock provisional notice missing: '+d?.decisionLead);
+          if(/俺|僕|私は/.test([d?.decisionLead,...(d?.decisiveReasons||[])].join(' ')))throw new Error('persona voice leaked into CONTROL deadlock summary');
+          if(!d?.mainDisagreement)throw new Error('deadlock disagreement missing');
           console.log('MAGI CONTROL SUMMARY GUARD: PASS');
           NODE
