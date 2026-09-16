@@ -38,9 +38,17 @@ assert.match(serverSrc,/急いでいる.*焦っている|急ぎ\|焦り/,'fabric
 assert.match(serverSrc,/半年後.*来年.*将来.*未来/,'arbitrary future horizon must be prohibited for current lineup questions');
 assert.match(serverSrc,/試合は待ってくれない\|勝ちに行くぞ/,'Balthasar canned rhetoric must be rejected');
 assert.match(serverSrc,/一番得点を取れる.*圧倒的/,'unsupported tactical certainty must be rejected');
-assert.match(uiSrc,/msg\.className=`magiMsg \$\{speaker\.cls\}`/,'chat identity must become the actual Wise Man, not MAGI CONTROL');
-assert.match(uiSrc,/avatar\.src=speaker\.img/,'chat avatar must become the actual Wise Man portrait');
-assert.match(uiSrc,/sender\.innerHTML=.*speaker\.jp/s,'chat sender must become the actual Wise Man name');
-assert.match(indexSrc,/cross-dialogue-ui-v380\.js\?v=381/,'production HTML must bust the old cross-dialogue UI cache');
+assert.match(uiSrc,/row\.className=`magiMsg \$\{speaker\.cls\}`/,'direct dialogue chat identity must be the actual Wise Man');
+assert.match(uiSrc,/speaker\.img/,'direct dialogue must use the actual Wise Man portrait');
+assert.match(uiSrc,/speaker\.jp/,'direct dialogue must use the actual Wise Man name');
+assert.match(uiSrc,/controlInterventionRestored:true/,'MAGI CONTROL intervention must be restored');
+assert.match(uiSrc,/preservesSecondJudgment:true/,'cross-dialogue patch must preserve second judgments');
+assert.match(uiSrc,/phaseOrder:'PRIMARY_CONTROL_DIALOGUE_SECOND'/,'phase order must be primary -> control/dialogue -> second judgment');
+const opening=uiSrc.indexOf("controlChat(controlOpeningText(result),'争点整理')");
+const dialogue=uiSrc.indexOf('for(const turn of dialogue)');
+const closing=uiSrc.indexOf("controlChat(controlClosingText(),'相互検証まとめ')");
+const second=uiSrc.indexOf("secondPhase||phaseNode('二次判定')");
+assert.ok(opening>=0&&dialogue>opening&&closing>dialogue&&second>closing,'MAGI CONTROL and Wise Men dialogue must appear before SECOND JUDGMENT');
+assert.match(indexSrc,/cross-dialogue-ui-v380\.js\?v=383/,'production HTML must load the restored CONTROL dialogue UI revision');
 
-console.log('CROSS DIALOGUE V381: PASS');
+console.log('CROSS DIALOGUE V383: PASS');
