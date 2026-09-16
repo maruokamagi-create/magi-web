@@ -21,11 +21,13 @@ on:
       - 'server/api/magi/_cross-output-guard.js'
       - 'server/api/magi/_roster.js'
       - 'engine-ui-v187.js'
+      - 'cross-dialogue-ui-v380.js'
       - 'magi-user-language-v382.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
       - 'scripts/test-persona-second-fallback.mjs'
       - 'scripts/test-dialogue-resilient-fallback.mjs'
+      - 'scripts/test-cross-dialogue-ui-contract.mjs'
       - 'scripts/test-user-language-summary.mjs'
       - 'scripts/test-pitching-plan-output-guard.mjs'
       - 'scripts/test-derived-metric-label-guard.mjs'
@@ -68,6 +70,9 @@ jobs:
 
       - name: Run direct dialogue fallback cases
         run: node --experimental-default-type=module scripts/test-dialogue-resilient-fallback.mjs
+
+      - name: Run direct dialogue UI contract cases
+        run: node --experimental-default-type=module scripts/test-cross-dialogue-ui-contract.mjs
 
       - name: Run user-facing summary language cases
         run: node --experimental-default-type=module scripts/test-user-language-summary.mjs
