@@ -1,0 +1,47 @@
+name: MAGI Production Direct Dialogue Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/magi-gateway.js'
+      - 'server/api/magi/dialogue.js'
+      - 'server/api/magi/dialogue-resilient.js'
+      - '.github/workflows/magi-production-dialogue-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  production-direct-dialogue:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for production deployment
+        run: sleep 40
+
+      - name: Verify direct Three Wise Men dialogue route
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          ORIGIN='https://magi-web.vercel.app'
+          cat > /tmp/body.json <<'JSON'
+          {
+            "phase":"CROSS_EXAMINATION",
+            "case":{"mode":"selection","selectionKind":"FULL_LINEUP","question":"ベストオーダーは？"},
+            "primary":{
+              "melchior":{"persona":"MELCHIOR-1","candidatePlayers":["大野 竜暉","坂田 暉馬","嶋田 栄志","中嶋 玲月","大久保 陽翔","鰐渕 将太","井坂 悠聖","橋向 結都","武田 晴琉翔"],"publicStatement":"私は今の記録からこの打順を選びます。"},
+              "balthasar":{"persona":"BALTHASAR-2","candidatePlayers":["大野 竜暉","坂田 暉馬","中嶋 玲月","大久保 陽翔","嶋田 栄志","鰐渕 将太","橋向 結都","井坂 悠聖","武田 晴琉翔"],"publicStatement":"俺は打線のつながりからこの打順でいく。"},
+              "casper":{"persona":"CASPER-3","candidatePlayers":["大野 竜暉","坂田 暉馬","中嶋 玲月","大久保 陽翔","嶋田 栄志","鰐渕 将太","橋向 結都","井坂 悠聖","武田 晴琉翔"],"publicStatement":"僕は今の役割と打線のつながりからこの打順にします。"}
+            }
+          }
+          JSON
+          curl -L --fail -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/dialogue" -o /tmp/dialogue.json
+          cat /tmp/dialogue.json; echo
+          jq -e '
+            (.dialogue|length)==3 and
+            .dialogue[0].speaker=="MELCHIOR-1" and .dialogue[0].target=="BALTHASAR-2" and
+            .dialogue[1].speaker=="BALTHASAR-2" and .dialogue[1].target=="MELCHIOR-1" and
+            .dialogue[2].speaker=="CASPER-3" and .dialogue[2].target=="BALTHASAR-2" and
+            ([.dialogue[].statement|contains("MAGI CONTROL")]|any|not)
+          ' /tmp/dialogue.json >/dev/null
+          echo 'PRODUCTION DIRECT THREE-WISE-MEN DIALOGUE: PASS'
