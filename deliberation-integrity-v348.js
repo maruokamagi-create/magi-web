@@ -53,9 +53,9 @@ async function postJSON(url,payload,options={}){
       const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const body=await res.json().catch(()=>({}));
       if(res.ok)return body;
-      const err=new Error(body?.error||`MAGI API error ${res.status}`);err.status=res.status;lastError=err;
-      if(!(res.status===408||res.status===429||res.status>=500))throw err;
-    }catch(error){lastError=error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error}
+      const err=new Error(body?.error||`MAGI API error ${res.status}`);err.status=res.status;err.retryExhausted=body?.retryExhausted===true;lastError=err;
+      if(err.retryExhausted||!(res.status===408||res.status===429||res.status>=500))throw err;
+    }catch(error){lastError=error;if(error?.retryExhausted)throw error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error}
   }
   throw lastError||new Error('MAGI API request failed');
 }
@@ -74,7 +74,7 @@ function validNine(v){const s=sequence(v);return s.length===9&&new Set(s).size==
 function softGuardFailure(v){
   if(!v?.reviewRequested||!validNine(v))return false;
   const reason=String(v?.reviewReason||'');
-  if(!/回答文の数値・選手参照をEvidenceと照合した結果、不整合/.test(reason))return false;
+  if(!/(?:回答文の数値・選手参照をEvidenceと照合した結果、不整合|回答文に、確認できた記録と合わない内容)/.test(reason))return false;
   const fatal=/(?:FULL_LINEUP|正式ロスター|ロスター完全一致|対象外|9人の打順構成|candidatePlayers|打順構成エラー|数値.{0,30}(?:一致しない|存在しない)|選手名.{0,30}(?:存在しない|対象外)|supplied CASE\/EVIDENCE.{0,50}(?:値と一致しない|選手.*存在しない))/i.test(reason);
   return !fatal;
 }
@@ -84,10 +84,10 @@ function recoverSoftLineup(v,persona,caseData){
   const first=TARGETS[persona]?.first||'私';
   out.judgment='BLUE';out.confidence='LOW';out.reviewRequested=false;out.reviewReason='';out.dataConflict=false;
   out.facts=[];out.analysis=[];out.prediction=[];
-  out.candidateBasis='説明文のうちEvidence照合に通らなかった表現を除外し、正式ロスター内の9人の打順案だけを保持して再審議を継続。';
+  out.candidateBasis='確認できない説明は使わず、登録選手の中から選んだ9人の打順案で比較を続けます。';
   out.primaryReason='打順構成自体は正式14名の範囲で成立しているため、説明文の不適切な表現だけを除外し、標準案の比較を続けます。';
-  out.publicStatement=`${first}の標準案は ${names.map((name,i)=>`${i+1}番${name}`).join('、')} です。説明文の一部がEvidence照合に通らなかったため、その表現は採用せず、打順案だけを残して比較します。`;
-  out.warnings=['説明文の一部をEvidence照合で除外。打順そのものは正式ロスター内で成立。'];
+  out.publicStatement=`${first}の標準案は ${names.map((name,i)=>`${i+1}番${name}`).join('、')} です。確認できない説明は判断に使わず、この打順案で比較を続けます。`;
+  out.warnings=['確認できない説明は判断に使っていません。打順案は登録選手の中で成立しています。'];
   return out;
 }
 function recoverSet(set,caseData){const out={};for(const p of PERSONAS)out[p]=recoverSoftLineup(set?.[p],p,caseData);return out}
