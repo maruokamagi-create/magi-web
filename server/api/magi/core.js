@@ -71,7 +71,8 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
 
   let effectiveResolution=resolution;
   if(!resolution?.requestedDocument){
-    const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed});
+    const selectionRouted=String(routed?.selectionKind||'').toUpperCase()==='FULL_LINEUP'?{...routed,players:[]}:routed;
+    const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted});
     if(liveSelectionEvidence){
       effectiveResolution={
         version:liveSelectionEvidence.resolverVersion,
