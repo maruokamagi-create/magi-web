@@ -2,7 +2,7 @@ import magiCore from '../server/api/magi/core.js';
 import fieldingReport from '../server/api/magi/fielding-report.js';
 import magiHealth from '../server/api/magi/health.js';
 import magiOrchestrate from '../server/api/magi/orchestrate.js';
-import magiPersona from '../server/api/magi/persona.js';
+import magiPersona from '../server/api/magi/persona-resilient.js';
 import magiDialogue from '../server/api/magi/dialogue.js';
 
 export const config = { maxDuration: 60 };
