@@ -1,0 +1,30 @@
+name: MAGI Full Lineup Context Guard
+
+on:
+  push:
+    paths:
+      - 'server/api/magi/core.js'
+      - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_full-lineup.js'
+      - 'scripts/test-full-lineup-context-evidence-guard.mjs'
+      - '.github/workflows/magi-full-lineup-context-guard.yml'
+  pull_request:
+    paths:
+      - 'server/api/magi/core.js'
+      - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_full-lineup.js'
+      - 'scripts/test-full-lineup-context-evidence-guard.mjs'
+      - '.github/workflows/magi-full-lineup-context-guard.yml'
+
+jobs:
+  full-lineup-context:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Syntax check core
+        run: node --check server/api/magi/core.js
+      - name: Context leakage regression guard
+        run: node scripts/test-full-lineup-context-evidence-guard.mjs
