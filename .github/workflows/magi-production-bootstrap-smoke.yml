@@ -38,7 +38,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q '/magi-app-bootstrap-v363.js?v=377' index.html
-          grep -q '/magi-control-summary-v377.js?v=377' index.html
+          grep -q '/magi-control-summary-v377.js?v=385' index.html
           grep -q '/result-layout-v189.js?v=201' index.html
           grep -q '/chat-ui-v196.js?v=209' index.html
           grep -q '/selection-polish-v218.js?v=221' index.html
@@ -67,6 +67,8 @@ jobs:
           grep -Fq 'function mainDisagreement' magi-control-summary-v377.js || grep -Fq 'function conflictText' magi-control-summary-v377.js
           grep -Fq 'practicalBattingAtBatsSufficient' magi-control-summary-v377.js
           grep -Fq "bits=['今季通算成績']" magi-control-summary-v377.js
+          grep -Fq "decisionType==='DEADLOCK'?[]" magi-control-summary-v377.js
+          grep -Fq '正式採用ではありません' magi-control-summary-v377.js
 
           grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" chat-ui-v196.js
           grep -Fq 'function controlTargetFor(speaker)' chat-ui-v196.js
@@ -158,7 +160,7 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-control-summary-v377.js?v=377" -o /tmp/control-summary.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-control-summary-v377.js?v=385" -o /tmp/control-summary.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/result-layout-v189.js?v=201" -o /tmp/result-layout.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=209" -o /tmp/chat-ui.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/selection-polish-v218.js?v=221" -o /tmp/selection-polish.js
@@ -170,13 +172,15 @@ jobs:
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=377" -o /tmp/progress.js
 
           grep -Fq '/magi-app-bootstrap-v363.js?v=377' /tmp/index.html
-          grep -Fq '/magi-control-summary-v377.js?v=377' /tmp/index.html
+          grep -Fq '/magi-control-summary-v377.js?v=385' /tmp/index.html
           grep -Fq '/result-layout-v189.js?v=201' /tmp/index.html
           grep -Fq '/chat-ui-v196.js?v=209' /tmp/index.html
           grep -Fq '/selection-polish-v218.js?v=221' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
           grep -Fq "label='2対1 MAJORITY'" /tmp/control-summary.js
           grep -Fq 'function sanitizeSpeech(value,result)' /tmp/control-summary.js
+          grep -Fq "decisionType==='DEADLOCK'?[]" /tmp/control-summary.js
+          grep -Fq '正式採用ではありません' /tmp/control-summary.js
           grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" /tmp/result-layout.js
           grep -Fq 'updateDecisionBadge()' /tmp/result-layout.js
           grep -Fq 'structuredSummaryHtml(model)' /tmp/chat-ui.js
