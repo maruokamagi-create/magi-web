@@ -5,6 +5,7 @@ import vm from 'node:vm';
 const routerSrc=fs.readFileSync(new URL('../cross-dialogue-router-v380.js',import.meta.url),'utf8');
 const serverSrc=fs.readFileSync(new URL('../server/api/magi/dialogue.js',import.meta.url),'utf8');
 const uiSrc=fs.readFileSync(new URL('../cross-dialogue-ui-v380.js',import.meta.url),'utf8');
+const languageSrc=fs.readFileSync(new URL('../magi-user-language-v382.js',import.meta.url),'utf8');
 const indexSrc=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
 
 function context(fetchImpl){
@@ -43,12 +44,16 @@ assert.match(uiSrc,/speaker\.img/,'direct dialogue must use the actual Wise Man 
 assert.match(uiSrc,/speaker\.jp/,'direct dialogue must use the actual Wise Man name');
 assert.match(uiSrc,/controlInterventionRestored:true/,'MAGI CONTROL intervention must be restored');
 assert.match(uiSrc,/preservesSecondJudgment:true/,'cross-dialogue patch must preserve second judgments');
+assert.match(uiSrc,/removesDuplicateCrossBlocks:true/,'cross-dialogue patch must remove duplicated cross blocks');
 assert.match(uiSrc,/phaseOrder:'PRIMARY_CONTROL_DIALOGUE_SECOND'/,'phase order must be primary -> control/dialogue -> second judgment');
+assert.match(uiSrc,/while\(node&&node!==secondStart\)/,'existing cross section must be replaced rather than appended');
 const opening=uiSrc.indexOf("controlChat(controlOpeningText(result),'争点整理')");
 const dialogue=uiSrc.indexOf('for(const turn of dialogue)');
 const closing=uiSrc.indexOf("controlChat(controlClosingText(),'相互検証まとめ')");
-const second=uiSrc.indexOf("secondPhase||phaseNode('二次判定')");
+const second=uiSrc.indexOf("phaseNode('二次判定')");
 assert.ok(opening>=0&&dialogue>opening&&closing>dialogue&&second>closing,'MAGI CONTROL and Wise Men dialogue must appear before SECOND JUDGMENT');
-assert.match(indexSrc,/cross-dialogue-ui-v380\.js\?v=383/,'production HTML must load the restored CONTROL dialogue UI revision');
+assert.match(languageSrc,/カスペル\/g,'カスパー'/,'CASPER display typo must be normalized in MAGI results');
+assert.match(indexSrc,/cross-dialogue-ui-v380\.js\?v=384/,'production HTML must load cross-dialogue UI revision v384');
+assert.match(indexSrc,/magi-user-language-v382\.js\?v=384/,'production HTML must load language normalization revision v384');
 
-console.log('CROSS DIALOGUE V383: PASS');
+console.log('CROSS DIALOGUE V384: PASS');
