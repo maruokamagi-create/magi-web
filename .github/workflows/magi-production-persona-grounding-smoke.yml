@@ -1,0 +1,65 @@
+name: MAGI Production Persona Grounding Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/api/magi/persona-resilient.js'
+      - 'api/magi-gateway.js'
+      - '.github/workflows/magi-production-persona-grounding-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  production-persona-grounding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Wait for production deployment
+        run: sleep 40
+
+      - name: Verify current-lineup persona stays grounded
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          ORIGIN='https://magi-web.vercel.app'
+          cat > /tmp/body.json <<'JSON'
+          {
+            "persona":"balthasar",
+            "phase":"PRIMARY",
+            "case":{
+              "mode":"selection",
+              "selectionKind":"FULL_LINEUP",
+              "question":"ベストオーダーは？",
+              "evidence":{
+                "allCurrentTeamCheck":{
+                  "status":"COMPLETE",
+                  "players":[
+                    {"name":"井坂 悠聖","batting":{"AVG":".280","OPS":".690","AB":"25"}},
+                    {"name":"大久保 陽翔","batting":{"AVG":".333","OPS":".812","AB":"30"}},
+                    {"name":"大野 竜暉","batting":{"AVG":".278","OPS":".924","AB":"28"}},
+                    {"name":"坂田 暉馬","batting":{"AVG":".250","OPS":".650","AB":"24"}},
+                    {"name":"嶋田 栄志","batting":{"AVG":".300","OPS":".720","AB":"27"}},
+                    {"name":"武澤 大翔","batting":{"AVG":".286","OPS":".700","AB":"28"}},
+                    {"name":"橋向 結都","batting":{"AVG":".240","OPS":".620","AB":"25"}},
+                    {"name":"上村 蓮","batting":{"AVG":".222","OPS":".600","AB":"18"}},
+                    {"name":"大久保 夢翔","batting":{"AVG":".267","OPS":".680","AB":"15"}},
+                    {"name":"長侶 穹","batting":{"AVG":".350","OPS":".880","AB":"20"}},
+                    {"name":"中嶋 玲月","batting":{"AVG":".320","OPS":".860","AB":"25"}},
+                    {"name":"吉田 真翔","batting":{"AVG":".250","OPS":".640","AB":"16"}},
+                    {"name":"鰐渕 将太","batting":{"AVG":".235","OPS":".610","AB":"17"}},
+                    {"name":"武田 晴琉翔","batting":{"AVG":".260","OPS":".660","AB":"20"}}
+                  ]
+                }
+              }
+            }
+          }
+          JSON
+          curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o /tmp/persona.json
+          cat /tmp/persona.json; echo
+          jq -e '(.candidatePlayers|length)==9 and ((.candidatePlayers|unique|length)==9)' /tmp/persona.json >/dev/null
+          if jq -r '[.candidateBasis,.primaryReason,.publicStatement,((.facts//[])|join(" ")),((.analysis//[])|join(" ")),((.prediction//[])|join(" "))]|join(" ")' /tmp/persona.json | grep -Eq '精神的な柱|精神的なまとまり|半年後|今後の成長|主将として|キャプテンの'; then
+            echo 'Unsupported current-lineup narrative leaked into production persona output' >&2
+            exit 1
+          fi
+          echo 'PRODUCTION CURRENT-LINEUP PERSONA GROUNDING: PASS'
