@@ -1,0 +1,10 @@
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+const src=fs.readFileSync(new URL('../magi-user-language-v382.js',import.meta.url),'utf8');
+assert.match(src,/表示中の参考案/);
+assert.match(src,/メルキオール/);
+assert.match(src,/バルタザール/);
+assert.match(src,/カスパー/);
+assert.match(src,/3人の意見が一致しました/);
+assert.match(src,/2人の意見が一致しました/);
+console.log('USER LANGUAGE SUMMARY: PASS');
