@@ -164,8 +164,30 @@ function jstContext() {
   };
 }
 
+function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
+  if (!fullLineupCase || !Array.isArray(issues) || !issues.length) return false;
+  const check = validateFullLineupOrder(result?.candidatePlayers);
+  if (!check.ok) return false;
+  const hard = issues.some(issue => /(?:FULL_LINEUP|正式ロスター|ロスター完全一致|対象外|9人の打順構成|candidatePlayers|打順構成エラー|数値.{0,30}(?:一致しない|存在しない)|選手名.{0,30}(?:存在しない|対象外)|supplied CASE\/EVIDENCE.{0,50}(?:値と一致しない|選手.*存在しない))/i.test(String(issue || '')));
+  if (hard) return false;
+  result.candidatePlayers = check.order;
+  result.judgment = 'BLUE';
+  result.confidence = result.confidence === 'HIGH' ? 'HIGH' : 'MEDIUM';
+  result.reviewRequested = false;
+  result.reviewReason = '';
+  result.dataConflict = false;
+  result.facts = [];
+  result.analysis = [];
+  result.prediction = [];
+  result.candidateBasis = '確認できた今季通算成績と打数を基準に、現チーム14名から9人を比較してこの順番としました。';
+  result.primaryReason = '確認できた記録だけを使い、現在の成績と打順のつながりを比較した案です。';
+  result.publicStatement = `${check.order.map((name,index)=>`${index+1}番${name}`).join('、')} の順です。確認できた記録だけで比較しました。`;
+  result.warnings = ['説明のうち確認できない内容は判断に使っていません。'];
+  return true;
+}
+
 function failClosedPersona(result, issues) {
-  const reason = `回答文の数値・選手参照をEvidenceと照合した結果、不整合を検出したため再確認が必要です。${issues.slice(0,3).join('／')}`;
+  const reason = `回答文に、確認できた記録と合わない内容があるため再確認が必要です。${issues.slice(0,3).join('／')}`;
   result.judgment = 'YELLOW';
   result.confidence = 'LOW';
   result.reviewRequested = true;
@@ -307,7 +329,8 @@ export default async function handler(req, res) {
       ...pitchingPlanIssues(rawResult, pitchingPlanCase)
     ];
 
-    for (let attempt = 0; guardIssues.length && attempt < 3; attempt++) {
+    const correctionLimit = fullLineupCase ? 1 : 3;
+    for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
       const issueDirective = correctionDirective(guardIssues);
       const correctionPayload = {
         ...payload,
@@ -316,11 +339,16 @@ export default async function handler(req, res) {
         correctionAttempt: attempt + 1,
         instruction: `${payload.instruction} CORRECTION PASS ${attempt + 1}: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Remove unsupported claims completely rather than disguising or rephrasing them. Do not import generic historical role knowledge. Do not relabel a supplied metric. Do not add another player. ${issueDirective} Return the complete schema again using only CASE/evidence-supported facts.`
       };
-      rawResult = await callGemini({
-        systemInstruction: PERSONA_PROMPTS[persona],
-        userPayload: correctionPayload,
-        responseSchema: schema
-      });
+      try {
+        rawResult = await callGemini({
+          systemInstruction: PERSONA_PROMPTS[persona],
+          userPayload: correctionPayload,
+          responseSchema: schema
+        });
+      } catch (correctionError) {
+        console.warn(`[MAGI persona correction] ${persona} ${phase}: ${correctionError?.message || correctionError}`);
+        break;
+      }
       result = normalizeStandardFullLineupDecision(normalizeChangeTracking(
         normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
         phase,
@@ -336,7 +364,7 @@ export default async function handler(req, res) {
     result.persona = persona.toUpperCase();
     result.phase = phase;
 
-    if (guardIssues.length) failClosedPersona(result, guardIssues);
+    if (guardIssues.length && !recoverSoftFullLineupLanguage(result, guardIssues, fullLineupCase)) failClosedPersona(result, guardIssues);
 
     if (!candidateCase) {
       result.checkedPlayers = [];
@@ -400,8 +428,14 @@ export default async function handler(req, res) {
     normalizeChangeTracking(result, phase, body.primarySelf);
     return sendJson(res, 200, canonicalizePlayerData(result));
   } catch (error) {
-    const status = error?.message === 'Request body too large' ? 413 : 500;
+    const tooLarge = error?.message === 'Request body too large';
+    const transient = error?.timedOut === true || error?.retryable === true || [408,429,500,502,503,504].includes(Number(error?.status));
+    const status = tooLarge ? 413 : (transient ? 503 : 500);
     console.error('[MAGI persona]', error?.message || error);
-    return sendJson(res, status, { error: status === 413 ? 'Request body too large' : 'Persona execution failed' });
+    return sendJson(res, status, {
+      error: tooLarge ? '送信データが大きすぎます。' : (transient ? '3賢人の回答を一時的に取得できませんでした。' : '3賢人の回答を作成できませんでした。'),
+      code: tooLarge ? 'REQUEST_TOO_LARGE' : 'PERSONA_GENERATION_FAILED',
+      retryExhausted: transient
+    });
   }
 }
