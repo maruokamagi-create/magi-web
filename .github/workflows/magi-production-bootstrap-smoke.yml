@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'index.html'
-      - 'chat-ui-v196.js'
+      - 'chat-ui-canonical-v387.js'
       - 'magi-control-summary-v377.js'
       - 'result-layout-v189.js'
       - 'selection-polish-v218.js'
@@ -40,7 +40,9 @@ jobs:
           grep -q '/magi-app-bootstrap-v363.js?v=377' index.html
           grep -q '/magi-control-summary-v377.js?v=386' index.html
           grep -q '/result-layout-v189.js?v=201' index.html
-          grep -q '/chat-ui-v196.js?v=209' index.html
+          grep -q '/chat-ui-canonical-v387.js?v=387' index.html
+          ! grep -q '/chat-ui-v196.js' index.html
+          ! grep -q '/cross-dialogue-ui-v380.js' index.html
           grep -q '/selection-polish-v218.js?v=221' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
           grep -q "const REV='377'" magi-app-bootstrap-v363.js
@@ -70,19 +72,17 @@ jobs:
           grep -Fq "decisionType==='DEADLOCK'?[]" magi-control-summary-v377.js
           grep -Fq '正式採用ではありません' magi-control-summary-v377.js
 
-          grep -Fq "function who(t){t=String(t||'').toUpperCase();if(t.includes('MAGI CONTROL'))return P.CONTROL;if(t.includes('MELCHIOR'))return P.MELCHIOR" chat-ui-v196.js
-          grep -Fq 'function controlTargetFor(speaker)' chat-ui-v196.js
-          grep -Fq 'function controlSpeechFor(speech,target)' chat-ui-v196.js
-          grep -Fq 'displaySpeech=isControl?controlSpeechFor(speech,controlTarget):speech' chat-ui-v196.js
-          grep -Fq 'api?.sanitizeSpeech' chat-ui-v196.js
-          grep -Fq 'structuredSummaryHtml(model)' chat-ui-v196.js
-          grep -Fq "summarySection('決め手'" chat-ui-v196.js
-          grep -Fq "summarySection('最大の争点'" chat-ui-v196.js
-          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-v196.js
-          grep -Fq "addPhase(body,'最終総括')" chat-ui-v196.js
-          grep -Fq "document.addEventListener('magi:deliberation-result'" chat-ui-v196.js
-          grep -Fq '#magiChatView .magiTarget{display:none!important}' chat-ui-v196.js
-          ! grep -Fq '宛先：' chat-ui-v196.js
+          node --check chat-ui-canonical-v387.js
+          grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' chat-ui-canonical-v387.js
+          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' chat-ui-canonical-v387.js
+          grep -Fq "fetch('/api/magi/dialogue'" chat-ui-canonical-v387.js
+          grep -Fq 'dialogue.forEach(turn=>directRow' chat-ui-canonical-v387.js
+          grep -Fq "summarySection('決め手'" chat-ui-canonical-v387.js
+          grep -Fq "summarySection('最大の争点'" chat-ui-canonical-v387.js
+          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-canonical-v387.js
+          grep -Fq "document.addEventListener('magi:deliberation-result'" chat-ui-canonical-v387.js
+          ! grep -Fq 'controlTargetFor' chat-ui-canonical-v387.js
+          ! grep -Fq 'MAGI CONTROL →' chat-ui-canonical-v387.js
 
           grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
           grep -Fq "/(?:^|\\s)1番\\s/.test(t)" result-layout-v189.js
@@ -108,7 +108,7 @@ jobs:
           grep -Fq '15打数以上を実用上十分な母数として扱う' main-live-answer-v362.js
           grep -Fq 'const governedPacket=applyTeamPolicy(packet)' main-live-answer-v362.js
           ! grep -q 'function evidenceCritical' lineup-finalizer-v350.js
-          echo 'CANONICAL V377 + STRUCTURED CONTROL SUMMARY: PASS'
+          echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
       - name: Verify deterministic CONTROL summary policy
         shell: bash
@@ -162,7 +162,7 @@ jobs:
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-control-summary-v377.js?v=386" -o /tmp/control-summary.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/result-layout-v189.js?v=201" -o /tmp/result-layout.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-v196.js?v=209" -o /tmp/chat-ui.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-canonical-v387.js?v=387" -o /tmp/chat-ui.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/selection-polish-v218.js?v=221" -o /tmp/selection-polish.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=377" -o /tmp/bootstrap.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=377" -o /tmp/integrity.js
@@ -174,7 +174,9 @@ jobs:
           grep -Fq '/magi-app-bootstrap-v363.js?v=377' /tmp/index.html
           grep -Fq '/magi-control-summary-v377.js?v=386' /tmp/index.html
           grep -Fq '/result-layout-v189.js?v=201' /tmp/index.html
-          grep -Fq '/chat-ui-v196.js?v=209' /tmp/index.html
+          grep -Fq '/chat-ui-canonical-v387.js?v=387' /tmp/index.html
+          ! grep -Fq '/chat-ui-v196.js' /tmp/index.html
+          ! grep -Fq '/cross-dialogue-ui-v380.js' /tmp/index.html
           grep -Fq '/selection-polish-v218.js?v=221' /tmp/index.html
           ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
           grep -Fq "label='2対1 MAJORITY'" /tmp/control-summary.js
@@ -184,10 +186,11 @@ jobs:
           grep -Fq '正式採用ではありません' /tmp/control-summary.js
           grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" /tmp/result-layout.js
           grep -Fq 'updateDecisionBadge()' /tmp/result-layout.js
-          grep -Fq 'structuredSummaryHtml(model)' /tmp/chat-ui.js
-          grep -Fq 'api?.sanitizeSpeech' /tmp/chat-ui.js
-          grep -Fq "document.addEventListener('magi:deliberation-result'" /tmp/chat-ui.js
-          ! grep -Fq '宛先：' /tmp/chat-ui.js
+          grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' /tmp/chat-ui.js
+          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' /tmp/chat-ui.js
+          grep -Fq "fetch('/api/magi/dialogue'" /tmp/chat-ui.js
+          grep -Fq 'dialogue.forEach(turn=>directRow' /tmp/chat-ui.js
+          ! grep -Fq 'MAGI CONTROL →' /tmp/chat-ui.js
           grep -Fq 'structuredConditions()' /tmp/selection-polish.js
           grep -Fq 'if(!s||HAND_RE.test(s))return' /tmp/selection-polish.js
           grep -Fq "const REV='377'" /tmp/bootstrap.js
@@ -203,7 +206,7 @@ jobs:
           grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" /tmp/semantic.js
           grep -Fq 'practicalBattingAtBatsSufficient:15' /tmp/semantic.js
           grep -Fq "function answerComplete(label='MAGI 回答完了')" /tmp/progress.js
-          echo 'PRODUCTION CANONICAL V377 + STRUCTURED CONTROL SUMMARY: PASS'
+          echo 'PRODUCTION CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
