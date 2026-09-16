@@ -31,7 +31,7 @@ jobs:
           node --check selection-polish-v218.js
           node --check magi-formal-runner-v373.js
           node --check magi-app-bootstrap-v363.js
-          grep -Fq '/magi-control-summary-v377.js?v=385' index.html
+          grep -Fq '/magi-control-summary-v377.js?v=386' index.html
           grep -Fq '/chat-ui-v196.js?v=209' index.html
           grep -Fq '/result-layout-v189.js?v=201' index.html
           grep -Fq '/selection-polish-v218.js?v=221' index.html
@@ -40,7 +40,7 @@ jobs:
           grep -Fq "new CustomEvent('magi:deliberation-result'" magi-formal-runner-v373.js
           grep -Fq "label='2対1 MAJORITY'" magi-control-summary-v377.js
           grep -Fq "label='3対0 CONSENSUS'" magi-control-summary-v377.js
-          grep -Fq "label='1対1対1 DEADLOCK'" magi-control-summary-v377.js
+          grep -Fq "label='3人の意見が分かれました'" magi-control-summary-v377.js
           grep -Fq 'function sanitizeSpeech(value,result)' magi-control-summary-v377.js
           grep -Fq 'structuredSummaryHtml(model)' chat-ui-v196.js
           grep -Fq "summarySection('決め手'" chat-ui-v196.js
@@ -95,7 +95,7 @@ jobs:
             final:{mode:'FULL_LINEUP',lineup:balDead.map((name,i)=>({slot:i+1,name})),reDeliberationConditions:['今季通算のOPSが大きく変化した場合']}
           };
           const d=api.build(deadlock);
-          if(d?.label!=='1対1対1 DEADLOCK')throw new Error('deadlock label failed');
+          if(d?.label!=='3人の意見が分かれました')throw new Error('deadlock label failed');
           if((d?.decisiveReasons||[]).length!==0)throw new Error('deadlock must not have decisive reasons: '+JSON.stringify(d.decisiveReasons));
           if(!String(d?.decisionLead).includes('正式採用ではありません'))throw new Error('deadlock provisional notice missing: '+d?.decisionLead);
           if(/俺|僕|私は/.test([d?.decisionLead,...(d?.decisiveReasons||[])].join(' ')))throw new Error('persona voice leaked into CONTROL deadlock summary');
