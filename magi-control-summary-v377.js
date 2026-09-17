@@ -10,7 +10,6 @@ const PERSONAS=[
 const txt=v=>String(v??'').trim();
 const norm=v=>txt(v).normalize('NFKC').replace(/[\s　]/g,'');
 const unique=arr=>[...new Set((arr||[]).map(txt).filter(Boolean))];
-const limit=(s,n=170)=>{s=txt(s).replace(/\s+/g,' ');return s.length>n?s.slice(0,n-1)+'…':s};
 
 function personaValue(container,persona,index){
   if(Array.isArray(container))return container[index]||null;
@@ -93,14 +92,27 @@ function stripLineupRecital(value){
   s=s.replace(full,' ').replace(/^[/／,，、\s]+|[/／,，、\s]+$/g,'').trim();
   return s;
 }
-function cleanReason(value,result){
+function neutralizeSummarySpeech(value,label){
+  let s=txt(value).replace(/\s+/g,' ');
+  if(!s)return'';
+  const who=txt(label)||'当該賢人';
+  s=s
+    .replace(/俺は/g,`${who}は`)
+    .replace(/僕は/g,`${who}は`)
+    .replace(/私は/g,`${who}は`)
+    .replace(/俺の/g,`${who}の`)
+    .replace(/僕の/g,`${who}の`)
+    .replace(/私の/g,`${who}の`);
+  return s;
+}
+function cleanReason(value,result,label){
   const candidates=[value?.candidateBasis,value?.primaryReason,value?.publicStatement,value?.changeReason];
   for(const raw of candidates){
     let s=sanitizeSpeech(raw,result);if(!s)continue;
     const before=s;s=stripLineupRecital(s);
     if(!s||(/^1番/.test(s)&&/9番/.test(s)))continue;
     if(s===before&&/^(?:1番|候補|再選定)/.test(s)&&/9番/.test(s))continue;
-    return limit(s,180);
+    return neutralizeSummarySpeech(s,label);
   }
   return'';
 }
@@ -178,9 +190,9 @@ function buildFullLineup(result){
   else if(decisionType==='MAJORITY')decisionLead=`${supportingLabels.join('と')}が同一の二次打順案を支持し、${minority?.label||'少数側'}は別案を維持しました。`;
   else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立しませんでした。表示中の打順は比較のための参考案（暫定）で、正式採用ではありません。';
 
-  const decisiveReasons=decisionType==='DEADLOCK'?[]:unique(supportGroup.rows.map(e=>cleanReason(e.value,result))).filter(Boolean).slice(0,2);
+  const decisiveReasons=decisionType==='DEADLOCK'?[]:unique(supportGroup.rows.map(e=>cleanReason(e.value,result,e.label))).filter(Boolean).slice(0,2);
   const mainDisagreement=conflictText(supportGroup.order,others);
-  const minorityOpinion=minority?cleanReason(minority.value,result):'';
+  const minorityOpinion=minority?cleanReason(minority.value,result,minority.label):'';
   const majorChanges=primarySecondChanges(result,entries);
   const reDeliberationConditions=practicalConditions(result,supportGroup.order);
 
@@ -202,7 +214,7 @@ function build(result){
 }
 
 globalThis.MAGI_CONTROL_SUMMARY_V377=Object.freeze({
-  version:'control-summary-v377',
+  version:'control-summary-v394',
   build,
   sanitizeSpeech,
   recentProvided,
