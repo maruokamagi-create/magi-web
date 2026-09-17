@@ -1,0 +1,93 @@
+(()=>{
+'use strict';
+if(window.MAGI_ACE_HISTORY_REFERENCE_V406)return;
+window.MAGI_ACE_HISTORY_REFERENCE_V406=true;
+
+const ACE_RE=/(?:現在の)?エース(?:候補|は誰|を選|を決|として|適任)/;
+const EXCLUDED='大野 竜暉';
+const PITCHERS=['橋向 結都','大久保 陽翔','大久保 夢翔','中嶋 玲月','坂田 暉馬','大野 竜暉'];
+const OLD={
+ workbook:{id:'1n8o28UPsNuyi8_9OlZvE5D7JBwjgZKdg',name:'丸岡中軟式野球部_通算成績一覧2025-2026.xlsm'},
+ csv:{id:'1thxQXAdswckPVdmXdvRXPeuVAfDtskUB',name:'投手詳細2025-2026.csv'}
+};
+const txt=v=>String(v??'').trim();
+const norm=v=>txt(v).normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
+const canonical=new Map(PITCHERS.map(n=>[norm(n),n]));
+const cname=v=>canonical.get(norm(v))||'';
+const num=v=>{const s=txt(v).replace(/,/g,'').replace(/%$/,'');if(!s||s==='-'||s==='—')return null;const n=Number(s);return Number.isFinite(n)?n:null};
+const int=v=>{const n=num(v);return n===null?null:Math.trunc(n)};
+const inningsToOuts=v=>{const m=txt(v).replace(/回$/,'').match(/^(\d+)(?:\.(\d))?$/);if(!m)return null;const rem=Number(m[2]||0);return rem<=2?Number(m[1])*3+rem:null};
+const fmtInnings=o=>`${Math.floor(o/3)}.${o%3}`;
+const clone=v=>{try{return JSON.parse(JSON.stringify(v));}catch(_){return v}};
+const responseJson=(base,data)=>{const h=new Headers(base?.headers||{});h.set('content-type','application/json; charset=utf-8');h.delete('content-length');h.delete('content-encoding');return new Response(JSON.stringify(data),{status:base?.status||200,statusText:base?.statusText||'OK',headers:h});};
+
+const HEADER_ALIASES={
+ pitcher:['投手名','選手名','選手'],catcher:['捕手名'],era:['防御率'],games:['登板数','登板'],innings:['投球回','投球回数'],
+ win:['勝利','勝'],loss:['敗北','敗'],save:['セーブ'],batters:['対打者'],pitches:['投球数'],strikes:['ストライク'],balls:['ボール'],
+ hits:['被安打'],runs:['失点'],earned:['自責点'],wildPitches:['暴投'],walks:['与四球'],hbp:['与死球'],walksHbp:['与四死球','四死球'],strikeouts:['奪三振'],
+ date:['開催日','日付','試合日'],opponent:['相手校','対戦相手','相手'],gameNo:['試合番号','ゲーム番号','試合No','試合NO','試合順','第何試合']
+};
+function findHeaderIndex(row,aliases){const cells=(row||[]).map(norm);for(let i=0;i<cells.length;i++)if(aliases.some(a=>cells[i]===norm(a)))return i;for(let i=0;i<cells.length;i++)if(aliases.some(a=>norm(a)&&cells[i].includes(norm(a))))return i;return-1;}
+function headerMap(row){const out={};for(const [k,a] of Object.entries(HEADER_ALIASES))out[k]=findHeaderIndex(row,a);return out;}
+function headerScore(m){return ['pitcher','era','games','innings','earned','strikeouts'].filter(k=>m[k]>=0).length;}
+function cell(row,i){return i>=0?txt((row||[])[i]):'';}
+function statFromRow(row,m){const innings=cell(row,m.innings),outs=inningsToOuts(innings),eraN=num(cell(row,m.era));return{
+ games:int(cell(row,m.games))??0,outs:outs??0,innings:outs===null?innings:fmtInnings(outs),era:eraN===null?'取得不能':eraN.toFixed(2),
+ win:int(cell(row,m.win))??0,loss:int(cell(row,m.loss))??0,save:int(cell(row,m.save))??0,batters:int(cell(row,m.batters))??0,pitches:int(cell(row,m.pitches))??0,
+ strikes:int(cell(row,m.strikes))??0,balls:int(cell(row,m.balls))??0,hits:int(cell(row,m.hits))??0,runs:int(cell(row,m.runs))??0,earned:int(cell(row,m.earned))??0,
+ wildPitches:int(cell(row,m.wildPitches))??0,walks:int(cell(row,m.walks))??0,hbp:int(cell(row,m.hbp))??0,
+ walksHbp:m.walksHbp>=0?(int(cell(row,m.walksHbp))??0):((int(cell(row,m.walks))??0)+(int(cell(row,m.hbp))??0)),strikeouts:int(cell(row,m.strikeouts))??0};}
+function parsePitcherSection(rows,sheetName,markerIndex){let hi=-1,map=null;for(let i=markerIndex+1;i<Math.min(rows.length,markerIndex+14);i++){const m=headerMap(rows[i]);if(m.pitcher>=0&&m.era>=0&&m.innings>=0&&headerScore(m)>=4){hi=i;map=m;break;}}if(hi<0||!map)return null;const stats={};for(let i=hi+1;i<rows.length;i++){const row=rows[i],joined=(row||[]).map(txt).join(' '),first=(row||[]).map(txt).find(Boolean)||'';if(/捕手部門/.test(joined))break;if(/^(?:総計|合計|計)$/.test(first))break;const p=cname(cell(row,map.pitcher));if(!p)continue;const catcher=map.catcher>=0?cell(row,map.catcher):'';if(catcher)continue;const s=statFromRow(row,map);if(!s.outs)continue;if(stats[p])throw new Error(`旧チーム投手部門で${p}の総合行が重複`);stats[p]=s;}const score=Object.keys(stats).length;return score?{sheetName,stats,score}:null;}
+function workbookStats(buffer){if(!window.XLSX)throw new Error('Excel読込ライブラリを利用できません');const wb=XLSX.read(buffer,{type:'array'}),sections=[];for(const sheetName of wb.SheetNames){const rows=XLSX.utils.sheet_to_json(wb.Sheets[sheetName],{header:1,defval:''});for(let i=0;i<rows.length;i++){const joined=(rows[i]||[]).map(txt).join(' ');if(!/投手部門/.test(joined)||/捕手部門/.test(joined))continue;const s=parsePitcherSection(rows,sheetName,i);if(s)sections.push(s);}}if(!sections.length)throw new Error('旧チーム通算成績一覧の【投手部門】を特定できません');sections.sort((a,b)=>b.score-a.score||(/通算|総合/.test(b.sheetName)?1:0)-(/通算|総合/.test(a.sheetName)?1:0));return sections[0];}
+function parseCsv(text){const rows=[];let row=[],v='',q=false;for(let i=0;i<text.length;i++){const c=text[i];if(q){if(c==='"'&&text[i+1]==='"'){v+='"';i++;continue}if(c==='"'){q=false;continue}v+=c;continue}if(c==='"'){q=true;continue}if(c===','){row.push(v);v='';continue}if(c==='\n'){row.push(v.replace(/\r$/,''));if(row.some(x=>txt(x)))rows.push(row);row=[];v='';continue}v+=c}row.push(v.replace(/\r$/,''));if(row.some(x=>txt(x)))rows.push(row);return rows;}
+function flagValue(v,type){const n=int(v);if(n!==null)return n;const s=txt(v);if(!s)return 0;if(type==='win'&&/(?:勝|○|W)/i.test(s))return 1;if(type==='loss'&&/(?:敗|●|L)/i.test(s))return 1;if(type==='save'&&/(?:S|セーブ)/i.test(s))return 1;return 0;}
+function csvStats(text){const rows=parseCsv(text);let hi=-1,map=null;for(let i=0;i<Math.min(rows.length,40);i++){const m=headerMap(rows[i]);if(m.pitcher>=0&&m.innings>=0&&m.earned>=0&&m.strikeouts>=0){hi=i;map=m;break;}}if(hi<0||!map)throw new Error('旧チーム投手詳細CSVの正式ヘッダーを特定できません');const out={},gameKeys={};const ensure=p=>out[p]||(out[p]={games:0,outs:0,win:0,loss:0,save:0,batters:0,pitches:0,strikes:0,balls:0,hits:0,runs:0,earned:0,wildPitches:0,walks:0,hbp:0,walksHbp:0,strikeouts:0,_rows:0});for(let i=hi+1;i<rows.length;i++){const row=rows[i],p=cname(cell(row,map.pitcher));if(!p)continue;const o=inningsToOuts(cell(row,map.innings));if(o===null)continue;const s=ensure(p);s._rows++;s.outs+=o;const keyParts=[cell(row,map.date),cell(row,map.opponent),cell(row,map.gameNo)].filter(Boolean);const key=keyParts.length?keyParts.join('|'):`row:${i}`;gameKeys[p]??=new Set();gameKeys[p].add(key);s.win+=flagValue(cell(row,map.win),'win');s.loss+=flagValue(cell(row,map.loss),'loss');s.save+=flagValue(cell(row,map.save),'save');for(const k of ['batters','pitches','strikes','balls','hits','runs','earned','wildPitches','walks','hbp','strikeouts'])if(map[k]>=0)s[k]+=int(cell(row,map[k]))??0;if(map.walksHbp>=0)s.walksHbp+=int(cell(row,map.walksHbp))??0;}for(const [p,s] of Object.entries(out)){s.games=gameKeys[p]?.size||s._rows;if(map.walksHbp<0)s.walksHbp=s.walks+s.hbp;s.innings=fmtInnings(s.outs);s.era=s.outs>0?(s.earned*21/s.outs).toFixed(2):'取得不能';delete s._rows;}return{stats:out,map};}
+function decodeScore(s){let score=0;if(/投手名/.test(s))score+=100;if(/投球回/.test(s))score+=60;if(/防御率/.test(s))score+=50;if(/奪三振/.test(s))score+=40;for(const p of PITCHERS)if(s.includes(p))score+=20;if(/�/.test(s))score-=100;return score;}
+function decodeBuffer(buffer){
+ const candidates=[];
+ if(typeof window.MAGI_DECODE_TEXT_SMART==='function'){try{const s=window.MAGI_DECODE_TEXT_SMART(buffer);if(s)candidates.push(s)}catch(_){}}
+ for(const enc of ['utf-8','shift_jis']){try{const s=new TextDecoder(enc,{fatal:false}).decode(buffer);if(s)candidates.push(s)}catch(_){}}
+ if(!candidates.length)return'';
+ candidates.sort((a,b)=>decodeScore(b)-decodeScore(a));
+ return candidates[0];
+}
+async function fetchBinary(baseFetch,id,name){const r=await baseFetch(`/api/drive/file?id=${encodeURIComponent(id)}`,{cache:'no-store',credentials:'same-origin'});if(!r.ok)throw new Error(`${name}を取得できません (${r.status})`);return await r.arrayBuffer();}
+function compare(work,csv,map){const names=PITCHERS.filter(p=>work[p]&&csv[p]);const errors=[];const checks=[['outs','投球回'],['earned','自責点'],['strikeouts','奪三振']];if(map.hits>=0)checks.push(['hits','被安打']);if(map.runs>=0)checks.push(['runs','失点']);if(map.pitches>=0)checks.push(['pitches','投球数']);if(map.win>=0)checks.push(['win','勝利']);if(map.loss>=0)checks.push(['loss','敗北']);if(map.save>=0)checks.push(['save','セーブ']);if(map.walksHbp>=0)checks.push(['walksHbp','四死球']);else if(map.walks>=0&&map.hbp>=0)checks.push(['walks','与四球'],['hbp','与死球']);for(const p of names){const w=work[p],c=csv[p];if(w.era!==c.era)errors.push(`${p} 防御率: 通算${w.era}/CSV${c.era}`);for(const [k,label] of checks)if(String(w[k])!==String(c[k]))errors.push(`${p} ${label}: 通算${k==='outs'?w.innings:w[k]}/CSV${k==='outs'?c.innings:c[k]}`);}return{names,errors,checked:['防御率',...checks.map(x=>x[1])]};}
+async function verifiedHistory(baseFetch){const [wbBuf,csvBuf]=await Promise.all([fetchBinary(baseFetch,OLD.workbook.id,OLD.workbook.name),fetchBinary(baseFetch,OLD.csv.id,OLD.csv.name)]);const wb=workbookStats(wbBuf),decoded=decodeBuffer(csvBuf),csv=csvStats(decoded),cmp=compare(wb.stats,csv.stats,csv.map);if(!cmp.names.length)throw new Error('前チームの現候補投手データを取得できません');if(cmp.errors.length)throw new Error(`前チーム二重照合で数値不一致: ${cmp.errors.slice(0,8).join(' / ')}`);return{stats:csv.stats,names:cmp.names,checked:cmp.checked,source:wb};}
+function mergeHistory(packet,h){
+ if(!packet||typeof packet!=='object')return packet;
+ packet.files=Array.from(new Set([...(Array.isArray(packet.files)?packet.files:[]),OLD.workbook.name,OLD.csv.name]));
+ packet.seasons=Array.from(new Set([...(Array.isArray(packet.seasons)?packet.seasons:[]),'2025-2026']));
+ packet.canonicalPitchingTotals=packet.canonicalPitchingTotals&&typeof packet.canonicalPitchingTotals==='object'?packet.canonicalPitchingTotals:{};
+ for(const p of PITCHERS){if(!h.stats[p])continue;packet.canonicalPitchingTotals[p]=packet.canonicalPitchingTotals[p]&&typeof packet.canonicalPitchingTotals[p]==='object'?packet.canonicalPitchingTotals[p]:{};packet.canonicalPitchingTotals[p]['2025-2026']={...h.stats[p]};}
+ packet.pitchingHistoryReference={status:'COMPLETE',season:'2025-2026',role:'REFERENCE_ONLY_CURRENT_TEAM_PRIORITY',players:h.names.map(name=>({name,pitching:{...h.stats[name]}})),workbook:OLD.workbook.name,csv:OLD.csv.name,checkedMetrics:h.checked};
+ packet.verification=packet.verification&&typeof packet.verification==='object'?packet.verification:{};
+ packet.verification.history={status:'VERIFIED_REFERENCE',workbook:OLD.workbook.name,csv:OLD.csv.name,checkedMetrics:h.checked,role:'REFERENCE_ONLY_CURRENT_TEAM_PRIORITY'};
+ packet.aceHistoryPolicy={currentSeasonPriority:true,historyRequiredAsReference:true,instruction:'エース選定では2026-2027現チームを主評価とし、2025-2026前チームの二重照合済投手実績を経験・再現性の参考として必ず比較する。前チームだけで現チーム評価を上書きしない。'};
+ const lines=['','【前チーム2025-2026参考｜二重照合済】',`【照合元A】${OLD.workbook.name}／【投手部門】`,`【照合元B】${OLD.csv.name} を登板記録から再集計`,`【扱い】現チーム2026-2027を主評価。前チーム2025-2026は経験・再現性の参考として必ず比較し、旧実績だけで現在評価を上書きしない。`];
+ for(const p of PITCHERS.filter(x=>x!==EXCLUDED)){const s=h.stats[p];if(!s){lines.push(`【${p}・前チーム】投手記録なし`);continue;}lines.push(`【${p}・前チーム】防御率=${s.era}｜登板=${s.games}｜投球回=${s.innings}｜${s.win}勝${s.loss}敗｜セーブ=${s.save}｜奪三振=${s.strikeouts}｜四死球=${s.walksHbp}`);}
+ lines.push('【審議指示】3賢人は第一候補の理由・根拠で、現チーム実績を主軸にしつつ、前チーム実績が再現性・経験をどう補強または弱めるかを確認する。');
+ packet.text=`${txt(packet.text)}\n${lines.join('\n')}`.trim();
+ packet.summary=`${txt(packet.summary)} 前チーム2025-2026もExcel正本と投手詳細CSVで二重照合し、経験・再現性の参考として審議Evidenceに追加。`.trim();
+ return packet;
+}
+
+let historyPromise=null;
+const baseFetch=window.fetch.bind(window);
+const urlOf=input=>typeof input==='string'?input:txt(input?.url);
+const parseBody=init=>{if(typeof init?.body!=='string')return null;try{return JSON.parse(init.body)}catch(_){return null}};
+const questionOf=body=>txt(body?.question||body?.case?.question).normalize('NFKC');
+const isAceBody=body=>ACE_RE.test(questionOf(body));
+const getHistory=()=>historyPromise||(historyPromise=verifiedHistory(baseFetch).catch(e=>{historyPromise=null;throw e}));
+function reinforceRequest(body){const out=clone(body)||{};const c=out.case&&typeof out.case==='object'?out.case:null;if(!c)return out;c.evidence=c.evidence&&typeof c.evidence==='object'?c.evidence:{};c.evidence.aceHistoryPolicy={currentSeasonPriority:true,historyRequiredAsReference:true,instruction:'2026-2027現チームを主評価。Evidence内2025-2026前チーム投手実績を経験・再現性の参考として必ず比較する。旧実績のみで現評価を上書きしない。'};const suffix='【前チーム参考必須】Evidence内の2025-2026二重照合済投手実績を経験・再現性の参考として確認し、現チーム2026-2027を主評価にして判断する。理由・根拠では必要に応じ前チームとの比較を明示する。';if(!txt(c.question).includes('【前チーム参考必須】'))c.question=`${txt(c.question)}\n${suffix}`;return out;}
+window.fetch=async function(input,init){
+ const url=urlOf(input),body=parseBody(init),ace=isAceBody(body);
+ if(ace&&!/\/api\/magi\/core(?:\?|$)/.test(url)&&body?.case){const reinforced=reinforceRequest(body);return baseFetch(input,{...init,body:JSON.stringify(reinforced)});}
+ if(!/\/api\/magi\/core(?:\?|$)/.test(url)||!ace)return baseFetch(input,init);
+ const response=await baseFetch(input,init);if(!response.ok)return response;
+ let data;try{data=await response.clone().json()}catch(_){return response}
+ if(!data||typeof data!=='object'||!(data.action==='DELIBERATE'||data.route==='DELIBERATION')||!data.evidencePacket)return response;
+ try{const h=await getHistory();data.evidencePacket=mergeHistory(data.evidencePacket,h);data.understoodRequest='現チームを主評価、前チーム二重照合済実績を経験・再現性の参考としてエース第一候補を審議する';data.semantic=data.semantic&&typeof data.semantic==='object'?data.semantic:{};data.semantic.historyEvidence='DOUBLE_CHECKED_2025_2026_REFERENCE_REQUIRED';return responseJson(response,data);}catch(error){data.evidencePacket.historyVerification={status:'UNAVAILABLE',message:String(error?.message||error)};data.evidencePacket.text=`${txt(data.evidencePacket.text)}\n【前チーム参考】二重照合に失敗したため旧チーム成績は審議根拠に使用しない。理由: ${String(error?.message||error)}`;return responseJson(response,data);}
+};
+window.MAGI_ACE_HISTORY_REFERENCE_V406_META=Object.freeze({version:'v406',shiftJisDecode:true,historyDoubleCheck:true,historyMustBeConsidered:true,currentSeasonPriority:true,excludedAceCandidate:EXCLUDED});
+})();
