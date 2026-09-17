@@ -3,7 +3,7 @@
 if(window.MAGI_ACE_SELECTION_INTEGRITY_V394)return;
 window.MAGI_ACE_SELECTION_INTEGRITY_V394=true;
 
-const VERSION='v394';
+const VERSION='v395';
 const nativeFetch=window.fetch.bind(window);
 const text=v=>String(v??'').trim();
 const list=v=>Array.isArray(v)?v.filter(Boolean):[];
@@ -19,7 +19,7 @@ function caseSelectionKind(body){const c=caseDataFrom(body);return text(c?.evide
 function isAceCase(body){
   const q=caseQuestion(body).normalize('NFKC');
   const kind=caseSelectionKind(body);
-  return kind===PITCH_ROLE&&ACE_RE.test(q) || ACE_RE.test(q);
+  return (kind===PITCH_ROLE&&ACE_RE.test(q))||ACE_RE.test(q);
 }
 function parseJsonBody(init){
   const raw=init?.body;
@@ -32,9 +32,7 @@ function firstOnlyPersona(data){
   if(Array.isArray(data.candidatePlayers)){
     const first=data.candidatePlayers.map(text).find(Boolean);
     data.candidatePlayers=first?[first]:[];
-    if(first){
-      data.candidateBasis=text(data.candidateBasis)||`${first}を第一候補として選定。`;
-    }
+    if(first)data.candidateBasis=text(data.candidateBasis)||`${first}を第一候補として選定。`;
   }
   return data;
 }
@@ -83,7 +81,7 @@ function normalizeAceFinal(data,requestBody){
     const ranked=[...support.values()].sort((a,b)=>b.firstPlaceCount-a.firstPlaceCount||a.name.localeCompare(b.name,'ja'));
     if(ranked.length){
       const top=ranked[0],runner=ranked[1];
-      const hasLead=top.firstPlaceCount>=2 || !runner || top.firstPlaceCount>runner.firstPlaceCount;
+      const hasLead=top.firstPlaceCount>=2||!runner||top.firstPlaceCount>runner.firstPlaceCount;
       source.centerCandidates=hasLead?[top.name]:[];
       source.recommendedCandidates=ranked.map(x=>x.name);
       source.alternateCandidates=ranked.slice(hasLead?1:0).map(x=>x.name);
@@ -132,8 +130,9 @@ window.fetch=async function(input,init){
 function resultQuestion(result){return text(result?.case?.question||document.getElementById('q')?.value);}
 function isAceResult(result){
   if(!result||typeof result!=='object')return false;
+  const q=resultQuestion(result).normalize('NFKC');
   const kind=text(result?.case?.evidence?.selectionKind||result?.final?.selectionKind).toUpperCase();
-  return kind===PITCH_ROLE&&ACE_RE.test(resultQuestion(result).normalize('NFKC')) || ACE_RE.test(resultQuestion(result).normalize('NFKC'));
+  return (kind===PITCH_ROLE&&ACE_RE.test(q))||ACE_RE.test(q);
 }
 function normalizeResult(result){
   if(!isAceResult(result))return result;
@@ -156,14 +155,18 @@ function aceWinner(result){
   choices.forEach(x=>{const k=compactName(x.name),row=m.get(k)||{name:x.name,n:0};row.n++;m.set(k,row);});
   return [...m.values()].sort((a,b)=>b.n-a.n)[0]?.name||'';
 }
-function setText(id,value){const el=document.getElementById(id);if(el&&value)el.textContent=value;}
+function setText(id,value){
+  const el=document.getElementById(id);
+  if(el&&value&&el.textContent!==value)el.textContent=value;
+}
 function replaceDataHubCount(count){
   if(!Number.isFinite(count)||count<1)return;
+  const desired=`DATA HUB：${count}件`;
   const all=document.querySelectorAll('span,div,p');
   for(const el of all){
     if(el.children.length)continue;
     const s=text(el.textContent).normalize('NFKC');
-    if(/^DATA HUB\s*[:：]\s*\d+\s*件$/.test(s))el.textContent=`DATA HUB：${count}件`;
+    if(/^DATA HUB\s*[:：]\s*\d+\s*件$/.test(s)&&el.textContent!==desired)el.textContent=desired;
   }
 }
 function fixChat(result,winner,choices,conditions){
@@ -175,7 +178,8 @@ function fixChat(result,winner,choices,conditions){
   const unique=[...new Map(choices.map(x=>[compactName(x.name),x.name])).values()];
   const agree=winner&&unique.length===1?`3賢人の第一候補は「${winner}」で一致しました。`:winner?`MAGIのエース第一候補は「${winner}」です。各賢人の第一候補は ${choices.map(x=>x.name).join('・')}。`:`第一候補は一本化していません。各賢人の第一候補は ${choices.map(x=>x.name).join('・')}。`;
   const cond=conditions.length?` 再検討条件：${conditions.join('／')}。`:'';
-  node.textContent=`3賢人の一次判断、相互検証、二次判断を踏まえました。${agree}${cond}`;
+  const desired=`3賢人の一次判断、相互検証、二次判断を踏まえました。${agree}${cond}`;
+  if(node.textContent!==desired)node.textContent=desired;
 }
 function patchDom(result){
   if(!isAceResult(result))return;
@@ -204,8 +208,8 @@ function patchDom(result){
   for(const [id,name] of personaIds){
     if(!name)continue;
     const el=document.getElementById(id);if(!el)continue;
-    if(/Vote$/.test(id))el.textContent=`第一候補：${name}`;
-    else el.textContent=`${id==='v1'?'MELCHIOR':id==='v2'?'BALTHASAR':'CASPER'} ${name}`;
+    const desired=/Vote$/.test(id)?`第一候補：${name}`:`${id==='v1'?'MELCHIOR':id==='v2'?'BALTHASAR':'CASPER'} ${name}`;
+    if(el.textContent!==desired)el.textContent=desired;
   }
   replaceDataHubCount(count);
   fixChat(result,winner,choices,conditions);
@@ -220,7 +224,12 @@ document.addEventListener('magi:deliberation-result',event=>{
   if(isAceResult(result))schedulePatch(result);
 });
 
-const observer=new MutationObserver(()=>{if(lastAceResult)patchDom(lastAceResult);});
+let observerQueued=false;
+const observer=new MutationObserver(()=>{
+  if(!lastAceResult||observerQueued)return;
+  observerQueued=true;
+  setTimeout(()=>{observerQueued=false;patchDom(lastAceResult);},40);
+});
 observer.observe(document.documentElement,{childList:true,subtree:true,characterData:true});
 
 window.MAGI_ACE_SELECTION_INTEGRITY_META=Object.freeze({version:VERSION,singleRole:true,bestOrderUntouched:true,personaFirstChoiceOnly:true,conditionSanitizer:true,dataHubSync:true});
