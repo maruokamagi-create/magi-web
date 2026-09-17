@@ -8,10 +8,13 @@ import { resolveQuestionEvidence } from './_evidence-resolver.js';
 import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
 import { buildAppearanceDetailEvidence } from './_appearance-detail-evidence.js';
 import { understandRequestGeminiFirst } from './_semantic-authority.js';
+import { CURRENT_ROSTER } from './_roster.js';
 
-const CORE_VERSION='magi-core-gemini-first-v9-full-lineup-appearance-evidence';
+const CORE_VERSION='magi-core-v10-sample-routes';
+const SAMPLE_ROUTE_VERSION='sample-route-v1';
 
 function text(v){return String(v||'').trim()}
+function normalized(v){return text(v).normalize('NFKC').replace(/[\s　]+/g,'')}
 function isExistingPdfReference(q){
   const s=String(q||'');
   return /(?:\.pdf\b|PDF(?:ファイル|資料|文書|レポート)?)[^。！？!?]{0,40}(?:見て|確認して|読んで|参照して|中身|内容|記載|探して|検索して|開いて)/i.test(s)
@@ -25,6 +28,36 @@ function hasPdfModifier(q){
 function clarificationAnswer(message){
   return text(message)||'質問の意味を正確に確認したいので、もう少し具体的に教えてください。';
 }
+function starterSamplePlayer(question){
+  const q=normalized(question);
+  return CURRENT_ROSTER.find(name=>q.includes(normalized(`${name}選手を現在のスタメンとして起用すべきか`)))||'';
+}
+function sampleSemantic(question){
+  const q=normalized(question);
+  const base={
+    semanticVersion:SAMPLE_ROUTE_VERSION,
+    confidence:'HIGH',specificSeason:'',metric:'',opponent:'',breakdowns:[],clarificationQuestion:'',needsData:true,
+    validated:true,semanticAuthority:'SAMPLE_EXACT_ROUTE',gameInnings:null
+  };
+  if(q===normalized('現在のエース候補は誰が適任か、現チーム14名の投手成績と起用実績を比較して審議してください。')){
+    return {...base,mode:'DELIBERATION',understoodRequest:'現チーム14名の投手成績と起用実績を比較し、現在のエース候補を審議する。',routeReason:'登録済み質問サンプル「エース候補」の確定ルート。',players:[],domains:['PITCHING','TEAM'],timeScope:'CURRENT_SEASON',selectionKind:'GENERIC_SELECTION'};
+  }
+  if(q===normalized('7回制の投手運用を、先発→第2投手→終盤→クローザーの4役で組んで審議してください。')){
+    return {...base,mode:'DELIBERATION',understoodRequest:'7回制の先発・第2投手・終盤・クローザーの4役を現チームから組む。',routeReason:'登録済み質問サンプル「投手運用」の確定ルート。',players:[],domains:['PITCHING','TACTICS','TEAM'],timeScope:'CURRENT_SEASON',selectionKind:'PITCHING_PLAN',gameInnings:7};
+  }
+  if(q===normalized('現チーム14名の現在データをもとに、今のチームで最優先に改善すべき課題を審議してください。')){
+    return {...base,mode:'DELIBERATION',understoodRequest:'現チーム14名の現在データを横断し、今のチームで最優先に改善すべき課題を審議する。',routeReason:'登録済み質問サンプル「チーム改善課題」の確定ルート。',players:[],domains:['TEAM','BATTING','PITCHING','FIELDING'],timeScope:'CURRENT_SEASON',selectionKind:'NONE'};
+  }
+  const starter=starterSamplePlayer(question);
+  if(starter&&q===normalized(`${starter}選手を現在のスタメンとして起用すべきか、今季成績・守備位置・起用実績をもとに審議してください。`)){
+    return {...base,mode:'DELIBERATION',understoodRequest:`${starter}選手を現在のスタメンとして起用する案を、今季成績・守備位置・起用実績から審議する。`,routeReason:'登録済み質問サンプル「スタメン起用」の確定ルート。',players:[starter],domains:['TEAM','BATTING','FIELDING'],timeScope:'CURRENT_SEASON',selectionKind:'NONE'};
+  }
+  return null;
+}
+function isTeamReviewSample(question){
+  return normalized(question)===normalized('現チーム14名の現在データをもとに、今のチームで最優先に改善すべき課題を審議してください。');
+}
+function isStarterEvaluationSample(question){return Boolean(starterSamplePlayer(question));}
 function routedFromSemantic(semantic){
   const domains=Array.isArray(semantic?.domains)?semantic.domains:[];
   const domain=domains.find(d=>['BATTING','PITCHING','FIELDING'].includes(d))||domains[0]||'OTHER';
@@ -62,6 +95,37 @@ function reportKind(semantic){
   if(ds.includes('BATTING'))return'BATTING';
   return'';
 }
+async function attachAppearanceEvidence(evidence,{reviewKind='',focusPlayer=''}={}){
+  if(!evidence)return evidence;
+  const appearance=await buildAppearanceDetailEvidence();
+  evidence.appearanceDetail=appearance;
+  if(appearance?.source){
+    evidence.sources=[...(Array.isArray(evidence.sources)?evidence.sources:[]),appearance.source];
+    evidence.files=[...new Set([...(Array.isArray(evidence.files)?evidence.files:[]),appearance.source.name].filter(Boolean))];
+  }
+  if(appearance?.text)evidence.text=`${text(evidence.text)}\n${appearance.text}`.trim();
+  if(reviewKind)evidence.reviewKind=reviewKind;
+  if(focusPlayer)evidence.focusPlayer=focusPlayer;
+  return evidence;
+}
+async function buildSpecialSampleEvidence({question,routed,semantic}){
+  const teamReview=isTeamReviewSample(question);
+  const starter=starterSamplePlayer(question);
+  if(!teamReview&&!starter)return null;
+  const forcedRouted={...routed,players:[],domains:['LINEUP']};
+  const evidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:forcedRouted});
+  if(!evidence)return null;
+  await attachAppearanceEvidence(evidence,{reviewKind:teamReview?'TEAM_REVIEW':'STARTER_EVALUATION',focusPlayer:starter});
+  if(teamReview){
+    evidence.summary='現チーム14名の今季打撃・投手データ、過去実績、直近状態、出場・守備起用実績を横断し、改善課題の優先順位を審議するための正本Evidence。';
+    evidence.dataRule='TEAM_REVIEWでは候補選手を選ぶのではなく、確認できるチーム全体の記録から改善課題を特定する。MELCHIORは数値・記録、BALTHASARは試合運用・戦術、CASPERは役割・成長・チームへの影響を重視し、Evidenceにない事実は作らない。';
+    evidence.teamReviewInstruction='賛否だけで終わらず、各賢人は現時点の最優先改善課題を具体的に1つ以上示し、根拠と見直し条件を述べる。';
+  }else{
+    evidence.summary=`${starter}選手のスタメン起用案を、現チーム比較・今季成績・直近状態・守備位置・実際の起用実績から審議するための正本Evidence。`;
+    evidence.dataRule=`STARTER_EVALUATIONでは${starter}選手の起用案そのものを評価する。出場詳細_2026-2027.csvのスタメン／途中出場・守備位置・実打順を最優先の起用記録として扱い、他選手を勝手に代替候補へ広げない。`;
+  }
+  return evidence;
+}
 async function deliberationPayload({question,semantic,routed,role='member'}){
   const resolution=await resolveQuestionEvidence({question,routed,role});
   if(resolution?.requestedDocument&&resolution.status!=='RESOLVED'){
@@ -72,27 +136,32 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
 
   let effectiveResolution=resolution;
   if(!resolution?.requestedDocument){
-    const selectionRouted=String(routed?.selectionKind||'').toUpperCase()==='FULL_LINEUP'?{...routed,players:[]}:routed;
-    const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted});
-    if(liveSelectionEvidence){
-      if(String(liveSelectionEvidence.selectionKind||'').toUpperCase()==='FULL_LINEUP'){
-        const appearance=await buildAppearanceDetailEvidence();
-        liveSelectionEvidence.appearanceDetail=appearance;
-        if(appearance?.source){
-          liveSelectionEvidence.sources=[...(Array.isArray(liveSelectionEvidence.sources)?liveSelectionEvidence.sources:[]),appearance.source];
-          liveSelectionEvidence.files=[...new Set([...(Array.isArray(liveSelectionEvidence.files)?liveSelectionEvidence.files:[]),appearance.source.name].filter(Boolean))];
+    const specialEvidence=await buildSpecialSampleEvidence({question,routed,semantic});
+    if(specialEvidence){
+      effectiveResolution={version:specialEvidence.resolverVersion,status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_SAMPLE_REVIEW',evidence:specialEvidence};
+    }else{
+      const selectionRouted=String(routed?.selectionKind||'').toUpperCase()==='FULL_LINEUP'?{...routed,players:[]}:routed;
+      const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted});
+      if(liveSelectionEvidence){
+        if(String(liveSelectionEvidence.selectionKind||'').toUpperCase()==='FULL_LINEUP'){
+          const appearance=await buildAppearanceDetailEvidence();
+          liveSelectionEvidence.appearanceDetail=appearance;
+          if(appearance?.source){
+            liveSelectionEvidence.sources=[...(Array.isArray(liveSelectionEvidence.sources)?liveSelectionEvidence.sources:[]),appearance.source];
+            liveSelectionEvidence.files=[...new Set([...(Array.isArray(liveSelectionEvidence.files)?liveSelectionEvidence.files:[]),appearance.source.name].filter(Boolean))];
+          }
+          if(appearance?.text)liveSelectionEvidence.text=`${text(liveSelectionEvidence.text)}\n${appearance.text}`.trim();
+          liveSelectionEvidence.summary=`${text(liveSelectionEvidence.summary)} 出場詳細_2026-2027.csvのスタメン／途中出場・実守備位置・実打順を起用判断の最優先記録として追加参照します。`.trim();
+          liveSelectionEvidence.dataRule=`${text(liveSelectionEvidence.dataRule)} 出場詳細_2026-2027.csvを守備配置・起用判断の最優先記録とし、奇数試合（第1試合・公式戦想定）と偶数試合（第2試合・チャレンジ）を分けて評価する。`.trim();
         }
-        if(appearance?.text)liveSelectionEvidence.text=`${text(liveSelectionEvidence.text)}\n${appearance.text}`.trim();
-        liveSelectionEvidence.summary=`${text(liveSelectionEvidence.summary)} 出場詳細_2026-2027.csvのスタメン／途中出場・実守備位置・実打順を起用判断の最優先記録として追加参照します。`.trim();
-        liveSelectionEvidence.dataRule=`${text(liveSelectionEvidence.dataRule)} 出場詳細_2026-2027.csvを守備配置・起用判断の最優先記録とし、奇数試合（第1試合・公式戦想定）と偶数試合（第2試合・チャレンジ）を分けて評価する。`.trim();
+        effectiveResolution={
+          version:liveSelectionEvidence.resolverVersion,
+          status:'RESOLVED',
+          requestedDocument:false,
+          source:'CURRENT_MASTER_LIVE_SELECTION',
+          evidence:liveSelectionEvidence
+        };
       }
-      effectiveResolution={
-        version:liveSelectionEvidence.resolverVersion,
-        status:'RESOLVED',
-        requestedDocument:false,
-        source:'CURRENT_MASTER_LIVE_SELECTION',
-        evidence:liveSelectionEvidence
-      };
     }
   }
 
@@ -130,15 +199,14 @@ export default async function handler(req,res){
     const context=Array.isArray(body?.context)?body.context:[];
     if(!question)return sendJson(res,400,{ok:false,error:'question is required'});
 
-    // Single semantic entrypoint: every non-empty question is understood by Gemini first.
-    const semantic=await understandRequestGeminiFirst(question,context);
+    // Registered sample questions use a deterministic semantic route. Edited/free-form questions still use Gemini-first understanding.
+    const semantic=sampleSemantic(question)||await understandRequestGeminiFirst(question,context);
 
     if(semantic.mode==='CLARIFY'){
       const answer=clarificationAnswer(semantic.clarificationQuestion);
       return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',answer,clarificationQuestion:answer,needsClarification:true,semantic,fastPath:false});
     }
 
-    // Output-format handling happens only after semantic understanding.
     if(hasPdfModifier(question)){
       return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK_AFTER_SEMANTIC',semantic,fastPath:false});
     }
