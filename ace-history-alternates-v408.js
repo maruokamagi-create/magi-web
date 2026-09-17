@@ -52,7 +52,7 @@ function ensureStyle(){
   if(document.getElementById('ace-history-alternates-v408-style'))return;
   const s=document.createElement('style');
   s.id='ace-history-alternates-v408-style';
-  s.textContent='.aceAltHistoryV408{margin-top:3px;font-size:13px;line-height:1.6;color:#c9d9e7;font-weight:650}';
+  s.textContent='.aceAlternatesV400 .aceAltStats{font-size:13px!important;line-height:1.6!important;color:#fff!important;font-weight:800!important}.aceAltHistoryV408{margin-top:3px;font-size:13px;line-height:1.6;color:#a9bfd2;font-weight:400}';
   document.head.appendChild(s);
 }
 function patch(result){
@@ -64,5 +64,5 @@ function patch(result){
 function schedule(result){[100,300,700,1300,2200,3600,5200,7200].forEach(ms=>setTimeout(()=>patch(result),ms));}
 document.addEventListener('magi:deliberation-result',e=>{if(isAce(e?.detail))schedule(e.detail)});
 if(isAce(window.MAGI_LAST_DELIBERATION_RESULT))schedule(window.MAGI_LAST_DELIBERATION_RESULT);
-window.MAGI_ACE_HISTORY_ALTERNATES_V408_META=Object.freeze({version:'v408',balthasarSpellingFixed:true,alternateHistoryVisible:true,noHistoryLabel:'前チーム：登板なし'});
+window.MAGI_ACE_HISTORY_ALTERNATES_V408_META=Object.freeze({version:'v408.1',balthasarSpellingFixed:true,alternateHistoryVisible:true,noHistoryLabel:'前チーム：登板なし',currentSeasonEmphasized:true});
 })();
