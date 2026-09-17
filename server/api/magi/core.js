@@ -6,9 +6,10 @@ import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
 import { resolveQuestionEvidence } from './_evidence-resolver.js';
 import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
+import { buildAppearanceDetailEvidence } from './_appearance-detail-evidence.js';
 import { understandRequestGeminiFirst } from './_semantic-authority.js';
 
-const CORE_VERSION='magi-core-gemini-first-v8-single-semantic-entry';
+const CORE_VERSION='magi-core-gemini-first-v9-full-lineup-appearance-evidence';
 
 function text(v){return String(v||'').trim()}
 function isExistingPdfReference(q){
@@ -74,6 +75,17 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
     const selectionRouted=String(routed?.selectionKind||'').toUpperCase()==='FULL_LINEUP'?{...routed,players:[]}:routed;
     const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted});
     if(liveSelectionEvidence){
+      if(String(liveSelectionEvidence.selectionKind||'').toUpperCase()==='FULL_LINEUP'){
+        const appearance=await buildAppearanceDetailEvidence();
+        liveSelectionEvidence.appearanceDetail=appearance;
+        if(appearance?.source){
+          liveSelectionEvidence.sources=[...(Array.isArray(liveSelectionEvidence.sources)?liveSelectionEvidence.sources:[]),appearance.source];
+          liveSelectionEvidence.files=[...new Set([...(Array.isArray(liveSelectionEvidence.files)?liveSelectionEvidence.files:[]),appearance.source.name].filter(Boolean))];
+        }
+        if(appearance?.text)liveSelectionEvidence.text=`${text(liveSelectionEvidence.text)}\n${appearance.text}`.trim();
+        liveSelectionEvidence.summary=`${text(liveSelectionEvidence.summary)} 出場詳細_2026-2027.csvのスタメン／途中出場・実守備位置・実打順を起用判断の最優先記録として追加参照します。`.trim();
+        liveSelectionEvidence.dataRule=`${text(liveSelectionEvidence.dataRule)} 出場詳細_2026-2027.csvを守備配置・起用判断の最優先記録とし、奇数試合（第1試合・公式戦想定）と偶数試合（第2試合・チャレンジ）を分けて評価する。`.trim();
+      }
       effectiveResolution={
         version:liveSelectionEvidence.resolverVersion,
         status:'RESOLVED',
