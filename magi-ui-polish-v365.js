@@ -179,3 +179,78 @@ const boot=setInterval(()=>{
   if(ensureProgressVisible()||tries>=120)clearInterval(boot);
 },100);
 })();
+
+(()=>{
+'use strict';
+if(window.MAGI_QUESTION_SAMPLES_V388)return;
+window.MAGI_QUESTION_SAMPLES_V388=true;
+
+const SAMPLES=[
+  {label:'ベストオーダーを審議して',value:'現在の選手データと起用実績をもとに、現時点のベストオーダーを審議してください。'},
+  {label:'現在のエース候補を審議して',value:'現在の投手データと起用実績をもとに、現在のエースは誰が適任か審議してください。'},
+  {label:'次の試合の先発・継投案を考えて',value:'現在の投手データをもとに、次の試合の先発投手と継投案を審議してください。'},
+  {label:'今のチームの改善課題を審議して',value:'現在のチームデータと直近の試合内容をもとに、今のチームで改善すべき課題を審議してください。'},
+  {label:'選手のスタメン起用を審議して',value:'〇〇選手をスタメン起用すべきか、データ・戦術・チームへの影響の3視点で審議してください。'}
+];
+
+function addQuestionSampleStyle(){
+  if(document.getElementById('magi-question-samples-v388-style'))return;
+  const s=document.createElement('style');
+  s.id='magi-question-samples-v388-style';
+  s.textContent=`.magiQuestionSamples{margin:10px 0 2px}.magiQuestionSamplesLabel{display:block;margin:0 0 6px;font-size:12px;font-weight:800;letter-spacing:.02em;color:#aac0d5}.magiQuestionSamplesSelect{width:100%;min-height:46px;border-radius:12px;border:1px solid #355a7a;background:#0b2135;color:#fff;padding:10px 38px 10px 12px;font:inherit;font-size:14px;font-weight:750;outline:none;cursor:pointer}.magiQuestionSamplesSelect:focus{border-color:#6ca2dc;box-shadow:0 0 0 3px rgba(63,134,255,.14)}.magiQuestionSamplesHint{margin:6px 1px 0;font-size:11px;line-height:1.5;color:#8fa8bf}@media(max-width:430px){.magiQuestionSamplesSelect{font-size:15px;min-height:48px}.magiQuestionSamplesLabel{font-size:12px}.magiQuestionSamplesHint{font-size:11px}}`;
+  document.head.appendChild(s);
+}
+
+function dispatchQuestionEvents(q){
+  q.dispatchEvent(new Event('input',{bubbles:true}));
+  q.dispatchEvent(new Event('change',{bubbles:true}));
+}
+
+function injectQuestionSamples(){
+  const q=document.getElementById('q');
+  if(!q||document.getElementById('magiQuestionSampleSelect'))return false;
+  addQuestionSampleStyle();
+  const wrap=document.createElement('div');
+  wrap.className='magiQuestionSamples';
+  wrap.id='magiQuestionSamples';
+  const label=document.createElement('label');
+  label.className='magiQuestionSamplesLabel';
+  label.htmlFor='magiQuestionSampleSelect';
+  label.textContent='質問サンプル（任意）';
+  const select=document.createElement('select');
+  select.id='magiQuestionSampleSelect';
+  select.className='magiQuestionSamplesSelect';
+  select.setAttribute('aria-label','質問サンプルを選ぶ');
+  select.innerHTML='<option value="">▼ 質問サンプルを選ぶ</option>'+SAMPLES.map((sample,index)=>`<option value="${index}">${sample.label}</option>`).join('');
+  const hint=document.createElement('div');
+  hint.className='magiQuestionSamplesHint';
+  hint.textContent='選ぶと下の入力欄に入ります。選択後も自由に書き換えられます。';
+  wrap.append(label,select,hint);
+  q.parentNode.insertBefore(wrap,q);
+  const oldSampleButton=q.closest('.card')?.querySelector('button[onclick="sample()"]');
+  if(oldSampleButton)oldSampleButton.style.display='none';
+  select.addEventListener('change',()=>{
+    if(select.value==='')return;
+    const sample=SAMPLES[Number(select.value)];
+    if(!sample)return;
+    q.value=sample.value;
+    dispatchQuestionEvents(q);
+    q.focus();
+    q.setSelectionRange?.(q.value.length,q.value.length);
+  });
+  q.addEventListener('input',()=>{
+    const index=SAMPLES.findIndex(sample=>sample.value===q.value);
+    const next=index>=0?String(index):'';
+    if(select.value!==next)select.value=next;
+  });
+  return true;
+}
+
+if(!injectQuestionSamples()){
+  const observer=new MutationObserver(()=>{
+    if(injectQuestionSamples())observer.disconnect();
+  });
+  observer.observe(document.documentElement,{childList:true,subtree:true});
+  window.addEventListener('load',injectQuestionSamples,{once:true});
+}
+})();
