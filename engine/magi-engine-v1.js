@@ -5,10 +5,11 @@
 (function (global) {
   'use strict';
 
-  const ENGINE_VERSION = '1.0.3';
+  const ENGINE_VERSION = '1.0.4';
   const PERSONAS = ['melchior', 'balthasar', 'casper'];
   const REQUEST_TIMEOUT_MS = 50_000;
-  const MAX_REQUEST_ATTEMPTS = 2;
+  const MAX_REQUEST_ATTEMPTS = 3;
+  const PERSONA_START_STAGGER_MS = 300;
 
   const deepFreeze = (value) => {
     if (!value || typeof value !== 'object' || Object.isFrozen(value)) return value;
@@ -59,7 +60,7 @@
     let lastError;
     for (let attempt = 0; attempt < MAX_REQUEST_ATTEMPTS; attempt++) {
       if (attempt) {
-        const wait = 900 + Math.floor(Math.random() * 250);
+        const wait = (900 * (attempt + 1)) + Math.floor(Math.random() * 400);
         emit(options, 'onRetry', { url, attempt: attempt + 1, maxAttempts: MAX_REQUEST_ATTEMPTS, waitMs: wait });
         await sleep(wait);
       }
@@ -99,12 +100,19 @@
     });
   }
 
+  async function runPersonaSet(makePayload, options) {
+    const jobs = PERSONAS.map(async (persona, index) => {
+      if (index) await sleep(index * PERSONA_START_STAGGER_MS);
+      const result = await postJSON('/api/magi/persona', makePayload(persona), options);
+      return [persona, result];
+    });
+    return Object.fromEntries(await Promise.all(jobs));
+  }
+
   async function runPrimary(caseData, options) {
-    const jobs = PERSONAS.map((persona) => postJSON('/api/magi/persona', {
+    return runPersonaSet((persona) => ({
       phase: 'PRIMARY', persona, case: caseData
-    }, options).then((result) => [persona, result]));
-    const entries = await Promise.all(jobs);
-    return Object.fromEntries(entries);
+    }), options);
   }
 
   async function runCrossExamination(caseData, primaryLocked, options) {
@@ -115,12 +123,10 @@
 
   async function runSecond(caseData, primaryLocked, cross, options) {
     const revealed = reveal(primaryLocked);
-    const jobs = PERSONAS.map((persona) => postJSON('/api/magi/persona', {
+    return runPersonaSet((persona) => ({
       phase: 'SECOND', persona, case: caseData,
       primarySelf: revealed[persona], crossExamination: cross
-    }, options).then((result) => [persona, result]));
-    const entries = await Promise.all(jobs);
-    return Object.fromEntries(entries);
+    }), options);
   }
 
   async function finalize(caseData, primaryLocked, cross, second, options) {
