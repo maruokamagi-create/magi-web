@@ -71,14 +71,9 @@ function aggregate(name,rows){
     substitutions:substitutions.size,
     regularStarts:regularStarts.size,
     challengeStarts:challengeStarts.size,
-    positions:Object.fromEntries(positionCounts),
-    battingOrders:Object.fromEntries(battingOrderCounts),
     positionSummary:compactCounts(positionCounts)||'記録なし',
     battingOrderSummary:compactCounts(battingOrderCounts)||'記録なし'
   };
-}
-function playerLine(player){
-  return `${player.name}：出場 ${player.appearances} / スタメン ${player.starts} / 途中出場 ${player.substitutions} / 奇数試合スタメン ${player.regularStarts} / 偶数試合スタメン ${player.challengeStarts} / 守備 ${player.positionSummary} / 打順 ${player.battingOrderSummary}`;
 }
 
 export async function buildAppearanceDetailEvidence(){
@@ -91,19 +86,16 @@ export async function buildAppearanceDetailEvidence(){
   if(!normalizedRows.length)throw new Error(`${FILE_NAME} に選手データがありません`);
   const players=CURRENT_ROSTER.map(name=>aggregate(name,normalizedRows));
   const games=new Map();
-  normalizedRows.map(rowFields).forEach(row=>{const no=gameNumber(row.gameLabel);if(no>0)games.set(gameKey(row),{number:no,label:row.gameLabel,date:row.date,opponent:row.opponent});});
-  const gameList=[...games.values()].sort((a,b)=>a.number-b.number);
+  normalizedRows.map(rowFields).forEach(row=>{const no=gameNumber(row.gameLabel);if(no>0)games.set(gameKey(row),no);});
   return {
     status:'COMPLETE',
     source:{id:file.id,name:file.name,path:file.path,mimeType:file.mimeType,modifiedTime:file.modifiedTime,season:'current',priority:'APPEARANCE_PRIMARY'},
-    gameCount:gameList.length,
-    games:gameList,
+    gameCount:games.size,
     players,
     text:[
       '【出場詳細CSV・起用実績】',
-      `参照：${FILE_NAME} / 記録試合 ${gameList.length}試合`,
-      '判定ルール：試合順番号の奇数＝第1試合（公式戦を見据えたレギュラー起用）、偶数＝第2試合（チャレンジ・テスト起用）として分ける。スタメン／途中出場、実際の守備位置、実際の打順を起用判断の最優先データとして扱う。',
-      ...players.map(playerLine)
+      `参照：${FILE_NAME} / 記録試合 ${games.size}試合`,
+      '守備配置・起用判断では appearanceDetail.players を最優先参照する。奇数試合＝第1試合（公式戦想定）、偶数試合＝第2試合（チャレンジ）として分け、スタメン／途中出場・実守備位置・実打順を混同しない。'
     ].join('\n'),
     rule:'出場詳細_2026-2027.csvを守備配置・起用判断の最優先記録として使用する。奇数試合と偶数試合を混同せず、実際のスタメン・途中出場・守備位置・打順を確認する。'
   };
