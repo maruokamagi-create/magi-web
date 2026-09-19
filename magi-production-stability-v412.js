@@ -20,16 +20,15 @@ window.addEventListener('load',()=>{window.MAGI_PRODUCTION_PREFLIGHT_V412().catc
 let installed=false;
 function install(){
  const baseRunner=window.MAGI_FORMAL_UI_RUNNER_V2;
- if(typeof baseRunner!=='function'||baseRunner.__magiStableV412)return false;
+ if(typeof baseRunner!=='function')return false;
+ if(baseRunner.__magiStableV412)return true;
  const wrapped=async function(args={}){
    await window.MAGI_PRODUCTION_PREFLIGHT_V412();
    const k=key(args.question,args.evidence,args.selectionKind);
    const cached=get(k);
-   if(cached){
-     window.MAGI_LAST_DELIBERATION_RESULT=JSON.parse(JSON.stringify(cached));
-     document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:JSON.parse(JSON.stringify(cached))}));
-     return cached;
-   }
+   // Cache is used as a deterministic recovery source only. Normal UI runs still execute
+   // the full PRIMARY -> CROSS -> SECOND -> FINAL sequence so intermediate MAGI CONTROL
+   // and three-wise-men progress never disappears.
    let last;
    for(let attempt=1;attempt<=2;attempt++){
      try{
@@ -39,7 +38,7 @@ function install(){
        return result;
      }catch(e){last=e;if(attempt<2){window.MAGI_PROGRESS_V358?.update?.(20,'初回通信を再準備して審議を最初から再実行します','RECOVERY');await sleep(1200);}}
    }
-   throw last||new Error('MAGI審議を完了できませんでした');
+   if(cached){window.MAGI_LAST_DELIBERATION_RESULT=JSON.parse(JSON.stringify(cached));document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:JSON.parse(JSON.stringify(cached))}));return cached;}\n   throw last||new Error('MAGI審議を完了できませんでした');
  };
  wrapped.meta=Object.freeze({...baseRunner.meta,productionStability:'v412',sameInputReplay:true,wholeRunRetry:true,preflight:true});
  wrapped.__magiStableV412=true;
