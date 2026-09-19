@@ -109,12 +109,12 @@ function dateRank(v){
  const t=Date.parse(s.replace(/[年月]/g,'/').replace(/日/g,''));return Number.isFinite(t)?t:0;
 }
 function latestPracticeDates(all,sheetName){
- const dates=[...new Set(all.filter(r=>/\.xlsm$/i.test(String(r.fileName||''))&&String(r.sheetName||'').trim()===sheetName&&isPractice(r)).map(r=>raw(r,['開催日','日付'])).filter(Boolean))];
+ const dates=[...new Set(all.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&String(r.sheetName||'').trim()===sheetName&&isPractice(r)).map(r=>raw(r,['開催日','日付'])).filter(Boolean))];
  return dates.sort((a,b)=>dateRank(b)-dateRank(a)).slice(0,3);
 }
 function aggregateBreakdown(all,target,y,type,selectedDates){
  const np=n(target),dim=type==='order'?['打順']:type==='opponent'?['相手校','対戦相手','対戦校']:null;
- const detail=all.filter(r=>/\.xlsm$/i.test(String(r.fileName||''))&&(!y||season(r)===y)&&/^打撃詳細$/i.test(String(r.sheetName||'').trim())&&n(player(r))===np&&(!selectedDates||(isPractice(r)&&selectedDates.includes(raw(r,['開催日','日付'])))));
+ const detail=all.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&(!y||season(r)===y)&&/^打撃詳細$/i.test(String(r.sheetName||'').trim())&&n(player(r))===np&&(!selectedDates||(isPractice(r)&&selectedDates.includes(raw(r,['開催日','日付'])))));
  const groups=new Map();
  for(const r of detail){
   const label=type==='total'?'通算':raw(r,dim);if(!label)continue;
@@ -140,11 +140,11 @@ function collect(q){
  if(!target)return{error:'対象選手をDrive資料から特定できませんでした。選手名をフルネームで入力してください。'};
  const wanted=explicitSeason(q),np=n(target);
  let mine=all.filter(r=>n(player(r))===np&&season(r)&&METRICS.some(m=>raw(r,m.aliases)!=='')&&!/打撃詳細|投手詳細/i.test(`${r.fileName||''} ${r.sheetName||''}`));
- let detailMine=all.filter(r=>n(player(r))===np&&season(r)&&/\.xlsm$/i.test(String(r.fileName||''))&&/^打撃詳細$/i.test(String(r.sheetName||'').trim()));
+ let detailMine=all.filter(r=>n(player(r))===np&&season(r)&&/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&/^打撃詳細$/i.test(String(r.sheetName||'').trim()));
  if(wanted){mine=mine.filter(r=>season(r)===wanted);detailMine=detailMine.filter(r=>season(r)===wanted)}
- const xlsmRows=mine.filter(r=>/\.xlsm$/i.test(String(r.fileName||'')));
+ const xlsmRows=mine.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||'')));
  if(xlsmRows.length)mine=xlsmRows;
- if(!mine.length&&!detailMine.length)return{error:`${target}の${wanted||'全年度'}打撃成績をDrive正本のxlsmから取得できませんでした。`};
+ if(!mine.length&&!detailMine.length)return{error:`${target}の${wanted||'全年度'}打撃成績をDrive正本のxlsm／CSVから取得できませんでした。`};
  const recentDates=latestPracticeDates(all,'打撃詳細');
  const recentTotal=aggregateBreakdown(all,target,null,'total',recentDates)[0]||null;
  const recentRecord=recentTotal?{season:'直近6試合',isRecent:true,values:{...recentTotal.values,rispAvg:''},sources:{},sourceFiles:[...new Set(detailMine.filter(r=>isPractice(r)&&recentDates.includes(raw(r,['開催日','日付']))).map(r=>r.fileName).filter(Boolean))],sourceSheets:['打撃詳細から再集計'],baseRow:recentTotal,rispRow:null,orderRows:[],opponentRows:[],row:recentTotal,suppressBreakdown:true,recentDates}:null;
