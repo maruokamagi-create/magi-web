@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
 import { googleDriveFetch } from '../drive/_service.js';
+import { CURRENT_ROSTER } from './_roster.js';
 
 export const OBSERVATION_SHEET_ID = '1Cs5cQUJYEC1Ta7OQXi5hUWnKkQHVOHByRiWtwKsC0uE';
 const SOURCE_URL = `https://docs.google.com/spreadsheets/d/${OBSERVATION_SHEET_ID}/edit`;
@@ -91,7 +92,14 @@ function weightForGroup(entries) {
 
 export function summarizeObservationEvidence(all, { players = [], team = false } = {}) {
   const names = players.map(norm).filter(Boolean);
-  const selected = all.filter(x => team || (!names.length ? x.target === 'チーム全体' || x.target === 'ベンチ' : names.some(name => norm(x.target) === name)));
+  const selected = all.filter(x => {
+    if (team) return true;
+    if (!names.length) return x.target === 'チーム全体' || x.target === 'ベンチ';
+    if (!names.some(name => norm(x.target) === name)) return false;
+    // A single-player case must not turn a coach's multi-player deployment
+    // suggestion into a proposal about another player.
+    return !CURRENT_ROSTER.some(name => !names.includes(norm(name)) && norm(x.text).includes(norm(name)));
+  });
   const grouped = new Map();
   for (const item of selected) {
     const key = trendKey(item);
