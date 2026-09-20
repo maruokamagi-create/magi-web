@@ -1,4 +1,4 @@
-import XLSX from 'xlsx';
+import * as XLSX from 'xlsx';
 import { googleDriveFetch } from '../drive/_service.js';
 
 export const OBSERVATION_SHEET_ID = '1Cs5cQUJYEC1Ta7OQXi5hUWnKkQHVOHByRiWtwKsC0uE';
