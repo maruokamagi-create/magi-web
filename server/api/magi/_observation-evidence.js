@@ -91,7 +91,7 @@ function weightForGroup(entries) {
 
 export function summarizeObservationEvidence(all, { players = [], team = false } = {}) {
   const names = players.map(norm).filter(Boolean);
-  const selected = all.filter(x => team || x.target === 'チーム全体' || x.target === 'ベンチ' || names.some(name => norm(x.target) === name));
+  const selected = all.filter(x => team || (!names.length ? x.target === 'チーム全体' || x.target === 'ベンチ' : names.some(name => norm(x.target) === name)));
   const grouped = new Map();
   for (const item of selected) {
     const key = trendKey(item);
