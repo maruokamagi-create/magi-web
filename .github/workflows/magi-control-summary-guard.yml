@@ -37,7 +37,7 @@ jobs:
           ! grep -Fq '/cross-dialogue-ui-v380.js' index.html
           grep -Fq '/result-layout-v189.js?v=201' index.html
           grep -Fq '/selection-polish-v218.js?v=221' index.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=377' index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=378' index.html
           grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' magi-formal-runner-v373.js
           grep -Fq "new CustomEvent('magi:deliberation-result'" magi-formal-runner-v373.js
           grep -Fq "label='2対1 MAJORITY'" magi-control-summary-v377.js
