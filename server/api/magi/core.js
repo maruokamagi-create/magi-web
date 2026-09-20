@@ -10,6 +10,7 @@ import { buildAppearanceDetailEvidence } from './_appearance-detail-evidence.js'
 import { understandRequestGeminiFirst } from './_semantic-authority.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { buildObservationEvidence } from './_observation-evidence.js';
+import { runDriveLiveAudit } from './_drive-live-audit.js';
 
 const CORE_VERSION='magi-core-v10-sample-routes';
 const SAMPLE_ROUTE_VERSION='sample-route-v1';
@@ -163,6 +164,46 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
           evidence:liveSelectionEvidence
         };
       }
+    }
+  }
+
+  // A named pitcher deliberation needs the current official pitching row as well
+  // as the independently reported observation ledger.
+  const focusNames = (Array.isArray(semantic?.players) ? semantic.players : [])
+    .filter(name => CURRENT_ROSTER.some(rosterName => normalized(rosterName) === normalized(name)));
+  if (!resolution?.requestedDocument && focusNames.length && (semantic?.domains || []).includes('PITCHING')) {
+    try {
+      const audit = await runDriveLiveAudit({ season: 'current' });
+      const rows = focusNames.map(name => {
+        const canonical = CURRENT_ROSTER.find(rosterName => normalized(rosterName) === normalized(name));
+        const entry = audit?.extracted?.playersByName?.[canonical];
+        if (!entry?.pitching || !entry?.sources?.pitching) return null;
+        const p = entry.pitching;
+        const values = [
+          ['登板', p.APP], ['防御率', p.ERA], ['投球回', p.IP],
+          ['奪三振', p.SO], ['与四球', p.BB], ['WHIP', p.WHIP],
+          ['被打率', p.BAA], ['被安打', p.H], ['失点', p.R], ['自責点', p.ER]
+        ].filter(([, value]) => text(value)).map(([label, value]) => `${label} ${value}`);
+        return { name: canonical, pitching: p, location: entry.sources.pitching,
+          line: `${canonical}：${values.join(' / ')}` };
+      }).filter(Boolean);
+      if (rows.length) {
+        const packet = effectiveResolution?.evidence || { text: '', sources: [], files: [] };
+        const source = { ...audit.source, type: 'XLSM_MASTER', season: 'current', priority: 'PRIMARY' };
+        packet.currentPitching = {
+          periodStart: audit.extracted.periodStart, periodEnd: audit.extracted.periodEnd,
+          source, players: rows.map(({ name, pitching, location }) => ({ name, pitching, location }))
+        };
+        packet.sources = [...(Array.isArray(packet.sources) ? packet.sources : []), source];
+        packet.files = [...new Set([...(Array.isArray(packet.files) ? packet.files : []), source.name].filter(Boolean))];
+        packet.count = Math.max(Number(packet.count) || 0, rows.length);
+        packet.text = `${text(packet.text)}\n【今季投手成績・正本XLSM】\n集計期間：${audit.extracted.periodStart || '不明'} ～ ${audit.extracted.periodEnd || '不明'}\n${rows.map(row => row.line).join('\n')}`.trim();
+        packet.dataRule = `${text(packet.dataRule)} 今季投手成績は正本XLSMの対象選手の投手行のみを使う。打撃成績を投手成績へ流用しない。登板・投球回などの母数と率を併記し、観察情報とは独立に評価する。指定選手以外を起用候補に広げない。`.trim();
+        effectiveResolution = { ...(effectiveResolution || {}), status: 'RESOLVED',
+          source: effectiveResolution?.source || 'CURRENT_MASTER_PLAYER_PITCHING', evidence: packet };
+      }
+    } catch (error) {
+      console.error('[MAGI current pitching evidence]', error?.message || error);
     }
   }
 
