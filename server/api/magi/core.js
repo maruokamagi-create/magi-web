@@ -9,6 +9,7 @@ import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
 import { buildAppearanceDetailEvidence } from './_appearance-detail-evidence.js';
 import { understandRequestGeminiFirst } from './_semantic-authority.js';
 import { CURRENT_ROSTER } from './_roster.js';
+import { buildObservationEvidence } from './_observation-evidence.js';
 
 const CORE_VERSION='magi-core-v10-sample-routes';
 const SAMPLE_ROUTE_VERSION='sample-route-v1';
@@ -165,6 +166,32 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
     }
   }
 
+  // Observations are an independent source. A Drive outage must not replace or erase
+  // the verified match and appearance records already selected above.
+  try {
+    const players = Array.isArray(semantic?.players) ? semantic.players : [];
+    const observations = await buildObservationEvidence({
+      players,
+      team: !players.length || /チーム|ベンチ|全体/.test(question)
+    });
+    if (observations.entries.length) {
+      const packet = effectiveResolution?.evidence || { text: '', sources: [], files: [] };
+      packet.observations = observations;
+      packet.sources = [...(Array.isArray(packet.sources) ? packet.sources : []), observations.source];
+      packet.files = [...new Set([...(Array.isArray(packet.files) ? packet.files : []), observations.source.name])];
+      packet.text = `${text(packet.text)}\n【独立した観察Evidence】\n${observations.text}`.trim();
+      packet.dataRule = `${text(packet.dataRule)} ${observations.dataRule}`.trim();
+      effectiveResolution = {
+        ...(effectiveResolution || {}),
+        status: 'RESOLVED',
+        source: effectiveResolution?.source || 'OBSERVATION_LEDGER',
+        evidence: packet
+      };
+    }
+  } catch (error) {
+    console.error('[MAGI observation evidence]', error?.message || error);
+  }
+
   return {
     ok:true,handled:true,coreVersion:CORE_VERSION,route:'DELIBERATION',action:'DELIBERATE',
     routerVersion:routed?.routerVersion||semantic?.semanticVersion||null,understoodRequest:semantic?.understoodRequest||question,
@@ -257,3 +284,4 @@ export default async function handler(req,res){
     return sendJson(res,502,{ok:false,error:error?.message||'MAGI core failed',coreVersion:CORE_VERSION});
   }
 }
+
