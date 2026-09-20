@@ -38,7 +38,8 @@ function install(){
        return result;
      }catch(e){last=e;if(attempt<2){window.MAGI_PROGRESS_V358?.update?.(20,'初回通信を再準備して審議を最初から再実行します','RECOVERY');await sleep(1200);}}
    }
-   if(cached){window.MAGI_LAST_DELIBERATION_RESULT=JSON.parse(JSON.stringify(cached));document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:JSON.parse(JSON.stringify(cached))}));return cached;}\n   throw last||new Error('MAGI審議を完了できませんでした');
+   if(cached){window.MAGI_LAST_DELIBERATION_RESULT=JSON.parse(JSON.stringify(cached));document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:JSON.parse(JSON.stringify(cached))}));return cached;}
+   throw last||new Error('MAGI審議を完了できませんでした');
  };
  wrapped.meta=Object.freeze({...baseRunner.meta,productionStability:'v412',sameInputReplay:true,wholeRunRetry:true,preflight:true});
  wrapped.__magiStableV412=true;
@@ -48,3 +49,4 @@ function install(){
 }
 let n=0,t=setInterval(()=>{n++;if(install()||n>400)clearInterval(t)},50);install();
 })();
+

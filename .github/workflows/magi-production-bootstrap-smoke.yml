@@ -37,7 +37,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=377' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=378' index.html
           grep -q '/magi-control-summary-v377.js?v=386' index.html
           grep -q '/result-layout-v189.js?v=201' index.html
           grep -q '/chat-ui-canonical-v387.js?v=387' index.html
@@ -45,7 +45,7 @@ jobs:
           ! grep -q '/cross-dialogue-ui-v380.js' index.html
           grep -q '/selection-polish-v218.js?v=221' index.html
           ! grep -q 'magi-formal-hotfix-v369.js' index.html
-          grep -q "const REV='377'" magi-app-bootstrap-v363.js
+          grep -q "const REV='378'" magi-app-bootstrap-v363.js
           grep -q "version:'canonical-app-v377'" magi-app-bootstrap-v363.js
           grep -q "controlSummary:'V377_STRUCTURED'" magi-app-bootstrap-v363.js
           grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
@@ -164,14 +164,14 @@ jobs:
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/result-layout-v189.js?v=201" -o /tmp/result-layout.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-canonical-v387.js?v=387" -o /tmp/chat-ui.js
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/selection-polish-v218.js?v=221" -o /tmp/selection-polish.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=377" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=377" -o /tmp/integrity.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=377" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=377" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=377" -o /tmp/semantic.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=377" -o /tmp/progress.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=378" -o /tmp/bootstrap.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=378" -o /tmp/integrity.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=378" -o /tmp/formal.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=378" -o /tmp/core-guard.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=378" -o /tmp/semantic.js
+          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=378" -o /tmp/progress.js
 
-          grep -Fq '/magi-app-bootstrap-v363.js?v=377' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=378' /tmp/index.html
           grep -Fq '/magi-control-summary-v377.js?v=386' /tmp/index.html
           grep -Fq '/result-layout-v189.js?v=201' /tmp/index.html
           grep -Fq '/chat-ui-canonical-v387.js?v=387' /tmp/index.html
@@ -193,7 +193,7 @@ jobs:
           ! grep -Fq 'MAGI CONTROL →' /tmp/chat-ui.js
           grep -Fq 'structuredConditions()' /tmp/selection-polish.js
           grep -Fq 'if(!s||HAND_RE.test(s))return' /tmp/selection-polish.js
-          grep -Fq "const REV='377'" /tmp/bootstrap.js
+          grep -Fq "const REV='378'" /tmp/bootstrap.js
           grep -Fq "version:'canonical-app-v377'" /tmp/bootstrap.js
           grep -Fq "controlSummary:'V377_STRUCTURED'" /tmp/bootstrap.js
           grep -Fq 'MAGI_DELIBERATION_SERIAL_V374' /tmp/integrity.js
