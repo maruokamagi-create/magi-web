@@ -31,7 +31,7 @@ jobs:
           node --check selection-polish-v218.js
           node --check magi-formal-runner-v373.js
           node --check magi-app-bootstrap-v363.js
-          grep -Fq '/magi-control-summary-v377.js?v=386' index.html
+          grep -Fq '/magi-control-summary-v377.js?v=394' index.html
           grep -Fq '/chat-ui-canonical-v387.js?v=387' index.html
           ! grep -Fq '/chat-ui-v196.js' index.html
           ! grep -Fq '/cross-dialogue-ui-v380.js' index.html
