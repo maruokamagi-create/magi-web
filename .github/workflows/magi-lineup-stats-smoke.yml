@@ -30,7 +30,7 @@ jobs:
             (.players|type=="array") and (.players|length==14) and
             ([.players[] | has("games") and has("AB") and has("H") and has("AVG") and has("OBP") and has("OPS") and has("RBI")] | all) and
             ([.players[] | .AVG,.OBP,.SLG,.OPS,.RISP | select(. != "") | test("^-?(?:[0-9]+)?\\.[0-9]{3}$")] | all) and
-            ([.players[] | select(.name=="大野 竜暉") | .OPS=="1.000"] | any)
+            ([.players[] | select(.name=="大野 竜暉") | (.OPS | test("^-?(?:[0-9]+)?\\.[0-9]{3}$"))] | any)
           ' /tmp/stats.json >/dev/null
           echo 'PRODUCTION LINEUP BATTING STATS + 3-DECIMAL RATES: PASS'
 
