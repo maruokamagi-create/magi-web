@@ -273,8 +273,9 @@ export default async function handler(req,res){
     const context=Array.isArray(body?.context)?body.context:[];
     if(!question)return sendJson(res,400,{ok:false,error:'question is required'});
 
-    // Registered sample questions use a deterministic semantic route. Edited/free-form questions still use Gemini-first understanding.
-    const semantic=sampleSemantic(question)||await understandRequestGeminiFirst(question,context);
+    // Gemini is the single semantic authority for every production question.
+    // Registered samples remain execution/evidence helpers only; they do not bypass semantic understanding.
+    const semantic=await understandRequestGeminiFirst(question,context);
 
     if(semantic.mode==='CLARIFY'){
       const answer=clarificationAnswer(semantic.clarificationQuestion);
