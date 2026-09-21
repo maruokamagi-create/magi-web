@@ -242,6 +242,12 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
     evidencePacket:effectiveResolution?.evidence||null,evidenceResolution:effectiveResolution,semantic,fastPath:false
   };
 }
+function needsCrossEvidenceAnalysis(question,semantic){
+  const s=normalized(question)+normalized(semantic?.understoodRequest||'');
+  const teamChange=/(チーム|新チーム).{0,20}(変化|成長|改善|課題|どう変わ|分析|評価)/.test(s);
+  const observation=/指導者|保護者|観察|情報提供|統合台帳|意見/.test(s);
+  return teamChange||observation;
+}
 async function documentPayload({question,semantic,role='member'}){
   const routed=routedFromSemantic(semantic);
   const resolution=await resolveQuestionEvidence({question,routed,role});
@@ -302,6 +308,10 @@ export default async function handler(req,res){
     }
 
     if(['SINGLE_VALUE','SUMMARY','GENERAL'].includes(semantic.mode)){
+      if(needsCrossEvidenceAnalysis(question,semantic)){
+        const routed=deliberationRouteFromSemantic({...semantic,domains:[...new Set([...(semantic?.domains||[]),'TEAM','BATTING','PITCHING','FIELDING'])]});
+        return sendJson(res,200,await deliberationPayload({question,semantic:{...semantic,mode:'DELIBERATION'},routed,role:member.role}));
+      }
       const routed=routedFromSemantic(semantic);
       if(semantic.mode==='GENERAL'&&routed.route==='GENERAL_QUESTION'){
         const answer='質問の意味は理解できましたが、現在のMAGIで実行する処理を安全に確定できませんでした。対象の選手・試合・知りたいことをもう少し具体的に教えてください。';
