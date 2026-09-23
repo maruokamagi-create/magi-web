@@ -128,7 +128,7 @@ export default async function handler(req,res){
       try{
         const semantic=applySemanticGuard(item.question,[],await understandRequest(item.question,[]));
         results.push({id:batch*100+i+1,question:item.question,pass:judgeSynthetic(item,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});
-      }catch(error){results.push({id:batch*10+i+1,question:item.question,pass:false,error:error?.message||String(error)});}
+      }catch(error){results.push({id:batch*100+i+1,question:item.question,pass:false,error:error?.message||String(error)});}
     }
     return res.status(200).json({ok:results.every(x=>x.pass),suite:'10000',batch,total:10000,results});
     }catch(error){return res.status(200).json({ok:false,suite:'10000',stage:'outer',error:error?.stack||error?.message||String(error)});}
