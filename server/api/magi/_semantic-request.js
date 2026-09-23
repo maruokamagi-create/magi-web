@@ -186,6 +186,20 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
     return clarifyResult(q,'誰をクローザーに固定する案ですか？ 選手名を教えてください。','役割は明確だが対象選手が特定できない。',[]);
   }
 
+  if(grounded.length===1){
+    const batting=/打撃成績|打率|OPS/i.test(q);
+    const pitching=/投手成績|防御率|奪三振/i.test(q);
+    const metric=/OPS/i.test(q)?'OPS':/打率/.test(q)?'AVG':/防御率/.test(q)?'ERA':/奪三振/.test(q)?'SO':'';
+    const scope=/直近\s*6\s*試合/.test(q)?'RECENT_6':/最近/.test(q)?'RECENT':/今季|今年度/.test(q)?'CURRENT_SEASON':/通算/.test(q)?'CAREER':'UNSPECIFIED';
+    if((batting||pitching)&&/(?:教えて|見せて|出して|知りたい|成績|打率|OPS|防御率|奪三振)/i.test(q)){
+      return directResult(q,{mode:metric?'SINGLE_VALUE':'SUMMARY',players:grounded,domains:[pitching?'PITCHING':'BATTING'],timeScope:scope,metric,understoodRequest:`${grounded[0]}の${scope==='RECENT_6'?'直近6試合':scope==='CURRENT_SEASON'?'今季':scope==='CAREER'?'通算':''}${pitching?'投手':'打撃'}成績を照会する`,routeReason:'対象選手・成績領域・期間が明示された定型成績照会。'});
+    }
+    if(/(?:スタメン起用|クローザー起用|先発起用|現在の評価).*(?:審議|して)/.test(q)){
+      const domains=/クローザー|先発/.test(q)?['PITCHING','TACTICS']:['TEAM','DEVELOPMENT'];
+      return directResult(q,{mode:'DELIBERATION',players:grounded,domains,timeScope:'CURRENT_SEASON',understoodRequest:`${grounded[0]}の起用・評価について審議する`,routeReason:'対象選手と審議内容が明示された定型相談。'});
+    }
+  }
+
   if(grounded.length===1&&/(?:メンタル.{0,5}(?:弱|強)|やる気.{0,4}(?:ない|ある)|遅刻.{0,8}(?:ダメ|駄目|だめ))/.test(q)){
     return directResult(q,{mode:'DELIBERATION',players:grounded,domains:['DEVELOPMENT','TEAM'],timeScope:'CURRENT_SEASON',understoodRequest:`${grounded[0]}について、内面や人格を断定せず観察可能な行動・記録と改善経過から評価する`,routeReason:'内面の決めつけや単一行動だけの人物断定に迎合せず、観察可能な事実へ分離して審議する。'});
   }
