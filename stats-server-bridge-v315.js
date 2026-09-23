@@ -13,6 +13,17 @@ const FALLBACK_MASTER=[
 const tableCache=new Map();
 const rispCache=new Map();
 const norm=v=>String(v??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
+const PLAYER_ALIASES={
+ '坂田曜馬':'坂田暉馬','大野竜輝':'大野竜暉','島田栄志':'嶋田栄志','中島玲月':'中嶋玲月',
+ '武沢大翔':'武澤大翔','橋向結斗':'橋向結都','宮崎翔':'宮嵜翔','桜川莉大':'櫻川莉大'
+};
+const OFFICIAL_PLAYERS=['北淳志','坂本陸','櫻川莉大','佐々木悠成','下田涼歩','前川夢斗','増田晃大','宮嵜翔','宮村龍','井坂悠聖','大久保陽翔','大野竜暉','坂田暉馬','嶋田栄志','武澤大翔','橋向結都','上村蓮','大久保夢翔','長侶穹','中嶋玲月','吉田真翔','鰐渕将太','武田晴琉翔'];
+function canonName(v){const n=norm(v);return PLAYER_ALIASES[n]||n}
+function officialTarget(query){
+ const q=canonName(query);
+ const hits=OFFICIAL_PLAYERS.filter(p=>q.includes(p));
+ return hits.sort((a,b)=>b.length-a.length)[0]||'';
+}
 
 function isLookup(q){
  q=String(q||'');
@@ -149,15 +160,16 @@ function tableMeta(src,table){
  return{src,table,cols,ix,rowGame,games:[...games.values()]};
 }
 function findTarget(query,metas){
- const q=norm(query),names=[];
+ const official=officialTarget(query);if(official)return official;
+ const q=canonName(query),names=[];
  for(const m of metas){
   if(m.ix.player<0)continue;
   for(let i=1;i<m.table.length;i++){
-   const p=String(m.table[i]?.[m.ix.player]??'').trim(),k=norm(p);
-   if(p&&k.length>=2&&q.includes(k)&&!names.some(x=>norm(x)===k))names.push(p);
+   const p=String(m.table[i]?.[m.ix.player]??'').trim(),k=canonName(p);
+   if(p&&k.length>=2&&q.includes(k)&&!names.some(x=>canonName(x)===k))names.push(p);
   }
  }
- return names.sort((a,b)=>norm(b).length-norm(a).length)[0]||'';
+ return names.sort((a,b)=>canonName(b).length-canonName(a).length)[0]||'';
 }
 function latestSixPlan(metas){
  const all=[];for(const m of metas)all.push(...m.games);
@@ -184,11 +196,11 @@ function zeroLikeRow(row,cols){
  return out;
 }
 function injectDetail(target,metas,plan){
- const np=norm(target),out=[];
+ const np=canonName(target),out=[];
  for(const m of metas){
   if(m.ix.player<0)continue;
   for(let i=1;i<m.table.length;i++){
-   const row=m.table[i]||[];if(norm(row[m.ix.player])!==np)continue;
+   const row=m.table[i]||[];if(canonName(row[m.ix.player])!==np)continue;
    const v=row.map(x=>String(x??'')),gp=plan.map.get(m.rowGame.get(i));
    if(gp){if(m.ix.date>=0)v[m.ix.date]=gp.syntheticDate;if(m.ix.order>=0)v[m.ix.order]=gp.syntheticOrder}
    out.push(makeRecord(m.src,m.cols,v,i,'player'));
@@ -229,7 +241,7 @@ function getRispMap(src){
   const map=new Map();if(pi<0||ri<0)return map;
   for(let i=hi+1;i<rows.length;i++){
    const player=String(rows[i]?.[pi]??'').trim(),value=String(rows[i]?.[ri]??'').trim();
-   if(player&&value)map.set(norm(player),{player,value,rowNumber:i+1,sheetName});
+   if(player&&value)map.set(canonName(player),{player,value,rowNumber:i+1,sheetName});
   }
   return map;
  })().catch(e=>{rispCache.delete(src.id);console.warn('[MAGI v315 RISP]',src.name,e?.message||e);return new Map()});
@@ -253,7 +265,7 @@ async function hydrate(query){
   dataRecords.push(...injected);
  }catch(e){console.warn('[MAGI v315 inject]',e?.message||e);return false}
  const masters=masterSources().filter(s=>!wanted||s.season===wanted).filter(s=>metas.some(m=>m.src.season===s.season));
- const risps=await Promise.all(masters.map(async src=>{const map=await getRispMap(src),hit=map.get(norm(target));return hit?makeRispRecord(src,target,hit):null}));
+ const risps=await Promise.all(masters.map(async src=>{const map=await getRispMap(src),hit=map.get(canonName(target));return hit?makeRispRecord(src,target,hit):null}));
  for(const r of risps.filter(Boolean))dataRecords.push(r);
  window.MAGI_STATS_SERVER_LAST={version:'v315',target,seasons:metas.map(m=>m.src.season),rows:injected.filter(r=>r.fileId.includes('-player')).length,recentTeamGames:plan.games.map(g=>({season:g.season,date:g.date,game:g.gameNo})),source:'server-cached-detail+master-risp'};
  return true;
