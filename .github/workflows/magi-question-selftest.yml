@@ -40,7 +40,7 @@ jobs:
             if [ "$media_code" = "200" ] && jq -e '.version == "attachment-request-v1" and .total == 5 and .passed == 5' /tmp/media-probe.json >/dev/null 2>&1; then media_ready=true; fi
             generated_ready=false
             generated_code=$(curl -L -sS -o /tmp/generated-probe.json -w '%{http_code}' 'https://magi-web.vercel.app/api/magi-question-selftest?suite=10000&batch=0' || true)
-            if [ "$generated_code" = "200" ] && jq -e '.results | type == "array"' /tmp/generated-probe.json >/dev/null 2>&1; then generated_ready=true; fi
+            if [ "$generated_code" = "200" ] && jq -e '.total == 10000 and (.results | type == "array") and (.results | length == 100) and (.results[99].id == 100)' /tmp/generated-probe.json >/dev/null 2>&1; then generated_ready=true; fi
             if [ "$text_ready" = true ] && [ "$media_ready" = true ] && [ "$generated_ready" = true ]; then
               echo "Latest production selftest endpoints are ready."
               exit 0
