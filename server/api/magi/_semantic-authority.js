@@ -215,24 +215,52 @@ function normalizeModel(raw,question,context){
   return base;
 }
 
-function emergencySemanticFallback(question,error){
+function deterministicSemanticFallback(question,error){
   const q=String(question||'').normalize('NFKC').replace(/\s+/g,' ').trim();
+  const canon=canonicalizeKnownNameText(q);
+  const players=OFFICIAL_PLAYER_REGISTRY.filter(name=>canon.includes(name));
   const conditionSpecific=/(?:今日|本日|明日|次の試合|次戦|対戦相手|相手投手|欠場|出場不可|左投手|右投手)/.test(q);
-  const asksFullLineup=/ベストオーダー/.test(q)||/(?:1番|1〜9番|1-9番).*(?:9番|打順).*(?:組|考|決)/.test(q);
+  const asksFullLineup=/ベストオーダー|ベスト打順/.test(q)||/(?:1番|1〜9番|1-9番).*(?:9番|打順).*(?:組|考|決)/.test(q);
+  const asksPitchingPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(q)&&/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る|審議)/.test(q);
+  const err=clean(error?.message,120);
   if(asksFullLineup&&!conditionSpecific){
     return {
-      semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-safe-fallback`,
-      mode:'DELIBERATION',confidence:'HIGH',
+      semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-deterministic-fallback`,mode:'DELIBERATION',confidence:'HIGH',
       understoodRequest:'現チーム14名から標準の1番〜9番ベストオーダーを審議する。',
-      routeReason:`質問理解モデルが一時的に利用できないため、曖昧性のない標準ベストオーダー要求だけを安全フォールバックした: ${clean(error?.message,120)}`,
-      players:[],domains:['LINEUP','TEAM'],timeScope:'CURRENT_SEASON',
-      specificSeason:'',metric:'',opponent:'',breakdowns:[],selectionKind:'FULL_LINEUP',clarificationQuestion:'',needsData:true,
-      gameInnings:null,groundedPlayers:[],validated:true,semanticAuthority:'SAFE_EMERGENCY_FALLBACK'
+      routeReason:`質問理解モデルが一時的に利用できないため、明確な標準ベストオーダー要求を決定論ルートで処理した: ${err}`,
+      players:[],domains:['LINEUP','TEAM'],timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],
+      selectionKind:'FULL_LINEUP',clarificationQuestion:'',needsData:true,gameInnings:null,groundedPlayers:[],validated:true,semanticAuthority:'DETERMINISTIC_FALLBACK'
     };
+  }
+  if(asksPitchingPlan&&!conditionSpecific){
+    return {
+      semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-deterministic-fallback`,mode:'DELIBERATION',confidence:'HIGH',
+      understoodRequest:'現チームの投手運用を先発から終盤まで審議する。',
+      routeReason:`質問理解モデルが一時的に利用できないため、明確な投手運用要求を決定論ルートで処理した: ${err}`,
+      players:[],domains:['PITCHING','TACTICS','TEAM'],timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],
+      selectionKind:'PITCHING_PLAN',clarificationQuestion:'',needsData:true,gameInnings:explicitGameInnings(q)||7,groundedPlayers:[],validated:true,semanticAuthority:'DETERMINISTIC_FALLBACK'
+    };
+  }
+  if(players.length===1){
+    const batting=/打撃成績|打率|OPS|出塁率|長打率/.test(q);
+    const pitching=/投手成績|防御率|奪三振|WHIP|投球回/.test(q);
+    const fielding=/守備成績|守備率|失策/.test(q);
+    const domains=[batting?'BATTING':pitching?'PITCHING':fielding?'FIELDING':''].filter(Boolean);
+    if(domains.length===1){
+      const metric=/OPS/.test(q)?'OPS':/打率/.test(q)?'AVG':/出塁率/.test(q)?'OBP':/長打率/.test(q)?'SLG':/防御率/.test(q)?'ERA':/奪三振/.test(q)?'SO':/WHIP/.test(q)?'WHIP':'';
+      const mode=metric?'SINGLE_VALUE':/(?:一覧|詳細|レポート|全部|すべて)/.test(q)?'FULL_REPORT':'SUMMARY';
+      const timeScope=/直近\s*6\s*試合/.test(q)?'RECENT_6':/最近|直近/.test(q)?'RECENT':/旧チーム|前チーム|2025-2026/.test(q)?'PREVIOUS_SEASON':/今季|今年度|現チーム/.test(q)?'CURRENT_SEASON':/通算/.test(q)?'CAREER':'UNSPECIFIED';
+      return {
+        semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-deterministic-fallback`,mode,confidence:'HIGH',
+        understoodRequest:`${players[0]}の${timeScope==='CAREER'?'通算':''}${domains[0]==='BATTING'?'打撃':domains[0]==='PITCHING'?'投手':'守備'}成績を確認する。`,
+        routeReason:`質問理解モデルが一時的に利用できないため、公式ロスターの単独選手と明示された成績領域を決定論ルートで処理した: ${err}`,
+        players,domains,timeScope,specificSeason:'',metric,opponent:'',breakdowns:[],selectionKind:'NONE',clarificationQuestion:'',needsData:true,
+        gameInnings:null,groundedPlayers:players,validated:true,semanticAuthority:'DETERMINISTIC_FALLBACK'
+      };
+    }
   }
   return null;
 }
-
 export async function understandRequestGeminiFirst(questionValue,contextValue=[]){
   const question=clean(questionValue,4000);
   if(!question)throw new Error('question is required');
@@ -253,7 +281,7 @@ export async function understandRequestGeminiFirst(questionValue,contextValue=[]
     });
     return normalizeModel(raw,question,context);
   }catch(error){
-    const fallback=emergencySemanticFallback(question,error);
+    const fallback=deterministicSemanticFallback(question,error);
     if(fallback)return fallback;
     return clarification('質問理解エンジンを安全に実行できませんでした。もう一度実行してください。',`Gemini質問理解失敗: ${clean(error?.message,180)}`,{
       understoodRequest:question,players:[],domains:['OTHER'],timeScope:'UNSPECIFIED',specificSeason:'',metric:'',opponent:'',breakdowns:[]
