@@ -88,7 +88,7 @@ function syntheticCases(){
    for(const variant of variants)for(const period of PERIODS)for(const req of LOOKUPS){
      out.push({question:`${variant}の${period.text}${req.text}`,expect:{player,scope:period.scope,domain:req.domain,kind:'LOOKUP'}});
    }
-   for(const req of ['スタメン起用を審議して','クローザー起用を審議して','先発起用を審議して','現在の評価を審議して']){
+   for(const variant of variants)for(const req of ['スタメン起用を審議して','クローザー起用を審議して','先発起用を審議して','現在の評価を審議して']){
      out.push({question:`${variant}を${req}`,expect:{player,kind:'DELIBERATION'}});
    }
  }
