@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - 'server/api/magi/_semantic-request.js'
+      - 'api/magi-question-selftest.js'
       - 'server/api/magi/_semantic-postguard.js'
       - 'server/api/magi/_attachment-request.js'
       - 'server/api/magi/core.js'
@@ -68,6 +69,27 @@ jobs:
           if [ "$failed" -ne 0 ]; then
             echo 'FAILED TEXT CASES:'
             jq -s -c '.[] | select(.pass != true)' /tmp/all-results.ndjson
+            exit 1
+          fi
+
+      - name: Run 10000 generated question-routing cases
+        shell: bash
+        run: |
+          set -euo pipefail
+          : > /tmp/generated-results.ndjson
+          for batch in $(seq 0 99); do
+            echo "=== generated batch $batch ==="
+            curl -L --fail --retry 2 --retry-delay 2 -sS "https://magi-web.vercel.app/api/magi-question-selftest?suite=10000&batch=$batch" -o "/tmp/generated-$batch.json"
+            jq -c '.results[]' "/tmp/generated-$batch.json" >> /tmp/generated-results.ndjson
+          done
+          total=$(wc -l < /tmp/generated-results.ndjson | tr -d ' ')
+          failed=$(jq -s '[.[] | select(.pass != true)] | length' /tmp/generated-results.ndjson)
+          passed=$((total-failed))
+          echo "GENERATED RESULT: ${passed}/${total} PASS, ${failed} FAIL"
+          test "$total" -eq 10000
+          if [ "$failed" -ne 0 ]; then
+            echo 'FIRST FAILED GENERATED CASES:'
+            jq -s -c '[.[] | select(.pass != true)][0:50][]' /tmp/generated-results.ndjson
             exit 1
           fi
 
