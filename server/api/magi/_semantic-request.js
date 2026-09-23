@@ -173,6 +173,7 @@ function genericStatusQuestion(q,grounded){
   return grounded.length===1 && /(?:最近|今).{0,6}どう[？?]?$/i.test(q) && !/(?:固定|先発|クローザー|打順|[1-9１-９一二三四五六七八九]番|捕手|投手|守備|レフト|ライト|主将|キャプテン)/.test(q);
 }
 function deterministicPreflight(question,suppliedContext,directGrounded,contextGrounded){
+  if(/^[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D\s]+$/u.test(String(question||''))){return clarifyResult(question,'質問内容を教えてください。選手・試合・知りたいことのどれかを入力してください。','絵文字だけでは依頼内容を一意に特定できない。',[]);}
   const q=clean(question,4000);
   const grounded=directGrounded.length?directGrounded:contextGrounded;
 
