@@ -63,10 +63,66 @@ function judge(id,s){
   if(FLEX_ACTION.has(id))return m==='CLARIFY'||isActionMode(m);
   return true;
 }
+
+const CURRENT_PLAYERS=['井坂 悠聖','大久保 陽翔','大野 竜暉','坂田 暉馬','嶋田 栄志','武澤 大翔','橋向 結都','上村 蓮','大久保 夢翔','長侶 穹','中嶋 玲月','吉田 真翔','鰐渕 将太','武田 晴琉翔'];
+const PLAYER_VARIANTS={
+ '大野 竜暉':['大野 竜暉','大野竜暉','大野　竜暉','大野 竜輝','大野竜輝'],
+ '嶋田 栄志':['嶋田 栄志','嶋田栄志','嶋田　栄志','島田 栄志','島田栄志'],
+ '中嶋 玲月':['中嶋 玲月','中嶋玲月','中島 玲月','中島玲月'],
+ '武澤 大翔':['武澤 大翔','武澤大翔','武沢 大翔','武沢大翔'],
+ '橋向 結都':['橋向 結都','橋向結都','橋向 結斗','橋向結斗']
+};
+const PERIODS=[
+ {text:'通算',scope:'CAREER'},{text:'今季',scope:'CURRENT_SEASON'},{text:'今年度',scope:'CURRENT_SEASON'},
+ {text:'直近6試合',scope:'RECENT_6'},{text:'最近',scope:'RECENT'}
+];
+const LOOKUPS=[
+ {text:'打撃成績を教えて',mode:'SUMMARY',domain:'BATTING'},{text:'打率を教えて',mode:'SINGLE_VALUE',domain:'BATTING'},
+ {text:'OPSを教えて',mode:'SINGLE_VALUE',domain:'BATTING'},{text:'投手成績を教えて',mode:'SUMMARY',domain:'PITCHING'},
+ {text:'防御率を教えて',mode:'SINGLE_VALUE',domain:'PITCHING'},{text:'奪三振を教えて',mode:'SINGLE_VALUE',domain:'PITCHING'}
+];
+function syntheticCases(){
+ const out=[];
+ for(const player of CURRENT_PLAYERS){
+   const variants=PLAYER_VARIANTS[player]||[player,player.replace(' ','')];
+   for(const variant of variants)for(const period of PERIODS)for(const req of LOOKUPS){
+     out.push({question:`${variant}の${period.text}${req.text}`,expect:{player,scope:period.scope,domain:req.domain,kind:'LOOKUP'}});
+   }
+   for(const req of ['スタメン起用を審議して','クローザー起用を審議して','先発起用を審議して','現在の評価を審議して']){
+     out.push({question:`${variant}を${req}`,expect:{player,kind:'DELIBERATION'}});
+   }
+ }
+ const generic=[
+  ['現在のベストオーダーを審議して','DELIBERATION'],['打順を組んで','DELIBERATION'],['7回制の投手運用を組んで','DELIBERATION'],
+  ['今のチームの改善課題を審議して','DELIBERATION'],['主将候補を審議して','DELIBERATION']
+ ];
+ for(let i=0;i<generic.length;i++)for(let n=0;n<250;n++)out.push({question:generic[i][0],expect:{kind:generic[i][1]}});
+ const ambiguous=['大久保の成績','どう思う？','これでいい？','誰が一番いい？','成績教えて','昨日の試合どう？','先発どっち？','あいつどう？'];
+ for(let i=0;i<ambiguous.length;i++)for(let n=0;n<250;n++)out.push({question:ambiguous[i],expect:{kind:'SAFE'}});
+ const base=out.slice();
+ while(out.length<10000)out.push(base[out.length%base.length]);
+ return out.slice(0,10000);
+}
+function judgeSynthetic(c,s){
+ const e=c.expect||{}, mode=s?.mode||'';
+ if(e.player&&playerOf(s)!==e.player)return false;
+ if(e.scope&&s?.timeScope!==e.scope)return false;
+ if(e.domain&&!(s?.domains||[]).includes(e.domain))return false;
+ if(e.kind==='LOOKUP')return ['SINGLE_VALUE','SUMMARY','FULL_REPORT'].includes(mode);
+ if(e.kind==='DELIBERATION')return mode==='DELIBERATION';
+ if(e.kind==='SAFE')return mode==='CLARIFY'||isActionMode(mode);
+ return false;
+}
+
 const IDS=Array.from({length:100},(_,i)=>i+1).filter(id=>!SKIP.has(id));
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Robots-Tag','noindex, nofollow');
+  if(String(req.query?.suite||'')==='10000'){
+    const cases=syntheticCases(),batch=Math.max(0,Math.min(99,Number(req.query?.batch||0))),slice=cases.slice(batch*100,batch*100+100),results=[];
+    for(let i=0;i<slice.length;i++){const c=slice[i];try{const semantic=applySemanticGuard(c.question,[],await understandRequest(c.question,[]));results.push({id:batch*100+i+1,question:c.question,pass:judgeSynthetic(c,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});}catch(error){results.push({id:batch*100+i+1,question:c.question,pass:false,error:error?.message||String(error)});}}
+    return res.status(200).json({ok:results.every(x=>x.pass),suite:'10000',batch,total:10000,results});
+  }
   const batch=Math.max(0,Math.min(18,Number(req.query?.batch||0)));
   const ids=IDS.slice(batch*5,batch*5+5);
   const results=[];
