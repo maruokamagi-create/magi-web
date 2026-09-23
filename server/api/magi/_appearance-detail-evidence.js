@@ -5,7 +5,8 @@ const CURRENT_TOKEN='2026-2027_CURRENT_現チーム';
 const STATS_TOKEN='03_STATS_成績データ';
 const DETAIL_TOKEN='10_DETAIL_詳細データ';
 const APPEARANCE_TOKEN='APPEARANCE_出場詳細';
-const FILE_NAME='出場詳細_2026-2027.csv';
+const FILE_NAMES=['出場詳細2026-2027.csv','出場詳細_2026-2027.csv'];
+const FILE_NAME='出場詳細2026-2027.csv';
 
 function text(value){return String(value??'').trim();}
 function norm(value){return text(value).normalize('NFKC').replace(/[\s　]+/g,'');}
@@ -33,7 +34,7 @@ function parseCsv(source){
   return rows.filter(values=>values.some(v=>text(v))).map(values=>Object.fromEntries(header.map((key,index)=>[key,text(values[index])])));
 }
 function findFile(tree){
-  const exact=(tree||[]).filter(file=>text(file?.name)===FILE_NAME);
+  const exact=(tree||[]).filter(file=>FILE_NAMES.includes(text(file?.name)));
   return exact.find(file=>{const path=text(file?.path);return path.includes(CURRENT_TOKEN)&&path.includes(STATS_TOKEN)&&path.includes(DETAIL_TOKEN)&&path.includes(APPEARANCE_TOKEN);})
     ||exact.find(file=>text(file?.path).includes(CURRENT_TOKEN))||exact[0]||null;
 }
