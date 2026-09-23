@@ -84,7 +84,7 @@ const LOOKUPS=[
 function syntheticCases(){
  const out=[];
  for(const player of CURRENT_PLAYERS){
-   const variants=PLAYER_VARIANTS[player]||[player,player.replace(' ','')];
+   const variants=PLAYER_VARIANTS[player]||[player];
    for(const variant of variants)for(const period of PERIODS)for(const req of LOOKUPS){
      out.push({question:`${variant}の${period.text}${req.text}`,expect:{player,scope:period.scope,domain:req.domain,kind:'LOOKUP'}});
    }
