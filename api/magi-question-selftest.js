@@ -120,14 +120,14 @@ export default async function handler(req,res){
   res.setHeader('X-Robots-Tag','noindex, nofollow');
   if(String(req.query?.suite||'')==='10000'){
     try{
-    const batch=Math.max(0,Math.min(999,Number(req.query?.batch||0)));
-    const items=syntheticCases().slice(batch*10,batch*10+10);
+    const batch=Math.max(0,Math.min(99,Number(req.query?.batch||0)));
+    const items=syntheticCases().slice(batch*100,batch*100+100);
     const results=[];
     for(let i=0;i<items.length;i++){
       const item=items[i];
       try{
         const semantic=applySemanticGuard(item.question,[],await understandRequest(item.question,[]));
-        results.push({id:batch*10+i+1,question:item.question,pass:judgeSynthetic(item,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});
+        results.push({id:batch*100+i+1,question:item.question,pass:judgeSynthetic(item,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});
       }catch(error){results.push({id:batch*10+i+1,question:item.question,pass:false,error:error?.message||String(error)});}
     }
     return res.status(200).json({ok:results.every(x=>x.pass),suite:'10000',batch,total:10000,results});
