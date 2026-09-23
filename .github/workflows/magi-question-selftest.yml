@@ -36,7 +36,7 @@ jobs:
             media_code=$(curl -L -sS -o /tmp/media-probe.json -w '%{http_code}' "$MEDIA_URL" || true)
             text_ready=false
             media_ready=false
-            if [ "$text_code" = "200" ] && jq -e '.results[] | select(.id == 65 and .pass == true and (.semanticVersion | contains("postguard-v4")))' /tmp/text-probe.json >/dev/null 2>&1; then text_ready=true; fi
+            if [ "$text_code" = "200" ] && jq -e '.results[] | select(.id == 65 and .pass == true and (.semanticVersion | contains("postguard-v4")))' /tmp/text-probe.json >/dev/null 2>&1 && curl -L -sS 'https://magi-web.vercel.app/api/magi-question-selftest?batch=16' | jq -e '.results[] | select(.id == 86 and .pass == true and .mode == "CLARIFY" and .preflightApplied == true)' >/dev/null 2>&1; then text_ready=true; fi
             if [ "$media_code" = "200" ] && jq -e '.version == "attachment-request-v1" and .total == 5 and .passed == 5' /tmp/media-probe.json >/dev/null 2>&1; then media_ready=true; fi
             if [ "$text_ready" = true ] && [ "$media_ready" = true ]; then
               echo "Latest production selftest endpoints are ready."
