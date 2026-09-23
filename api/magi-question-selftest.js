@@ -119,8 +119,8 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Robots-Tag','noindex, nofollow');
   if(String(req.query?.suite||'')==='10000'){
-    const cases=syntheticCases(),batch=Math.max(0,Math.min(999,Number(req.query?.batch||0))),slice=cases.slice(batch*10,batch*10+10),results=[];
-    for(let i=0;i<slice.length;i++){const c=slice[i];try{const semantic=applySemanticGuard(c.question,[],await understandRequest(c.question,[]));results.push({id:batch*10+i+1,question:c.question,pass:judgeSynthetic(c,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});}catch(error){results.push({id:batch*100+i+1,question:c.question,pass:false,error:error?.message||String(error)});}}
+    const cases=syntheticCases(),batch=Math.max(0,Math.min(9999,Number(req.query?.batch||0))),slice=cases.slice(batch,batch+1),results=[];
+    for(let i=0;i<slice.length;i++){const c=slice[i];try{const semantic=applySemanticGuard(c.question,[],await understandRequest(c.question,[]));results.push({id:batch+i+1,question:c.question,pass:judgeSynthetic(c,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});}catch(error){results.push({id:batch*100+i+1,question:c.question,pass:false,error:error?.message||String(error)});}}
     return res.status(200).json({ok:results.every(x=>x.pass),suite:'10000',batch,total:10000,results});
   }
   const batch=Math.max(0,Math.min(18,Number(req.query?.batch||0)));
