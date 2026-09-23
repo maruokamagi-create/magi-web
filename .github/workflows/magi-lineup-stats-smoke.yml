@@ -6,6 +6,7 @@ on:
     paths:
       - 'api/lineup-batting-stats.js'
       - 'lineup-stats-v371.js'
+      - 'stats-server-bridge-v315.js'
       - 'index.html'
       - '.github/workflows/magi-lineup-stats-smoke.yml'
   workflow_dispatch:
@@ -45,3 +46,15 @@ jobs:
           grep -Fq 'function fmtRate(v)' /tmp/lineup-stats.js
           grep -Fq 'OPS <b>${fmtRate(st.OPS)}</b>' /tmp/lineup-stats.js
           echo 'PRODUCTION LINEUP CARD RATE FORMATTER: PASS'
+
+      - name: Verify stats bridge player canonicalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 2 --retry-delay 3 -sS "$BASE/stats-server-bridge-v315.js" -o /tmp/stats-bridge.js
+          grep -Fq "'島田栄志':'嶋田栄志'" /tmp/stats-bridge.js
+          grep -Fq 'function canonName(v)' /tmp/stats-bridge.js
+          grep -Fq 'const official=officialTarget(query);if(official)return official;' /tmp/stats-bridge.js
+          grep -Fq 'if(canonName(row[m.ix.player])!==np)continue;' /tmp/stats-bridge.js
+          echo 'PRODUCTION STATS PLAYER CANONICALIZATION: PASS'
