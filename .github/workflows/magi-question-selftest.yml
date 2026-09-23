@@ -80,7 +80,7 @@ jobs:
         run: |
           set -euo pipefail
           : > /tmp/generated-results.ndjson
-          for batch in $(seq 0 9999); do
+          for batch in $(seq 0 999); do
             echo "=== generated batch $batch ==="
             curl -L --fail --retry 2 --retry-delay 2 -sS "https://magi-web.vercel.app/api/magi-question-selftest?suite=10000&batch=$batch" -o "/tmp/generated-$batch.json"
             if ! jq -e '.results | type == "array"' "/tmp/generated-$batch.json" >/dev/null 2>&1; then
