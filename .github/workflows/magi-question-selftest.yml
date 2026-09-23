@@ -10,6 +10,12 @@ on:
       - 'server/api/magi/core.js'
       - 'api/magi-question-selftest.js'
       - 'api/magi-attachment-selftest.js'
+      - 'server/api/magi/_question-router.js'
+      - 'server/api/magi/_question-router-current.js'
+      - 'server/api/magi/_roster.js'
+      - 'stats-server-bridge-v315.js'
+      - 'best-order-evidence-v268.js'
+      - 'server/api/magi/_appearance-detail-evidence.js'
       - '.github/workflows/magi-question-selftest.yml'
   workflow_dispatch:
 
