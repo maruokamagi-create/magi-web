@@ -119,6 +119,7 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Robots-Tag','noindex, nofollow');
   if(String(req.query?.suite||'')==='10000'){
+    try{
     const batch=Math.max(0,Math.min(9999,Number(req.query?.batch||0)));
     const item=syntheticCases()[batch];
     const results=[];
@@ -127,6 +128,7 @@ export default async function handler(req,res){
       results.push({id:batch+1,question:item.question,pass:judgeSynthetic(item,semantic),mode:semantic.mode,players:semantic.players||[],domains:semantic.domains||[],timeScope:semantic.timeScope,clarificationQuestion:semantic.clarificationQuestion||''});
     }catch(error){results.push({id:batch+1,question:item.question,pass:false,error:error?.message||String(error)});}
     return res.status(200).json({ok:results.every(x=>x.pass),suite:'10000',batch,total:10000,results});
+    }catch(error){return res.status(200).json({ok:false,suite:'10000',stage:'outer',error:error?.stack||error?.message||String(error)});}
   }
     const batch=Math.max(0,Math.min(18,Number(req.query?.batch||0)));
   const ids=IDS.slice(batch*5,batch*5+5);
