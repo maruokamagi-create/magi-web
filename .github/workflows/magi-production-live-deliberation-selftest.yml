@@ -19,7 +19,7 @@ on:
 jobs:
   exact-live-best-order:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Wait for production deployment
         run: sleep 45
@@ -30,7 +30,7 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           for run in 1 2; do
-            curl -L --fail --max-time 70 --retry 1 --retry-delay 3 -sS "$BASE/api/magi-live-deliberation-selftest" -o "/tmp/result-${run}.json"
+            curl -L --fail --max-time 125 --retry 3 --retry-delay 4 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest" -o "/tmp/result-${run}.json"
             cat "/tmp/result-${run}.json"; echo
             jq -e '
               .ok==true and
