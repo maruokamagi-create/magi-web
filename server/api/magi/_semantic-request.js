@@ -306,6 +306,10 @@ function deterministicPreflight(question,suppliedContext,directGrounded,contextG
     return clarifyResult(q,'「一番いい」は、先発・救援・総合評価のどれで比べますか？','投手評価の軸が複数ある。',grounded);
   }
 
+  if(/(?:今の|現)チーム.*(?:弱点|課題)|(?:弱点|課題).*(?:今の|現)チーム/.test(q)){
+    return directResult(q,{mode:'DELIBERATION',domains:['TEAM','TACTICS','DEVELOPMENT'],timeScope:'CURRENT_SEASON',understoodRequest:'現チームの弱点・課題を正本データとチーム状況から分析する',routeReason:'対象が現チーム全体で、分析・判断を求める内容が明確。'});
+  }
+
   if(/今のチーム優勝できる/.test(q)){
     return clarifyResult(q,'どの大会での優勝可能性を見ますか？ 大会名か対戦条件を教えてください。','優勝予測には対象大会の特定が必要。',grounded);
   }
