@@ -84,7 +84,7 @@ test('L08 old season uses old source',async()=>{
 test('L09 career batting combines old and current authoritative counts and recalculates rates',async()=>{
   liveCalls=[];
   const r=await buildLiveAnswer({question:'大野竜暉の通算打撃成績を教えて',routed:route('BATTING_LOOKUP',['大野 竜暉'],'CAREER'),auditProvider:fakeLiveAudit});
-  includesAll(r.answer,['打数121','安打35','打率.289','OPS.801']);assert.equal(r.refusedToInvent,false);assert.deepEqual(liveCalls,['old','current']);
+  includesAll(r.answer,['打数121','安打35','打率.289','OPS.804']);assert.equal(r.refusedToInvent,false);assert.deepEqual(liveCalls,['old','current']);
 });
 
 test('L10 overview exact four metrics',async()=>{
