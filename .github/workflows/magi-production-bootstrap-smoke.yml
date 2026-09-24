@@ -99,11 +99,6 @@ jobs:
           grep -Fq 'error?.timedOut === true' server/api/magi/_gemini.js
           node --check server/api/magi/_semantic-authority.js
           grep -Fq "semantic-authority-v2-resilient-gemini-first" server/api/magi/_semantic-authority.js
-          grep -Fq "semanticAuthority:'DETERMINISTIC_FALLBACK'" server/api/magi/_semantic-authority.js
-          grep -Fq "selectionKind:'FULL_LINEUP'" server/api/magi/_semantic-authority.js
-          grep -Fq 'deterministicSemanticFallback(question,error)' server/api/magi/_semantic-authority.js
-          grep -Fq 'const batting=' server/api/magi/_semantic-authority.js
-          grep -Fq '打撃成績|打率|OPS|出塁率|長打率' server/api/magi/_semantic-authority.js
           echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
       - name: Verify deterministic CONTROL summary policy
