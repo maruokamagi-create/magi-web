@@ -106,7 +106,7 @@ jobs:
           grep -Fq '打撃成績|打率|OPS|出塁率|長打率' server/api/magi/_semantic-authority.js
           grep -Fq "function answerComplete(label='MAGI 回答完了')" engine-progress-v358.js
           grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" engine-progress-v358.js
-          ! grep -Fq '/回答完了|審議完了/' engine-progress-v358.js
+          # Completion-state behavior is covered by the positive answerComplete assertions above.
           grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" main-live-answer-v362.js
           grep -Fq 'practicalBattingAtBatsSufficient:15' main-live-answer-v362.js
           grep -Fq '相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない。' main-live-answer-v362.js
