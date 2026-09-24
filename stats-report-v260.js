@@ -28,6 +28,10 @@ const METRICS=[
 ];
 const n=s=>String(s??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
 const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+const PLAYER_ALIASES={'坂田曜馬':'坂田暉馬','大野竜輝':'大野竜暉','島田栄志':'嶋田栄志','中島玲月':'中嶋玲月','武沢大翔':'武澤大翔','橋向結斗':'橋向結都','宮崎翔':'宮嵜翔','桜川莉大':'櫻川莉大'};
+const OFFICIAL_PLAYERS=['北淳志','坂本陸','櫻川莉大','佐々木悠成','下田涼歩','前川夢斗','増田晃大','宮嵜翔','宮村龍','井坂悠聖','大久保陽翔','大野竜暉','坂田暉馬','嶋田栄志','武澤大翔','橋向結都','上村蓮','大久保夢翔','長侶穹','中嶋玲月','吉田真翔','鰐渕将太','武田晴琉翔'];
+const canonPlayer=s=>PLAYER_ALIASES[n(s)]||n(s);
+function officialTarget(q){const z=canonPlayer(q),hits=OFFICIAL_PLAYERS.filter(p=>z.includes(p));return hits.sort((a,b)=>b.length-a.length)[0]||'';}
 const rows=()=>((typeof dataRecords!=='undefined'?dataRecords:window.dataRecords)||[]).filter(r=>r&&r.source==='drive');
 function idx(r,aliases){
  const cs=r?.columns||[],want=aliases.map(n);
@@ -56,9 +60,10 @@ function isLookup(q){
  return stat&&request&&!decision;
 }
 function findTarget(q,all){
- const z=n(q),names=[];
- for(const r of all){const p=player(r),k=n(p);if(p&&k.length>=2&&z.includes(k)&&!names.some(x=>n(x)===k))names.push(p)}
- return names.sort((a,b)=>n(b).length-n(a).length)[0]||'';
+ const official=officialTarget(q);if(official)return official;
+ const z=canonPlayer(q),names=[];
+ for(const r of all){const p=player(r),k=canonPlayer(p);if(p&&k.length>=2&&z.includes(k)&&!names.some(x=>canonPlayer(x)===k))names.push(p)}
+ return names.sort((a,b)=>canonPlayer(b).length-canonPlayer(a).length)[0]||'';
 }
 function completeness(r){return METRICS.reduce((s,m)=>s+(raw(r,m.aliases)!==''?1:0),0)}
 function isRispSheet(r){return /得点圏打率一覧/i.test(String(r?.sheetName||''))}
@@ -114,7 +119,7 @@ function latestPracticeDates(all,sheetName){
 }
 function aggregateBreakdown(all,target,y,type,selectedDates){
  const np=n(target),dim=type==='order'?['打順']:type==='opponent'?['相手校','対戦相手','対戦校']:null;
- const detail=all.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&(!y||season(r)===y)&&/^打撃詳細$/i.test(String(r.sheetName||'').trim())&&n(player(r))===np&&(!selectedDates||(isPractice(r)&&selectedDates.includes(raw(r,['開催日','日付'])))));
+ const detail=all.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&(!y||season(r)===y)&&/^打撃詳細$/i.test(String(r.sheetName||'').trim())&&canonPlayer(player(r))===np&&(!selectedDates||(isPractice(r)&&selectedDates.includes(raw(r,['開催日','日付'])))));
  const groups=new Map();
  for(const r of detail){
   const label=type==='total'?'通算':raw(r,dim);if(!label)continue;
@@ -139,8 +144,8 @@ function collect(q){
  const recentOnly=/直近|最近/.test(String(q||''));
  if(!target)return{error:'対象選手をDrive資料から特定できませんでした。選手名をフルネームで入力してください。'};
  const wanted=explicitSeason(q),np=n(target);
- let mine=all.filter(r=>n(player(r))===np&&season(r)&&METRICS.some(m=>raw(r,m.aliases)!=='')&&!/打撃詳細|投手詳細/i.test(`${r.fileName||''} ${r.sheetName||''}`));
- let detailMine=all.filter(r=>n(player(r))===np&&season(r)&&/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&/^打撃詳細$/i.test(String(r.sheetName||'').trim()));
+ let mine=all.filter(r=>canonPlayer(player(r))===np&&season(r)&&METRICS.some(m=>raw(r,m.aliases)!=='')&&!/打撃詳細|投手詳細/i.test(`${r.fileName||''} ${r.sheetName||''}`));
+ let detailMine=all.filter(r=>canonPlayer(player(r))===np&&season(r)&&/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&/^打撃詳細$/i.test(String(r.sheetName||'').trim()));
  if(wanted){mine=mine.filter(r=>season(r)===wanted);detailMine=detailMine.filter(r=>season(r)===wanted)}
  const xlsmRows=mine.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||'')));
  if(xlsmRows.length)mine=xlsmRows;
