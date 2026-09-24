@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 import { buildCurrentSelectionEvidence } from '../server/api/magi/_selection-live-evidence.js';
 
-export const config = { maxDuration: 60 };
+export const config = { maxDuration: 120 };
 
 const QUESTION='今の丸岡中のベストオーダーを、守備位置込みで審議して';
 const PERSONAS=['melchior','balthasar','casper'];
@@ -79,7 +79,7 @@ function recoverSoftLineup(v,persona){
 }
 function allSame(set){const seqs=PERSONAS.map(p=>candidateSeq(set?.[p]));if(seqs.some(s=>s.length!==9))return false;return seqs.slice(1).every(s=>s.every((v,i)=>v===seqs[0][i]));}
 function stableDigest(value){return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);}
-async function serialPersonaSet(base,phase,buildBody){const out={};for(const p of PERSONAS){const raw=await post(base,'/api/magi/persona',buildBody(p),`${phase}_${p.toUpperCase()}`);out[p]=recoverSoftLineup(raw,p);}return out;}
+async function serialPersonaSet(base,phase,buildBody){const out={};for(const p of PERSONAS){const raw=await post(base,'/api/magi/persona',buildBody(p),`${phase}_${p.toUpperCase()}`);out[p]=recoverSoftLineup(raw,p);await sleep(350);}return out;}
 
 async function runOnce(base,packet){
   const caseData=browserCase(packet);
