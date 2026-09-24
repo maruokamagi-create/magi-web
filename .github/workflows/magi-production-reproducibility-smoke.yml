@@ -13,7 +13,6 @@ on:
       - 'lineup-finalizer-v350.js'
       - 'magi-formal-runner-v373.js'
       - 'magi-app-bootstrap-v363.js'
-      - 'index.html'
       - '.github/workflows/magi-production-reproducibility-smoke.yml'
   workflow_dispatch:
 
