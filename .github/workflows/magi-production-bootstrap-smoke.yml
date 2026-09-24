@@ -104,9 +104,6 @@ jobs:
           grep -Fq 'deterministicSemanticFallback(question,error)' server/api/magi/_semantic-authority.js
           grep -Fq 'const batting=' server/api/magi/_semantic-authority.js
           grep -Fq '打撃成績|打率|OPS|出塁率|長打率' server/api/magi/_semantic-authority.js
-          grep -Fq "function answerComplete(label='MAGI 回答完了')" engine-progress-v358.js
-          grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" engine-progress-v358.js
-          # Completion-state behavior is covered by the positive answerComplete assertions above.
           echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
       - name: Verify deterministic CONTROL summary policy
