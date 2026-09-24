@@ -101,7 +101,7 @@ jobs:
           grep -Fq "semanticAuthority:'DETERMINISTIC_FALLBACK'" server/api/magi/_semantic-authority.js
           grep -Fq "selectionKind:'FULL_LINEUP'" server/api/magi/_semantic-authority.js
           grep -Fq "semanticAuthority:'DETERMINISTIC_FALLBACK'" server/api/magi/_semantic-authority.js
-          grep -Fq "const batting=/打撃成績|打率|OPS|出塁率|長打率/" server/api/magi/_semantic-authority.js
+          grep -Fq "const batting=/打撃成績|打率|OPS|出塁率|長打率/.test(q);" server/api/magi/_semantic-authority.js
           grep -Fq "function answerComplete(label='MAGI 回答完了')" engine-progress-v358.js
           grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" engine-progress-v358.js
           ! grep -Fq '/回答完了|審議完了/' engine-progress-v358.js
