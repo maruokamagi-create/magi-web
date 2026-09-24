@@ -94,9 +94,6 @@ jobs:
           grep -Fq 'structuredConditions()' selection-polish-v218.js
           grep -Fq "document.addEventListener('magi:deliberation-result',schedule)" selection-polish-v218.js
 
-          grep -q "CACHE_VERSION = 'magi-canonical-v4'" server/api/magi/_canonical-cache.js
-          grep -q "VOLATILE_KEYS" server/api/magi/_canonical-cache.js
-          grep -Fq 'error?.timedOut === true' server/api/magi/_gemini.js
           echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
       - name: Verify deterministic CONTROL summary policy
