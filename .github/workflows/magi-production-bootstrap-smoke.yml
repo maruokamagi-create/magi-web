@@ -111,7 +111,7 @@ jobs:
           grep -Fq 'practicalBattingAtBatsSufficient:15' main-live-answer-v362.js
           grep -Fq '相手投手の右投げ・左投げによる打順評価や再検討条件は、ユーザーがその分析を明示的に求めた場合を除き使用しない。' main-live-answer-v362.js
           grep -Fq '現チームの打撃評価では15打数以上' main-live-answer-v362.js
-          grep -Fq 'const governedPacket=applyTeamPolicy(packet);' main-live-answer-v362.js
+          grep -Fq 'governedPacket=applyTeamPolicy(packet)' main-live-answer-v362.js
           # lineup-finalizer-v350.js no longer uses the removed blocking evidenceCritical gate.
           echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
