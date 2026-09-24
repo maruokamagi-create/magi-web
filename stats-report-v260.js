@@ -118,7 +118,7 @@ function latestPracticeDates(all,sheetName){
  return dates.sort((a,b)=>dateRank(b)-dateRank(a)).slice(0,3);
 }
 function aggregateBreakdown(all,target,y,type,selectedDates){
- const np=n(target),dim=type==='order'?['打順']:type==='opponent'?['相手校','対戦相手','対戦校']:null;
+ const np=canonPlayer(target),dim=type==='order'?['打順']:type==='opponent'?['相手校','対戦相手','対戦校']:null;
  const detail=all.filter(r=>/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&(!y||season(r)===y)&&/^打撃詳細$/i.test(String(r.sheetName||'').trim())&&canonPlayer(player(r))===np&&(!selectedDates||(isPractice(r)&&selectedDates.includes(raw(r,['開催日','日付'])))));
  const groups=new Map();
  for(const r of detail){
