@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=378' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=379' index.html
           grep -q '/chat-ui-canonical-v387.js?v=387' index.html
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
@@ -96,7 +96,7 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=378' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=379' /tmp/index.html
           grep -Fq '/chat-ui-canonical-v387.js?v=387' /tmp/index.html
           echo 'PRODUCTION BOOTSTRAP ASSETS: PASS'
 
