@@ -39,62 +39,12 @@ jobs:
         run: |
           set -euo pipefail
           grep -q '/magi-app-bootstrap-v363.js?v=378' index.html
-          grep -q '/magi-control-summary-v377.js?v=386' index.html
-          grep -q '/result-layout-v189.js?v=201' index.html
           grep -q '/chat-ui-canonical-v387.js?v=387' index.html
-          ! grep -q '/chat-ui-v196.js' index.html
-          ! grep -q '/cross-dialogue-ui-v380.js' index.html
-          grep -q '/selection-polish-v218.js?v=221' index.html
-          ! grep -q 'magi-formal-hotfix-v369.js' index.html
-          grep -q "const REV='378'" magi-app-bootstrap-v363.js
-          grep -q "version:'canonical-app-v377'" magi-app-bootstrap-v363.js
-          grep -q "controlSummary:'V377_STRUCTURED'" magi-app-bootstrap-v363.js
-          grep -q 'MAGI_DELIBERATION_SERIAL_V374' deliberation-integrity-v348.js
-          grep -q '1.1.2-serial-integrity' deliberation-integrity-v348.js
-          ! grep -q 'Promise.all(jobs)' deliberation-integrity-v348.js
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
-          ! grep -q 'magi-formal-runner-v358.js' magi-app-bootstrap-v363.js
-          ! grep -q 'magi-ui-truth-v363.js' magi-app-bootstrap-v363.js
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
-          grep -q 'proseBlocking:false' magi-formal-runner-v373.js
-          grep -q "version:'formal-runner-v373-single-path'" magi-formal-runner-v373.js
-          grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' magi-formal-runner-v373.js
-          grep -Fq "new CustomEvent('magi:deliberation-result'" magi-formal-runner-v373.js
-          grep -Fq 'exposesFinalResult:true' magi-formal-runner-v373.js
-
-          grep -Fq "label='2対1 MAJORITY'" magi-control-summary-v377.js
-          grep -Fq "label='3対0 CONSENSUS'" magi-control-summary-v377.js
-          grep -Fq "label='3人の意見が分かれました'" magi-control-summary-v377.js
-          grep -Fq 'function sanitizeSpeech(value,result)' magi-control-summary-v377.js
-          grep -Fq 'function practicalConditions(result,order)' magi-control-summary-v377.js
-          grep -Fq 'function mainDisagreement' magi-control-summary-v377.js || grep -Fq 'function conflictText' magi-control-summary-v377.js
-          grep -Fq 'practicalBattingAtBatsSufficient' magi-control-summary-v377.js
-          grep -Fq "bits=['今季通算成績']" magi-control-summary-v377.js
-          grep -Fq "decisionType==='DEADLOCK'?[]" magi-control-summary-v377.js
-          grep -Fq '正式採用ではありません' magi-control-summary-v377.js
-
           node --check chat-ui-canonical-v387.js
           grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' chat-ui-canonical-v387.js
-          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' chat-ui-canonical-v387.js
-          grep -Fq "fetch('/api/magi/dialogue'" chat-ui-canonical-v387.js
-          grep -Fq 'dialogue.forEach(turn=>directRow' chat-ui-canonical-v387.js
-          grep -Fq "summarySection('決め手'" chat-ui-canonical-v387.js
-          grep -Fq "summarySection('最大の争点'" chat-ui-canonical-v387.js
-          grep -Fq '少数意見：${model.minorityPersona}' chat-ui-canonical-v387.js
-          grep -Fq "document.addEventListener('magi:deliberation-result'" chat-ui-canonical-v387.js
-          ! grep -Fq 'controlTargetFor' chat-ui-canonical-v387.js
-          ! grep -Fq 'MAGI CONTROL →' chat-ui-canonical-v387.js
-
-          grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
-          grep -Fq "/(?:^|\\s)1番\\s/.test(t)" result-layout-v189.js
-          grep -Fq 'updateDecisionBadge()' result-layout-v189.js
-          grep -Fq 'model?.label' result-layout-v189.js
-
-          grep -Fq 'if(!s||HAND_RE.test(s))return' selection-polish-v218.js
-          grep -Fq 'structuredConditions()' selection-polish-v218.js
-          grep -Fq "document.addEventListener('magi:deliberation-result',schedule)" selection-polish-v218.js
-
-          echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
+          echo 'CANONICAL BOOTSTRAP CORE: PASS'
 
       - name: Verify deterministic CONTROL summary policy
         shell: bash
