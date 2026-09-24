@@ -8,6 +8,7 @@ on:
       - 'server/api/magi/_semantic-authority.js'
       - 'server/api/magi/_semantic-request.js'
       - 'server/api/magi/_semantic-postguard.js'
+      - 'api/magi-production-semantic-fallback-selftest.js'
       - '.github/workflows/magi-semantic-authority-guard.yml'
   workflow_dispatch:
 
@@ -49,3 +50,21 @@ jobs:
           fi
 
           echo 'PASS: every production question enters Gemini semantic authority first; code remains validation/execution only.'
+
+      - name: Wait for deployed production semantic fallback regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          URL='https://magi-web.vercel.app/api/magi-production-semantic-fallback-selftest'
+          for i in $(seq 1 60); do
+            code=$(curl -L -sS -o /tmp/fallback.json -w '%{http_code}' "$URL" || true)
+            if [ "$code" = "200" ] && jq -e '.version=="magi-production-semantic-fallback-selftest-v1" and .total==7 and .passed==7 and ([.results[].pass] | all)' /tmp/fallback.json >/dev/null 2>&1; then
+              cat /tmp/fallback.json
+              echo 'PRODUCTION SEMANTIC FALLBACK REGRESSION: 7/7 PASS'
+              exit 0
+            fi
+            echo "Waiting for production fallback selftest... attempt $i HTTP $code"
+            sleep 10
+          done
+          cat /tmp/fallback.json || true
+          exit 1
