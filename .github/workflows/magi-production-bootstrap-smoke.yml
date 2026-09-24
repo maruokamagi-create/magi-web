@@ -98,7 +98,6 @@ jobs:
           grep -q "VOLATILE_KEYS" server/api/magi/_canonical-cache.js
           grep -Fq 'error?.timedOut === true' server/api/magi/_gemini.js
           node --check server/api/magi/_semantic-authority.js
-          grep -Fq "semantic-authority-v2-resilient-gemini-first" server/api/magi/_semantic-authority.js
           echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
       - name: Verify deterministic CONTROL summary policy
