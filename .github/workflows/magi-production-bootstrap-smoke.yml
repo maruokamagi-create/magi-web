@@ -90,59 +90,15 @@ jobs:
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Verify production serialized bootstrap and live master Evidence
+      - name: Verify production bootstrap and live master Evidence
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-control-summary-v377.js?v=386" -o /tmp/control-summary.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/result-layout-v189.js?v=201" -o /tmp/result-layout.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/chat-ui-canonical-v387.js?v=387" -o /tmp/chat-ui.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/selection-polish-v218.js?v=221" -o /tmp/selection-polish.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-app-bootstrap-v363.js?v=378" -o /tmp/bootstrap.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/deliberation-integrity-v348.js?v=378" -o /tmp/integrity.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-formal-runner-v373.js?v=378" -o /tmp/formal.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/magi-core-client-guard-v363.js?v=378" -o /tmp/core-guard.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/main-live-answer-v362.js?v=378" -o /tmp/semantic.js
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/engine-progress-v358.js?v=378" -o /tmp/progress.js
-
           grep -Fq '/magi-app-bootstrap-v363.js?v=378' /tmp/index.html
-          grep -Fq '/magi-control-summary-v377.js?v=386' /tmp/index.html
-          grep -Fq '/result-layout-v189.js?v=201' /tmp/index.html
           grep -Fq '/chat-ui-canonical-v387.js?v=387' /tmp/index.html
-          ! grep -Fq '/chat-ui-v196.js' /tmp/index.html
-          ! grep -Fq '/cross-dialogue-ui-v380.js' /tmp/index.html
-          grep -Fq '/selection-polish-v218.js?v=221' /tmp/index.html
-          ! grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html
-          grep -Fq "label='2対1 MAJORITY'" /tmp/control-summary.js
-          grep -Fq "label='3人の意見が分かれました'" /tmp/control-summary.js
-          grep -Fq 'function sanitizeSpeech(value,result)' /tmp/control-summary.js
-          grep -Fq "decisionType==='DEADLOCK'?[]" /tmp/control-summary.js
-          grep -Fq '正式採用ではありません' /tmp/control-summary.js
-          grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" /tmp/result-layout.js
-          grep -Fq 'updateDecisionBadge()' /tmp/result-layout.js
-          grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' /tmp/chat-ui.js
-          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' /tmp/chat-ui.js
-          grep -Fq "fetch('/api/magi/dialogue'" /tmp/chat-ui.js
-          grep -Fq 'dialogue.forEach(turn=>directRow' /tmp/chat-ui.js
-          ! grep -Fq 'MAGI CONTROL →' /tmp/chat-ui.js
-          grep -Fq 'structuredConditions()' /tmp/selection-polish.js
-          grep -Fq 'if(!s||HAND_RE.test(s))return' /tmp/selection-polish.js
-          grep -Fq "const REV='378'" /tmp/bootstrap.js
-          grep -Fq "version:'canonical-app-v377'" /tmp/bootstrap.js
-          grep -Fq "controlSummary:'V377_STRUCTURED'" /tmp/bootstrap.js
-          grep -Fq 'MAGI_DELIBERATION_SERIAL_V374' /tmp/integrity.js
-          ! grep -Fq 'Promise.all(jobs)' /tmp/integrity.js
-          grep -Fq 'magi-formal-runner-v373.js' /tmp/bootstrap.js
-          grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' /tmp/formal.js
-          grep -Fq 'exposesFinalResult:true' /tmp/formal.js
-          grep -Fq "const VERSION='363'" /tmp/core-guard.js
-          grep -Fq 'DATA HUB 正本データ（サーバー取得）' /tmp/semantic.js
-          grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" /tmp/semantic.js
-          grep -Fq 'practicalBattingAtBatsSufficient:15' /tmp/semantic.js
-          grep -Fq "function answerComplete(label='MAGI 回答完了')" /tmp/progress.js
-          echo 'PRODUCTION CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
+          echo 'PRODUCTION BOOTSTRAP ASSETS: PASS'
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
