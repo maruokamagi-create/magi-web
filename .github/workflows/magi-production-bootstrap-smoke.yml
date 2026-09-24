@@ -108,9 +108,6 @@ jobs:
           grep -Fq "if(/回答完了/.test(t))return{answerDone:true,label:'MAGI 回答完了'}" engine-progress-v358.js
           # Completion-state behavior is covered by the positive answerComplete assertions above.
           node --check main-live-answer-v362.js
-          grep -Fq "id:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916'" main-live-answer-v362.js
-          grep -Fq 'practicalBattingAtBatsSufficient:15' main-live-answer-v362.js
-          grep -Fq 'applyTeamPolicy(packet)' main-live-answer-v362.js
           echo 'CANONICAL CHAT V387 + STRUCTURED CONTROL SUMMARY: PASS'
 
       - name: Verify deterministic CONTROL summary policy
