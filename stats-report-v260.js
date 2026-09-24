@@ -337,6 +337,9 @@ function install(){
  };
  window.runMagi=wrapped;window.MAGI_STATS_REPORT_FN=wrapped;window.MAGI_STATS_REPORT_WRAPPED=VERSION;return true;
 }
+window.MAGI_STATS_REPORT_COLLECT=collect;
+window.MAGI_STATS_REPORT_FIND_TARGET=findTarget;
+window.MAGI_STATS_REPORT_AGGREGATE=aggregateBreakdown;
 window.MAGI_PRINT_STATS_REPORT=printReport;
 window.MAGI_PREVIEW_STATS_REPORT=openPreview;
 window.MAGI_STATS_REPORT_V261=true;
