@@ -8,6 +8,8 @@ on:
       - 'lineup-stats-v371.js'
       - 'stats-server-bridge-v315.js'
       - 'stats-report-v260.js'
+      - 'main-live-answer-v362.js'
+      - 'magi-app-bootstrap-v363.js'
       - 'index.html'
       - '.github/workflows/magi-lineup-stats-smoke.yml'
   workflow_dispatch:
@@ -59,6 +61,22 @@ jobs:
           grep -Fq 'const official=officialTarget(query);if(official)return official;' /tmp/stats-bridge.js
           grep -Fq 'if(canonName(row[m.ix.player])!==np)continue;' /tmp/stats-bridge.js
           echo 'PRODUCTION STATS PLAYER CANONICALIZATION: PASS'
+
+      - name: Verify canonical main-path hydration before batting report
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/" -o /tmp/index-main.html
+          grep -Fq '/stats-server-bridge-v315.js?v=318' /tmp/index-main.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=379' /tmp/index-main.html
+          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/stats-server-bridge-v315.js?v=318" -o /tmp/stats-bridge-main.js
+          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/main-live-answer-v362.js?v=379" -o /tmp/main-live-answer.js
+          grep -Fq 'window.MAGI_STATS_SERVER_HYDRATE=hydrate' /tmp/stats-bridge-main.js
+          grep -Fq "const hydrate=await waitFor('MAGI_STATS_SERVER_HYDRATE')" /tmp/main-live-answer.js
+          grep -Fq 'const hydrated=await hydrate(synthetic)' /tmp/main-live-answer.js
+          grep -Fq "if(!hydrated)throw new Error('打撃正本データを取得できませんでした')" /tmp/main-live-answer.js
+          echo 'PRODUCTION MAIN BATTING PATH: CORE -> HYDRATE -> REPORT PASS'
 
       - name: Verify production batting report canonical aggregation contract
         shell: bash
