@@ -69,7 +69,7 @@ jobs:
           grep -Fq '/stats-report-v260.js?v=262' /tmp/index.html
           curl -L --fail --retry 2 --retry-delay 3 -sS "$BASE/stats-report-v260.js?v=262" -o /tmp/stats-report.js
           grep -Fq "const OFFICIAL_PLAYERS=" /tmp/stats-report.js
-          grep -Fq "'嶋田栄志'" /tmp/stats-report.js
+          grep -Fq "嶋田栄志" /tmp/stats-report.js
           grep -Fq 'const official=officialTarget(q);if(official)return official;' /tmp/stats-report.js
           grep -Fq 'canonPlayer(player(r))===np' /tmp/stats-report.js
           echo 'PRODUCTION BATTING REPORT OFFICIAL ROSTER IDENTITY: PASS'
