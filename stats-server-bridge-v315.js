@@ -270,6 +270,7 @@ async function hydrate(query){
  window.MAGI_STATS_SERVER_LAST={version:'v315',target,seasons:metas.map(m=>m.src.season),rows:injected.filter(r=>r.fileId.includes('-player')).length,recentTeamGames:plan.games.map(g=>({season:g.season,date:g.date,game:g.gameNo})),source:'server-cached-detail+master-risp'};
  return true;
 }
+window.MAGI_STATS_SERVER_HYDRATE=hydrate;
 async function warm(){
  await waitDriveIndex(5000);
  const details=detailSources(),masters=masterSources();
