@@ -7,8 +7,8 @@ const currentLive={
   extracted:{
     team:{games:12,wins:8,losses:3,draws:1,OPS:'.738',OBP:'.401',SLG:'.337'},
     playersByName:{
-      '大久保 陽翔':{batting:{AVG:'.333',OPS:'.812',H:'12',RBI:'8',HR:'1'},pitching:{ERA:'3.10',IP:'9.0',SO:'11',BB:'4'}},
-      '大野 竜暉':{batting:{AVG:'.278',OPS:'.924',H:'10',RBI:'7'},pitching:{ERA:'1.69',IP:'54.0',SO:'50',BB:'12',HBP:'3',APP:'14',WHIP:'0.98'}}
+      '大久保 陽翔':{batting:{AVG:'.333',OPS:'.812',AB:'36',H:'12',RBI:'8',HR:'1',SINGLE:'9',DOUBLE:'2',TRIPLE:'0',BB:'5',HBP:'1',SF:'1',SO:'7',SB:'3'},pitching:{ERA:'3.10',IP:'9.0',SO:'11',BB:'4'}},
+      '大野 竜暉':{batting:{AVG:'.278',OPS:'.924',AB:'36',H:'10',RBI:'7',HR:'1',SINGLE:'7',DOUBLE:'2',TRIPLE:'0',BB:'8',HBP:'1',SF:'1',SO:'6',SB:'4'},pitching:{ERA:'1.69',IP:'54.0',SO:'50',BB:'12',HBP:'3',APP:'14',WHIP:'0.98'}}
     }
   }
 };
@@ -17,8 +17,8 @@ const oldLive={
   extracted:{
     team:{games:46,wins:20,losses:23,draws:3,OPS:'.672',OBP:'.350',SLG:'.322'},
     playersByName:{
-      '大久保 陽翔':{batting:{AVG:'.302',OPS:'.969',H:'30',RBI:'20'},pitching:{ERA:'3.63',IP:'56.0',SO:'58',BB:'20'}},
-      '大野 竜暉':{batting:{AVG:'.293',OPS:'.801',H:'25',RBI:'18'},pitching:{ERA:'1.69',IP:'54.0',SO:'50',BB:'12',HBP:'2',APP:'18',WHIP:'0.95'}}
+      '大久保 陽翔':{batting:{AVG:'.302',OPS:'.969',AB:'99',H:'30',RBI:'20',HR:'2',SINGLE:'22',DOUBLE:'5',TRIPLE:'1',BB:'15',HBP:'2',SF:'2',SO:'18',SB:'9'},pitching:{ERA:'3.63',IP:'56.0',SO:'58',BB:'20'}},
+      '大野 竜暉':{batting:{AVG:'.293',OPS:'.801',AB:'85',H:'25',RBI:'18',HR:'1',SINGLE:'19',DOUBLE:'4',TRIPLE:'1',BB:'12',HBP:'3',SF:'2',SO:'15',SB:'7'},pitching:{ERA:'1.69',IP:'54.0',SO:'50',BB:'12',HBP:'2',APP:'18',WHIP:'0.95'}}
     }
   }
 };
@@ -81,10 +81,10 @@ test('L08 old season uses old source',async()=>{
   includesAll(r.answer,['.969']);includesNone(r.answer,['.812']);assert.deepEqual(liveCalls,['old']);
 });
 
-test('L09 career batting refuses instead of silently using current',async()=>{
+test('L09 career batting combines old and current authoritative counts and recalculates rates',async()=>{
   liveCalls=[];
-  const r=await buildLiveAnswer({question:'大野竜暉の通算OPS教えて',routed:route('BATTING_LOOKUP',['大野 竜暉'],'CAREER'),auditProvider:fakeLiveAudit});
-  assert.equal(r.refusedToInvent,true);assert.equal(r.limitation,'CAREER_AGGREGATION_NOT_CONNECTED');assert.deepEqual(liveCalls,[]);
+  const r=await buildLiveAnswer({question:'大野竜暉の通算打撃成績を教えて',routed:route('BATTING_LOOKUP',['大野 竜暉'],'CAREER'),auditProvider:fakeLiveAudit});
+  includesAll(r.answer,['打数121','安打35','打率.289','OPS.801']);assert.equal(r.refusedToInvent,false);assert.deepEqual(liveCalls,['old','current']);
 });
 
 test('L10 overview exact four metrics',async()=>{
