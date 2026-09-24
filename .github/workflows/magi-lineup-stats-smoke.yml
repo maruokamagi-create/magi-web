@@ -7,6 +7,7 @@ on:
       - 'api/lineup-batting-stats.js'
       - 'lineup-stats-v371.js'
       - 'stats-server-bridge-v315.js'
+      - 'stats-report-v260.js'
       - 'index.html'
       - '.github/workflows/magi-lineup-stats-smoke.yml'
   workflow_dispatch:
@@ -58,3 +59,17 @@ jobs:
           grep -Fq 'const official=officialTarget(query);if(official)return official;' /tmp/stats-bridge.js
           grep -Fq 'if(canonName(row[m.ix.player])!==np)continue;' /tmp/stats-bridge.js
           echo 'PRODUCTION STATS PLAYER CANONICALIZATION: PASS'
+
+      - name: Verify production batting report uses official roster identity
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 2 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
+          grep -Fq '/stats-report-v260.js?v=262' /tmp/index.html
+          curl -L --fail --retry 2 --retry-delay 3 -sS "$BASE/stats-report-v260.js?v=262" -o /tmp/stats-report.js
+          grep -Fq "const OFFICIAL_PLAYERS=" /tmp/stats-report.js
+          grep -Fq "'嶋田栄志'" /tmp/stats-report.js
+          grep -Fq 'const official=officialTarget(q);if(official)return official;' /tmp/stats-report.js
+          grep -Fq 'canonPlayer(player(r))===np' /tmp/stats-report.js
+          echo 'PRODUCTION BATTING REPORT OFFICIAL ROSTER IDENTITY: PASS'
