@@ -215,7 +215,7 @@ function normalizeModel(raw,question,context){
   return base;
 }
 
-function deterministicSemanticFallback(question,error){
+export function deterministicSemanticFallback(question,error){
   const q=String(question||'').normalize('NFKC').replace(/\s+/g,' ').trim();
   const canon=canonicalizeKnownNameText(q);
   const players=OFFICIAL_PLAYER_REGISTRY.filter(name=>canon.includes(name));
