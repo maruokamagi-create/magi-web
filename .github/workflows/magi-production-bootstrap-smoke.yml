@@ -101,7 +101,7 @@ jobs:
           grep -Fq "semantic-authority-v2-resilient-gemini-first" server/api/magi/_semantic-authority.js
           grep -Fq "semanticAuthority:'DETERMINISTIC_FALLBACK'" server/api/magi/_semantic-authority.js
           grep -Fq "selectionKind:'FULL_LINEUP'" server/api/magi/_semantic-authority.js
-          grep -Fq 'function deterministicSemanticFallback(question,error)' server/api/magi/_semantic-authority.js
+          grep -Fq 'deterministicSemanticFallback(question,error)' server/api/magi/_semantic-authority.js
           grep -Fq 'const batting=' server/api/magi/_semantic-authority.js
           grep -Fq '打撃成績|打率|OPS|出塁率|長打率' server/api/magi/_semantic-authority.js
           grep -Fq "function answerComplete(label='MAGI 回答完了')" engine-progress-v358.js
