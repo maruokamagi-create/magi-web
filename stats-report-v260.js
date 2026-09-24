@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 if(window.MAGI_STATS_REPORT_V261)return;
-const VERSION='v261';
+const VERSION='v262';
 const NAME_ALIASES=['選手名','氏名','名前','選手'];
 const METRICS=[
  {key:'games',label:'試合',aliases:['出場試合数','出場試合','試合数','出場数','games','game','試合'],kind:'int'},
@@ -142,8 +142,8 @@ function aggregateBreakdown(all,target,y,type,selectedDates){
 function collect(q){
  const all=rows(),target=findTarget(q,all);
  const recentOnly=/直近|最近/.test(String(q||''));
- if(!target)return{error:'対象選手をDrive資料から特定できませんでした。選手名をフルネームで入力してください。'};
- const wanted=explicitSeason(q),np=n(target);
+ if(!target)return{error:'対象選手を公式選手名簿から特定できませんでした。選手名をフルネームで入力してください。'};
+ const wanted=explicitSeason(q),np=canonPlayer(target);
  let mine=all.filter(r=>canonPlayer(player(r))===np&&season(r)&&METRICS.some(m=>raw(r,m.aliases)!=='')&&!/打撃詳細|投手詳細/i.test(`${r.fileName||''} ${r.sheetName||''}`));
  let detailMine=all.filter(r=>canonPlayer(player(r))===np&&season(r)&&/\.(?:xlsm|csv)$/i.test(String(r.fileName||''))&&/^打撃詳細$/i.test(String(r.sheetName||'').trim()));
  if(wanted){mine=mine.filter(r=>season(r)===wanted);detailMine=detailMine.filter(r=>season(r)===wanted)}
@@ -178,6 +178,7 @@ function collect(q){
  const career={season:'全年度通算',isCareer:true,values,sources,sourceFiles:detailFiles,sourceSheets:['打撃詳細から全年度再集計'],baseRow:total,rispRow:null,orderRows:aggregateBreakdown(all,target,null,'order'),opponentRows:aggregateBreakdown(all,target,null,'opponent'),row:total};
  return{target,records:[career,...(recentRecord?[recentRecord]:[]),...seasonRecords.map(r=>({...r,suppressBreakdown:true}))],mode:'career',wanted:''};
 }
+
 function fmt(v,kind){
  const s=String(v??'').trim();
  if(!s||s==='-'||s==='—')return'—';
