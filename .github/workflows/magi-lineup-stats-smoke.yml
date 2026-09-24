@@ -60,6 +60,21 @@ jobs:
           grep -Fq 'if(canonName(row[m.ix.player])!==np)continue;' /tmp/stats-bridge.js
           echo 'PRODUCTION STATS PLAYER CANONICALIZATION: PASS'
 
+      - name: Verify production batting report canonical aggregation contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 2 --retry-delay 3 -sS "$BASE/stats-report-v260.js?v=264" -o /tmp/stats-report-contract.js
+          grep -Fq 'window.MAGI_STATS_REPORT_COLLECT=collect' /tmp/stats-report-contract.js
+          grep -Fq 'const np=canonPlayer(target)' /tmp/stats-report-contract.js
+          grep -Fq 'canonPlayer(player(r))===np' /tmp/stats-report-contract.js
+          if grep -Fq 'n(player(r))===np' /tmp/stats-report-contract.js; then
+            echo 'legacy non-canonical player comparison remains in production stats aggregation' >&2
+            exit 1
+          fi
+          echo 'PRODUCTION BATTING REPORT CANONICAL AGGREGATION CONTRACT: PASS'
+
       - name: Verify production batting report uses official roster identity
         shell: bash
         run: |
