@@ -16,6 +16,26 @@ function seasonFromRequest(routed, question) {
   return 'current';
 }
 
+function n(value) { const x=Number(String(value ?? '').replace(/,/g,'').trim()); return Number.isFinite(x)?x:0; }
+function fmtRate(value) { if(!Number.isFinite(value))return ''; return value.toFixed(3).replace(/^0/,''); }
+function combineBatting(oldStats={},currentStats={}) {
+  const keys=['AB','H','RBI','R','SINGLE','DOUBLE','TRIPLE','HR','SO','BB','HBP','SB','CS','SAC','SF']; const out={};
+  for(const key of keys) out[key]=n(oldStats?.[key])+n(currentStats?.[key]);
+  const ab=out.AB,h=out.H,bb=out.BB,hbp=out.HBP,sf=out.SF; const singles=out.SINGLE||Math.max(0,h-out.DOUBLE-out.TRIPLE-out.HR); const obpDen=ab+bb+hbp+sf;
+  out.AVG=ab>0?fmtRate(h/ab):''; out.OBP=obpDen>0?fmtRate((h+bb+hbp)/obpDen):''; out.SLG=ab>0?fmtRate((singles+2*out.DOUBLE+3*out.TRIPLE+4*out.HR)/ab):''; out.OPS=out.OBP&&out.SLG?fmtRate(Number(out.OBP)+Number(out.SLG)):''; return out;
+}
+async function buildCareerBatting({question,routed,auditProvider}) {
+  const players=Array.isArray(routed?.players)?routed.players:[];
+  if(players.length!==1)return resultBase({routed,season:'career',answer:'対象選手を一人に特定できませんでした。',refusedToInvent:true,limitation:'PLAYER_NOT_UNIQUE'});
+  const playerName=players[0]; const [oldLive,currentLive]=await Promise.all([auditProvider({season:'old',players:[playerName]}),auditProvider({season:'current',players:[playerName]})]);
+  const oldStats=oldLive?.extracted?.playersByName?.[playerName]?.batting; const currentStats=currentLive?.extracted?.playersByName?.[playerName]?.batting;
+  if(!oldStats&&!currentStats)return resultBase({routed,season:'career',answer:`${playerName}の通算打撃成績を正本XLSMから確認できませんでした。数値は作りません。`,refusedToInvent:true,limitation:'CAREER_BATTING_NOT_FOUND'});
+  const stats=combineBatting(oldStats||{},currentStats||{}); const metrics=detectMetrics(question,BATTING_METRICS);
+  const source={type:'XLSM_MASTER_COMBINED',name:`${oldLive?.source?.name||'2025-2026正本'} + ${currentLive?.source?.name||'2026-2027正本'}`,path:'',modifiedTime:null,parser:'career-recalculation-v1'};
+  if(metrics.length)return answerMetricSet({routed,season:'career',source,playerName,label:'通算',stats,metrics,domainLabel:'打撃'});
+  const parts=availableSummary(stats,[['AB','打数'],['H','安打'],['AVG','打率'],['OBP','出塁率'],['SLG','長打率'],['OPS','OPS'],['RBI','打点'],['HR','本塁打'],['BB','四球'],['HBP','死球'],['SO','三振'],['SB','盗塁']]);
+  return resultBase({routed,season:'career',source,answer:`${playerName}の通算打撃成績は、${parts.join('、')}です。`,evidence:parts});
+}
 function periodLabel(season, data) {
   if (season === 'current') return '今期';
   if (season === 'old') return '2025-2026旧チーム';
@@ -208,12 +228,8 @@ export async function buildLiveAnswer({ question, routed, auditProvider = runDri
 
   const season = seasonFromRequest(routed, q);
   if (season === 'career') {
-    return resultBase({
-      routed, season,
-      answer:'通算成績は現チームと旧チームを合算・再計算する必要があります。現在のライブ回答では誤集計防止のため、通算値はまだ出しません。',
-      refusedToInvent:true,
-      limitation:'CAREER_AGGREGATION_NOT_CONNECTED'
-    });
+    if (routed?.route === 'BATTING_LOOKUP') return buildCareerBatting({ question:q, routed, auditProvider });
+    return resultBase({ routed, season, answer:'通算成績はシーズン横断で再計算が必要です。現在このライブ回答で通算集計できるのは打撃成績です。', refusedToInvent:true, limitation:'CAREER_DOMAIN_NOT_CONNECTED' });
   }
 
   const supported = ['BATTING_LOOKUP','PITCHING_LOOKUP','PLAYER_OVERVIEW','TEAM_LOOKUP'];
