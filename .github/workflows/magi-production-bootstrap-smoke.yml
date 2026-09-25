@@ -122,6 +122,14 @@ jobs:
           grep -Fq "fetch('/api/magi/fielding-report'" /tmp/fielding-report.js
           grep -Fq 'window.MAGI_RUN_FIELDING_REPORT=runReport' /tmp/fielding-report.js
           grep -Fq "waitFor('MAGI_PITCH_DIRECT_FN')" /tmp/main-live-answer-check.js
+          grep -Fq 'magiClarifyModalV362' /tmp/main-live-answer-check.js
+          grep -Fq 'MAGIから確認' /tmp/main-live-answer-check.js
+          grep -Fq 'resolveClarification' /tmp/main-live-answer-check.js
+          grep -Fq 'r=await requestCore(originalQuestion)' /tmp/main-live-answer-check.js
+          grep -Fq "contextPush('assistant',txt(r?.clarificationQuestion||r?.answer))" /tmp/main-live-answer-check.js
+          grep -Fq "contextPush('user',answer)" /tmp/main-live-answer-check.js
+          grep -Fq 'turn<3' /tmp/main-live-answer-check.js
+          echo 'PRODUCTION CLARIFY MODAL CONTRACT: PASS'
           echo 'CANONICAL CLICK OWNERSHIP: PASS'
 
       - name: Verify natural evaluation routing contract
