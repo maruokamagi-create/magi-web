@@ -11,6 +11,7 @@ on:
       - 'server/api/magi/dialogue-resilient.js'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/core.js'
+      - 'server/api/magi/_evaluation-routing.js'
       - 'server/api/magi/_semantic-postguard.js'
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_full-lineup.js'
