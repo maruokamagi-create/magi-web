@@ -102,6 +102,9 @@ jobs:
           grep -Fq '/stats-direct-click-v314.js?v=318' /tmp/index.html
           curl -L --fail -sS 'https://magi-web.vercel.app/stats-direct-click-v314.js?v=318' -o /tmp/stats-direct-click.js
           grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/stats-direct-click.js
+          grep -Fq '/magi-app-bootstrap-v363.js?v=380' /tmp/index.html
+          curl -L --fail -sS 'https://magi-web.vercel.app/magi-app-bootstrap-v363.js?v=380' -o /tmp/bootstrap.js
+          curl -L --fail -sS 'https://magi-web.vercel.app/main-live-answer-v362.js?v=380' -o /tmp/main-live-answer-check.js
           grep -Fq "window.MAGI_SEMANTIC_RUN_V2(b)" /tmp/bootstrap.js
           grep -Fq "entry:'BOOTSTRAP_CAPTURE_SEMANTIC_V2'" /tmp/bootstrap.js
           ! grep -Fq "window.addEventListener('click',event=>{const btn=mainButton" /tmp/main-live-answer-check.js
