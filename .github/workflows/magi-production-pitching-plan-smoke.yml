@@ -101,7 +101,7 @@ jobs:
             else
               jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
             fi
-            curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
+            curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
             cat "$outfile"; echo
             sleep 2
           }
@@ -114,7 +114,8 @@ jobs:
           done
 
           jq -n --slurpfile c /tmp/case.json --slurpfile m /tmp/melchior-primary.json --slurpfile b /tmp/balthasar-primary.json --slurpfile s /tmp/casper-primary.json '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > /tmp/cross-body.json
-          curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/cross-body.json "$BASE/api/magi/orchestrate" -o /tmp/cross.json
+          sleep 3
+          curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/cross-body.json "$BASE/api/magi/orchestrate" -o /tmp/cross.json
           cat /tmp/cross.json; echo
           jq -e '(.reviewRequired != true) and (.challenges.melchior|length>0) and (.challenges.balthasar|length>0) and (.challenges.casper|length>0)' /tmp/cross.json >/dev/null
           sleep 2
@@ -127,7 +128,7 @@ jobs:
           done
 
           jq -n --slurpfile c /tmp/case.json --slurpfile pm /tmp/melchior-primary.json --slurpfile pb /tmp/balthasar-primary.json --slurpfile pc /tmp/casper-primary.json --slurpfile sm /tmp/melchior-second.json --slurpfile sb /tmp/balthasar-second.json --slurpfile sc /tmp/casper-second.json --slurpfile x /tmp/cross.json '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > /tmp/final-body.json
-          curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
+          curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
           cat /tmp/final.json; echo
 
           jq -e --slurpfile roster /tmp/roster.json '
