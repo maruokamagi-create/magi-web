@@ -269,26 +269,30 @@ function readFields(header, row, fieldMap) {
 
 function findPlayerPitchingDecisionStats(sheets, playerName) {
   const target=norm(playerName);
-  const aliases={W:['勝利数','勝利','勝'],L:['敗戦数','敗戦','敗'],SV:['セーブ数','セーブ','SV']};
-  const out={};
-  for(const {rows} of sheets){
-    for(let i=0;i<rows.length;i++){
-      const row=rows[i]||[];
-      if(!row.some(cell=>norm(cell)===target)) continue;
-      for(let h=i-1;h>=Math.max(0,i-30);h--){
-        const header=rows[h]||[];
-        for(const [key,names] of Object.entries(aliases)){
-          if(out[key]!==undefined) continue;
-          const col=headerIndexAliases(header,names);
-          if(col<0) continue;
-          const raw=String(row[col]??'').trim();
-          if(raw!=='' && numericCell(raw)) out[key]=displayDecimal(raw);
-        }
-        if(Object.keys(out).length===3) break;
+  // The workbook's authoritative cumulative pitching table is 投手別.
+  // Column A is 投手名; column B is 捕手名. Never treat the catcher column as pitcher identity.
+  for(const {sheetName,rows} of sheets){
+    if(norm(sheetName)!==norm('投手別')) continue;
+    for(let h=0;h<Math.min(rows.length,12);h++){
+      const header=rows[h]||[];
+      const pitcherCol=headerIndexAliases(header,['投手名']);
+      const wCol=headerIndexAliases(header,['勝利','勝利数']);
+      const lCol=headerIndexAliases(header,['敗北','敗戦','敗戦数']);
+      const svCol=headerIndexAliases(header,['セーブ','セーブ数','SV']);
+      if(pitcherCol<0||wCol<0||lCol<0||svCol<0) continue;
+      for(let r=h+1;r<rows.length;r++){
+        const row=rows[r]||[];
+        if(norm(row[pitcherCol])!==target) continue;
+        return {
+          W: displayDecimal(row[wCol]),
+          L: displayDecimal(row[lCol]),
+          SV: displayDecimal(row[svCol]),
+          decisionSource:{sheetName,row:r+1,headerRow:h+1}
+        };
       }
     }
   }
-  return out;
+  return {};
 }
 
 function numericCell(value){return /^[-+]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(String(value??'').replace(/,/g,'').trim());}
@@ -352,7 +356,7 @@ function extractFromXlsm(buffer, season, requestedPlayers) {
 
   if (!period.start) throw new Error(`${season.label} XLSM正本から集計開始日を特定できませんでした`);
   return {
-    parser:'deterministic-xlsx-v5-separated-wlsv',
+    parser:'deterministic-xlsx-v6-pitcher-column-wlsv',
     usedSheets:[...usedSheets],
     extracted:{ periodStart:period.start, periodEnd:period.end, team, players:legacyPlayers, playersByName }
   };
@@ -404,7 +408,7 @@ function seasonRoster(season) {
 
 export async function runDriveLiveAudit({ season: seasonValue = 'current', players = null } = {}) {
   const season = resolveSeason(seasonValue);
-  const hotKey = `magi:stats-snapshot:hot:v4-separated-wlsv:${season.key}`;
+  const hotKey = `magi:stats-snapshot:hot:v5-pitcher-column-wlsv:${season.key}`;
 
   // Hot snapshot is deliberately checked BEFORE any Drive metadata request. This is
   // what removes the 5-7 second first-hit tax when users ask several different stats.
@@ -415,7 +419,7 @@ export async function runDriveLiveAudit({ season: seasonValue = 'current', playe
   }
 
   const file = await resolveMasterFile(season);
-  const cacheKey = `magi:stats-snapshot:v3-separated-wlsv:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
+  const cacheKey = `magi:stats-snapshot:v4-pitcher-column-wlsv:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
   const cached = await readSnapshot(cacheKey);
   if (cached?.extracted?.playersByName) {
     await writeSnapshot(hotKey, cached, HOT_SNAPSHOT_TTL_SECONDS, ['magi-stats-hot-v2', `magi-stats-hot-${season.key}`]);
