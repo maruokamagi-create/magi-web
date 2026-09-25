@@ -31,18 +31,18 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail -sS "$BASE/" -o /tmp/index.html
-          grep -F '/magi-app-bootstrap-v363.js?v=379' /tmp/index.html
+          grep -F '/magi-app-bootstrap-v363.js?v=381' /tmp/index.html
           if grep -Fq 'magi-formal-hotfix-v369.js' /tmp/index.html; then
             echo 'obsolete v369 hotfix is still loaded' >&2
             exit 1
           fi
-          curl -L --fail -sS "$BASE/magi-app-bootstrap-v363.js?v=379" -o /tmp/bootstrap.js
+          curl -L --fail -sS "$BASE/magi-app-bootstrap-v363.js?v=381" -o /tmp/bootstrap.js
           grep -F 'magi-formal-runner-v373.js' /tmp/bootstrap.js
           if grep -Fq 'magi-formal-runner-v358.js' /tmp/bootstrap.js; then
             echo 'obsolete v358 formal runner is still loaded' >&2
             exit 1
           fi
-          curl -L --fail -sS "$BASE/magi-formal-runner-v373.js?v=379" -o /tmp/runner.js
+          curl -L --fail -sS "$BASE/magi-formal-runner-v373.js?v=381" -o /tmp/runner.js
           grep -F 'structuredValidationOnly:true' /tmp/runner.js
           grep -F 'proseBlocking:false' /tmp/runner.js
           echo 'PRODUCTION SINGLE-PATH CLIENT: PASS'
