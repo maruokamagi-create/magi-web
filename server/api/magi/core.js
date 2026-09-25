@@ -100,7 +100,7 @@ function reportKind(semantic){
 }
 async function attachAppearanceEvidence(evidence,{reviewKind='',focusPlayer=''}={}){
   if(!evidence)return evidence;
-  const appearance=await buildAppearanceDetailEvidence();
+  const appearance=await buildAppearanceDetailEvidence({focusPlayer});
   evidence.appearanceDetail=appearance;
   if(appearance?.source){
     evidence.sources=[...(Array.isArray(evidence.sources)?evidence.sources:[]),appearance.source];
