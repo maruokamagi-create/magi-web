@@ -182,7 +182,7 @@
         }else{
           const center=list(result.final.centerCandidates),recommended=list(result.final.recommendedCandidates);
           $('verdict').textContent=center.length?`中心候補：${center.join('・')}`:'候補比較継続';
-          $('reason').textContent=result.final.recommendation||(recommended.length?`推奨候補群：${recommended.join('・')}`:'3賢者の候補を比較してください。');
+          const selectionReasons=list(result.final.majorReasons).filter(Boolean);\n          const baseSelection=result.final.recommendation||(recommended.length?`推奨候補群：${recommended.join('・')}`:'3賢者の候補を比較してください。');\n          $('reason').textContent=selectionReasons.length?`${baseSelection}　根拠：${selectionReasons.join('／')}`:baseSelection;
           const alt=list(result.final.alternateCandidates),conds=list(result.final.reDeliberationConditions);
           const bits=[];if(alt.length)bits.push(`次点・追加候補：${alt.join('・')}`);if(conds.length)bits.push(`再検討条件：${conds.join('／')}`);
           $('next').textContent=bits.join('　')||'今後の試合データや役割変化に応じて再選定します。';
