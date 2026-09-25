@@ -262,7 +262,7 @@ export default async function handler(req, res) {
     const candidateCase = isCandidateCase(body);
     const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
     const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
-    const pitchingRoleCase = candidateCase && !pitchingPlanCase && String(body?.case?.selectionKind||'').toUpperCase()==='PITCHING_ROLE';
+    const pitchingRoleCase = candidateCase && !pitchingPlanCase && String(body?.case?.selectionKind||body?.case?.evidence?.selectionKind||'').toUpperCase()==='PITCHING_ROLE';
     const requestedPitchingPlanInnings = Number(body?.case?.evidence?.gameInnings);
     const pitchingPlanGameInnings = requestedPitchingPlanInnings === 9 ? 9 : 7;
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
