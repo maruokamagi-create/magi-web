@@ -22,7 +22,7 @@ function inningsOuts(value){
   const whole=Number(m[1]), frac=Number(m[2]||0);
   return whole*3+(frac===1?1:frac===2?2:0);
 }
-function fmtInnings(outs){return outs%3?\`${Math.floor(outs/3)}.${outs%3}\`:String(Math.floor(outs/3))}
+function fmtInnings(outs){return outs%3?`${Math.floor(outs/3)}.${outs%3}`:String(Math.floor(outs/3))}
 function pick(row,names){for(const n of names){if(text(row[n])!=='')return row[n]}return ''}
 function aggregate(name,rows){
   const mine=rows.filter(r=>text(r['選手名'])===name);
@@ -39,7 +39,7 @@ function aggregate(name,rows){
 }
 export async function buildPitchingDetailEvidence(season='current'){
   const key=season==='old'?'old':'current', tree=await listMagiDriveTree({maxItems:2000,maxDepth:12}), file=findFile(tree,key);
-  if(!file)throw new Error(\`${CONFIG[key].names[0]} がDrive内に見つかりません\`);
+  if(!file)throw new Error(`${CONFIG[key].names[0]} がDrive内に見つかりません`);
   const fetched=await fetchDriveFileContent(file);
   const rows=parseCsv(decodeCsv(fetched.buffer)).filter(r=>text(r['選手名']));
   const players=CURRENT_ROSTER.map(name=>({name,pitching:aggregate(name,rows)}));
