@@ -365,7 +365,7 @@ export default async function handler(req,res){
         const result=await buildVerifiedDetailAnswer({question});
         return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,integratedRoute:'VERIFIED_OLD_DETAIL',semantic,fastPath:false});
       }
-      const result=routed.route==='PITCHING_LOOKUP'?await buildStrictPitchingAnswer({question,routed}):await buildLiveAnswer({question,routed});
+      const result=(routed.route==='PITCHING_LOOKUP'&&semantic.timeScope!=='CAREER')?await buildStrictPitchingAnswer({question,routed}):await buildLiveAnswer({question,routed});
       return sendJson(res,200,{...result,ok:true,handled:true,coreVersion:CORE_VERSION,semantic,fastPath:false});
     }
 
