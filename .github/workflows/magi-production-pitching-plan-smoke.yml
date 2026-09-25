@@ -12,6 +12,7 @@ on:
       - 'server/api/magi/_cross-output-guard.js'
       - '.github/workflows/magi-production-pitching-plan-smoke.yml'
   workflow_dispatch:
+  # verification refresh 2026-09-25
 
 jobs:
   production-pitching-plan:
