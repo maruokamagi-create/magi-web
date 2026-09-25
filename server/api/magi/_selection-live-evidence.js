@@ -3,6 +3,7 @@ import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { buildRecentSixBattingEvidence } from './_recent-batting-form.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
+import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
 
 export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v12-takeda-left-field';
 
@@ -70,6 +71,7 @@ function pitchingParts(stats){
   if(text(p.ERA)) parts.push(`防御率 ${p.ERA}`);
   if(text(p.IP)) parts.push(`投球回 ${p.IP}`);
   if(text(p.SO)) parts.push(`奪三振 ${p.SO}`);
+  if(text(p.K9)) parts.push(`奪三振率(K/9) ${p.K9}`);
   if(text(p.BB)) parts.push(`与四球 ${p.BB}`);
   if(text(p.WHIP)) parts.push(`WHIP ${p.WHIP}`);
   if(text(p.BAA)) parts.push(`被打率 ${p.BAA}`);
@@ -133,10 +135,12 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
   const wantsRecentBatting=!isPitchingKind(kind);
 
-  const [currentResult,oldResult,recentResult]=await Promise.allSettled([
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
-    wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null)
+    wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
+    isPitchingKind(kind) ? buildPitchingDetailEvidence('current') : Promise.resolve(null),
+    isPitchingKind(kind) ? buildPitchingDetailEvidence('old') : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
 
@@ -145,10 +149,12 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const missing=CURRENT_ROSTER.filter(name=>!Object.prototype.hasOwnProperty.call(byName,name));
   if(missing.length) throw new Error(`現チーム14名の正本確認が未完了です: ${missing.join('、')}`);
 
+  const currentPitching=currentPitchingResult?.status==='fulfilled'?currentPitchingResult.value:null;
+  const currentPitchingByName=Object.fromEntries((currentPitching?.players||[]).map(p=>[p.name,p.pitching]));
   const players=CURRENT_ROSTER.map(name=>({
     name,
     batting: byName[name]?.batting ? {...byName[name].batting} : null,
-    pitching: byName[name]?.pitching ? {...byName[name].pitching} : null
+    pitching: isPitchingKind(kind) ? (currentPitchingByName[name]?{...currentPitchingByName[name]}:null) : (byName[name]?.pitching ? {...byName[name].pitching} : null)
   }));
 
   let recentSix={
@@ -180,7 +186,9 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(oldResult.status==='fulfilled'){
     const oldAudit=oldResult.value;
     const oldByName=oldAudit?.extracted?.playersByName||{};
-    const historicalPlayers=CURRENT_ROSTER.map(name=>historicalPlayer(name,oldByName));
+    const oldPitching=oldPitchingResult?.status==='fulfilled'?oldPitchingResult.value:null;
+    const oldPitchingByName=Object.fromEntries((oldPitching?.players||[]).map(p=>[p.name,p.pitching]));
+    const historicalPlayers=CURRENT_ROSTER.map(name=>{const p=historicalPlayer(name,oldByName);if(isPitchingKind(kind))p.pitching=oldPitchingByName[name]?{...oldPitchingByName[name]}:null;return p;});
     historicalReference={
       status:'COMPLETE',
       season:'old',
@@ -255,6 +263,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }
 
   const sources=[];
+  if(isPitchingKind(kind)&&currentPitching?.source) sources.push({...currentPitching.source,season:'current',priority:'PRIMARY_PITCHING_DETAIL'});
+  if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
   if(recentSix?.source) sources.push({...recentSix.source,season:'current',priority:'RECENT_FORM'});
   if(historicalReference.source) sources.push({...historicalReference.source,season:'old',priority:'HISTORICAL'});
