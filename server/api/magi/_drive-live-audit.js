@@ -325,7 +325,7 @@ function extractFromXlsm(buffer, season, requestedPlayers) {
 
   if (!period.start) throw new Error(`${season.label} XLSM正本から集計開始日を特定できませんでした`);
   return {
-    parser:'deterministic-xlsx-v3-generic-player-stats',
+    parser:'deterministic-xlsx-v4-wins-losses-saves',
     usedSheets:[...usedSheets],
     extracted:{ periodStart:period.start, periodEnd:period.end, team, players:legacyPlayers, playersByName }
   };
@@ -377,7 +377,7 @@ function seasonRoster(season) {
 
 export async function runDriveLiveAudit({ season: seasonValue = 'current', players = null } = {}) {
   const season = resolveSeason(seasonValue);
-  const hotKey = `magi:stats-snapshot:hot:v2:${season.key}`;
+  const hotKey = `magi:stats-snapshot:hot:v3-wlsv:${season.key}`;
 
   // Hot snapshot is deliberately checked BEFORE any Drive metadata request. This is
   // what removes the 5-7 second first-hit tax when users ask several different stats.
@@ -388,7 +388,7 @@ export async function runDriveLiveAudit({ season: seasonValue = 'current', playe
   }
 
   const file = await resolveMasterFile(season);
-  const cacheKey = `magi:stats-snapshot:v1:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
+  const cacheKey = `magi:stats-snapshot:v2-wlsv:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
   const cached = await readSnapshot(cacheKey);
   if (cached?.extracted?.playersByName) {
     await writeSnapshot(hotKey, cached, HOT_SNAPSHOT_TTL_SECONDS, ['magi-stats-hot-v2', `magi-stats-hot-${season.key}`]);
