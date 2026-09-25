@@ -15,6 +15,7 @@ on:
       - 'magi-app-bootstrap-v363.js'
       - '.github/workflows/magi-production-reproducibility-smoke.yml'
   workflow_dispatch:
+  # final verification refresh 2026-09-25
 
 jobs:
   reproducibility:
