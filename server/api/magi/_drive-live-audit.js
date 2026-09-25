@@ -43,7 +43,8 @@ const BATTING_FIELDS = {
 const PITCHING_FIELDS = {
   APP: ['登板数','登板'], ERA: ['防御率'], IP: ['投球回数','投球回'], H: ['被安打'],
   R: ['失点'], ER: ['自責点'], BB: ['与四球'], SO: ['奪三振'], WHIP: ['WHIP'],
-  BAA: ['被打率'], HR: ['被本塁打','被本塁'], WP: ['暴投']
+  BAA: ['被打率'], HR: ['被本塁打','被本塁'], WP: ['暴投'],
+  W: ['勝利数','勝利','勝'], L: ['敗戦数','敗戦','敗'], SV: ['セーブ数','セーブ','SV']
 };
 
 function resolveSeason(value) {
