@@ -27,6 +27,10 @@ export default async function handler(req,res){
       question:'現時点のベストオーダーを審議して',
       routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}
     });
+    const closerPacket=await buildCurrentSelectionEvidence({
+      question:'クローザーは誰がいい？',
+      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}
+    });
     const naturalThirdPacket=await buildCurrentSelectionEvidence({
       question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',
       routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}
@@ -46,9 +50,16 @@ export default async function handler(req,res){
     const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
     const naturalNames=naturalPlayers.map(x=>x.name);
     const naturalThirdReady=Boolean(naturalThirdPacket)&&naturalThirdPacket?.selectionKind==='BATTING_ORDER'&&naturalNames.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>naturalNames.includes(name))&&naturalPlayers.filter(hasCoreBatting).length===14&&String(naturalThirdPacket?.text||'').includes('【現チーム全14選手・打撃】');
+    const closerPlayers=closerPacket?.allCurrentTeamCheck?.players||[];
+    const uemura=closerPlayers.find(p=>p.name==='上村 蓮');
+    const closerSource=closerPacket?.sources?.find(x=>x?.priority==='PRIMARY_PITCHING_DETAIL');
+    const closerPitchingReady=Boolean(closerPacket)&&closerPacket?.selectionKind==='PITCHING_ROLE'&&closerPlayers.length===CURRENT_ROSTER.length&&!uemura?.pitching&&/投手詳細(?:2026-2027)?\.csv$/i.test(String(closerSource?.name||''))&&String(closerPacket?.text||'').includes('上村 蓮：投手記録なし');
     res.status(200).json({
-      ok:fullLineupReady&&naturalThirdReady,
+      ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady,
       fullLineupReady,
+      closerPitchingReady,
+      closerPitchingSource:closerSource?.name||'',
+      uemuraPitching:uemura?.pitching||null,
       naturalThirdReady,
       naturalThirdSelectionKind:naturalThirdPacket?.selectionKind||'',
       naturalThirdCount:naturalThirdPacket?.count||0,
