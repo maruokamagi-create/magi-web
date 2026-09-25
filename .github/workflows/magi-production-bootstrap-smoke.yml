@@ -121,6 +121,7 @@ jobs:
           grep -Fq "from './_evaluation-routing.js'" server/api/magi/core.js
           grep -Fq '弱点|強み|問題' server/api/magi/_evaluation-routing.js
           grep -Fq 'playerEvaluation=' server/api/magi/_evaluation-routing.js
+          grep -Fq 'クローザー|抑え|スタメン' server/api/magi/_evaluation-routing.js
           grep -Fq 'return teamChange||playerEvaluation||observation' server/api/magi/_evaluation-routing.js
           grep -Fq 'CURRENT_MASTER_NATURAL_TEAM_REVIEW' server/api/magi/core.js
           grep -Fq "reviewKind:'TEAM_REVIEW'" server/api/magi/core.js
