@@ -113,8 +113,10 @@ function contextNames(context){
 function usesContextReference(question){
   return /(?:それ|その|この|あれ|さっき|じゃあ|なら|今の|直近|最近|前の|同じ|その選手|この選手)/.test(String(question||''));
 }
-function ambiguousSurname(question){
+function ambiguousSurname(question,context=[]){
   const raw=clean(question,5000);
+  const latestUser=[...(Array.isArray(context)?context:[])].reverse().find(item=>item?.role==='user');
+  const latestNames=namesInText(latestUser?.text||'');
   const groups=new Map();
   for(const name of OFFICIAL_PLAYER_REGISTRY){
     const surname=name.split(' ')[0];
@@ -124,7 +126,10 @@ function ambiguousSurname(question){
   for(const [surname,owners] of groups){
     if(owners.length<2||!raw.includes(surname))continue;
     const canon=canonicalizeKnownNameText(raw);
-    if(!owners.some(name=>canon.includes(name)))return {surname,owners};
+    if(owners.some(name=>canon.includes(name)))continue;
+    const resolved=owners.filter(name=>latestNames.includes(name));
+    if(resolved.length===1)return null;
+    return {surname,owners};
   }
   return null;
 }
@@ -151,7 +156,8 @@ function normalizeModel(raw,question,context){
   const breakdowns=uniq(raw?.breakdowns).map(x=>x.toUpperCase()).filter(x=>BREAKDOWNS.includes(x));
   const selectionKind=SELECTION_KINDS.includes(String(raw?.selectionKind||'').toUpperCase())?String(raw.selectionKind).toUpperCase():'NONE';
   const direct=namesInText(question);
-  const carried=direct.length?[]:(usesContextReference(question)?contextNames(context):[]);
+  const surnameResolution=(()=>{const raw=clean(question,5000);const latest=[...context].reverse().find(item=>item?.role==='user');const latestNames=namesInText(latest?.text||'');return latestNames.filter(name=>raw.includes(name.split(' ')[0]));})();
+  const carried=direct.length?[]:surnameResolution.length?surnameResolution:(usesContextReference(question)?contextNames(context):[]);
   const grounded=[...new Set([...direct,...carried])];
   const rawPlayers=uniq(raw?.players);
   const canonicalPlayers=[];
@@ -176,7 +182,7 @@ function normalizeModel(raw,question,context){
     validated:true,semanticAuthority:'GEMINI_FIRST'
   };
 
-  const ambiguous=ambiguousSurname(question);
+  const ambiguous=ambiguousSurname(question,context);
   if(ambiguous){
     return clarification(`「${ambiguous.surname}」は複数の選手がいます。フルネームで指定してください。`,'同姓選手が複数いるため、コード検証で対象人物を一意に確定できない。',base);
   }
@@ -290,6 +296,7 @@ export async function understandRequestGeminiFirst(questionValue,contextValue=[]
       systemInstruction:SYSTEM,
       userPayload:{
         question:canonicalizeKnownNameText(question),
+        clarificationResolution:(()=>{const a=ambiguousSurname(question,context);if(a)return null;const raw=clean(question,5000);const latest=[...context].reverse().find(item=>item?.role==='user');const names=namesInText(latest?.text||'').filter(name=>raw.includes(name.split(' ')[0]));return names.length===1?{resolvedPlayer:names[0],instruction:'直前の確認回答でこの選手に一意確定済み。再度同じ氏名確認を要求しないこと。'}:null})(),
         suppliedContext:context,
         officialPlayers:OFFICIAL_PLAYER_REGISTRY,
         currentRoster:CURRENT_ROSTER,
