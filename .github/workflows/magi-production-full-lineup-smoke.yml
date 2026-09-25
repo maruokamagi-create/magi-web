@@ -13,6 +13,7 @@ on:
       - 'server/api/magi/_cross-output-guard.js'
       - '.github/workflows/magi-production-full-lineup-smoke.yml'
   workflow_dispatch:
+  # verification refresh 2026-09-25
 
 jobs:
   production-full-lineup:
