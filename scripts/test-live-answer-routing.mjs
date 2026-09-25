@@ -97,6 +97,18 @@ test('L11 player not unique refuses',async()=>{
   assert.equal(r.refusedToInvent,true);assert.equal(r.limitation,'PLAYER_NOT_UNIQUE');
 });
 
+
+test('L12 pitching live answer summary returns authoritative values',async()=>{
+  const r=await buildLiveAnswer({question:'大野竜暉の今季投手成績を教えて',routed:route('PITCHING_LOOKUP'),auditProvider:fakeLiveAudit});
+  includesAll(r.answer,['防御率1.69','投球回54.0','奪三振50','与四球12','WHIP0.98']);assert.equal(r.refusedToInvent,false);
+});
+
+test('L13 ambiguous clarification returns clarification without invented numbers',async()=>{
+  const routed={route:'CLARIFY',clarificationQuestion:'対象選手かチーム全体かを指定してください。',routerVersion:'test-router'};
+  const r=await buildLiveAnswer({question:'成績を教えて',routed,auditProvider:fakeLiveAudit});
+  assert.equal(r.answer,'対象選手かチーム全体かを指定してください。');assert.equal(r.refusedToInvent,false);
+});
+
 test('P01 pitching single ERA excludes extra metrics',async()=>{
   const r=await buildStrictPitchingAnswer({question:'大野竜暉の防御率だけ教えて',routed:route('PITCHING_LOOKUP'),auditProvider:fakeStrictAudit});
   includesAll(r.answer,['1.69']);includesNone(r.answer,['奪三振50','与四球12','投球回54.0']);
