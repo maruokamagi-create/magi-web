@@ -2,7 +2,7 @@
 'use strict';
 if(window.MAGI_APP_BOOTSTRAP_V363)return;
 window.MAGI_APP_BOOTSTRAP_V363=true;
-const REV='380';
+const REV='381';
 let ready=false,failed=false;
 const sleep=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 const load=src=>new Promise((resolve,reject)=>{const s=document.createElement('script');s.src=src;s.async=false;s.onload=resolve;s.onerror=()=>reject(new Error(`load failed: ${src}`));document.body.appendChild(s);});
