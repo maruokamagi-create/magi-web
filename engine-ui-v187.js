@@ -184,8 +184,9 @@
           $('verdict').textContent=center.length?`中心候補：${center.join('・')}`:'候補比較継続';
           const selectionReasons=list(result.final.majorReasons).filter(Boolean);
           const supportRows=list(result.final.candidateSupport);
-          const centerKeys=new Set(center.map(playerKey));
-          const centerSupport=supportRows.filter(row=>centerKeys.has(playerKey(row?.name)));
+          const normalizeCandidateName=value=>String(value??'').normalize('NFKC').replace(/\s+/g,'').trim();
+          const centerKeys=new Set(center.map(normalizeCandidateName));
+          const centerSupport=supportRows.filter(row=>centerKeys.has(normalizeCandidateName(row?.name)));
           const centerEvidence=centerSupport.map(row=>`${row.name}：3賢人中${row.support}人が候補、うち第1候補${row.firstPlaceCount}人`);
           const baseSelection=result.final.recommendation||(recommended.length?`推奨候補群：${recommended.join('・')}`:'3賢者の候補を比較してください。');
           const reasonParts=[];
