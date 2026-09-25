@@ -1,0 +1,29 @@
+name: MAGI Production Fielding Smoke
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/magi-production-fielding-selftest.js'
+      - 'server/api/magi/_fielding-csv-audit.js'
+      - 'server/api/magi/fielding-report.js'
+      - 'fielding-direct-report-v329.js'
+      - '.github/workflows/magi-production-fielding-smoke.yml'
+  workflow_dispatch:
+
+jobs:
+  fielding:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Wait for production deployment
+        run: sleep 40
+      - name: Verify production fielding Evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/api/magi-production-fielding-selftest" -o /tmp/fielding.json
+          cat /tmp/fielding.json
+          jq -e '.ok==true and .season=="current" and .playerCount>=14 and .withMaster>=14 and (.missing|length==0)' /tmp/fielding.json >/dev/null
+          echo 'PRODUCTION FIELDING EVIDENCE: PASS'
