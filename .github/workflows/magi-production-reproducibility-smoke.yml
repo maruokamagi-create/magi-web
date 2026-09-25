@@ -131,7 +131,10 @@ jobs:
           }
 
           run_once a
-          # Give the canonical cache writes from the first full deliberation time to become visible before replaying the identical Evidence.\n          sleep 3\n          run_once b\n
+          # Give the canonical cache writes from the first full deliberation time to become visible before replaying the identical Evidence.
+          sleep 3
+          run_once b
+
           for p in melchior balthasar casper; do
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/a-${p}-primary.json" > "/tmp/a-${p}-primary-stable.json"
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/b-${p}-primary.json" > "/tmp/b-${p}-primary-stable.json"
