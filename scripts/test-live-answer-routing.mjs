@@ -39,6 +39,14 @@ function includesNone(answer,values){for(const v of values) assert.ok(!answer.in
 const tests=[];
 function test(name,fn){tests.push({name,fn});}
 
+test('L00 career pitching aggregates both seasons without averaging rates',async()=>{
+  const old=structuredClone(oldLive),cur=structuredClone(currentLive);
+  old.extracted.playersByName['大野 竜暉'].pitching={APP:'18',IP:'54.0',SO:'50',BB:'12',HBP:'2',H:'30',ER:'13',WHIP:'0.78'};
+  cur.extracted.playersByName['大野 竜暉'].pitching={APP:'14',IP:'12.1',SO:'16',BB:'4',HBP:'1',H:'8',ER:'3',WHIP:'0.97'};
+  const r=await buildLiveAnswer({question:'大野 竜暉の通算投手成績を教えて',routed:route('PITCHING_LOOKUP',['大野 竜暉'],'CAREER'),auditProvider:async({season})=>season==='old'?old:cur});
+  includesAll(r.answer,['32','66.1','66']); assert.equal(r.refusedToInvent,false); assert.deepEqual(r.source.parser,'career-pitching-recalculation-v1');
+});
+
 test('L01 batting single metric returns only AVG',async()=>{
   const r=await buildLiveAnswer({question:'大野竜暉の打率だけ教えて',routed:route('BATTING_LOOKUP'),auditProvider:fakeLiveAudit});
   includesAll(r.answer,['.278']);includesNone(r.answer,['.924','安打10','打点7']);assert.equal(r.refusedToInvent,false);
