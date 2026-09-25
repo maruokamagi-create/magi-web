@@ -36,6 +36,8 @@
       objective: String(input?.objective || '').trim(),
       options: Array.isArray(input?.options) ? clone(input.options) : [],
       urgency: input?.urgency || 'normal',
+      selectionKind: String(input?.selectionKind || input?.evidence?.selectionKind || '').toUpperCase(),
+      semantic: clone(input?.semantic || null),
       evidence: clone(input?.evidence || null),
       createdAt: new Date().toISOString()
     });
