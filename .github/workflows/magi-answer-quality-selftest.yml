@@ -8,6 +8,7 @@ on:
       - 'server/api/magi/_gemini.js'
       - '.github/workflows/magi-answer-quality-selftest.yml'
   workflow_dispatch:
+  # verification refresh 2026-09-25
 
 jobs:
   authoritative-answer-test:
