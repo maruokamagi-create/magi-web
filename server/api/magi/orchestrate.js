@@ -160,6 +160,27 @@ function deterministicFullLineupCross(primary) {
   };
 }
 
+function deterministicSelectionCross(primary) {
+  const specs = [['melchior','メルキオール'],['balthasar','バルタザール'],['casper','カスパー']];
+  const rows = specs.map(([key,jp]) => {
+    const value = primary?.[key] || {};
+    const candidates = Array.isArray(value?.candidatePlayers) ? value.candidatePlayers.map(x=>String(x||'').trim()).filter(Boolean) : [];
+    return { key, jp, candidates };
+  });
+  if (rows.some(row => row.candidates.length < 1)) return null;
+  const top = rows.map(row=>row.candidates[0]);
+  const agreement = [];
+  const disagreement = [];
+  if (new Set(top.map(playerKey)).size === 1) agreement.push(`3賢人とも第1候補は${top[0]}で一致しています。`);
+  else disagreement.push(`第1候補は${rows.map(row=>`${row.jp}：${row.candidates[0]}`).join('／')}で意見が分かれています。`);
+  const challenges = { melchior:[], balthasar:[], casper:[] };
+  rows.forEach((row,rowIndex)=>{
+    const other = rows.find((candidate,j)=>j!==rowIndex && playerKey(candidate.candidates[0])!==playerKey(row.candidates[0])) || rows[(rowIndex+1)%rows.length];
+    challenges[row.key].push(`${row.jp}、あなたの第1候補は${row.candidates[0]}です。${other.jp}の第1候補${other.candidates[0]}と比べ、CASE.evidenceで確認できる記録だけを使って、この候補を維持するか見直すか説明してください。`);
+  });
+  return { agreement, disagreement, domainConflicts:[], warnings:[], informationGaps:[], challenges };
+}
+
 export function buildFullLineupResult(second, cross) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
@@ -459,7 +480,7 @@ export default async function handler(req, res) {
         result = canonicalizePlayerData(rawResult);
         guardIssues = validateCrossOutput(body.case, result, { focused: !selectionCase });
       } catch (crossError) {
-        const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : null;
+        const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : (selectionCase && !pitchingPlanCase ? deterministicSelectionCross(body.primary) : null);
         if (fallback) return sendJson(res, 200, canonicalizePlayerData(fallback));
         throw crossError;
       }
@@ -481,7 +502,7 @@ export default async function handler(req, res) {
           result = canonicalizePlayerData(rawResult);
           guardIssues = validateCrossOutput(body.case, result, { focused: !selectionCase });
         } catch (correctionError) {
-          const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : null;
+          const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : (selectionCase && !pitchingPlanCase ? deterministicSelectionCross(body.primary) : null);
           if (fallback) {
             result = fallback;
             guardIssues = [];
@@ -492,7 +513,7 @@ export default async function handler(req, res) {
       }
 
       if (guardIssues.length) {
-        const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : null;
+        const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : (selectionCase && !pitchingPlanCase ? deterministicSelectionCross(body.primary) : null);
         result = fallback || failClosedCross(guardIssues);
       }
       return sendJson(res, 200, canonicalizePlayerData(result));
