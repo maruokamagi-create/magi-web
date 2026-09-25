@@ -123,6 +123,8 @@ function aggregatePlayer(name,rows,selectedKeys){
   };
 }
 
+export { decodeCsv, parseCsv };
+
 export async function buildRecentSixBattingEvidence(){
   const tree=await listMagiDriveTree({maxItems:2000,maxDepth:12});
   const file=findBattingDetailFile(tree);
