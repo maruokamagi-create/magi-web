@@ -137,6 +137,8 @@ jobs:
           grep -Fq "reviewKind:'TEAM_REVIEW'" server/api/magi/core.js
           grep -Fq 'CURRENT_MASTER_NATURAL_PLAYER_REVIEW' server/api/magi/core.js
           grep -Fq "reviewKind:'PLAYER_REVIEW'" server/api/magi/core.js
+          grep -Fq 'buildAppearanceDetailEvidence({focusPlayer})' server/api/magi/core.js
+          grep -Fq 'const requestedNames=focusPlayer?' server/api/magi/_appearance-detail-evidence.js
           grep -Fq "if (!naturalPlayerReview && !resolution?.requestedDocument && focusNames.length" server/api/magi/core.js
           echo 'NATURAL TEAM/PLAYER EVALUATION ROUTING: PASS'
 
