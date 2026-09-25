@@ -26,11 +26,15 @@ function pitchingSelectionQuestion(question){
 }
 
 export function selectionEvidenceKind(question,routed={}){
-  if(hasNamedPlayer(routed)) return '';
   if(isFullLineupQuestion({question})) return 'FULL_LINEUP';
   if(isPitchingPlanQuestion({question})) return 'PITCHING_PLAN';
+  // A named player can be context for a selection question (for example,
+  // "4番の大久保 陽翔につなぐ3番は誰？"). Detect explicit selection
+  // intent before the focused-player guard so the full current roster remains
+  // available as candidate Evidence.
   if(pitchingSelectionQuestion(question)) return 'PITCHING_ROLE';
   if(battingSelectionQuestion(question)) return 'BATTING_ORDER';
+  if(hasNamedPlayer(routed)) return '';
   const domains=Array.isArray(routed?.domains)?routed.domains:[];
   if(domains.includes('LINEUP')) return 'BATTING_ORDER';
   return '';
