@@ -34,8 +34,8 @@ function aggregate(name,rows){
     H+=num(pick(r,['被安打'])); R+=num(pick(r,['失点'])); ER+=num(pick(r,['自責点']));
     BB+=num(pick(r,['与四球','四球'])); SO+=num(pick(r,['奪三振'])); HR+=num(pick(r,['被本塁打','被本塁'])); WP+=num(pick(r,['暴投']));
   }
-  const ip=outs/3, era=outs?ER*7/ip:null, whip=outs?(BB+H)/ip:null;
-  return {APP:String(APP),IP:fmtInnings(outs),H:String(H),R:String(R),ER:String(ER),BB:String(BB),SO:String(SO),HR:String(HR),WP:String(WP),ERA:era===null?'':era.toFixed(2),WHIP:whip===null?'':whip.toFixed(2)};
+  const ip=outs/3, era=outs?ER*7/ip:null, whip=outs?(BB+H)/ip:null, k9=outs?SO*9/ip:null;
+  return {APP:String(APP),IP:fmtInnings(outs),H:String(H),R:String(R),ER:String(ER),BB:String(BB),SO:String(SO),HR:String(HR),WP:String(WP),ERA:era===null?'':era.toFixed(2),WHIP:whip===null?'':whip.toFixed(2),K9:k9===null?'':k9.toFixed(2)};
 }
 export async function buildPitchingDetailEvidence(season='current'){
   const key=season==='old'?'old':'current', tree=await listMagiDriveTree({maxItems:2000,maxDepth:12}), file=findFile(tree,key);
@@ -45,5 +45,5 @@ export async function buildPitchingDetailEvidence(season='current'){
   const players=CURRENT_ROSTER.map(name=>({name,pitching:aggregate(name,rows)}));
   return {status:'COMPLETE',season:key,source:{id:file.id,name:file.name,path:file.path,mimeType:file.mimeType,modifiedTime:file.modifiedTime},players,
     experiencedPlayers:players.filter(p=>p.pitching).map(p=>p.name),
-    rule:'投手経験の有無は投手詳細CSVに本人の投球行が存在することだけで確定する。捕手記録・守備記録・通算XLSMの特殊配置から投手経験を推測しない。防御率とWHIPは投手詳細CSVの投球回・自責点・被安打・与四球から再計算する。7回制防御率を使用する。'};
+    rule:'投手経験の有無は投手詳細CSVに本人の投球行が存在することだけで確定する。捕手記録・守備記録・通算XLSMの特殊配置から投手経験を推測しない。防御率は7イニング換算（自責点×7÷投球回）、奪三振率K/9は9イニング換算（奪三振×9÷投球回）、WHIPは（被安打＋与四球）÷投球回で、投手詳細CSVから再計算する。'};
 }
