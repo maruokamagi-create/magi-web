@@ -217,7 +217,7 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
   // as the independently reported observation ledger.
   const focusNames = (Array.isArray(semantic?.players) ? semantic.players : [])
     .filter(name => CURRENT_ROSTER.some(rosterName => normalized(rosterName) === normalized(name)));
-  if (!resolution?.requestedDocument && focusNames.length && (semantic?.domains || []).includes('PITCHING')) {
+  if (!naturalPlayerReview && !resolution?.requestedDocument && focusNames.length && (semantic?.domains || []).includes('PITCHING')) {
     try {
       const audit = await runDriveLiveAudit({ season: 'current' });
       const rows = focusNames.map(name => {
