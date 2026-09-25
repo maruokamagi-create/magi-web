@@ -11,6 +11,7 @@ on:
       - 'api/magi-production-semantic-fallback-selftest.js'
       - '.github/workflows/magi-semantic-authority-guard.yml'
   workflow_dispatch:
+  # final verification refresh 2026-09-25
 
 jobs:
   semantic-authority:
