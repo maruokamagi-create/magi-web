@@ -99,6 +99,13 @@ jobs:
           grep -Fq '/drive-server-v293.js?v=301' /tmp/index.html
           curl -L --fail -sS https://magi-web.vercel.app/drive-server-v293.js?v=301 -o /tmp/drive-server.js
           grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/drive-server.js
+
+          grep -Fq '/stats-server-bridge-v315.js?v=319' /tmp/index.html
+          grep -Fq '/pitching-direct-report-v317.js?v=330' /tmp/index.html
+          curl -L --fail -sS https://magi-web.vercel.app/stats-server-bridge-v315.js?v=319 -o /tmp/stats-bridge.js
+          curl -L --fail -sS https://magi-web.vercel.app/pitching-direct-report-v317.js?v=330 -o /tmp/pitching-report.js
+          grep -Fq "typeof window.MAGI_SEMANTIC_RUN_V2==='function'" /tmp/stats-bridge.js
+          grep -Fq "typeof window.MAGI_SEMANTIC_RUN_V2==='function'" /tmp/pitching-report.js
           echo 'CANONICAL CLICK OWNERSHIP: PASS'
 
       - name: Verify production bootstrap and live master Evidence
