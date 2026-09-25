@@ -129,7 +129,7 @@ function pitchingPlanGameInnings(question,routed){
   return 7;
 }
 
-export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit}={}){
+export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
@@ -139,8 +139,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
-    isPitchingKind(kind) ? buildPitchingDetailEvidence('current') : Promise.resolve(null),
-    isPitchingKind(kind) ? buildPitchingDetailEvidence('old') : Promise.resolve(null)
+    isPitchingKind(kind) ? pitchingProvider('current') : Promise.resolve(null),
+    isPitchingKind(kind) ? pitchingProvider('old') : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
