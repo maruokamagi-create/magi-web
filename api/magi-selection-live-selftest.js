@@ -53,13 +53,14 @@ export default async function handler(req,res){
     const closerPlayers=closerPacket?.allCurrentTeamCheck?.players||[];
     const uemura=closerPlayers.find(p=>p.name==='上村 蓮');
     const closerSource=closerPacket?.sources?.find(x=>x?.priority==='PRIMARY_PITCHING_DETAIL');
-    const closerPitchingReady=Boolean(closerPacket)&&closerPacket?.selectionKind==='PITCHING_ROLE'&&closerPlayers.length===CURRENT_ROSTER.length&&!uemura?.pitching&&/投手詳細(?:2026-2027)?\.csv$/i.test(String(closerSource?.name||''))&&String(closerPacket?.text||'').includes('上村 蓮：投手記録なし');
+    const closerPitchingReady=Boolean(closerPacket)&&closerPacket?.selectionKind==='PITCHING_ROLE'&&closerPlayers.length===CURRENT_ROSTER.length&&!uemura?.pitching&&!closerPacket?.pitchingEligible?.includes('上村 蓮')&&/投手詳細(?:2026-2027)?\.csv$/i.test(String(closerSource?.name||''))&&String(closerPacket?.text||'').includes('上村 蓮：投手記録なし')&&String(closerPacket?.text||'').includes('【投手候補資格】');
     res.status(200).json({
       ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady,
       fullLineupReady,
       closerPitchingReady,
       closerPitchingSource:closerSource?.name||'',
       uemuraPitching:uemura?.pitching||null,
+      pitchingEligible:closerPacket?.pitchingEligible||[],
       naturalThirdReady,
       naturalThirdSelectionKind:naturalThirdPacket?.selectionKind||'',
       naturalThirdCount:naturalThirdPacket?.count||0,
