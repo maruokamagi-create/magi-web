@@ -29,7 +29,7 @@ function combinePitching(oldStats={},currentStats={}) {
   const out={}; const sumKeys=['APP','SO','BB','HBP','H','ER','R','W','L','SV'];
   for(const key of sumKeys) out[key]=n(oldStats?.[key])+n(currentStats?.[key]);
   const ipToOuts=v=>{const s=String(v??'').trim();if(!s)return 0;const [whole,frac='0']=s.split('.');return n(whole)*3+Math.min(2,n(frac));};
-  const outs=ipToOuts(oldStats?.IP)+ipToOuts(currentStats?.IP); out.IP=outs?\`\${Math.floor(outs/3)}.\${outs%3}\`:'';
+  const outs=ipToOuts(oldStats?.IP)+ipToOuts(currentStats?.IP); out.IP=outs?`${Math.floor(outs/3)}.${outs%3}`:'';
   const innings=outs/3; if(innings>0&&out.ER>0)out.ERA=(out.ER*7/innings).toFixed(2); else if(innings>0&&(oldStats?.ERA!==undefined||currentStats?.ERA!==undefined))out.ERA='0.00';
   if(innings>0&&(out.H||out.BB||oldStats?.WHIP!==undefined||currentStats?.WHIP!==undefined))out.WHIP=((out.H+out.BB)/innings).toFixed(2);
   return out;
@@ -39,11 +39,11 @@ async function buildCareerPitching({question,routed,auditProvider}) {
   if(players.length!==1)return resultBase({routed,season:'career',answer:'対象選手を一人に特定できませんでした。',refusedToInvent:true,limitation:'PLAYER_NOT_UNIQUE'});
   const playerName=players[0]; const [oldLive,currentLive]=await Promise.all([auditProvider({season:'old',players:[playerName]}),auditProvider({season:'current',players:[playerName]})]);
   const oldStats=oldLive?.extracted?.playersByName?.[playerName]?.pitching; const currentStats=currentLive?.extracted?.playersByName?.[playerName]?.pitching;
-  if(!oldStats&&!currentStats)return resultBase({routed,season:'career',answer:\`\${playerName}の通算投手成績を正本XLSMから確認できませんでした。数値は作りません。\`,refusedToInvent:true,limitation:'CAREER_PITCHING_NOT_FOUND'});
-  const stats=combinePitching(oldStats||{},currentStats||{}); const metrics=detectMetrics(question,PITCHING_METRICS); const source={type:'XLSM_MASTER_COMBINED',name:\`\${oldLive?.source?.name||'2025-2026正本'} + \${currentLive?.source?.name||'2026-2027正本'}\`,path:'',modifiedTime:null,parser:'career-pitching-recalculation-v1'};
+  if(!oldStats&&!currentStats)return resultBase({routed,season:'career',answer:`${playerName}の通算投手成績を正本XLSMから確認できませんでした。数値は作りません。`,refusedToInvent:true,limitation:'CAREER_PITCHING_NOT_FOUND'});
+  const stats=combinePitching(oldStats||{},currentStats||{}); const metrics=detectMetrics(question,PITCHING_METRICS); const source={type:'XLSM_MASTER_COMBINED',name:`${oldLive?.source?.name||'2025-2026正本'} + ${currentLive?.source?.name||'2026-2027正本'}`,path:'',modifiedTime:null,parser:'career-pitching-recalculation-v1'};
   if(metrics.length)return answerMetricSet({routed,season:'career',source,playerName,label:'通算',stats,metrics,domainLabel:'投手'});
   const parts=availableSummary(stats,[['APP','登板'],['IP','投球回'],['ERA','防御率'],['SO','奪三振'],['BB','四球'],['HBP','死球'],['WHIP','WHIP']]);
-  return resultBase({routed,season:'career',source,answer:\`\${playerName}の通算投手成績は、\${parts.join('、')}です。\`,evidence:parts});
+  return resultBase({routed,season:'career',source,answer:`${playerName}の通算投手成績は、${parts.join('、')}です。`,evidence:parts});
 }
 
 async function buildCareerBatting({question,routed,auditProvider}) {
