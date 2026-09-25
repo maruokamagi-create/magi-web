@@ -52,6 +52,7 @@
   .protocolGrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:10px}
   .protocolMini{border:1px solid #dbe3eb;border-radius:10px;background:#f5f7fa;padding:10px;font-size:12px;line-height:1.65}
   .protocolMini b{display:block;margin-bottom:4px;font-size:10px;letter-spacing:.06em;color:#49627c}
+  .personaReason{margin-top:8px;border-top:1px solid #dbe3eb;padding-top:7px}.personaReason summary{cursor:pointer;font-weight:900;font-size:11px;color:#294868;list-style:none}.personaReason summary::-webkit-details-marker{display:none}.personaReason summary:after{content:' ＋';font-weight:900}.personaReason[open] summary:after{content:' −'}.personaReasonBody{padding-top:7px;font-size:12px;line-height:1.65;color:#24384c}.personaReasonBody b{display:inline;font-size:11px;color:#49627c;letter-spacing:0}
   .magiLive{border:1px solid #294868;border-radius:14px;background:#071827;color:#eaf4ff;padding:13px;margin-bottom:12px}
   .magiLiveTitle{display:flex;justify-content:space-between;gap:10px;font-size:12px;font-weight:900;letter-spacing:.08em;margin-bottom:10px}.magiLiveTitle small{font-size:9px;color:#7f9ab3;font-weight:700}
   .magiExchange{border-top:1px solid #1f3b55;padding:10px 0}.magiExchange:first-of-type{border-top:0}.magiSpeaker{font-size:10px;font-weight:900;letter-spacing:.08em;margin-bottom:4px}.magiSpeech{font-size:13px;line-height:1.7;color:#d7e6f4}.magiJudge{display:inline-block;margin-left:6px;padding:2px 6px;border:1px solid #3b5d79;border-radius:999px;font-size:9px;color:#b9cee0}.magiChallenge{color:#ffd8a8}.magiReply{color:#d8f6e6}.magiLiveNote{font-size:9px;line-height:1.5;color:#6f899f;margin-top:8px}
@@ -108,18 +109,29 @@
     }
     return j;
   }
+  function personaReasonHtml(v){
+    const reason=v?.primaryReason||v?.candidateBasis||v?.publicStatement||'';
+    const facts=list(v?.facts),analysis=list(v?.analysis),warnings=list(v?.warnings),change=v?.changeReason||'';
+    const rows=[];
+    if(reason)rows.push(`<b>判断根拠：</b>${esc(reason)}`);
+    if(facts.length)rows.push(`<b>確認した事実：</b>${esc(facts.join('／'))}`);
+    if(analysis.length)rows.push(`<b>評価：</b>${esc(analysis.join('／'))}`);
+    if(change)rows.push(`<b>相互検証後：</b>${esc(change)}`);
+    if(warnings.length)rows.push(`<b>懸念：</b>${esc(warnings.join('／'))}`);
+    return `<details class="personaReason"><summary>根拠を詳しく見る</summary><div class="personaReasonBody">${rows.join('<br>')||'根拠の詳細はありません。'}</div></details>`;
+  }
   function renderCross(cross,primary,second,isSelection,kind){
     const box=ensureProtocol();const live=ensureLive();
     [...box.querySelectorAll('.protocolBlock')].forEach(n=>n.remove());
     if(isSelection){
-      const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${candidateText(v,kind)}${v.candidateBasis?'｜'+v.candidateBasis:''}`);
+      const changes=Object.entries(second).map(([k,v])=>`<b>${esc(names[k])}</b>：${esc(candidateText(v,kind))}${v.candidateBasis?'｜'+esc(v.candidateBasis):''}${personaReasonHtml(v)}`);
       const firstTitle=kind==='pitching'?'一次投手運用案':kind==='lineup'?'一次打順案':'一次候補抽出';
       const crossTitle=kind==='pitching'?'投手運用相互検証':kind==='lineup'?'打順相互検証':'候補相互検証';
       const secondTitle=kind==='pitching'?'二次投手運用案':kind==='lineup'?'二次打順案':'二次候補選定';
       live.insertAdjacentHTML('afterend',`
-        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(firstTitle)}</div><div class="protocolPhase">INDEPENDENT SELECTION / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(candidateText(v,kind))}<br>${esc(v.candidateBasis||v.publicStatement||v.primaryReason)}</div>`).join('')}</div></div>
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(firstTitle)}</div><div class="protocolPhase">INDEPENDENT SELECTION / LOCKED</div></div><div class="protocolGrid">${Object.entries(primary).map(([k,v])=>`<div class="protocolMini"><b>${names[k]}</b>${esc(candidateText(v,kind))}<br>${esc(v.candidateBasis||v.publicStatement||v.primaryReason)}${personaReasonHtml(v)}</div>`).join('')}</div></div>
         <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(crossTitle)}</div><div class="protocolPhase">CROSS EXAMINATION</div></div><div class="protocolText"><b>一致：</b>${esc(join(cross.agreement))}<br><b>相違：</b>${esc(join(cross.disagreement))}<br><b>情報不足：</b>${esc(join(cross.informationGaps))}<br><b>警告：</b>${esc(join(cross.warnings))}</div></div>
-        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(secondTitle)}</div><div class="protocolPhase">SECOND SELECTION</div></div><div class="protocolText">${changes.map(esc).join('<br>')}</div></div>`);
+        <div class="protocolBlock"><div class="protocolHead"><div class="protocolTitle">${esc(secondTitle)}</div><div class="protocolPhase">SECOND SELECTION</div></div><div class="protocolText">${changes.join('<br>')}</div></div>`);
     }else{
       const changes=Object.entries(second).map(([k,v])=>`${names[k]}：${v.changedFromPrimary?'変更（'+(v.changeReason||'理由記載なし')+'）':'維持'}`);
       live.insertAdjacentHTML('afterend',`
