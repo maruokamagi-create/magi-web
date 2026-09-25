@@ -1,7 +1,7 @@
 (()=>{
 'use strict';
 if(window.MAGI_STATS_REPORT_V261)return;
-const VERSION='v262';
+const VERSION='v263';
 const NAME_ALIASES=['選手名','氏名','名前','選手'];
 const METRICS=[
  {key:'games',label:'試合',aliases:['出場試合数','出場試合','試合数','出場数','games','game','試合'],kind:'int'},
@@ -31,7 +31,7 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&
 const PLAYER_ALIASES={'坂田曜馬':'坂田暉馬','大野竜輝':'大野竜暉','島田栄志':'嶋田栄志','中島玲月':'中嶋玲月','武沢大翔':'武澤大翔','橋向結斗':'橋向結都','宮崎翔':'宮嵜翔','桜川莉大':'櫻川莉大'};
 const OFFICIAL_PLAYERS=['北淳志','坂本陸','櫻川莉大','佐々木悠成','下田涼歩','前川夢斗','増田晃大','宮嵜翔','宮村龍','井坂悠聖','大久保陽翔','大野竜暉','坂田暉馬','嶋田栄志','武澤大翔','橋向結都','上村蓮','大久保夢翔','長侶穹','中嶋玲月','吉田真翔','鰐渕将太','武田晴琉翔'];
 const canonPlayer=s=>PLAYER_ALIASES[n(s)]||n(s);
-function officialTarget(q){const z=canonPlayer(q),hits=OFFICIAL_PLAYERS.filter(p=>z.includes(p));return hits.sort((a,b)=>b.length-a.length)[0]||'';}
+function officialTarget(q){const z=n(q),hits=[];for(const p of OFFICIAL_PLAYERS){if(z.includes(p))hits.push(p)}for(const [alias,official] of Object.entries(PLAYER_ALIASES)){if(z.includes(alias))hits.push(official)}return [...new Set(hits)].sort((a,b)=>b.length-a.length)[0]||'';}
 const rows=()=>((typeof dataRecords!=='undefined'?dataRecords:window.dataRecords)||[]).filter(r=>r&&r.source==='drive');
 function idx(r,aliases){
  const cs=r?.columns||[],want=aliases.map(n);
