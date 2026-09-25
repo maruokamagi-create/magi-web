@@ -267,6 +267,32 @@ function readFields(header, row, fieldMap) {
   return stats;
 }
 
+function findPlayerPitchingDecisionStats(sheets, playerName) {
+  const target=norm(playerName);
+  const aliases={W:['勝利数','勝利','勝'],L:['敗戦数','敗戦','敗'],SV:['セーブ数','セーブ','SV']};
+  const out={};
+  for(const {rows} of sheets){
+    for(let i=0;i<rows.length;i++){
+      const row=rows[i]||[];
+      if(!row.some(cell=>norm(cell)===target)) continue;
+      for(let h=i-1;h>=Math.max(0,i-30);h--){
+        const header=rows[h]||[];
+        for(const [key,names] of Object.entries(aliases)){
+          if(out[key]!==undefined) continue;
+          const col=headerIndexAliases(header,names);
+          if(col<0) continue;
+          const raw=String(row[col]??'').trim();
+          if(raw!=='' && numericCell(raw)) out[key]=displayDecimal(raw);
+        }
+        if(Object.keys(out).length===3) break;
+      }
+    }
+  }
+  return out;
+}
+
+function numericCell(value){return /^[-+]?(?:\d+(?:\.\d+)?|\.\d+)$/.test(String(value??'').replace(/,/g,'').trim());}
+
 function findPlayerDomainStats(sheets, playerName, domain) {
   const target = norm(playerName);
   const fieldMap = domain === 'pitching' ? PITCHING_FIELDS : BATTING_FIELDS;
@@ -305,6 +331,7 @@ function extractFromXlsm(buffer, season, requestedPlayers) {
   for (const name of targetNames) {
     const batting = findPlayerDomainStats(sheets, name, 'batting');
     const pitching = findPlayerDomainStats(sheets, name, 'pitching');
+    if(pitching){ pitching.stats={...pitching.stats,...findPlayerPitchingDecisionStats(sheets,name)}; }
     if (!explicit && !batting) throw new Error(`XLSM正本から${name}の打撃成績を特定できませんでした`);
     playersByName[name] = {
       batting: batting?.stats || null,
@@ -325,7 +352,7 @@ function extractFromXlsm(buffer, season, requestedPlayers) {
 
   if (!period.start) throw new Error(`${season.label} XLSM正本から集計開始日を特定できませんでした`);
   return {
-    parser:'deterministic-xlsx-v4-wins-losses-saves',
+    parser:'deterministic-xlsx-v5-separated-wlsv',
     usedSheets:[...usedSheets],
     extracted:{ periodStart:period.start, periodEnd:period.end, team, players:legacyPlayers, playersByName }
   };
@@ -377,7 +404,7 @@ function seasonRoster(season) {
 
 export async function runDriveLiveAudit({ season: seasonValue = 'current', players = null } = {}) {
   const season = resolveSeason(seasonValue);
-  const hotKey = `magi:stats-snapshot:hot:v3-wlsv:${season.key}`;
+  const hotKey = `magi:stats-snapshot:hot:v4-separated-wlsv:${season.key}`;
 
   // Hot snapshot is deliberately checked BEFORE any Drive metadata request. This is
   // what removes the 5-7 second first-hit tax when users ask several different stats.
@@ -388,7 +415,7 @@ export async function runDriveLiveAudit({ season: seasonValue = 'current', playe
   }
 
   const file = await resolveMasterFile(season);
-  const cacheKey = `magi:stats-snapshot:v2-wlsv:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
+  const cacheKey = `magi:stats-snapshot:v3-separated-wlsv:${season.key}:${file.id}:${String(file.modifiedTime || '')}`;
   const cached = await readSnapshot(cacheKey);
   if (cached?.extracted?.playersByName) {
     await writeSnapshot(hotKey, cached, HOT_SNAPSHOT_TTL_SECONDS, ['magi-stats-hot-v2', `magi-stats-hot-${season.key}`]);
