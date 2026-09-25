@@ -11,6 +11,7 @@ on:
       - 'server/api/magi/_roster.js'
       - '.github/workflows/magi-production-deliberation-smoke.yml'
   workflow_dispatch:
+  # verification refresh 2026-09-25
 
 jobs:
   production-deliberation:
