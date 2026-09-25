@@ -6,6 +6,7 @@ export const config = { maxDuration: 120 };
 
 const QUESTION='今の丸岡中のベストオーダーを、守備位置込みで審議して';
 const NATURAL_THIRD_QUESTION='3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？';
+const CLOSER_QUESTION='クローザーは誰がいい？';
 const PERSONAS=['melchior','balthasar','casper'];
 const TARGETS={melchior:'MELCHIOR-1',balthasar:'BALTHASAR-2',casper:'CASPER-3'};
 const FIRST={melchior:'私',balthasar:'俺',casper:'僕'};
@@ -112,6 +113,22 @@ async function runNaturalThird(base,packet){
   return {status:final.status,centerCandidates:final.centerCandidates||[],recommendedCandidates:final.recommendedCandidates||[],personaSelections:final.personaSelections||{}};
 }
 
+async function runCloser(base,packet){
+  const caseData=browserCase(packet,CLOSER_QUESTION); caseData.selectionKind='PITCHING_ROLE'; caseData.evidence.selectionKind='PITCHING_ROLE';
+  const primary=await serialPersonaSet(base,'CLOSER_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
+  const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'CLOSER_CROSS');
+  const second=await serialPersonaSet(base,'CLOSER_SECOND',p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross)}));
+  const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second},'CLOSER_FINAL');
+  const eligible=new Set((packet.pitchingEligible||[]).map(norm));
+  const all=[...PERSONAS.flatMap(p=>primary[p]?.candidatePlayers||[]),...PERSONAS.flatMap(p=>second[p]?.candidatePlayers||[]),...(final?.recommendedCandidates||[])];
+  if(all.some(n=>!eligible.has(norm(n)))) throw new Error('CLOSER_INELIGIBLE_CANDIDATE');
+  const sakata=packet?.allCurrentTeamCheck?.players?.find(p=>p?.name==='坂田 暉馬');
+  if(String(sakata?.pitching?.SV??'')!=='2') throw new Error('CLOSER_SAKATA_SAVE_NOT_2');
+  const mentionsSave=PERSONAS.some(p=>JSON.stringify(primary[p]).includes('セーブ'))||PERSONAS.some(p=>JSON.stringify(second[p]).includes('セーブ'))||JSON.stringify(final).includes('セーブ');
+  if(!mentionsSave) throw new Error('CLOSER_SAVE_EVIDENCE_NOT_USED');
+  return {primary:Object.fromEntries(PERSONAS.map(p=>[p,primary[p]?.candidatePlayers||[]])),second:Object.fromEntries(PERSONAS.map(p=>[p,second[p]?.candidatePlayers||[]])),centerCandidates:final?.centerCandidates||[],recommendedCandidates:final?.recommendedCandidates||[],sakataSaveCount:String(sakata.pitching.SV),saveEvidenceUsed:mentionsSave};
+}
+
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
@@ -123,6 +140,8 @@ export default async function handler(req,res){
     const naturalPlayers=naturalPacket?.allCurrentTeamCheck?.players||[];
     const naturalReady=naturalPacket?.selectionKind==='BATTING_ORDER'&&Number(naturalPacket?.count)===14&&naturalPlayers.length===14&&CURRENT_ROSTER.every(name=>naturalPlayers.some(p=>p?.name===name));if(!naturalReady)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
     const naturalThird=await runNaturalThird(base,naturalPacket);
-    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...naturalThird}});
+    const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}});
+    const closer=await runCloser(base,closerPacket);
+    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...naturalThird},closer:{question:CLOSER_QUESTION,...closer}});
   }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error)});}
 }
