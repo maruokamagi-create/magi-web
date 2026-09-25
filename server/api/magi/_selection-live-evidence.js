@@ -143,6 +143,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     isPitchingKind(kind) ? buildPitchingDetailEvidence('old') : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
+  if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
 
   const audit=currentResult.value;
   const byName=audit?.extracted?.playersByName||{};
@@ -258,6 +259,10 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     );
   }else if(kind==='PITCHING_PLAN'){
     lines.push(`【試合回数条件】${gameInnings}回制`, `【運用ルール】${gameInnings}回制の基本投手運用を「先発 → 第2投手 → 終盤 → クローザー」の4役で作る。基本案では現チームから異なる4投手を割り当てる。3賢人は全14名を確認して独立案を作り、クロス審議では具体的な役割名と選手名を挙げて相互検証する。回数・交代時点・連投耐性・高圧場面適性はEvidenceに明示されていない限り捏造しない。旧チーム記録は投球経験の参考にできるが、過去のクローザー等の役割経験を数値だけから推測しない。`);
+  }else if(kind==='PITCHING_ROLE'){
+    const experienced=(currentPitching?.experiencedPlayers||[]);
+    lines.push(`【投手候補資格】現チームの投手詳細CSVに実際の投球行がある選手のみ投手候補にできる。該当者：${experienced.join('、')||'なし'}。投手記録なしの選手をクローザー・先発・中継ぎ候補へ入れない。捕手・守備記録を投手経験として扱わない。`,
+      '【運用ルール】クローザー等の投手役割は、まず投手詳細CSVの現チーム投球実績で比較し、旧チーム投手詳細CSVは過去の投球経験の参考にする。ERAは7回換算、奪三振率はK/9、WHIPは1イニング当たりで扱う。ここにない役割経験・高圧場面適性・性格・将来結果は作らない。');
   }else{
     lines.push('【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は実績・経験・再現性の重要な比較材料として使う。直近6試合のCSVが取得できた場合は短期状態も重ねる。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。');
   }
@@ -269,6 +274,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(recentSix?.source) sources.push({...recentSix.source,season:'current',priority:'RECENT_FORM'});
   if(historicalReference.source) sources.push({...historicalReference.source,season:'old',priority:'HISTORICAL'});
 
+  const pitchingEligible=isPitchingKind(kind)?(currentPitching?.experiencedPlayers||[]):[];
   const summary=kind==='FULL_LINEUP'
     ? `現チーム14名の2026-2027通算正本を主評価にし、${recentSix.status==='COMPLETE'?'打撃詳細CSVから直近6試合を再集計し、':''}2025-2026の同14名の過去実績と、確認済みの役割・守備方針、右投手基本対応、上位5人の基準線、6〜9番の変動運用、武田晴琉翔の左翼第一適性、練習試合の柔軟運用を重ねた1〜9番打順審議用Evidenceです。`
     : kind==='PITCHING_PLAN'
@@ -290,6 +296,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     recentSix,
     historicalReference,
     sampleSizeRule:sampleRule,
+    pitchingEligible,
     dataRule:'候補は現チーム14名のみ。標準ベストオーダーは基本右投手対応で、1〜5番は大野竜暉→坂田暉馬→嶋田栄志→大久保陽翔→中嶋玲月を現在の基準線とする。ただし極端な不調・怪我・投手守備事情・明確な新Evidenceがあれば変更する。大野は出塁率を1番適性で重く評価し、坂田・嶋田の小母数の高率を過大評価しない。6〜9番は直近状態・守備・先発投手で変動し、橋向結都は非登板時6番遊撃を有力案、先発時は下位へ。武田晴琉翔は左翼を第一適性として優先するが、打順は固定しない。練習試合は柔軟、特に第2試合は実験枠として通常序列の根拠にしない。現チーム通算を主評価し、過去実績・直近6・確認済み役割を重ね、ここにない数値・役割・選手・性格・将来結果は作らない。'
   };
 }
