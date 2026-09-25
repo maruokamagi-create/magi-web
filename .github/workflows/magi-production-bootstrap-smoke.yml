@@ -88,6 +88,9 @@ jobs:
           console.log('DETERMINISTIC CONTROL SUMMARY POLICY: PASS');
           NODE
 
+      - name: Wait for production deployment
+        run: sleep 45
+
       - name: Verify canonical click ownership guard
         shell: bash
         run: |
@@ -97,9 +100,6 @@ jobs:
           curl -L --fail -sS https://magi-web.vercel.app/drive-server-v293.js?v=301 -o /tmp/drive-server.js
           grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/drive-server.js
           echo 'CANONICAL CLICK OWNERSHIP: PASS'
-
-      - name: Wait for production deployment
-        run: sleep 45
 
       - name: Verify production bootstrap and live master Evidence
         shell: bash
