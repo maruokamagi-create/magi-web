@@ -16,8 +16,8 @@ const text=v=>String(v??'').trim();
 
 async function post(base,path,body,label=path){
   let lastError=null;
-  for(let attempt=1;attempt<=3;attempt++){
-    if(attempt>1)await sleep(900*Math.pow(2,attempt-2));
+  for(let attempt=1;attempt<=5;attempt++){
+    if(attempt>1)await sleep(Math.min(6000,1200*Math.pow(2,attempt-2)));
     try{
       const response=await fetch(`${base}${path}`,{method:'POST',headers:{'Content-Type':'application/json','Origin':base},body:JSON.stringify(body),cache:'no-store'});
       const raw=await response.text();let parsed={};
