@@ -130,7 +130,7 @@ const runner=async function({question,evidence=null,selectionKind='',semantic=nu
       version:`${String(baseEngine.version||'MAGI')}+explicit-evidence-v373`,
       personas:Array.isArray(baseEngine.personas)?baseEngine.personas.slice():[],
       deliberate:async(input,options={})=>{
-        const enforcedInput={...input,evidence:clone(activeEvidence)};
+        const enforcedInput={...input,selectionKind:String(selectionKind||activeEvidence?.selectionKind||'').toUpperCase(),semantic:clone(semantic),evidence:clone(activeEvidence)};
         const result=await baseEngine.deliberate(enforcedInput,bufferedOptions(options));
         capturedResult=clone(result);
         validateDelivered(result,selectionKind);
