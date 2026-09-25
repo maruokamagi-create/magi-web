@@ -19,6 +19,7 @@ on:
       - 'server/api/magi/_appearance-detail-evidence.js'
       - '.github/workflows/magi-question-selftest.yml'
   workflow_dispatch:
+  # final verification refresh 2026-09-25
 
 jobs:
   production-selftest:
