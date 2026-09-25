@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { needsCrossEvidenceAnalysis } from '../server/api/magi/core.js';
+import { needsCrossEvidenceAnalysis } from '../server/api/magi/_evaluation-routing.js';
 
 const cases=[
  ['今のチームの弱点は？',{mode:'GENERAL',players:[],domains:['TEAM'],understoodRequest:'現チームの弱点を知りたい'},true],
