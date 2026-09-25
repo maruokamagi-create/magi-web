@@ -80,6 +80,9 @@ function pitchingParts(stats){
   if(text(p.ER)) parts.push(`自責点 ${p.ER}`);
   if(text(p.HR)) parts.push(`被本塁打 ${p.HR}`);
   if(text(p.WP)) parts.push(`暴投 ${p.WP}`);
+  if(text(p.W)) parts.push(`勝利 ${p.W}`);
+  if(text(p.L)) parts.push(`敗戦 ${p.L}`);
+  if(text(p.SV)) parts.push(`セーブ ${p.SV}`);
   return parts;
 }
 
@@ -155,7 +158,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const players=CURRENT_ROSTER.map(name=>({
     name,
     batting: byName[name]?.batting ? {...byName[name].batting} : null,
-    pitching: isPitchingKind(kind) ? (currentPitchingByName[name]?{...currentPitchingByName[name]}:null) : (byName[name]?.pitching ? {...byName[name].pitching} : null)
+    pitching: isPitchingKind(kind) ? (currentPitchingByName[name]?{...currentPitchingByName[name],...Object.fromEntries(['W','L','SV'].filter(k=>text(byName[name]?.pitching?.[k])).map(k=>[k,byName[name].pitching[k]]))}:null) : (byName[name]?.pitching ? {...byName[name].pitching} : null)
   }));
 
   let recentSix={
@@ -261,7 +264,9 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     lines.push(`【試合回数条件】${gameInnings}回制`, `【運用ルール】${gameInnings}回制の基本投手運用を「先発 → 第2投手 → 終盤 → クローザー」の4役で作る。基本案では現チームから異なる4投手を割り当てる。3賢人は全14名を確認して独立案を作り、クロス審議では具体的な役割名と選手名を挙げて相互検証する。回数・交代時点・連投耐性・高圧場面適性はEvidenceに明示されていない限り捏造しない。旧チーム記録は投球経験の参考にできるが、過去のクローザー等の役割経験を数値だけから推測しない。`);
   }else if(kind==='PITCHING_ROLE'){
     const experienced=(currentPitching?.experiencedPlayers||[]);
+    const closerRole=/(?:クローザー|抑え|守護神)/.test(normalized(question));
     lines.push(`【投手候補資格】現チームの投手詳細CSVに実際の投球行がある選手のみ投手候補にできる。該当者：${experienced.join('、')||'なし'}。投手記録なしの選手をクローザー・先発・中継ぎ候補へ入れない。捕手・守備記録を投手経験として扱わない。`,
+      ...(closerRole?[`【クローザー役割実績】通算XLSMの勝利・敗戦・セーブを投手詳細CSVに補完して比較する。特にセーブは実際に試合を締めた役割実績として必ず評価材料に含める。セーブ数だけで自動決定はしないが、セーブ実績を無視して防御率・K/9だけで順位付けしない。`]:[]),
       '【運用ルール】クローザー等の投手役割は、まず投手詳細CSVの現チーム投球実績で比較し、旧チーム投手詳細CSVは過去の投球経験の参考にする。ERAは7回換算、奪三振率はK/9、WHIPは1イニング当たりで扱う。ここにない役割経験・高圧場面適性・性格・将来結果は作らない。');
   }else{
     lines.push('【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は実績・経験・再現性の重要な比較材料として使う。直近6試合のCSVが取得できた場合は短期状態も重ねる。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。');
