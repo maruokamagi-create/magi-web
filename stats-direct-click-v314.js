@@ -30,6 +30,7 @@ let busy=false;
 document.addEventListener('click',async event=>{
  // v318以降は本番ボタンの統合ライブ回答ブリッジを最優先する。
  // 旧v314の個別クリック横取りは停止し、二重実行を防ぐ。
+ if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;
  if(window.MAGI_MAIN_LIVE_ANSWER_V318)return;
  const btn=event.target?.closest?.('button[onclick*="runMagi"]');
  if(!btn)return;
