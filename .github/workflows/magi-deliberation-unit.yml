@@ -33,6 +33,7 @@ on:
       - 'scripts/test-pitching-plan-output-guard.mjs'
       - 'scripts/test-derived-metric-label-guard.mjs'
       - 'scripts/test-deliberation-evidence-bridge.mjs'
+      - 'scripts/test-natural-evaluation-routing.mjs'
       - 'scripts/test-selection-peer-baseline.mjs'
       - 'scripts/test-selection-live-evidence.mjs'
       - 'scripts/test-full-lineup-selection.mjs'
@@ -89,6 +90,9 @@ jobs:
 
       - name: Run structured deliberation evidence bridge cases
         run: node --experimental-default-type=module scripts/test-deliberation-evidence-bridge.mjs
+
+      - name: Run natural team/player evaluation routing cases
+        run: node --experimental-default-type=module scripts/test-natural-evaluation-routing.mjs
 
       - name: Run selection peer-baseline guard cases
         run: node --experimental-default-type=module scripts/test-selection-peer-baseline.mjs
