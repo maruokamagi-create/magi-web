@@ -9,7 +9,7 @@ const load=src=>new Promise((resolve,reject)=>{const s=document.createElement('s
 function buttonFrom(node){return node?.closest?.('#magiRunButton,button[onclick*="runMagi"]')||null}
 function findButton(){return document.getElementById('magiRunButton')||document.querySelector('button[onclick*="runMagi"]')}
 function quarantineButton(){const b=findButton();if(!b)return;b.id='magiRunButton';b.type='button';if(!ready){b.disabled=true;if(!failed)b.textContent='MAGI準備中…';}}
-function blockLegacyClick(event){const b=buttonFrom(event.target);if(!b||ready)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();}
+function blockLegacyClick(event){const b=buttonFrom(event.target);if(!b)return;if(!ready){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();return;}if(typeof window.MAGI_SEMANTIC_RUN_V2==='function'){event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();window.MAGI_SEMANTIC_RUN_V2(b);}}
 function setError(message){failed=true;ready=false;quarantineButton();const b=findButton();if(b){b.disabled=true;b.textContent='MAGI準備エラー'}const st=document.getElementById('status');if(st)st.textContent=`正式MAGIを起動できませんでした：${message}`;console.error('[MAGI bootstrap canonical]',message);}
 function legacyUiReady(){return Boolean(window.MAGI_ACTIVE_VERSION&&window.MAGI_ENGINE_UI_V187===true&&window.MAGI_ENGINE_V1&&typeof window.MAGI_ENGINE_V1.deliberate==='function'&&typeof window.runMagi==='function');}
 async function waitLegacyUi(){while(!legacyUiReady()){quarantineButton();await sleep(50);}}
@@ -33,7 +33,7 @@ async function boot(){
   await load(`/magi-core-client-guard-v363.js?v=${REV}`);await waitCapability(coreGuardReady);
   await load(`/main-live-answer-v362.js?v=${REV}`);await waitCapability(semanticReady);
   ready=true;activateButton();
-  window.MAGI_APP_RUNTIME=Object.freeze({version:'canonical-app-v377',clientVersion:363,runtimeVersion:363,ready:true,entry:'WINDOW_CAPTURE_SEMANTIC_V2',formalRunner:'V373_SINGLE_PATH',progress:'EVENT_DRIVEN_ONLY',rawPacketValidated:true,numericFailClosed:true,structuredValidationOnly:true,proseBlocking:false,authoritativeEvidenceVisible:true,staleClientFailClosed:true,bootstrapLast:true,localFallback:false,teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916',controlSummary:'V377_STRUCTURED',engineVersion:String(window.MAGI_ENGINE_V1?.version||'')});
+  window.MAGI_APP_RUNTIME=Object.freeze({version:'canonical-app-v377',clientVersion:363,runtimeVersion:363,ready:true,entry:'BOOTSTRAP_CAPTURE_SEMANTIC_V2',formalRunner:'V373_SINGLE_PATH',progress:'EVENT_DRIVEN_ONLY',rawPacketValidated:true,numericFailClosed:true,structuredValidationOnly:true,proseBlocking:false,authoritativeEvidenceVisible:true,staleClientFailClosed:true,bootstrapLast:true,localFallback:false,teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916',controlSummary:'V377_STRUCTURED',engineVersion:String(window.MAGI_ENGINE_V1?.version||'')});
   document.dispatchEvent(new CustomEvent('magi:app-ready',{detail:window.MAGI_APP_RUNTIME}));
 }
 boot().catch(error=>setError(error?.message||String(error)));
