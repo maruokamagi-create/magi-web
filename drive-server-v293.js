@@ -329,6 +329,9 @@ function installLazyClick(){
   if(window.MAGI_LAZY_CLICK_V300)return;
   window.MAGI_LAZY_CLICK_V300=true;
   document.addEventListener('click',async event=>{
+    // Canonical semantic runtime owns the production MAGI click once booted.
+    // Legacy Drive lazy-click remains only as a pre-bootstrap fallback.
+    if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;
     const btn=event.target?.closest?.('#judge .actions button.primary');
     if(!btn)return;
     const text=String(btn.textContent||'');
