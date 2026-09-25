@@ -1,6 +1,6 @@
 import { deterministicSemanticFallback } from '../server/api/magi/_semantic-authority.js';
 
-const VERSION='magi-production-semantic-fallback-selftest-v1';
+const VERSION='magi-production-semantic-fallback-selftest-v2';
 const cases=[
 {id:1,q:'嶋田 栄志の通算打撃成績を教えて',expect:{mode:'SUMMARY',player:'嶋田 栄志',domain:'BATTING',timeScope:'CAREER',selectionKind:'NONE'}},
 {id:2,q:'大野 竜暉のOPSを教えて',expect:{mode:'SINGLE_VALUE',player:'大野 竜暉',domain:'BATTING',metric:'OPS',selectionKind:'NONE'}},
@@ -8,7 +8,8 @@ const cases=[
 {id:4,q:'武澤 大翔の守備成績を教えて',expect:{mode:'SUMMARY',player:'武澤 大翔',domain:'FIELDING',selectionKind:'NONE'}},
 {id:5,q:'現時点のベストオーダーを審議して',expect:{mode:'DELIBERATION',domain:'LINEUP',selectionKind:'FULL_LINEUP'}},
 {id:6,q:'7回制の投手運用を考えて',expect:{mode:'DELIBERATION',domain:'PITCHING',selectionKind:'PITCHING_PLAN'}},
-{id:7,q:'成績を教えて',expect:null}
+{id:7,q:'成績を教えて',expect:null},
+{id:8,q:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',expect:{mode:'DELIBERATION',player:'大久保 陽翔',domain:'LINEUP',selectionKind:'GENERIC_SELECTION'}}
 ];
 function judge(result,expect){
  if(expect===null)return result===null;
