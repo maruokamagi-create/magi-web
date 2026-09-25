@@ -175,8 +175,15 @@ function deterministicSelectionCross(primary) {
   else disagreement.push(`第1候補は${rows.map(row=>`${row.jp}：${row.candidates[0]}`).join('／')}で意見が分かれています。`);
   const challenges = { melchior:[], balthasar:[], casper:[] };
   rows.forEach((row,rowIndex)=>{
-    const other = rows.find((candidate,j)=>j!==rowIndex && playerKey(candidate.candidates[0])!==playerKey(row.candidates[0])) || rows[(rowIndex+1)%rows.length];
-    challenges[row.key].push(`${row.jp}、あなたの第1候補は${row.candidates[0]}です。${other.jp}の第1候補${other.candidates[0]}と比べ、CASE.evidenceで確認できる記録だけを使って、この候補を維持するか見直すか説明してください。`);
+    // Cross-examination must always be another Wise Man challenging this persona.
+    // When all three top choices agree, rotate the challenger instead of rendering self -> self.
+    const challenger = rows[(rowIndex+1)%rows.length];
+    const alternative = rows.find((candidate,j)=>j!==rowIndex && playerKey(candidate.candidates[0])!==playerKey(row.candidates[0]));
+    if(alternative){
+      challenges[row.key].push(`${alternative.jp}から${row.jp}へ：あなたの第1候補${row.candidates[0]}と、私の第1候補${alternative.candidates[0]}を比較してください。確認できた記録だけを使い、クローザー等の質問で指定された役割への適合理由と弱点を説明し、この候補を維持するか見直してください。`);
+    }else{
+      challenges[row.key].push(`${challenger.jp}から${row.jp}へ：第1候補${row.candidates[0]}は3賢人で一致しています。一致しているからこそ、確認できた記録だけを使い、この選手を質問で指定された役割に置く弱点と、どんな記録なら見直すか説明してください。`);
+    }
   });
   return { agreement, disagreement, domainConflicts:[], warnings:[], informationGaps:[], challenges };
 }
