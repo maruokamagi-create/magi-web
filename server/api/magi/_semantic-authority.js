@@ -222,6 +222,8 @@ export function deterministicSemanticFallback(question,error){
   const conditionSpecific=/(?:今日|本日|明日|次の試合|次戦|対戦相手|相手投手|欠場|出場不可|左投手|右投手)/.test(q);
   const asksFullLineup=/ベストオーダー|ベスト打順/.test(q)||/(?:1番|1〜9番|1-9番).*(?:9番|打順).*(?:組|考|決)/.test(q);
   const asksPitchingPlan=/(?:投手運用|継投|投手リレー|投手プラン|投手起用)/.test(q)&&/(?:どうする|どう組|組んで|組む|考えて|考える|決めて|決める|作って|作る|審議)/.test(q);
+  const battingSlotSelection=/(?:^|[^0-9])([1-9])番(?:打者)?/.test(q)&&/(?:誰|だれ|どの|候補|いい|良い|最適|ベスト|決め|迷|どうする|選ぶ|選定|考え)/.test(q);
+  const pitchingRoleSelection=/(?:先発投手|先発ピッチャー|先発は誰|誰を先発|エース|クローザー|抑え|守護神)/.test(q)&&/(?:誰|だれ|どの|候補|いい|良い|最適|ベスト|決め|迷|どうする|選ぶ|選定|考え)/.test(q);
   const err=clean(error?.message,120);
   if(asksFullLineup&&!conditionSpecific){
     return {
@@ -239,6 +241,24 @@ export function deterministicSemanticFallback(question,error){
       routeReason:`質問理解モデルが一時的に利用できないため、明確な投手運用要求を決定論ルートで処理した: ${err}`,
       players:[],domains:['PITCHING','TACTICS','TEAM'],timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],
       selectionKind:'PITCHING_PLAN',clarificationQuestion:'',needsData:true,gameInnings:explicitGameInnings(q)||7,groundedPlayers:[],validated:true,semanticAuthority:'DETERMINISTIC_FALLBACK'
+    };
+  }
+  if(battingSlotSelection&&!conditionSpecific){
+    return {
+      semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-deterministic-fallback`,mode:'DELIBERATION',confidence:'HIGH',
+      understoodRequest:'現チーム14名から指定された打順の候補を比較し、起用を審議する。',
+      routeReason:`質問理解モデルが一時的に利用できないため、明確な打順候補選定を決定論ルートで処理した: ${err}`,
+      players,domains:['LINEUP','BATTING','TEAM'],timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],
+      selectionKind:'GENERIC_SELECTION',clarificationQuestion:'',needsData:true,gameInnings:null,groundedPlayers:players,validated:true,semanticAuthority:'DETERMINISTIC_FALLBACK'
+    };
+  }
+  if(pitchingRoleSelection&&!conditionSpecific){
+    return {
+      semanticVersion:`${SEMANTIC_AUTHORITY_VERSION}-deterministic-fallback`,mode:'DELIBERATION',confidence:'HIGH',
+      understoodRequest:'現チーム14名から指定された投手役割の候補を比較し、起用を審議する。',
+      routeReason:`質問理解モデルが一時的に利用できないため、明確な投手役割選定を決定論ルートで処理した: ${err}`,
+      players,domains:['PITCHING','TACTICS','TEAM'],timeScope:'CURRENT_SEASON',specificSeason:'',metric:'',opponent:'',breakdowns:[],
+      selectionKind:'GENERIC_SELECTION',clarificationQuestion:'',needsData:true,gameInnings:explicitGameInnings(q)||7,groundedPlayers:players,validated:true,semanticAuthority:'DETERMINISTIC_FALLBACK'
     };
   }
   if(players.length===1){
