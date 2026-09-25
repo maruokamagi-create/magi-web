@@ -139,9 +139,11 @@ export default async function handler(req,res){
     const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
     const naturalPlayers=naturalPacket?.allCurrentTeamCheck?.players||[];
     const naturalReady=naturalPacket?.selectionKind==='BATTING_ORDER'&&Number(naturalPacket?.count)===14&&naturalPlayers.length===14&&CURRENT_ROSTER.every(name=>naturalPlayers.some(p=>p?.name===name));if(!naturalReady)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
-    const naturalThird=await runNaturalThird(base,naturalPacket);
+    let naturalThird=null; let naturalThirdError='';
+    try{naturalThird=await runNaturalThird(base,naturalPacket);}catch(e){naturalThirdError=e?.message||String(e);}
     const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}});
     const closer=await runCloser(base,closerPacket);
-    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...naturalThird},closer:{question:CLOSER_QUESTION,...closer}});
+    if(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2')throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
+    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...closer}});
   }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error)});}
 }
