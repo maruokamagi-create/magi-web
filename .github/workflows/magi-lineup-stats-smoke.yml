@@ -75,9 +75,9 @@ jobs:
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/" -o /tmp/index-main.html
           grep -Fq '/stats-server-bridge-v315.js?v=319' /tmp/index-main.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=380' /tmp/index-main.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=381' /tmp/index-main.html
           curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/stats-server-bridge-v315.js?v=319" -o /tmp/stats-bridge-main.js
-          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/main-live-answer-v362.js?v=380" -o /tmp/main-live-answer.js
+          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/main-live-answer-v362.js?v=381" -o /tmp/main-live-answer.js
           grep -Fq 'window.MAGI_STATS_SERVER_HYDRATE=hydrate' /tmp/stats-bridge-main.js
           grep -Fq "const hydrate=await waitFor('MAGI_STATS_SERVER_HYDRATE')" /tmp/main-live-answer.js
           grep -Fq 'const hydrated=await hydrate(synthetic)' /tmp/main-live-answer.js
