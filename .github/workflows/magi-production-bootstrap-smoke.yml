@@ -39,7 +39,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=379' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=380' index.html
           grep -q '/chat-ui-canonical-v387.js?v=387' index.html
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
@@ -102,6 +102,9 @@ jobs:
           grep -Fq '/stats-direct-click-v314.js?v=318' /tmp/index.html
           curl -L --fail -sS 'https://magi-web.vercel.app/stats-direct-click-v314.js?v=318' -o /tmp/stats-direct-click.js
           grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/stats-direct-click.js
+          grep -Fq "window.MAGI_SEMANTIC_RUN_V2(b)" /tmp/bootstrap.js
+          grep -Fq "entry:'BOOTSTRAP_CAPTURE_SEMANTIC_V2'" /tmp/bootstrap.js
+          ! grep -Fq "window.addEventListener('click',event=>{const btn=mainButton" /tmp/main-live-answer-check.js
 
           grep -Fq '/stats-server-bridge-v315.js?v=319' /tmp/index.html
           grep -Fq '/pitching-direct-report-v317.js?v=330' /tmp/index.html
@@ -138,7 +141,7 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=379' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=380' /tmp/index.html
           grep -Fq '/chat-ui-canonical-v387.js?v=387' /tmp/index.html
           echo 'PRODUCTION BOOTSTRAP ASSETS: PASS'
 
