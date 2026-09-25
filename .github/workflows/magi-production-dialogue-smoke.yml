@@ -9,6 +9,7 @@ on:
       - 'server/api/magi/dialogue-resilient.js'
       - '.github/workflows/magi-production-dialogue-smoke.yml'
   workflow_dispatch:
+  # verification refresh 2026-09-25
 
 jobs:
   production-direct-dialogue:
