@@ -5,6 +5,7 @@ import { buildCurrentSelectionEvidence } from '../server/api/magi/_selection-liv
 export const config = { maxDuration: 120 };
 
 const QUESTION='今の丸岡中のベストオーダーを、守備位置込みで審議して';
+const NATURAL_THIRD_QUESTION='3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？';
 const PERSONAS=['melchior','balthasar','casper'];
 const TARGETS={melchior:'MELCHIOR-1',balthasar:'BALTHASAR-2',casper:'CASPER-3'};
 const FIRST={melchior:'私',balthasar:'俺',casper:'僕'};
@@ -55,7 +56,7 @@ function prepareBrowserEvidence(evidence){
   }
   e.deliberationPolicy=policy;if(typeof e.summary==='string')e.summary+=' 現場案は回答指定ではなく、3賢人が全14名から独立検証する。';return e;
 }
-function browserCase(packet){return {id:`MAGI-${Date.now()}`,question:QUESTION,mode:'selection',objective:'',options:[],urgency:'normal',evidence:prepareBrowserEvidence(reinforceEvidence(packet)),createdAt:new Date().toISOString()};}
+function browserCase(packet,question=QUESTION){return {id:`MAGI-${Date.now()}`,question,mode:'selection',objective:'',options:[],urgency:'normal',evidence:prepareBrowserEvidence(reinforceEvidence(packet)),createdAt:new Date().toISOString()};}
 
 function crossFor(persona,cross,independenceReview=''){return {...(cross||{}),challengeToSelf:Array.isArray(cross?.challenges?.[persona])?cross.challenges[persona]:[],challengeTarget:TARGETS[persona],challengeSemantics:`challengeToSelf と challenges.${persona} は ${TARGETS[persona]} に向けられた質問。自分宛ての指摘に答えた後、自分の専門領域だけで二次判断する。`,independenceRule:'他の2人格に合わせない。違いを作るためだけにも変えない。Evidenceと一次案を自分の専門領域で再検証する。',...(independenceReview?{independenceReview}:{})};}
 function candidateSeq(v){return (Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]).map(norm);}
@@ -81,8 +82,8 @@ function allSame(set){const seqs=PERSONAS.map(p=>candidateSeq(set?.[p]));if(seqs
 function stableDigest(value){return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);}
 async function serialPersonaSet(base,phase,buildBody){const out={};for(const p of PERSONAS){const raw=await post(base,'/api/magi/persona',buildBody(p),`${phase}_${p.toUpperCase()}`);out[p]=recoverSoftLineup(raw,p);await sleep(350);}return out;}
 
-async function runOnce(base,packet){
-  const caseData=browserCase(packet);
+async function runOnce(base,packet,question=QUESTION){
+  const caseData=browserCase(packet,question);
   const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
   for(const p of PERSONAS){if(primary[p]?.reviewRequested===true||primary[p]?.dataConflict===true||!validNine(primary[p]))throw new Error(`PRIMARY_${p.toUpperCase()}_INVALID`);}
   const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'CROSS');
@@ -97,6 +98,20 @@ async function runOnce(base,packet){
   return {primary:Object.fromEntries(PERSONAS.map(p=>[p,{candidatePlayers:primary[p].candidatePlayers,judgment:primary[p].judgment,confidence:primary[p].confidence}])),cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],challenges:cross?.challenges||{},informationGaps:cross?.informationGaps||[]},second:Object.fromEntries(PERSONAS.map(p=>[p,{candidatePlayers:second[p].candidatePlayers,judgment:second[p].judgment,confidence:second[p].confidence}])),final:{mode:final.mode,status:final.status,lineup:final.lineup,recommendation:final.recommendation,personaLineups:final.personaLineups}};
 }
 
+async function runNaturalThird(base,packet){
+  const caseData=browserCase(packet,NATURAL_THIRD_QUESTION);
+  const primary=await serialPersonaSet(base,'NATURAL_THIRD_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
+  for(const p of PERSONAS){if(primary[p]?.reviewRequested===true||primary[p]?.dataConflict===true||!Array.isArray(primary[p]?.candidatePlayers)||primary[p].candidatePlayers.length<1)throw new Error('NATURAL_THIRD_PRIMARY_'+p.toUpperCase()+'_INVALID');}
+  const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'NATURAL_THIRD_CROSS');
+  for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error('NATURAL_THIRD_CROSS_'+p.toUpperCase()+'_MISSING_CHALLENGE');}
+  const second=await serialPersonaSet(base,'NATURAL_THIRD_SECOND',p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross)}));
+  for(const p of PERSONAS){if(second[p]?.reviewRequested===true||second[p]?.dataConflict===true||!Array.isArray(second[p]?.candidatePlayers)||second[p].candidatePlayers.length<1)throw new Error('NATURAL_THIRD_SECOND_'+p.toUpperCase()+'_INVALID');}
+  const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second},'NATURAL_THIRD_FINAL');
+  const legal=final?.mode==='SELECTION'&&['SELECTION_RESULT','SELECTION_SPLIT'].includes(final?.status)&&Array.isArray(final?.recommendedCandidates)&&final.recommendedCandidates.length>0&&final.recommendedCandidates.every(n=>rosterKeys.has(norm(n)));
+  if(!legal)throw new Error('NATURAL_THIRD_FINAL_INVALID_'+String(final?.status||'NO_STATUS'));
+  return {status:final.status,centerCandidates:final.centerCandidates||[],recommendedCandidates:final.recommendedCandidates||[],personaSelections:final.personaSelections||{}};
+}
+
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
@@ -104,6 +119,10 @@ export default async function handler(req,res){
     const packet=await buildCurrentSelectionEvidence({question:QUESTION,routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}});const players=packet?.allCurrentTeamCheck?.players||[];
     const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
     const result=await runOnce(base,packet);const digest=stableDigest(result);
-    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest});
+    const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
+    const naturalPlayers=naturalPacket?.allCurrentTeamCheck?.players||[];
+    const naturalReady=naturalPacket?.selectionKind==='BATTING_ORDER'&&Number(naturalPacket?.count)===14&&naturalPlayers.length===14&&CURRENT_ROSTER.every(name=>naturalPlayers.some(p=>p?.name===name));if(!naturalReady)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
+    const naturalThird=await runNaturalThird(base,naturalPacket);
+    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...naturalThird}});
   }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error)});}
 }
