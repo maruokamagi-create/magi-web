@@ -118,9 +118,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -Fq '弱点|強み|問題' server/api/magi/core.js
-          grep -Fq 'playerEvaluation=' server/api/magi/core.js
-          grep -Fq 'return teamChange||playerEvaluation||observation' server/api/magi/core.js
+          grep -Fq "from './_evaluation-routing.js'" server/api/magi/core.js
+          grep -Fq '弱点|強み|問題' server/api/magi/_evaluation-routing.js
+          grep -Fq 'playerEvaluation=' server/api/magi/_evaluation-routing.js
+          grep -Fq 'return teamChange||playerEvaluation||observation' server/api/magi/_evaluation-routing.js
           echo 'NATURAL TEAM/PLAYER EVALUATION ROUTING: PASS'
 
       - name: Verify production bootstrap and live master Evidence
