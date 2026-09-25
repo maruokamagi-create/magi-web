@@ -139,10 +139,24 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
 
   let effectiveResolution=resolution;
   if(!resolution?.requestedDocument){
-    const specialEvidence=await buildSpecialSampleEvidence({question,routed,semantic});
+    const naturalTeamReview = !Array.isArray(semantic?.players) || semantic.players.length===0
+      ? needsCrossEvidenceAnalysis(question,semantic)
+      : false;
+    if(naturalTeamReview){
+      const teamRouted={...routed,players:[],domains:['LINEUP']};
+      const teamEvidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:teamRouted});
+      if(teamEvidence){
+        await attachAppearanceEvidence(teamEvidence,{reviewKind:'TEAM_REVIEW'});
+        teamEvidence.summary='現チーム14名の今季打撃・投手データ、過去実績、直近状態、出場・守備起用実績を横断し、チームの強み・弱点・変化・課題を分析するための正本Evidence。';
+        teamEvidence.dataRule=`${text(teamEvidence.dataRule)} TEAM_REVIEWでは候補選手を選ぶのではなく、確認できるチーム全体の記録から質問された強み・弱点・変化・課題を分析する。Evidenceにない事実は作らない。`.trim();
+        effectiveResolution={version:teamEvidence.resolverVersion,status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_NATURAL_TEAM_REVIEW',evidence:teamEvidence};
+      }
+    }
+
+    const specialEvidence=effectiveResolution?.evidence?null:await buildSpecialSampleEvidence({question,routed,semantic});
     if(specialEvidence){
       effectiveResolution={version:specialEvidence.resolverVersion,status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_SAMPLE_REVIEW',evidence:specialEvidence};
-    }else{
+    }else if(!effectiveResolution?.evidence){
       const selectionRouted=String(routed?.selectionKind||'').toUpperCase()==='FULL_LINEUP'?{...routed,players:[]}:routed;
       const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted});
       if(liveSelectionEvidence){
