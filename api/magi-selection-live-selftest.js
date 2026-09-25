@@ -27,6 +27,10 @@ export default async function handler(req,res){
       question:'現時点のベストオーダーを審議して',
       routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}
     });
+    const naturalThirdPacket=await buildCurrentSelectionEvidence({
+      question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',
+      routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}
+    });
     const players=packet?.allCurrentTeamCheck?.players||[];
     const names=players.map(x=>x.name);
     const exact=names.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>names.includes(name));
@@ -39,9 +43,15 @@ export default async function handler(req,res){
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
+    const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
+    const naturalNames=naturalPlayers.map(x=>x.name);
+    const naturalThirdReady=Boolean(naturalThirdPacket)&&naturalThirdPacket?.selectionKind==='BATTING_ORDER'&&naturalNames.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>naturalNames.includes(name))&&naturalPlayers.filter(hasCoreBatting).length===14&&String(naturalThirdPacket?.text||'').includes('【現チーム全14選手・打撃】');
     res.status(200).json({
-      ok:fullLineupReady,
+      ok:fullLineupReady&&naturalThirdReady,
       fullLineupReady,
+      naturalThirdReady,
+      naturalThirdSelectionKind:naturalThirdPacket?.selectionKind||'',
+      naturalThirdCount:naturalThirdPacket?.count||0,
       version:packet?.resolverVersion||'',
       selectionKind:packet?.selectionKind||'',
       count:packet?.count||0,
