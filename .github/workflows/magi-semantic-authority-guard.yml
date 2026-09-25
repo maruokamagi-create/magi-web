@@ -59,9 +59,9 @@ jobs:
           URL='https://magi-web.vercel.app/api/magi-production-semantic-fallback-selftest'
           for i in $(seq 1 60); do
             code=$(curl -L -sS -o /tmp/fallback.json -w '%{http_code}' "$URL" || true)
-            if [ "$code" = "200" ] && jq -e '.version=="magi-production-semantic-fallback-selftest-v1" and .total==7 and .passed==7 and ([.results[].pass] | all)' /tmp/fallback.json >/dev/null 2>&1; then
+            if [ "$code" = "200" ] && jq -e '.version=="magi-production-semantic-fallback-selftest-v2" and .total==8 and .passed==8 and ([.results[].pass] | all)' /tmp/fallback.json >/dev/null 2>&1; then
               cat /tmp/fallback.json
-              echo 'PRODUCTION SEMANTIC FALLBACK REGRESSION: 7/7 PASS'
+              echo 'PRODUCTION SEMANTIC FALLBACK REGRESSION: 8/8 PASS'
               exit 0
             fi
             echo "Waiting for production fallback selftest... attempt $i HTTP $code"
