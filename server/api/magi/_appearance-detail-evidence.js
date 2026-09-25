@@ -77,7 +77,7 @@ function aggregate(name,rows){
   };
 }
 
-export async function buildAppearanceDetailEvidence(){
+export async function buildAppearanceDetailEvidence(options={}){
   const tree=await listMagiDriveTree({maxItems:2000,maxDepth:12});
   const file=findFile(tree);
   if(!file)throw new Error(`${FILE_NAME} がDrive内に見つかりません`);
@@ -85,7 +85,9 @@ export async function buildAppearanceDetailEvidence(){
   const rows=parseCsv(decodeCsv(fetched.buffer));
   const normalizedRows=rows.filter(row=>text(rowFields(row).player));
   if(!normalizedRows.length)throw new Error(`${FILE_NAME} に選手データがありません`);
-  const players=CURRENT_ROSTER.map(name=>aggregate(name,normalizedRows));
+  const focusPlayer=text(options?.focusPlayer);
+  const requestedNames=focusPlayer?CURRENT_ROSTER.filter(name=>norm(name)===norm(focusPlayer)):CURRENT_ROSTER;
+  const players=requestedNames.map(name=>aggregate(name,normalizedRows));
   const games=new Map();
   normalizedRows.map(rowFields).forEach(row=>{const no=gameNumber(row.gameLabel);if(no>0)games.set(gameKey(row),no);});
   return {
@@ -96,7 +98,7 @@ export async function buildAppearanceDetailEvidence(){
     text:[
       '【出場詳細CSV・起用実績】',
       `参照：${FILE_NAME} / 記録試合 ${games.size}試合`,
-      '守備配置・起用判断では appearanceDetail.players を最優先参照する。奇数試合＝第1試合（公式戦想定）、偶数試合＝第2試合（チャレンジ）として分け、スタメン／途中出場・実守備位置・実打順を混同しない。'
+      focusPlayer?`対象選手：${players[0]?.name||focusPlayer} / 出場 ${players[0]?.appearances??0}試合 / スタメン ${players[0]?.starts??0}試合 / 途中出場 ${players[0]?.substitutions??0}試合 / 守備 ${players[0]?.positionSummary||'記録なし'} / 打順 ${players[0]?.battingOrderSummary||'記録なし'}`:'守備配置・起用判断では appearanceDetail.players を最優先参照する。奇数試合＝第1試合（公式戦想定）、偶数試合＝第2試合（チャレンジ）として分け、スタメン／途中出場・実守備位置・実打順を混同しない。'
     ].join('\n'),
     rule:'出場詳細_2026-2027.csvを守備配置・起用判断の最優先記録として使用する。奇数試合と偶数試合を混同せず、実際のスタメン・途中出場・守備位置・打順を確認する。'
   };
