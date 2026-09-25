@@ -64,5 +64,7 @@ check('R05', source.includes("selectionReasons=list(result.final.majorReasons).f
 check('R06', source.includes("3賢人の判断根拠："+"$"+"{selectionReasons.join('／')}"), 'generic selection final renderer displays reasons to the user');
 check('R07', source.includes("候補支持："+"$"+"{centerEvidence.join('／')}"), 'generic selection final renderer explains center-candidate support');
 check('R08', source.includes("3賢人中"+"$"+"{row.support}人が候補、うち第1候補"+"$"+"{row.firstPlaceCount}人"), 'center-candidate support shows support and first-place counts');
+check('R09', source.includes('根拠を詳しく見る'), 'persona cards expose expandable detailed rationale');
+check('R10', source.includes('personaReasonHtml(v)'), 'primary and second selection rendering includes persona rationale');
 
 console.log(`ENGINE UI SELECTION RESULT: ${passed}/${total} PASS`);
