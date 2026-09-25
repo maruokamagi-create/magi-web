@@ -109,7 +109,8 @@ jobs:
           curl -L --fail --retry 2 --retry-delay 3 -sS "$BASE/stats-report-v260.js?v=265" -o /tmp/stats-report.js
           grep -Fq "const OFFICIAL_PLAYERS=" /tmp/stats-report.js
           grep -Fq "嶋田栄志" /tmp/stats-report.js
-          grep -Fq 'const official=officialTarget(q);if(official)return official;' /tmp/stats-report.js
+          grep -Fq 'function officialTarget(q)' /tmp/stats-report.js
+grep -Fq 'Object.entries(PLAYER_ALIASES)' /tmp/stats-report.js
           grep -Fq 'const np=canonPlayer(target)' /tmp/stats-report.js
           grep -Fq 'canonPlayer(player(r))===np' /tmp/stats-report.js
           grep -Fq 'window.MAGI_STATS_REPORT_COLLECT=collect' /tmp/stats-report.js
