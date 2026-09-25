@@ -11,6 +11,13 @@ const oldPlayers=Object.fromEntries(CURRENT_ROSTER.map((name,i)=>[name,{
   pitching:i<5?{APP:String(i+2),ERA:`${(1.5+i/10).toFixed(2)}`,IP:`${8+i}.0`,SO:String(8+i)}:null
 }]));
 
+const fakePitching=async(season)=>{
+  const source={id:season==='old'?'old-pitching':'current-pitching',name:season==='old'?'投手詳細2025-2026.csv':'投手詳細2026-2027.csv',path:'detail'};
+  const limit=season==='old'?5:4;
+  const players=CURRENT_ROSTER.map((name,i)=>({name,pitching:i<limit?{APP:String(i+1),ERA:'1.75',IP:'4.0',SO:'5',K9:'11.25',WHIP:'1.00'}:null}));
+  return {status:'COMPLETE',season,source,players,experiencedPlayers:players.filter(p=>p.pitching).map(p=>p.name)};
+};
+
 const calls=[];
 const fakeAudit=async({season})=>{
   calls.push(season);
@@ -38,7 +45,7 @@ assert.equal(shouldBuildCurrentSelectionEvidence('投手リレーどう組む？
 assert.equal(shouldBuildCurrentSelectionEvidence('大野 竜暉を3番にする？',{players:['大野 竜暉'],domains:['LINEUP']}),false);
 assert.equal(shouldBuildCurrentSelectionEvidence('大野 竜暉のOPSは？',{players:['大野 竜暉'],domains:['BATTING']}),false);
 
-const packet=await buildCurrentSelectionEvidence({question:'3番は誰がいい？',routed:{players:[],domains:['LINEUP']},auditProvider:fakeAudit});
+const packet=await buildCurrentSelectionEvidence({question:'3番は誰がいい？',routed:{players:[],domains:['LINEUP']},auditProvider:fakeAudit,pitchingProvider:fakePitching});
 assert.equal(packet.count,14);
 assert.equal(packet.primarySeason,'current');
 assert.equal(packet.selectionKind,'BATTING_ORDER');
@@ -62,7 +69,7 @@ assert.equal(packet.sources[1].name,'old-master.xlsm');
 assert.equal(packet.sources[1].priority,'HISTORICAL');
 assert.deepEqual(calls.sort(),['current','old']);
 
-const pitchingPacket=await buildCurrentSelectionEvidence({question:'先発投手は誰がいい？',routed:{players:[],domains:['PITCHING']},auditProvider:fakeAudit});
+const pitchingPacket=await buildCurrentSelectionEvidence({question:'先発投手は誰がいい？',routed:{players:[],domains:['PITCHING']},auditProvider:fakeAudit,pitchingProvider:fakePitching});
 assert.equal(pitchingPacket.selectionKind,'PITCHING_ROLE');
 assert.ok(pitchingPacket.text.includes('【現チーム全14選手・投手】'));
 assert.ok(pitchingPacket.text.includes('防御率'));
@@ -70,7 +77,7 @@ assert.ok(pitchingPacket.text.includes('旧チーム'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('投球回'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('登板数'));
 
-const pitchingPlanPacket=await buildCurrentSelectionEvidence({question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:7},auditProvider:fakeAudit});
+const pitchingPlanPacket=await buildCurrentSelectionEvidence({question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:7},auditProvider:fakeAudit,pitchingProvider:fakePitching});
 assert.equal(pitchingPlanPacket.selectionKind,'PITCHING_PLAN');
 assert.equal(pitchingPlanPacket.gameInnings,7);
 assert.ok(pitchingPlanPacket.text.includes('【現チーム全14選手・投手】'));
@@ -81,14 +88,14 @@ assert.ok(pitchingPlanPacket.text.includes('高圧場面適性はEvidenceに明�
 assert.ok(pitchingPlanPacket.summary.includes('7回制4役投手運用'));
 assert.ok(pitchingPlanPacket.sampleSizeRule.includes('投球回'));
 
-const genericPitchingPlanPacket=await buildCurrentSelectionEvidence({question:'投手リレーどう組む？',routed:{players:[],domains:['PITCHING','TACTICS']},auditProvider:fakeAudit});
+const genericPitchingPlanPacket=await buildCurrentSelectionEvidence({question:'投手リレーどう組む？',routed:{players:[],domains:['PITCHING','TACTICS']},auditProvider:fakeAudit,pitchingProvider:fakePitching});
 assert.equal(genericPitchingPlanPacket.selectionKind,'PITCHING_PLAN');
 assert.equal(genericPitchingPlanPacket.count,14);
 assert.equal(genericPitchingPlanPacket.primarySeason,'current');
 assert.equal(genericPitchingPlanPacket.gameInnings,7);
 assert.equal(genericPitchingPlanPacket.historicalReference.candidateEligible,false);
 
-const nineInningPacket=await buildCurrentSelectionEvidence({question:'投手リレーどう組む？',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:9},auditProvider:fakeAudit});
+const nineInningPacket=await buildCurrentSelectionEvidence({question:'投手リレーどう組む？',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:9},auditProvider:fakeAudit,pitchingProvider:fakePitching});
 assert.equal(nineInningPacket.selectionKind,'PITCHING_PLAN');
 assert.equal(nineInningPacket.gameInnings,9);
 assert.ok(nineInningPacket.text.includes('【試合回数条件】9回制'));
