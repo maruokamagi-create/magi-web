@@ -122,6 +122,8 @@ jobs:
           grep -Fq '弱点|強み|問題' server/api/magi/_evaluation-routing.js
           grep -Fq 'playerEvaluation=' server/api/magi/_evaluation-routing.js
           grep -Fq 'return teamChange||playerEvaluation||observation' server/api/magi/_evaluation-routing.js
+          grep -Fq 'CURRENT_MASTER_NATURAL_TEAM_REVIEW' server/api/magi/core.js
+          grep -Fq "reviewKind:'TEAM_REVIEW'" server/api/magi/core.js
           echo 'NATURAL TEAM/PLAYER EVALUATION ROUTING: PASS'
 
       - name: Verify production bootstrap and live master Evidence
