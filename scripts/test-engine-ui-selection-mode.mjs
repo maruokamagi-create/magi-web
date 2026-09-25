@@ -61,6 +61,8 @@ check('R02', lineupText === '1番 A / 2番 B / 3番 C', `actual=${lineupText}`);
 check('R03', source.includes("result.final.mode==='PITCHING_PLAN'"), 'production UI has pitching-plan final renderer');
 check('R04', source.includes("result.final.mode==='FULL_LINEUP'"), 'production UI has full-lineup final renderer');
 check('R05', source.includes("selectionReasons=list(result.final.majorReasons).filter(Boolean)"), 'generic selection final renderer collects evidence-grounded reasons');
-check('R06', source.includes("根拠："+"$"+"{selectionReasons.join('／')}"), 'generic selection final renderer displays reasons to the user');
+check('R06', source.includes("3賢人の判断根拠："+"$"+"{selectionReasons.join('／')}"), 'generic selection final renderer displays reasons to the user');
+check('R07', source.includes("候補支持："+"$"+"{centerEvidence.join('／')}"), 'generic selection final renderer explains center-candidate support');
+check('R08', source.includes("3賢人中"+"$"+"{row.support}人が候補、うち第1候補"+"$"+"{row.firstPlaceCount}人"), 'center-candidate support shows support and first-place counts');
 
 console.log(`ENGINE UI SELECTION RESULT: ${passed}/${total} PASS`);
