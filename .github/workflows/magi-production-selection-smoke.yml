@@ -103,7 +103,7 @@ jobs:
             else
               jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
             fi
-            curl -L --fail --retry 2 --retry-delay 3 -sS \
+            curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS \
               -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
               -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
             cat "$outfile"; echo
