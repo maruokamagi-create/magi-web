@@ -279,6 +279,8 @@ async function warm(){
 }
 let bridgeFn=null,statsDirectFn=null;
 function install(){
+ // Canonical semantic runtime calls hydration/report functions directly; avoid re-wrapping legacy runMagi after bootstrap.
+ if(typeof window.MAGI_SEMANTIC_RUN_V2==='function'){window.MAGI_STATS_SERVER_BRIDGE_INSTALLED=true;window.MAGI_STATS_SERVER_BRIDGE='v315-canonical-direct';return true}
  if(window.MAGI_NUMERIC_EVIDENCE_BOOTSTRAP!=='v298')return false;
  if(typeof window.runMagi!=='function'||!window.MAGI_STATS_REPORT_FN)return false;
  if(!statsDirectFn){const c=window.MAGI_STATS_REPORT_FN;if(!c)return false;statsDirectFn=c}
