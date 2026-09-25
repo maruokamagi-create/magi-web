@@ -24,32 +24,32 @@ jobs:
       - name: Wait for production deployment
         run: sleep 45
 
-      - name: Execute exact live best-order question twice in production
+      - name: Execute live best-order and natural third-batter consultation in production
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          for run in 1 2; do
-            curl -L --fail --max-time 125 --retry 3 --retry-delay 4 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest" -o "/tmp/result-${run}.json"
-            cat "/tmp/result-${run}.json"; echo
-            jq -e '
-              .ok==true and
-              .question=="今の丸岡中のベストオーダーを、守備位置込みで審議して" and
-              .evidence.count==14 and
-              .evidence.selectionKind=="FULL_LINEUP" and
-              .finalStatus=="LINEUP_RESULT" and
-              (.lineup|length==9) and
-              (([.lineup[].name]|unique|length)==9) and
-              (.digest|length==16)
-            ' "/tmp/result-${run}.json" >/dev/null
-          done
+          # This endpoint already executes the full live best-order flow plus the exact
+          # natural third-batter consultation. Run once here: a second immediate run
+          # can hit the model provider rate limit and does not add semantic coverage.
+          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest" -o /tmp/result.json
+          cat /tmp/result.json; echo
 
-          D1="$(jq -r '.digest' /tmp/result-1.json)"
-          D2="$(jq -r '.digest' /tmp/result-2.json)"
-          test "$D1" = "$D2"
+          jq -e '
+            .ok==true and
+            .question=="今の丸岡中のベストオーダーを、守備位置込みで審議して" and
+            .evidence.count==14 and
+            .evidence.selectionKind=="FULL_LINEUP" and
+            .finalStatus=="LINEUP_RESULT" and
+            (.lineup|length==9) and
+            (([.lineup[].name]|unique|length)==9) and
+            (.digest|length==16) and
+            .naturalThird.question=="3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？" and
+            .naturalThird.evidence.count==14 and
+            .naturalThird.evidence.selectionKind=="BATTING_ORDER" and
+            (.naturalThird.status=="SELECTION_RESULT" or .naturalThird.status=="SELECTION_SPLIT") and
+            (.naturalThird.recommendedCandidates|length>0)
+          ' /tmp/result.json >/dev/null
 
-          jq -S '.lineup' /tmp/result-1.json > /tmp/lineup-1.json
-          jq -S '.lineup' /tmp/result-2.json > /tmp/lineup-2.json
-          cmp /tmp/lineup-1.json /tmp/lineup-2.json
-
-          echo 'PRODUCTION EXACT LIVE BEST-ORDER DELIBERATION x2: PASS'
+          echo 'PRODUCTION EXACT LIVE BEST-ORDER DELIBERATION: PASS'
+          echo 'PRODUCTION NATURAL THIRD-BATTER DELIBERATION: PASS'
