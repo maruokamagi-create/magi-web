@@ -95,7 +95,7 @@ window.MAGI_SEMANTIC_RUN_V2=execute;
 window.MAGI_SEMANTIC_RUN_V1=execute;
 window.MAGI_CLIENT_VERSION=CLIENT_VERSION;
 window.MAGI_RUNTIME_CLIENT_VERSION=RUNTIME_VERSION;
-window.addEventListener('click',event=>{const btn=mainButton(event.target);if(!btn)return;event.preventDefault();event.stopPropagation();event.stopImmediatePropagation();execute(btn)},true);
+// Click ownership belongs to magi-app-bootstrap-v363.js. This module only exposes the canonical semantic executor.
 const observer=new MutationObserver(()=>{if($('judge'))ensurePanel()});observer.observe(document.documentElement,{childList:true,subtree:true});if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ensurePanel,{once:true});else ensurePanel();
 })();
 
