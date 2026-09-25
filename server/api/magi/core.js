@@ -182,6 +182,37 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
     }
   }
 
+  // A natural single-player evaluation needs that player's current official batting/pitching row
+  // plus actual appearance/position history before observations are considered.
+  const naturalPlayerReview = !resolution?.requestedDocument && Array.isArray(semantic?.players) && semantic.players.length===1
+    && needsCrossEvidenceAnalysis(question,semantic);
+  if(naturalPlayerReview){
+    try{
+      const requested=semantic.players[0];
+      const canonical=CURRENT_ROSTER.find(rosterName=>normalized(rosterName)===normalized(requested));
+      if(canonical){
+        const audit=await runDriveLiveAudit({season:'current'});
+        const entry=audit?.extracted?.playersByName?.[canonical];
+        if(entry){
+          const packet=effectiveResolution?.evidence||{text:'',sources:[],files:[]};
+          const source={...audit.source,type:'XLSM_MASTER',season:'current',priority:'PRIMARY'};
+          const batting=entry?.batting?{...entry.batting}:null,pitching=entry?.pitching?{...entry.pitching}:null;
+          packet.playerReview={name:canonical,periodStart:audit.extracted?.periodStart||'',periodEnd:audit.extracted?.periodEnd||'',batting,pitching,source};
+          packet.sources=[...(Array.isArray(packet.sources)?packet.sources:[]),source];
+          packet.files=[...new Set([...(Array.isArray(packet.files)?packet.files:[]),source.name].filter(Boolean))];
+          packet.count=Math.max(Number(packet.count)||0,1);
+          const battingLine=batting?['打率 '+text(batting.AVG),'OPS '+text(batting.OPS),'打数 '+text(batting.AB),'安打 '+text(batting.H),'打点 '+text(batting.RBI),'得点 '+text(batting.R),'三振 '+text(batting.SO),'四球 '+text(batting.BB),'盗塁 '+text(batting.SB)].filter(x=>!/[ ]$/.test(x)).join(' / '):'打撃記録なし';
+          const pitchingLine=pitching?['登板 '+text(pitching.APP),'防御率 '+text(pitching.ERA),'投球回 '+text(pitching.IP),'奪三振 '+text(pitching.SO),'WHIP '+text(pitching.WHIP)].filter(x=>!/[ ]$/.test(x)).join(' / '):'投手記録なし';
+          packet.text=`${text(packet.text)}\n【対象選手・今季正本XLSM】\n${canonical}：${battingLine}\n投手：${pitchingLine}`.trim();
+          packet.summary=`${canonical}選手の現在評価を、今季正本成績・実際の出場/守備起用・独立した観察情報から審議するEvidence。`;
+          packet.dataRule=`${text(packet.dataRule)} PLAYER_REVIEWでは対象選手の正本数値と実起用記録を主Evidenceとし、観察情報は独立資料として扱う。Evidenceにない性格・能力・状態を推測しない。`.trim();
+          await attachAppearanceEvidence(packet,{reviewKind:'PLAYER_REVIEW',focusPlayer:canonical});
+          effectiveResolution={...(effectiveResolution||{}),status:'RESOLVED',source:'CURRENT_MASTER_NATURAL_PLAYER_REVIEW',evidence:packet};
+        }
+      }
+    }catch(error){console.error('[MAGI natural player review evidence]',error?.message||error)}
+  }
+
   // A named pitcher deliberation needs the current official pitching row as well
   // as the independently reported observation ledger.
   const focusNames = (Array.isArray(semantic?.players) ? semantic.players : [])
