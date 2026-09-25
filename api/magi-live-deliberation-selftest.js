@@ -101,7 +101,7 @@ async function runOnce(base,packet,question=QUESTION){
 async function runNaturalThird(base,packet){
   const caseData=browserCase(packet,NATURAL_THIRD_QUESTION);
   const primary=await serialPersonaSet(base,'NATURAL_THIRD_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
-  for(const p of PERSONAS){if(primary[p]?.reviewRequested===true||primary[p]?.dataConflict===true||!Array.isArray(primary[p]?.candidatePlayers)||primary[p].candidatePlayers.length<1)throw new Error('NATURAL_THIRD_PRIMARY_'+p.toUpperCase()+'_INVALID');}
+  for(const p of PERSONAS){if(primary[p]?.reviewRequested===true||primary[p]?.dataConflict===true||!Array.isArray(primary[p]?.candidatePlayers)||primary[p].candidatePlayers.length<1)throw new Error('NATURAL_THIRD_PRIMARY_'+p.toUpperCase()+'_INVALID:'+JSON.stringify({candidatePlayers:primary[p]?.candidatePlayers||[],reviewRequested:primary[p]?.reviewRequested,dataConflict:primary[p]?.dataConflict,reviewReason:primary[p]?.reviewReason||'',warnings:primary[p]?.warnings||[],publicStatement:primary[p]?.publicStatement||''}).slice(0,1800));}
   const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'NATURAL_THIRD_CROSS');
   for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error('NATURAL_THIRD_CROSS_'+p.toUpperCase()+'_MISSING_CHALLENGE');}
   const second=await serialPersonaSet(base,'NATURAL_THIRD_SECOND',p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross)}));
