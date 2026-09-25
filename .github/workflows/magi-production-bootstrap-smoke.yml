@@ -25,6 +25,7 @@ on:
       - 'api/magi-selection-live-selftest.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
+  # final verification refresh 2026-09-25
 
 jobs:
   production-browser-bootstrap:
