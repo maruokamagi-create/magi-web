@@ -99,6 +99,9 @@ jobs:
           grep -Fq '/drive-server-v293.js?v=301' /tmp/index.html
           curl -L --fail -sS https://magi-web.vercel.app/drive-server-v293.js?v=301 -o /tmp/drive-server.js
           grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/drive-server.js
+          grep -Fq '/stats-direct-click-v314.js?v=318' /tmp/index.html
+          curl -L --fail -sS 'https://magi-web.vercel.app/stats-direct-click-v314.js?v=318' -o /tmp/stats-direct-click.js
+          grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/stats-direct-click.js
 
           grep -Fq '/stats-server-bridge-v315.js?v=319' /tmp/index.html
           grep -Fq '/pitching-direct-report-v317.js?v=330' /tmp/index.html
@@ -111,7 +114,7 @@ jobs:
           curl -L --fail -sS https://magi-web.vercel.app/fielding-direct-report-v329.js?v=329 -o /tmp/fielding-report.js
           grep -Fq "fetch('/api/magi/fielding-report'" /tmp/fielding-report.js
           grep -Fq 'window.MAGI_RUN_FIELDING_REPORT=runReport' /tmp/fielding-report.js
-          grep -Fq "waitFor('MAGI_PITCH_DIRECT_FN')" /tmp/main-live-answer-check.js 2>/dev/null || true
+          grep -Fq "waitFor('MAGI_PITCH_DIRECT_FN')" /tmp/main-live-answer-check.js
           echo 'CANONICAL CLICK OWNERSHIP: PASS'
 
       - name: Verify natural evaluation routing contract
