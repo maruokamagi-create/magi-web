@@ -312,6 +312,8 @@ async function runDirect(query){
  }
 }
 function install(){
+ // Keep the report function available, but do not wrap the legacy runMagi once the canonical semantic runtime owns execution.
+ if(typeof window.MAGI_SEMANTIC_RUN_V2==='function'){window.MAGI_PITCH_DIRECT_FN=(query=>runDirect(query||((document.getElementById('q')?.value||'').trim()));return true}
  const q=document.getElementById('q');
  if(q&&!q.__magiPitchRouteV317){
   q.__magiPitchRouteV317=true;
