@@ -1,13 +1,15 @@
 import * as XLSX from 'xlsx';
 import { getCache } from '@vercel/functions';
-import { fetchDriveFileContent, getDriveFileMetadata, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
 import { CURRENT_ROSTER, OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const STATS_TOKEN = '03_STATS_成績データ';
 const MASTER_TOKEN = '00_MASTER_正本';
 const SNAPSHOT_CACHE_TTL_SECONDS = 60 * 60 * 24 * 7;
 const HOT_SNAPSHOT_TTL_SECONDS = 60 * 5;
-const CURRENT_MASTER_FILE_ID = process.env.MAGI_CURRENT_MASTER_FILE_ID || '11ABgSFKN-9Bhde1hJ_n-Qytz0cuImM0E';
+const CURRENT_MASTER_FILE_ID = process.env.MAGI_CURRENT_MASTER_FILE_ID || evidenceSource('CURRENT_MASTER').id;
+const OLD_MASTER_FILE_ID = process.env.MAGI_OLD_MASTER_FILE_ID || evidenceSource('OLD_MASTER').id;
 
 const SEASONS = {
   current: {
@@ -50,12 +52,6 @@ const PITCHING_FIELDS = {
 function resolveSeason(value) {
   const key = String(value || 'current').toLowerCase();
   return key === 'old' || key === '2025-2026' ? SEASONS.old : SEASONS.current;
-}
-
-function isAuthoritativeXlsm(file, season) {
-  const name = String(file?.name || '');
-  const path = String(file?.path || '');
-  return /\.xlsm$/i.test(name) && path.includes(season.token) && path.includes(STATS_TOKEN) && path.includes(MASTER_TOKEN);
 }
 
 function norm(value) {
@@ -380,26 +376,13 @@ async function writeSnapshot(key, value, ttl = SNAPSHOT_CACHE_TTL_SECONDS, tags 
 }
 
 async function resolveMasterFile(season) {
-  if (season.key === 'current' && CURRENT_MASTER_FILE_ID) {
-    try {
-      const meta = await getDriveFileMetadata(CURRENT_MASTER_FILE_ID);
-      return {
-        ...meta,
-        path:`20_TEAM_DATA_チームデータ/${season.token}/${STATS_TOKEN}/${MASTER_TOKEN}/${meta.name}`
-      };
-    } catch (error) {
-      console.warn('[MAGI current master direct metadata fallback]', error?.message || error);
-    }
-  }
-
-  const tree = await listMagiDriveTree({ fresh:true });
-  const candidates = tree.filter(file => isAuthoritativeXlsm(file, season));
-  if (candidates.length !== 1) {
-    const nearby = tree.filter(f => /\.xlsm$/i.test(String(f?.name || '')) && String(f?.path || '').includes(season.token));
-    const names = nearby.slice(0, 8).map(f => f.path).join(' | ');
-    throw new Error(`${season.label}の00_MASTER_正本XLSMを一意に特定できませんでした (${candidates.length})${names ? ` / XLSM候補: ${names}` : ''}`);
-  }
-  return candidates[0];
+  const id=season.key==='current'?CURRENT_MASTER_FILE_ID:OLD_MASTER_FILE_ID;
+  const meta=await getDriveFileMetadata(id);
+  if(!/\.xlsm$/i.test(String(meta?.name||''))) throw new Error(`${season.label}の正本IDがXLSMではありません: ${String(meta?.name||'')}`);
+  return {
+    ...meta,
+    path:`20_TEAM_DATA_チームデータ/${season.token}/${STATS_TOKEN}/${MASTER_TOKEN}/${meta.name}`
+  };
 }
 
 function seasonRoster(season) {
