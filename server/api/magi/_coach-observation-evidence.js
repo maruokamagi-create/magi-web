@@ -27,7 +27,10 @@ function parseCsv(raw){
 
 async function exportGoogleSheetCsv(meta,gid=0){
   if(text(meta.mimeType)!==GOOGLE_SHEET_MIME)throw new Error('coach_observation_source_not_google_sheet');
-  const url=`https://docs.google.com/spreadsheets/d/${encodeURIComponent(meta.id)}/export?format=csv&gid=${encodeURIComponent(gid)}`;
+  // Use the authenticated Drive export endpoint rather than docs.google.com/export.
+  // The latter can return HTTP 400 for service-account bearer-token requests even
+  // when Drive metadata access succeeds.
+  const url=`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(meta.id)}/export?mimeType=${encodeURIComponent('text/csv')}&supportsAllDrives=true`;
   const response=await googleDriveFetch(url);
   if(!response.ok){const e=new Error('coach_observation_export_failed');e.status=response.status;throw e;}
   return response.text();
