@@ -1,12 +1,14 @@
 import * as XLSX from 'xlsx';
 import { getCache } from '@vercel/functions';
-import { fetchDriveFileContent, getDriveFileMetadata, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
 import { CURRENT_ROSTER, OFFICIAL_PLAYER_REGISTRY } from './_roster.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const STATS_TOKEN = '03_STATS_成績データ';
 const MASTER_TOKEN = '00_MASTER_正本';
 const HOT_TTL_SECONDS = 60 * 5;
-const CURRENT_MASTER_FILE_ID = process.env.MAGI_CURRENT_MASTER_FILE_ID || '11ABgSFKN-9Bhde1hJ_n-Qytz0cuImM0E';
+const CURRENT_MASTER_FILE_ID = process.env.MAGI_CURRENT_MASTER_FILE_ID || evidenceSource('CURRENT_MASTER').id;
+const OLD_MASTER_FILE_ID = process.env.MAGI_OLD_MASTER_FILE_ID || evidenceSource('OLD_MASTER').id;
 
 const SEASONS = {
   current: { key:'current', label:'2026-2027現チーム', token:'2026-2027_CURRENT_現チーム' },
@@ -120,10 +122,6 @@ function resolveSeason(value){
   const k=String(value||'current').toLowerCase();
   return k==='old'||k==='2025-2026'?SEASONS.old:SEASONS.current;
 }
-function isAuthoritativeXlsm(file,season){
-  const name=String(file?.name||''), path=String(file?.path||'');
-  return /\.xlsm$/i.test(name)&&path.includes(season.token)&&path.includes(STATS_TOKEN)&&path.includes(MASTER_TOKEN);
-}
 function rosterForSeason(season){ return season.key==='current' ? CURRENT_ROSTER : OFFICIAL_PLAYER_REGISTRY; }
 
 async function cacheGet(key){
@@ -134,16 +132,10 @@ async function cacheSet(key,value){
 }
 
 async function resolveMasterFile(season){
-  if(season.key==='current' && CURRENT_MASTER_FILE_ID){
-    try{
-      const meta=await getDriveFileMetadata(CURRENT_MASTER_FILE_ID);
-      return {...meta,path:`20_TEAM_DATA_チームデータ/${season.token}/${STATS_TOKEN}/${MASTER_TOKEN}/${meta.name}`};
-    }catch(e){console.warn('[MAGI strict pitching current metadata fallback]',e?.message||e)}
-  }
-  const tree=await listMagiDriveTree({fresh:true});
-  const candidates=tree.filter(f=>isAuthoritativeXlsm(f,season));
-  if(candidates.length!==1) throw new Error(`${season.label}の00_MASTER_正本XLSMを一意に特定できませんでした (${candidates.length})`);
-  return candidates[0];
+  const id=season.key==='current'?CURRENT_MASTER_FILE_ID:OLD_MASTER_FILE_ID;
+  const meta=await getDriveFileMetadata(id);
+  if(!/\.xlsm$/i.test(String(meta?.name||''))) throw new Error(`${season.label}の正本IDがXLSMではありません: ${String(meta?.name||'')}`);
+  return {...meta,path:`20_TEAM_DATA_チームデータ/${season.token}/${STATS_TOKEN}/${MASTER_TOKEN}/${meta.name}`};
 }
 
 function buildSeasonPitchingSnapshot(sheets,season){
