@@ -1,12 +1,9 @@
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
-const CURRENT_TOKEN='2026-2027_CURRENT_現チーム';
-const STATS_TOKEN='03_STATS_成績データ';
-const DETAIL_TOKEN='10_DETAIL_詳細データ';
-const APPEARANCE_TOKEN='APPEARANCE_出場詳細';
-const FILE_NAMES=['出場詳細2026-2027.csv','出場詳細_2026-2027.csv'];
 const FILE_NAME='出場詳細2026-2027.csv';
+const FILE_ID=process.env.MAGI_CURRENT_APPEARANCE_FILE_ID||evidenceSource('CURRENT_APPEARANCE_DETAIL').id;
 
 function text(value){return String(value??'').trim();}
 function norm(value){return text(value).normalize('NFKC').replace(/[\s　]+/g,'');}
@@ -32,11 +29,6 @@ function parseCsv(source){
   if(cell.length||row.length){row.push(cell.replace(/\r$/,''));rows.push(row);}
   const header=(rows.shift()||[]).map(text);
   return rows.filter(values=>values.some(v=>text(v))).map(values=>Object.fromEntries(header.map((key,index)=>[key,text(values[index])])));
-}
-function findFile(tree){
-  const exact=(tree||[]).filter(file=>FILE_NAMES.includes(text(file?.name)));
-  return exact.find(file=>{const path=text(file?.path);return path.includes(CURRENT_TOKEN)&&path.includes(STATS_TOKEN)&&path.includes(DETAIL_TOKEN)&&path.includes(APPEARANCE_TOKEN);})
-    ||exact.find(file=>text(file?.path).includes(CURRENT_TOKEN))||exact[0]||null;
 }
 function rowFields(row){
   return {
@@ -78,9 +70,8 @@ function aggregate(name,rows){
 }
 
 export async function buildAppearanceDetailEvidence(options={}){
-  const tree=await listMagiDriveTree({maxItems:2000,maxDepth:12});
-  const file=findFile(tree);
-  if(!file)throw new Error(`${FILE_NAME} がDrive内に見つかりません`);
+  const file=await getDriveFileMetadata(FILE_ID);
+  if(!['出場詳細2026-2027.csv','出場詳細_2026-2027.csv'].includes(text(file?.name)))throw new Error(`Drive ID ${FILE_ID} のファイル名が想定と異なります: ${text(file?.name)}`);
   const fetched=await fetchDriveFileContent(file);
   const rows=parseCsv(decodeCsv(fetched.buffer));
   const normalizedRows=rows.filter(row=>text(rowFields(row).player));
