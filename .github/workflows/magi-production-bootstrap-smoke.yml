@@ -146,6 +146,19 @@ jobs:
           console.log('STAFF EVIDENCE ACCESS + COACH/PARENT/NORMALIZED PARSING: PASS');
           NODE
 
+      - name: Reject stale dynamic lineup hardcodes
+        shell: bash
+        run: |
+          set -euo pipefail
+          FILE='server/api/magi/_selection-live-evidence.js'
+          grep -Fq '標準オーダーをコード内の固定打順から決めない' "$FILE"
+          ! grep -Fq '現在の上位5人の基準線' "$FILE"
+          ! grep -Fq '橋向 結都は先発投手でない日は遊撃・6番' "$FILE"
+          ! grep -Fq '武田 晴琉翔は左翼が第一適性' "$FILE"
+          ! grep -Fq '大久保 陽翔は現チームのキャプテン' "$FILE"
+          ! grep -Fq '1番 大野 竜暉、2番 坂田 暉馬' "$FILE"
+          echo 'NO STALE DYNAMIC LINEUP HARDCODES: PASS'
+
       - name: Pin official 鰐渕 spelling
         shell: bash
         run: |
