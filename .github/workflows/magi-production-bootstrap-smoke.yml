@@ -171,6 +171,11 @@ jobs:
           grep -Fq "evidenceSource(sourceKey).id" server/api/magi/_strict-batting-master.js
           grep -Fq "evidenceSource(battingKey).id" server/api/magi/_detail-csv-audit.js
           grep -Fq "evidenceSource(fieldingKey).id" server/api/magi/_fielding-csv-audit.js
+          grep -Fq "COACH_STRATEGY_SNAPSHOT_20260802" server/api/magi/_evidence-source-map.js
+          grep -Fq "currentPolicy:false" server/api/magi/_evidence-source-map.js
+          grep -Fq "COACH_STRATEGY_SNAPSHOT" server/api/magi/_staff-evidence-access.js
+          grep -Fq "priority:'DATED_STRATEGY_REFERENCE'" server/api/magi/_selection-live-evidence.js
+          grep -Fq "最新の実起用・数値Evidence・日付の新しい指導者観察より優先しない" server/api/magi/_selection-live-evidence.js
           echo 'CANONICAL EVIDENCE SOURCE MAP: PASS'
 
       - name: Reject stale dynamic lineup hardcodes
