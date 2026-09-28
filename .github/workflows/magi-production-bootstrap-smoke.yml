@@ -25,6 +25,8 @@ on:
       - 'server/api/magi/_pitching-detail-evidence.js'
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_coach-observation-evidence.js'
+      - 'server/api/magi/_parent-observation-evidence.js'
+      - 'server/api/magi/_normalized-observation-evidence.js'
       - 'server/api/magi/_staff-evidence-access.js'
       - 'server/api/magi/core.js'
       - 'api/magi-gateway.js'
@@ -101,6 +103,8 @@ jobs:
           node --input-type=module <<'NODE'
           import {staffEvidenceAccessDecision} from './server/api/magi/_staff-evidence-access.js';
           import {buildCoachObservationEvidence} from './server/api/magi/_coach-observation-evidence.js';
+          import {buildParentObservationEvidence} from './server/api/magi/_parent-observation-evidence.js';
+          import {buildNormalizedObservationEvidence} from './server/api/magi/_normalized-observation-evidence.js';
           const sourceId='15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM';
           const meta={id:sourceId,name:'《MAGI》指導者向け情報提供フォーム（回答）',mimeType:'application/vnd.google-apps.spreadsheet',modifiedTime:'2026-09-20T11:23:37Z'};
           const csv=[
@@ -127,7 +131,17 @@ jobs:
             await buildCoachObservationEvidence({players:['坂田 暉馬'],accessContext:{role:'member',purpose:'DELIBERATION'},metadataProvider:async()=>{throw new Error('metadata must not be reached')}});
           }catch(e){blocked=e?.code==='STAFF_EVIDENCE_ACCESS_DENIED';}
           if(!blocked)throw new Error('member access was not blocked before source read');
-          console.log('STAFF EVIDENCE ACCESS + COACH PARSING: PASS');
+          const parentMeta={id:'parent',name:'《MAGI》保護者向け情報提供フォーム（回答）',mimeType:'application/vnd.google-apps.spreadsheet'};
+          const parentCsv=['タイムスタンプ,あなたの立場,気づいた選手を選んでください,いつ頃のことですか？,どんな場面でしたか？,実際にどんなことがありましたか？,どんな部分に成長や良さを感じましたか？,この出来事を一言で表すとしたら？（任意）,《MAGI》に補足しておきたいこと,お名前(任意)','2026-09-13 15:01:42,2年生保護者,大野 竜暉,9月12日,試合,精神的な成長を感じた,姿勢,,,'].join('\n');
+          const parentPacket=await buildParentObservationEvidence({players:['大野 竜暉'],accessContext:{role:'admin',purpose:'DELIBERATION'},metadataProvider:async()=>parentMeta,sheetCsvProvider:async()=>parentCsv});
+          if(parentPacket.observations.length!==1||parentPacket.observations[0].lineage.independentVote!==true)throw new Error('parent observation parse/lineage failed');
+          const ledgerMeta={id:'ledger',name:'《MAGI》指導者・保護者 観察情報統合台帳',mimeType:'application/vnd.google-apps.spreadsheet'};
+          const ledgerCsv=['記録日時,情報源,情報提供者,立場,対象,時期,場面・種別,原文・観察内容,成長・評価観点,一言タグ,補足,MAGI取扱区分','2026-09-13 15:01:42,保護者,,2年生保護者,大野 竜暉,9月12日,試合,精神的な成長を感じた,姿勢,,,PARENT OBSERVATION'].join('\n');
+          const ledgerPacket=await buildNormalizedObservationEvidence({players:['大野 竜暉'],accessContext:{role:'coach',purpose:'DELIBERATION'},metadataProvider:async()=>ledgerMeta,sheetCsvProvider:async()=>ledgerCsv});
+          const n=ledgerPacket.observations[0];
+          if(!n||n.lineage.independentVote!==false||n.lineage.derivedFrom!=='PARENT_OBSERVATION')throw new Error('normalized lineage dedupe failed');
+          if(staffEvidenceAccessDecision({role:'member',purpose:'DELIBERATION',sourceType:'PARENT_OBSERVATION'}).allowed)throw new Error('member parent observation access leaked');
+          console.log('STAFF EVIDENCE ACCESS + COACH/PARENT/NORMALIZED PARSING: PASS');
           NODE
 
       - name: Wait for production deployment
@@ -205,5 +219,5 @@ jobs:
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
           jq -r '"COACH DIAGNOSTIC: adminStatus=\(.adminCoachObservationStatus) adminError=\(.adminCoachObservationError) adminHttp=\(.adminCoachObservationHttpStatus) memberStatus=\(.memberCoachObservationStatus) memberError=\(.memberCoachObservationError) memberHttp=\(.memberCoachObservationHttpStatus)"' /tmp/selection.json
-          jq -e '.ok==true and .fullLineupReady==true and .closerPitchingReady==true and .adminCoachEvidenceReady==true and .memberCoachEvidenceBlocked==true and .adminCoachObservationStatus=="COMPLETE" and .memberCoachObservationStatus!="COMPLETE" and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
+          jq -e '.ok==true and .fullLineupReady==true and .adminNormalizedObservationReady==true and .memberNormalizedObservationBlocked==true and .adminNormalizedObservationStatus=="COMPLETE" and .memberNormalizedObservationStatus!="COMPLETE" and .closerPitchingReady==true and .adminCoachEvidenceReady==true and .memberCoachEvidenceBlocked==true and .adminCoachObservationStatus=="COMPLETE" and .memberCoachObservationStatus!="COMPLETE" and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
           echo 'PRODUCTION LIVE NUMERIC MASTER EVIDENCE: PASS'
