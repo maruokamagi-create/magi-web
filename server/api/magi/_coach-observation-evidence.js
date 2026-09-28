@@ -22,7 +22,7 @@ function parseCsv(raw){
   }
   if(cell||row.length){row.push(cell);rows.push(row);}
   const headers=(rows.shift()||[]).map(text);
-  return rows.filter(r=>r.some(x=>text(x))).map(r=>Object.fromEntries(headers.map((h,i)=>[h,text(r[i])])));
+  return rows.map((r,index)=>({sourceRow:index+2,row:r})).filter(x=>x.row.some(v=>text(v))).map(x=>({...Object.fromEntries(headers.map((h,i)=>[h,text(x.row[i])])),__sourceRow:x.sourceRow}));
 }
 
 async function exportGoogleSheetCsv(meta,gid=0){
@@ -57,7 +57,7 @@ export async function buildCoachObservationEvidence({players=[],gid=0,accessCont
     category:text(r['「何を伝えたいですか？」']),
     statement:text(r['「何がありましたか？」']),
     note:text(r['さらに残しておきたいことがあればお願いします']),
-    sourceRow:index+2
+    sourceRow:Number(r.__sourceRow)||index+2
   })).filter(x=>x.player&&x.statement&&(!wanted.size||wanted.has(x.player))).map(x=>({
     ...x,
     evidenceType:'COACH_OBSERVATION',
