@@ -40,25 +40,26 @@ function classifyStatement(category,body){
   return proposal&&observation?'OBSERVATION_WITH_OPINION':proposal?'OPINION_OR_PROPOSAL':'OBSERVATION';
 }
 
-export async function buildCoachObservationEvidence({players=[],gid=0,accessContext={}}={}){
+export async function buildCoachObservationEvidence({players=[],gid=0,accessContext={},metadataProvider=getDriveFileMetadata,sheetCsvProvider=null}={}){
   const access=assertStaffEvidenceAccess({...accessContext,sourceType:'COACH_OBSERVATION'});
-  const meta=await getDriveFileMetadata(COACH_SOURCE_ID);
+  const meta=await metadataProvider(COACH_SOURCE_ID);
   if(text(meta.name)!==COACH_SOURCE_NAME)throw new Error(`指導者観察の正本名が想定と異なります: ${text(meta.name)}`);
-  const raw=await exportGoogleSheetCsv(meta,gid);
+  const raw=sheetCsvProvider?await sheetCsvProvider(meta,gid):await exportGoogleSheetCsv(meta,gid);
   const rows=parseCsv(raw);
   const wanted=new Set((players||[]).map(text).filter(Boolean));
-  const observations=rows.map(r=>({
+  const observations=rows.map((r,index)=>({
     recordedAt:text(r['タイムスタンプ']),
     provider:text(r['情報提供者']),
     player:text(r['選手名']),
     category:text(r['「何を伝えたいですか？」']),
     statement:text(r['「何がありましたか？」']),
-    note:text(r['さらに残しておきたいことがあればお願いします'])
-  })).filter(x=>x.player&&x.statement&&(!wanted.size||wanted.has(x.player))).map((x,index)=>({
+    note:text(r['さらに残しておきたいことがあればお願いします']),
+    sourceRow:index+2
+  })).filter(x=>x.player&&x.statement&&(!wanted.size||wanted.has(x.player))).map(x=>({
     ...x,
     evidenceType:'COACH_OBSERVATION',
     statementClass:classifyStatement(x.category,x.statement),
-    lineage:{sourceId:meta.id,sourceRow:index+2,derivedFrom:null,independentVote:true}
+    lineage:{sourceId:meta.id,sourceRow:x.sourceRow,derivedFrom:null,independentVote:true}
   }));
   return {
     status:'COMPLETE',
