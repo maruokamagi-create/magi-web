@@ -1,9 +1,10 @@
 import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
+import { evidenceSource } from './_evidence-source-map.js';
 import { decodeCsv, parseCsv } from './_recent-batting-form.js';
 
-const APPEARANCE_FILE_ID=process.env.MAGI_CURRENT_APPEARANCE_FILE_ID||'1qjCyNhl49x7DYwa6FajUsvQJ1DkSLx5V';
-const FIELDING_FILE_ID=process.env.MAGI_CURRENT_FIELDING_FILE_ID||'1gYLconGQoYjFf4JMFL6o5J8P8hcPjQ2Z';
+const APPEARANCE_FILE_ID=process.env.MAGI_CURRENT_APPEARANCE_FILE_ID||evidenceSource('CURRENT_APPEARANCE_DETAIL').id;
+const FIELDING_FILE_ID=process.env.MAGI_CURRENT_FIELDING_FILE_ID||evidenceSource('CURRENT_FIELDING_DETAIL').id;
 const text=v=>String(v??'').trim();
 
 function numericOrder(v){const n=Number(text(v));return Number.isInteger(n)&&n>=1&&n<=9?n:null;}
