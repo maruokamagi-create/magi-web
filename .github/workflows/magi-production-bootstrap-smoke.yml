@@ -22,6 +22,7 @@ on:
       - 'server/api/magi/_semantic-authority.js'
       - 'server/api/magi/_drive-live-audit.js'
       - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_roster.js'
       - 'server/api/magi/_pitching-detail-evidence.js'
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_coach-observation-evidence.js'
