@@ -61,6 +61,7 @@ export async function buildCoachObservationEvidence({players=[],gid=0,accessCont
   })).filter(x=>x.player&&x.statement&&(!wanted.size||wanted.has(x.player))).map(x=>({
     ...x,
     evidenceType:'COACH_OBSERVATION',
+    observationKey:[x.recordedAt,'指導者',x.player,x.statement].map(text).join('|').normalize('NFKC'),
     statementClass:classifyStatement(x.category,x.statement),
     lineage:{sourceId:meta.id,sourceRow:x.sourceRow,derivedFrom:null,independentVote:true}
   }));
