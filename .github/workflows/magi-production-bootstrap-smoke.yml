@@ -94,6 +94,42 @@ jobs:
           console.log('DETERMINISTIC CONTROL SUMMARY POLICY: PASS');
           NODE
 
+      - name: Verify staff Evidence access and coach parsing deterministically
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {staffEvidenceAccessDecision} from './server/api/magi/_staff-evidence-access.js';
+          import {buildCoachObservationEvidence} from './server/api/magi/_coach-observation-evidence.js';
+          const sourceId='15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM';
+          const meta={id:sourceId,name:'《MAGI》指導者向け情報提供フォーム（回答）',mimeType:'application/vnd.google-apps.spreadsheet',modifiedTime:'2026-09-20T11:23:37Z'};
+          const csv=[
+            'タイムスタンプ,情報提供者,選手名,「何を伝えたいですか？」,「何がありましたか？」,さらに残しておきたいことがあればお願いします',
+            '2026/09/20 19:57:58,近藤先生,橋向 結都,投手,制球が安定し長いイニングを任せられる,',
+            '2026/09/20 20:05:15,近藤先生,坂田 暉馬,投手,最近、投手としては制球が安定しない。無理をさせるよりも、内野守備に専念する方がいい方向に向かう気がする。,',
+            '2026/09/20 20:23:37,大久保さん,大久保 陽翔,打撃,左打席の内容が改善した,'
+          ].join('\n');
+          const allow=staffEvidenceAccessDecision({role:'admin',purpose:'DELIBERATION',sourceType:'COACH_OBSERVATION'});
+          const deny=staffEvidenceAccessDecision({role:'member',purpose:'DELIBERATION',sourceType:'COACH_OBSERVATION'});
+          if(!allow.allowed||deny.allowed)throw new Error('staff access gate failed');
+          const packet=await buildCoachObservationEvidence({
+            players:['坂田 暉馬'],
+            accessContext:{role:'coach',purpose:'DELIBERATION'},
+            metadataProvider:async()=>meta,
+            sheetCsvProvider:async()=>csv
+          });
+          if(packet.status!=='COMPLETE'||packet.observations.length!==1)throw new Error('coach parse failed');
+          const obs=packet.observations[0];
+          if(obs.player!=='坂田 暉馬'||obs.lineage.sourceRow!==3)throw new Error('coach lineage row failed: '+JSON.stringify(obs));
+          if(obs.statementClass!=='OBSERVATION_WITH_OPINION')throw new Error('coach statement classification failed');
+          let blocked=false;
+          try{
+            await buildCoachObservationEvidence({players:['坂田 暉馬'],accessContext:{role:'member',purpose:'DELIBERATION'},metadataProvider:async()=>{throw new Error('metadata must not be reached')}});
+          }catch(e){blocked=e?.code==='STAFF_EVIDENCE_ACCESS_DENIED';}
+          if(!blocked)throw new Error('member access was not blocked before source read');
+          console.log('STAFF EVIDENCE ACCESS + COACH PARSING: PASS');
+          NODE
+
       - name: Wait for production deployment
         run: sleep 45
 
