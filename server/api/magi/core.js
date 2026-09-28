@@ -13,7 +13,7 @@ import { buildObservationEvidence } from './_observation-evidence.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
 import { needsCrossEvidenceAnalysis } from './_evaluation-routing.js';
 
-export const CORE_VERSION='magi-core-v11-natural-evaluation';
+export const CORE_VERSION='magi-core-v12-staff-evidence-gate';
 const SAMPLE_ROUTE_VERSION='sample-route-v1';
 
 function text(v){return String(v||'').trim()}
@@ -130,6 +130,7 @@ async function buildSpecialSampleEvidence({question,routed,semantic}){
   return evidence;
 }
 async function deliberationPayload({question,semantic,routed,role='member'}){
+  const staffAccessContext={role,purpose:'DELIBERATION'};
   const resolution=await resolveQuestionEvidence({question,routed,role});
   if(resolution?.requestedDocument&&resolution.status!=='RESOLVED'){
     const names=(resolution?.candidates||[]).slice(0,3).map(x=>x.name).filter(Boolean);
@@ -144,7 +145,7 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
       : false;
     if(naturalTeamReview){
       const teamRouted={...routed,players:[],domains:['LINEUP']};
-      const teamEvidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:teamRouted});
+      const teamEvidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:teamRouted,staffAccessContext});
       if(teamEvidence){
         await attachAppearanceEvidence(teamEvidence,{reviewKind:'TEAM_REVIEW'});
         teamEvidence.summary='現チーム14名の今季打撃・投手データ、過去実績、直近状態、出場・守備起用実績を横断し、チームの強み・弱点・変化・課題を分析するための正本Evidence。';
@@ -158,7 +159,7 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
       effectiveResolution={version:specialEvidence.resolverVersion,status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_SAMPLE_REVIEW',evidence:specialEvidence};
     }else if(!effectiveResolution?.evidence){
       const selectionRouted=String(routed?.selectionKind||'').toUpperCase()==='FULL_LINEUP'?{...routed,players:[]}:routed;
-      const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted});
+      const liveSelectionEvidence=await buildCurrentSelectionEvidence({question,routed:selectionRouted,staffAccessContext});
       if(liveSelectionEvidence){
         if(String(liveSelectionEvidence.selectionKind||'').toUpperCase()==='FULL_LINEUP'){
           const appearance=await buildAppearanceDetailEvidence();
