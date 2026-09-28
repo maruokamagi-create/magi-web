@@ -1,4 +1,5 @@
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
+import { evidenceSource } from './_evidence-source-map.js';
 import { runStrictBattingMasterAudit } from './_strict-batting-master.js';
 import { BATTING_RECONCILIATION_KEYS, reconcileMasterAndDetail, STATS_SOURCE_POLICY_VERSION } from './_stats-source-policy.js';
 import { runFieldingCsvAudit } from './_fielding-csv-audit.js';
@@ -20,20 +21,6 @@ function resolveSeason(value) {
 
 function norm(value) {
   return String(value ?? '').replace(/[\s　]+/g, '').trim();
-}
-
-function csvFile(tree, season, domain) {
-  const domainToken = domain === 'batting' ? 'BATTING_打撃' : 'FIELDING_守備';
-  const nameRe = domain === 'batting' ? /^打撃詳細.*\.csv$/i : /^守備詳細.*\.csv$/i;
-  const candidates = tree.filter(f => {
-    const path = String(f?.path || '');
-    const name = String(f?.name || '');
-    return path.includes(season.token) && path.includes('03_STATS_成績データ') && path.includes('10_DETAIL_詳細データ') && path.includes(domainToken) && nameRe.test(name);
-  });
-  if (candidates.length !== 1) {
-    throw new Error(`${season.yearToken} ${domainToken} CSVを一意に特定できませんでした (${candidates.length})`);
-  }
-  return candidates[0];
 }
 
 function decodeCsv(buffer) {
@@ -166,9 +153,16 @@ function fieldingStructure(rows, season) {
 
 export async function runDetailCsvConsistencyAudit({ season: seasonValue = 'current' } = {}) {
   const season = resolveSeason(seasonValue);
-  const tree = await listMagiDriveTree({ fresh:true });
-  const battingFile = csvFile(tree, season, 'batting');
-  const fieldingFile = csvFile(tree, season, 'fielding');
+  const battingKey=season.key==='current'?'CURRENT_BATTING_DETAIL':'OLD_BATTING_DETAIL';
+  const fieldingKey=season.key==='current'?'CURRENT_FIELDING_DETAIL':'OLD_FIELDING_DETAIL';
+  const battingEnv=season.key==='current'?'MAGI_CURRENT_BATTING_FILE_ID':'MAGI_OLD_BATTING_FILE_ID';
+  const fieldingEnv=season.key==='current'?'MAGI_CURRENT_FIELDING_FILE_ID':'MAGI_OLD_FIELDING_FILE_ID';
+  const [battingFile,fieldingFile]=await Promise.all([
+    getDriveFileMetadata(process.env[battingEnv]||evidenceSource(battingKey).id),
+    getDriveFileMetadata(process.env[fieldingEnv]||evidenceSource(fieldingKey).id)
+  ]);
+  if(!/^打撃詳細.*\.csv$/i.test(String(battingFile?.name||''))) throw new Error(`${season.yearToken}の打撃詳細IDが想定CSVではありません: ${String(battingFile?.name||'')}`);
+  if(!/^守備詳細.*\.csv$/i.test(String(fieldingFile?.name||''))) throw new Error(`${season.yearToken}の守備詳細IDが想定CSVではありません: ${String(fieldingFile?.name||'')}`);
 
   const [battingRaw, fieldingRaw] = await Promise.all([
     fetchDriveFileContent(battingFile),
