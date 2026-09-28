@@ -50,7 +50,8 @@ for (const official of OFFICIAL_PLAYER_REGISTRY) {
   ['武沢 大翔','武澤 大翔'],['武沢大翔','武澤 大翔'],
   ['橋向 結斗','橋向 結都'],['橋向結斗','橋向 結都'],
   ['宮崎 翔','宮嵜 翔'],['宮崎翔','宮嵜 翔'],
-  ['桜川 莉大','櫻川 莉大'],['桜川莉大','櫻川 莉大']
+  ['桜川 莉大','櫻川 莉大'],['桜川莉大','櫻川 莉大'],
+  ['鰐淵 将太','鰐渕 将太'],['鰐淵将太','鰐渕 将太']
 ].forEach(([alias, official]) => {
   PLAYER_ALIASES.set(alias, official);
   PLAYER_ALIASES.set(compact(alias), official);
