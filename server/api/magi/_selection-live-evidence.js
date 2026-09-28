@@ -6,8 +6,9 @@ import { isPitchingPlanQuestion } from './_pitching-plan.js';
 import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
 import { buildAppearanceFieldingEvidence } from './_appearance-fielding-evidence.js';
 import { buildCoachObservationEvidence } from './_coach-observation-evidence.js';
+import { buildNormalizedObservationEvidence } from './_normalized-observation-evidence.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v14-coach-pitching-role';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v15-normalized-observations';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -134,7 +135,7 @@ function pitchingPlanGameInnings(question,routed){
   return 7;
 }
 
-export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,staffAccessContext=null}={}){
+export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,normalizedObservationProvider=buildNormalizedObservationEvidence,staffAccessContext=null}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
@@ -142,14 +143,16 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   const wantsUsageEvidence=!isPitchingKind(kind);
   const wantsCoachPitchingEvidence=kind==='PITCHING_ROLE' && Boolean(staffAccessContext);
-  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult]=await Promise.allSettled([
+  const wantsNormalizedObservations=Boolean(staffAccessContext);
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
     isPitchingKind(kind) ? pitchingProvider('current') : Promise.resolve(null),
     isPitchingKind(kind) ? pitchingProvider('old') : Promise.resolve(null),
     wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null),
-    wantsCoachPitchingEvidence ? coachObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null)
+    wantsCoachPitchingEvidence ? coachObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
+    wantsNormalizedObservations ? normalizedObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
@@ -256,6 +259,23 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }
 
   const coachEvidence=coachResult?.status==='fulfilled'?coachResult.value:null;
+  const normalizedObservationEvidence=normalizedObservationResult?.status==='fulfilled'?normalizedObservationResult.value:null;
+  if(wantsNormalizedObservations){
+    if(normalizedObservationEvidence?.status==='COMPLETE'){
+      // For PITCHING_ROLE the raw coach provider is already present, so exclude
+      // normalized coach rows to prevent the same observation becoming two votes.
+      const visible=(normalizedObservationEvidence.observations||[]).filter(o=>kind!=='PITCHING_ROLE'||o.sourceType!=='指導者');
+      if(visible.length){
+        lines.push(
+          '【観察Evidence】統合台帳は原本の正規化ビュー。数値成績とは別系統で扱い、原本と同一の観察は独立票として二重加点しない。',
+          ...visible.map(o=>`${o.recordedAt||'日時不明'} / ${o.sourceType||'情報源不明'} / ${o.provider||'提供者不明'} / ${o.player}：${o.statement}`)
+        );
+      }
+    }else if(normalizedObservationResult?.status==='rejected'){
+      lines.push(`【観察Evidence】Access Gateまたは取得処理で利用不可。推測で補わない：${normalizedObservationResult.reason?.code||normalizedObservationResult.reason?.message||'取得エラー'}`);
+    }
+  }
+
   if(kind==='PITCHING_ROLE'){
     if(wantsCoachPitchingEvidence && coachEvidence?.status==='COMPLETE'){
       const pitchingCoachObs=(coachEvidence.observations||[]).filter(o=>/投手|投球|制球|継投|イニング|クローザー|抑え|守護神/.test(`${o.category} ${o.statement}`));
@@ -317,6 +337,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   const sources=[];
   if(usageEvidence?.status==='COMPLETE') sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
+  if(normalizedObservationEvidence?.status==='COMPLETE' && normalizedObservationEvidence.source) sources.push({...normalizedObservationEvidence.source,season:'current',priority:'NORMALIZED_OBSERVATION'});
   if(kind==='PITCHING_ROLE' && coachEvidence?.status==='COMPLETE' && coachEvidence.source) sources.push({...coachEvidence.source,season:'current',priority:'COACH_OBSERVATION'});
   if(isPitchingKind(kind)&&currentPitching?.source) sources.push({...currentPitching.source,season:'current',priority:'PRIMARY_PITCHING_DETAIL'});
   if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
@@ -338,6 +359,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
+    normalizedObservationStatus: normalizedObservationEvidence?.status|| (wantsNormalizedObservations?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
     coachObservationStatus: kind==='PITCHING_ROLE' ? (coachEvidence?.status|| (wantsCoachPitchingEvidence?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED')) : 'NOT_APPLICABLE',
     coachObservationError: kind==='PITCHING_ROLE' && wantsCoachPitchingEvidence && coachResult?.status==='rejected' ? String(coachResult.reason?.code||coachResult.reason?.message||'coach_observation_unavailable') : '',
     coachObservationHttpStatus: kind==='PITCHING_ROLE' && wantsCoachPitchingEvidence && coachResult?.status==='rejected' ? (Number(coachResult.reason?.status)||null) : null,
