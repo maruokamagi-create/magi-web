@@ -1,4 +1,5 @@
 import { getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
+import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
 const GOOGLE_SHEET_MIME='application/vnd.google-apps.spreadsheet';
 const COACH_SOURCE_ID=process.env.MAGI_COACH_OBSERVATIONS_FILE_ID||'15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM';
@@ -39,7 +40,8 @@ function classifyStatement(category,body){
   return proposal&&observation?'OBSERVATION_WITH_OPINION':proposal?'OPINION_OR_PROPOSAL':'OBSERVATION';
 }
 
-export async function buildCoachObservationEvidence({players=[],gid=0}={}){
+export async function buildCoachObservationEvidence({players=[],gid=0,accessContext={}}={}){
+  const access=assertStaffEvidenceAccess({...accessContext,sourceType:'COACH_OBSERVATION'});
   const meta=await getDriveFileMetadata(COACH_SOURCE_ID);
   if(text(meta.name)!==COACH_SOURCE_NAME)throw new Error(`指導者観察の正本名が想定と異なります: ${text(meta.name)}`);
   const raw=await exportGoogleSheetCsv(meta,gid);
@@ -60,6 +62,7 @@ export async function buildCoachObservationEvidence({players=[],gid=0}={}){
   }));
   return {
     status:'COMPLETE',
+    access,
     source:{id:meta.id,name:meta.name,mimeType:meta.mimeType,modifiedTime:meta.modifiedTime,priority:'COACH_OBSERVATION'},
     observations,
     rule:'指導者回答の原本のみをCOACH OBSERVATIONとして読む。観察事実と意見・起用提案をstatementClassで区別し、統合台帳の同一内容を別票として加算しない。'
