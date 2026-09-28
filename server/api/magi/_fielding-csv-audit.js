@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const SEASONS = {
   current:{ key:'current', label:'2026-2027', token:'2026-2027_CURRENT_現チーム' },
@@ -17,10 +18,6 @@ function num(v){ const n=Number(String(v??'').replace(/,/g,'').trim()); return N
 function inningOuts(v){ const s=String(v??'').trim(); if(!s) return 0; const n=Number(s); if(!Number.isFinite(n)) return 0; const whole=Math.trunc(n); const frac=Math.round((n-whole)*10); if(frac===0||frac===1||frac===2) return whole*3+frac; return Math.round(n*3); }
 function outsToInning(outs){ const o=Math.max(0,Math.round(outs)); return `${Math.floor(o/3)}.${o%3}`; }
 function sameValue(k,a,b){ if(k==='C_INN') return inningOuts(a)===inningOuts(b); return Math.abs(num(a)-num(b))<1e-9; }
-
-function findOne(tree, pred, label){ const list=tree.filter(pred); if(list.length!==1) throw new Error(`${label}を一意に特定できませんでした (${list.length})`); return list[0]; }
-function masterFile(tree,s){ return findOne(tree,f=>/\.xlsm$/i.test(String(f?.name||''))&&String(f?.path||'').includes(s.token)&&String(f?.path||'').includes('03_STATS_成績データ')&&String(f?.path||'').includes('00_MASTER_正本'),`${s.label} XLSM正本`); }
-function csvFile(tree,s){ return findOne(tree,f=>/^守備詳細.*\.csv$/i.test(String(f?.name||''))&&String(f?.path||'').includes(s.token)&&String(f?.path||'').includes('03_STATS_成績データ')&&String(f?.path||'').includes('10_DETAIL_詳細データ')&&String(f?.path||'').includes('FIELDING_守備'),`${s.label} 守備CSV`); }
 
 function decodeCsv(buffer){ for(const enc of ['utf-8','shift_jis']){ try{ const text=new TextDecoder(enc).decode(buffer).replace(/^\uFEFF/,''); if(/選手名/.test(text)&&/守備機会/.test(text)) return {text,encoding:enc}; }catch(_){} } throw new Error('守備CSV文字コードを判定できませんでした'); }
 function parseCsv(text){ const rows=[]; let row=[],cell='',q=false; for(let i=0;i<text.length;i++){ const ch=text[i]; if(q){ if(ch==='"'&&text[i+1]==='"'){cell+='"';i++;continue;} if(ch==='"'){q=false;continue;} cell+=ch; continue; } if(ch==='"'){q=true;continue;} if(ch===','){row.push(cell.trim());cell='';continue;} if(ch==='\n'){row.push(cell.replace(/\r$/,'').trim()); if(row.some(x=>String(x).trim()!=='')) rows.push(row); row=[];cell='';continue;} cell+=ch; } if(cell||row.length){row.push(cell.replace(/\r$/,'').trim()); if(row.some(x=>String(x).trim()!=='')) rows.push(row);} return rows; }
@@ -101,7 +98,17 @@ function xlsmTotals(buffer){
 function isZeroMaster(m){ return FIELDS.every(([k])=>k==='C_INN'?inningOuts(m?.[k])===0:num(m?.[k])===0); }
 
 export async function runFieldingCsvAudit({season:seasonValue='current'}={}){
-  const s=seasonOf(seasonValue); const tree=await listMagiDriveTree({fresh:true}); const mf=masterFile(tree,s); const cf=csvFile(tree,s);
+  const s=seasonOf(seasonValue);
+  const masterKey=s.key==='current'?'CURRENT_MASTER':'OLD_MASTER';
+  const fieldingKey=s.key==='current'?'CURRENT_FIELDING_DETAIL':'OLD_FIELDING_DETAIL';
+  const masterEnv=s.key==='current'?'MAGI_CURRENT_MASTER_FILE_ID':'MAGI_OLD_MASTER_FILE_ID';
+  const fieldingEnv=s.key==='current'?'MAGI_CURRENT_FIELDING_FILE_ID':'MAGI_OLD_FIELDING_FILE_ID';
+  const [mf,cf]=await Promise.all([
+    getDriveFileMetadata(process.env[masterEnv]||evidenceSource(masterKey).id),
+    getDriveFileMetadata(process.env[fieldingEnv]||evidenceSource(fieldingKey).id)
+  ]);
+  if(!/\.xlsm$/i.test(String(mf?.name||''))) throw new Error(`${s.label}の正本IDがXLSMではありません: ${String(mf?.name||'')}`);
+  if(!/^守備詳細.*\.csv$/i.test(String(cf?.name||''))) throw new Error(`${s.label}の守備詳細IDが想定CSVではありません: ${String(cf?.name||'')}`);
   const [mx,cx]=await Promise.all([fetchDriveFileContent(mf),fetchDriveFileContent(cf)]);
   const decoded=decodeCsv(cx.buffer); const csv=csvTotals(parseCsv(decoded.text)); const master=xlsmTotals(mx.buffer);
   const names=[...new Set([...Object.keys(master.totals),...Object.keys(csv.totals)])].sort((a,b)=>a.localeCompare(b,'ja'));
