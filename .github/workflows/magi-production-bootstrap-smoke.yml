@@ -176,6 +176,10 @@ jobs:
           grep -Fq "COACH_STRATEGY_SNAPSHOT" server/api/magi/_staff-evidence-access.js
           grep -Fq "priority:'DATED_STRATEGY_REFERENCE'" server/api/magi/_selection-live-evidence.js
           grep -Fq "最新の実起用・数値Evidence・日付の新しい指導者観察より優先しない" server/api/magi/_selection-live-evidence.js
+          grep -Fq 'chat-single-owner-v414.js?v=414' index.html
+          grep -Fq "owner:'chat-ui-canonical-v387'" chat-single-owner-v414.js
+          grep -Fq 'removesLegacyCrossDuplicates:true' chat-single-owner-v414.js
+          echo 'CHAT SINGLE OWNER: PASS'
           echo 'CANONICAL EVIDENCE SOURCE MAP: PASS'
 
       - name: Reject stale dynamic lineup hardcodes
