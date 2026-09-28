@@ -67,6 +67,13 @@ export default async function handler(req,res){
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
+    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v16-no-dynamic-lineup-hardcodes'
+      && body.includes('標準オーダーをコード内の固定打順から決めない')
+      && !body.includes('現在の上位5人の基準線')
+      && !body.includes('橋向 結都は先発投手でない日は遊撃・6番')
+      && !body.includes('武田 晴琉翔は左翼が第一適性')
+      && !body.includes('大久保 陽翔は現チームのキャプテン')
+      && !body.includes('1番 大野 竜暉、2番 坂田 暉馬');
     const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
     const naturalNames=naturalPlayers.map(x=>x.name);
     const naturalThirdReady=Boolean(naturalThirdPacket)&&naturalThirdPacket?.selectionKind==='BATTING_ORDER'&&naturalNames.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>naturalNames.includes(name))&&naturalPlayers.filter(hasCoreBatting).length===14&&String(naturalThirdPacket?.text||'').includes('【現チーム全14選手・打撃】');
@@ -99,8 +106,9 @@ export default async function handler(req,res){
       && !memberObservationText.includes('精神的な成長');
 
     res.status(200).json({
-      ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked,
+      ok:fullLineupReady&&dynamicLineupRulesReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked,
       fullLineupReady,
+      dynamicLineupRulesReady,
       adminNormalizedObservationReady,
       memberNormalizedObservationBlocked,
       adminNormalizedObservationStatus:adminFullPacket?.normalizedObservationStatus||'',
