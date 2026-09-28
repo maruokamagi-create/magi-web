@@ -9,12 +9,6 @@ const CONFIG={
 };
 const text=v=>String(v??'').trim();
 const num=v=>{const n=Number(text(v).replace(/,/g,''));return Number.isFinite(n)?n:0};
-function findFile(tree,season){
-  const cfg=CONFIG[season]||CONFIG.current;
-  const candidates=(tree||[]).filter(f=>cfg.names.includes(text(f?.name)));
-  return candidates.find(f=>{const p=text(f?.path);return p.includes(cfg.token)&&p.includes(STATS_TOKEN)&&p.includes(DETAIL_TOKEN)})
-    ||candidates.find(f=>text(f?.path).includes(cfg.token))||null;
-}
 function inningsOuts(value){
   const s=text(value); if(!s)return 0;
   const m=s.match(/^(\d+)(?:[\.．](\d))?$/); if(!m)return Math.round(num(s)*3);
