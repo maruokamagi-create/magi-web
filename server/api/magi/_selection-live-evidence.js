@@ -4,8 +4,9 @@ import { buildRecentSixBattingEvidence } from './_recent-batting-form.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
 import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
+import { buildAppearanceFieldingEvidence } from './_appearance-fielding-evidence.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v12-takeda-left-field';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v13-appearance-fielding';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -132,18 +133,20 @@ function pitchingPlanGameInnings(question,routed){
   return 7;
 }
 
-export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence}={}){
+export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
   const wantsRecentBatting=!isPitchingKind(kind);
 
-  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult]=await Promise.allSettled([
+  const wantsUsageEvidence=!isPitchingKind(kind);
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
     isPitchingKind(kind) ? pitchingProvider('current') : Promise.resolve(null),
-    isPitchingKind(kind) ? pitchingProvider('old') : Promise.resolve(null)
+    isPitchingKind(kind) ? pitchingProvider('old') : Promise.resolve(null),
+    wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
@@ -231,6 +234,24 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     }
   }
 
+  const usageEvidence=usageResult?.status==='fulfilled'?usageResult.value:null;
+  if(wantsUsageEvidence){
+    if(usageEvidence?.status==='COMPLETE'){
+      lines.push(
+        '【実起用・守備Evidence】出場詳細CSVをスタメン/途中出場/実打順/スタメン守備位置の最優先記録として扱い、守備詳細CSVを実守備位置の補助記録として重ねる。',
+        ...usageEvidence.players.map(p=>{
+          const a=p.appearance||{}, f=p.fielding||{};
+          const orders=Object.entries(a.battingOrders||{}).map(([k,v])=>`${k}番×${v}`).join('、')||'スタメン打順なし';
+          const starts=Object.entries(a.startingPositions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'スタメン守備なし';
+          const field=Object.entries(f.positions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'守備記録なし';
+          return `${p.name}：スタメン ${a.starts||0} / 途中出場 ${a.substitutions||0} / 打順 ${orders} / スタメン守備 ${starts} / 実守備 ${field}`;
+        })
+      );
+    }else{
+      lines.push('【実起用・守備Evidence】取得不可。出場実績・守備実績を推測で補わない。');
+    }
+  }
+
   lines.push(
     `【母数ルール】${sampleRule}`,
     '【過年度の扱い】基本判断は現チーム。ただし旧チームの現14名の記録は、実績・経験・再現性を見る重要な比較材料として明示的に使う。過去だけで現在を上書きせず、現在の小さい母数だけで過去の積み上げも消さない。旧チームの引退選手を現チーム候補に入れない。'
@@ -273,6 +294,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }
 
   const sources=[];
+  if(usageEvidence?.status==='COMPLETE') sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
   if(isPitchingKind(kind)&&currentPitching?.source) sources.push({...currentPitching.source,season:'current',priority:'PRIMARY_PITCHING_DETAIL'});
   if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
