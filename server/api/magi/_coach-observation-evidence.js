@@ -1,8 +1,9 @@
 import { getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const GOOGLE_SHEET_MIME='application/vnd.google-apps.spreadsheet';
-const COACH_SOURCE_ID=process.env.MAGI_COACH_OBSERVATIONS_FILE_ID||'15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM';
+const COACH_SOURCE_ID=process.env.MAGI_COACH_OBSERVATIONS_FILE_ID||evidenceSource('COACH_OBSERVATIONS').id;
 const COACH_SOURCE_NAME='《MAGI》指導者向け情報提供フォーム（回答）';
 const text=v=>String(v??'').trim();
 
