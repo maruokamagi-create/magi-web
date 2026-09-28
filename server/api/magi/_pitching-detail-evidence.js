@@ -1,12 +1,11 @@
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { decodeCsv, parseCsv } from './_recent-batting-form.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
-const STATS_TOKEN='03_STATS_成績データ';
-const DETAIL_TOKEN='10_DETAIL_詳細データ';
 const CONFIG={
-  current:{token:'2026-2027_CURRENT_現チーム',names:['投手詳細2026-2027.csv','投手詳細.csv']},
-  old:{token:'2025-2026_ARCHIVE_旧チーム',names:['投手詳細2025-2026.csv','投手詳細.csv']}
+  current:{sourceKey:'CURRENT_PITCHING_DETAIL',env:'MAGI_CURRENT_PITCHING_FILE_ID',name:'投手詳細2026-2027.csv'},
+  old:{sourceKey:'OLD_PITCHING_DETAIL',env:'MAGI_OLD_PITCHING_FILE_ID',name:'投手詳細2025-2026.csv'}
 };
 const text=v=>String(v??'').trim();
 const num=v=>{const n=Number(text(v).replace(/,/g,''));return Number.isFinite(n)?n:0};
@@ -38,8 +37,10 @@ function aggregate(name,rows){
   return {APP:String(APP),IP:fmtInnings(outs),H:String(H),R:String(R),ER:String(ER),BB:String(BB),SO:String(SO),HR:String(HR),WP:String(WP),ERA:era===null?'':era.toFixed(2),WHIP:whip===null?'':whip.toFixed(2),K9:k9===null?'':k9.toFixed(2)};
 }
 export async function buildPitchingDetailEvidence(season='current'){
-  const key=season==='old'?'old':'current', tree=await listMagiDriveTree({maxItems:2000,maxDepth:12}), file=findFile(tree,key);
-  if(!file)throw new Error(`${CONFIG[key].names[0]} がDrive内に見つかりません`);
+  const key=season==='old'?'old':'current', cfg=CONFIG[key];
+  const id=process.env[cfg.env]||evidenceSource(cfg.sourceKey).id;
+  const file=await getDriveFileMetadata(id);
+  if(text(file?.name)!==cfg.name)throw new Error(`Drive ID ${id} のファイル名が想定と異なります: ${text(file?.name)}`);
   const fetched=await fetchDriveFileContent(file);
   const rows=parseCsv(decodeCsv(fetched.buffer)).filter(r=>text(r['選手名']));
   const players=CURRENT_ROSTER.map(name=>({name,pitching:aggregate(name,rows)}));
