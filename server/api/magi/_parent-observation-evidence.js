@@ -1,5 +1,6 @@
 import { getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const GOOGLE_SHEET_MIME='application/vnd.google-apps.spreadsheet';
 const text=v=>String(v??'').trim();
@@ -25,7 +26,7 @@ async function exportCsv(meta){
 }
 function key(parts){return parts.map(text).join('|').normalize('NFKC');}
 
-const SOURCE_ID=process.env.MAGI_PARENT_OBSERVATIONS_FILE_ID||'1HlLRLrq17nav68Ko-WcULHJ1pxu98imtJLbhwrz723g';
+const SOURCE_ID=process.env.MAGI_PARENT_OBSERVATIONS_FILE_ID||evidenceSource('PARENT_OBSERVATIONS').id;
 const SOURCE_NAME='《MAGI》保護者向け情報提供フォーム（回答）';
 
 export async function buildParentObservationEvidence({players=[],accessContext={},metadataProvider=getDriveFileMetadata,sheetCsvProvider=null}={}){
