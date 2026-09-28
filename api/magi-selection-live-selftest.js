@@ -31,6 +31,16 @@ export default async function handler(req,res){
       question:'クローザーは誰がいい？',
       routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}
     });
+    const closerAdminPacket=await buildCurrentSelectionEvidence({
+      question:'クローザーは誰がいい？',
+      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},
+      staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+    });
+    const closerMemberPacket=await buildCurrentSelectionEvidence({
+      question:'クローザーは誰がいい？',
+      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},
+      staffAccessContext:{role:'member',purpose:'DELIBERATION'}
+    });
     const naturalThirdPacket=await buildCurrentSelectionEvidence({
       question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',
       routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}
@@ -57,9 +67,24 @@ export default async function handler(req,res){
     const sakataSaveCount=String(sakata?.pitching?.SV??'').trim();
     const closerHasSaveEvidence=sakataSaveCount==='2'&&String(closerPacket?.text||'').includes('坂田 暉馬：')&&String(closerPacket?.text||'').includes('セーブ 2')&&String(closerPacket?.text||'').includes('【クローザー役割実績】');
     const closerPitchingReady=closerHasSaveEvidence&&Boolean(closerPacket)&&closerPacket?.selectionKind==='PITCHING_ROLE'&&closerPlayers.length===CURRENT_ROSTER.length&&!uemura?.pitching&&!closerPacket?.pitchingEligible?.includes('上村 蓮')&&/投手詳細(?:2026-2027)?\.csv$/i.test(String(closerSource?.name||''))&&String(closerPacket?.text||'').includes('上村 蓮：投手記録なし')&&String(closerPacket?.text||'').includes('【投手候補資格】');
+
+    const adminText=String(closerAdminPacket?.text||'');
+    const memberText=String(closerMemberPacket?.text||'');
+    const adminCoachEvidenceReady=closerAdminPacket?.coachObservationStatus==='COMPLETE'
+      && adminText.includes('【指導者観察・投手起用】')
+      && adminText.includes('坂田 暉馬')
+      && adminText.includes('制球')
+      && adminText.includes('内野守備')
+      && String(closerAdminPacket?.allCurrentTeamCheck?.players?.find(p=>p.name==='坂田 暉馬')?.pitching?.SV??'').trim()==='2';
+    const memberCoachEvidenceBlocked=closerMemberPacket?.coachObservationStatus!=='COMPLETE'
+      && !memberText.includes('内野守備に専念');
     res.status(200).json({
-      ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady,
+      ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked,
       fullLineupReady,
+      adminCoachEvidenceReady,
+      memberCoachEvidenceBlocked,
+      adminCoachObservationStatus:closerAdminPacket?.coachObservationStatus||'',
+      memberCoachObservationStatus:closerMemberPacket?.coachObservationStatus||'',
       closerPitchingReady,
       closerPitchingSource:closerSource?.name||'',
       uemuraPitching:uemura?.pitching||null,
