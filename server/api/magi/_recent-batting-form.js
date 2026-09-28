@@ -1,10 +1,12 @@
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const CURRENT_TOKEN = '2026-2027_CURRENT_現チーム';
 const STATS_TOKEN = '03_STATS_成績データ';
 const DETAIL_TOKEN = '10_DETAIL_詳細データ';
 const BATTING_FILE = '打撃詳細2026-2027.csv';
+const BATTING_FILE_ID = process.env.MAGI_CURRENT_BATTING_FILE_ID || evidenceSource('CURRENT_BATTING_DETAIL').id;
 
 function text(value){ return String(value ?? '').trim(); }
 function numberValue(value){
@@ -126,9 +128,8 @@ function aggregatePlayer(name,rows,selectedKeys){
 export { decodeCsv, parseCsv };
 
 export async function buildRecentSixBattingEvidence(){
-  const tree=await listMagiDriveTree({maxItems:2000,maxDepth:12});
-  const file=findBattingDetailFile(tree);
-  if(!file) throw new Error(`${BATTING_FILE} がDrive内に見つかりません`);
+  const file=await getDriveFileMetadata(BATTING_FILE_ID);
+  if(text(file?.name)!==BATTING_FILE) throw new Error(`Drive ID ${BATTING_FILE_ID} のファイル名が想定と異なります: ${text(file?.name)}`);
   const fetched=await fetchDriveFileContent(file);
   const rows=parseCsv(decodeCsv(fetched.buffer)).filter(row=>parseDate(row['開催日']) && text(row['選手名']));
   const games=discoverGames(rows);
