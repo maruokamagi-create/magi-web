@@ -5,8 +5,9 @@ import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
 import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
 import { buildAppearanceFieldingEvidence } from './_appearance-fielding-evidence.js';
+import { buildCoachObservationEvidence } from './_coach-observation-evidence.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v13-appearance-fielding';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v14-coach-pitching-role';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -133,20 +134,22 @@ function pitchingPlanGameInnings(question,routed){
   return 7;
 }
 
-export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence}={}){
+export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,staffAccessContext=null}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
   const wantsRecentBatting=!isPitchingKind(kind);
 
   const wantsUsageEvidence=!isPitchingKind(kind);
-  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult]=await Promise.allSettled([
+  const wantsCoachPitchingEvidence=kind==='PITCHING_ROLE' && Boolean(staffAccessContext);
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
     isPitchingKind(kind) ? pitchingProvider('current') : Promise.resolve(null),
     isPitchingKind(kind) ? pitchingProvider('old') : Promise.resolve(null),
-    wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null)
+    wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null),
+    wantsCoachPitchingEvidence ? coachObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
@@ -252,6 +255,25 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     }
   }
 
+  const coachEvidence=coachResult?.status==='fulfilled'?coachResult.value:null;
+  if(kind==='PITCHING_ROLE'){
+    if(wantsCoachPitchingEvidence && coachEvidence?.status==='COMPLETE'){
+      const pitchingCoachObs=(coachEvidence.observations||[]).filter(o=>/投手|投球|制球|継投|イニング|クローザー|抑え|守護神/.test(`${o.category} ${o.statement}`));
+      if(pitchingCoachObs.length){
+        lines.push(
+          '【指導者観察・投手起用】以下は数値成績とは別系統のCOACH OBSERVATION。観察事実と意見・起用提案を区別し、数値Evidenceを上書きせず併記して審議する。',
+          ...pitchingCoachObs.map(o=>`${o.recordedAt||'日時不明'} / ${o.provider||'提供者不明'} / ${o.player} / ${o.statementClass}：${o.statement}`)
+        );
+      }else{
+        lines.push('【指導者観察・投手起用】アクセス済みだが、投手役割に直接関係する観察はなし。');
+      }
+    }else if(wantsCoachPitchingEvidence && coachResult?.status==='rejected'){
+      lines.push(`【指導者観察・投手起用】Access Gateまたは取得処理で利用不可。推測で補わない：${coachResult.reason?.message||'取得エラー'}`);
+    }else{
+      lines.push('【指導者観察・投手起用】権限コンテキスト未付与のため未取得。数値Evidenceだけで指導者の現在方針を推測しない。');
+    }
+  }
+
   lines.push(
     `【母数ルール】${sampleRule}`,
     '【過年度の扱い】基本判断は現チーム。ただし旧チームの現14名の記録は、実績・経験・再現性を見る重要な比較材料として明示的に使う。過去だけで現在を上書きせず、現在の小さい母数だけで過去の積み上げも消さない。旧チームの引退選手を現チーム候補に入れない。'
@@ -295,6 +317,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   const sources=[];
   if(usageEvidence?.status==='COMPLETE') sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
+  if(kind==='PITCHING_ROLE' && coachEvidence?.status==='COMPLETE' && coachEvidence.source) sources.push({...coachEvidence.source,season:'current',priority:'COACH_OBSERVATION'});
   if(isPitchingKind(kind)&&currentPitching?.source) sources.push({...currentPitching.source,season:'current',priority:'PRIMARY_PITCHING_DETAIL'});
   if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
@@ -315,6 +338,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
+    coachObservationStatus: kind==='PITCHING_ROLE' ? (coachEvidence?.status|| (wantsCoachPitchingEvidence?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED')) : 'NOT_APPLICABLE',
     selectionKind:kind,
     gameInnings,
     scope: audit?.seasonLabel||'2026-2027現チーム',
