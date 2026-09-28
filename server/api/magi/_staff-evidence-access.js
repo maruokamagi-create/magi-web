@@ -1,12 +1,13 @@
 export const STAFF_EVIDENCE_ACCESS_VERSION='staff-evidence-access-v1-deny-by-default';
 
 const ALLOWED_ROLES=new Set(['ADMIN','COACH']);
+const ROLE_ALIASES=new Map([['ADMIN','ADMIN'],['COACH','COACH'],['MEMBER','MEMBER'],['PLAYER','PLAYER']]);
 const ALLOWED_PURPOSES=new Set(['DELIBERATION','COACHING_ANALYSIS','INTERNAL_EVIDENCE']);
 
 function text(v){return String(v??'').trim().toUpperCase();}
 
 export function staffEvidenceAccessDecision({role='',purpose='',sourceType=''}={}){
-  const r=text(role),p=text(purpose),s=text(sourceType);
+  const rawRole=text(role),r=ROLE_ALIASES.get(rawRole)||rawRole,p=text(purpose),s=text(sourceType);
   if(s!=='COACH_OBSERVATION') return {allowed:false,reason:'UNSUPPORTED_STAFF_SOURCE',version:STAFF_EVIDENCE_ACCESS_VERSION};
   if(!r) return {allowed:false,reason:'ROLE_REQUIRED',version:STAFF_EVIDENCE_ACCESS_VERSION};
   if(!p) return {allowed:false,reason:'PURPOSE_REQUIRED',version:STAFF_EVIDENCE_ACCESS_VERSION};
