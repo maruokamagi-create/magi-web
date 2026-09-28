@@ -14,7 +14,7 @@ function parseCsv(raw){
   }
   if(cell||row.length){row.push(cell);rows.push(row);}
   const headers=(rows.shift()||[]).map(text);
-  return rows.filter(r=>r.some(x=>text(x))).map((r,index)=>({sourceRow:index+2,row:Object.fromEntries(headers.map((h,i)=>[h,text(r[i])]))}));
+  return rows.map((r,index)=>({sourceRow:index+2,row:r})).filter(x=>x.row.some(v=>text(v))).map(x=>({sourceRow:x.sourceRow,row:Object.fromEntries(headers.map((h,i)=>[h,text(x.row[i])]))}));
 }
 async function exportCsv(meta){
   if(text(meta.mimeType)!==GOOGLE_SHEET_MIME)throw new Error('observation_source_not_google_sheet');
