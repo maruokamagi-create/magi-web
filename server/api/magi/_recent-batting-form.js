@@ -2,9 +2,6 @@ import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.j
 import { CURRENT_ROSTER } from './_roster.js';
 import { evidenceSource } from './_evidence-source-map.js';
 
-const CURRENT_TOKEN = '2026-2027_CURRENT_現チーム';
-const STATS_TOKEN = '03_STATS_成績データ';
-const DETAIL_TOKEN = '10_DETAIL_詳細データ';
 const BATTING_FILE = '打撃詳細2026-2027.csv';
 const BATTING_FILE_ID = process.env.MAGI_CURRENT_BATTING_FILE_ID || evidenceSource('CURRENT_BATTING_DETAIL').id;
 
@@ -64,14 +61,6 @@ function parseCsv(source){
   if(cell.length || row.length){ row.push(cell.replace(/\r$/,'')); rows.push(row); }
   const header=(rows.shift()||[]).map(text);
   return rows.map(values=>Object.fromEntries(header.map((key,index)=>[key,text(values[index])])));
-}
-
-function findBattingDetailFile(tree){
-  const files=(tree||[]).filter(file=>text(file?.name)===BATTING_FILE);
-  return files.find(file=>{
-    const path=text(file?.path);
-    return path.includes(CURRENT_TOKEN) && path.includes(STATS_TOKEN) && path.includes(DETAIL_TOKEN);
-  }) || files.find(file=>text(file?.path).includes(CURRENT_TOKEN)) || files[0] || null;
 }
 
 function discoverGames(rows){
