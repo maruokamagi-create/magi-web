@@ -11,6 +11,7 @@ export const EVIDENCE_SOURCES=Object.freeze({
   COACH_OBSERVATIONS:Object.freeze({id:'15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM',type:'OBSERVATION',authority:'COACH_OBSERVATION'}),
   PARENT_OBSERVATIONS:Object.freeze({id:'1HlLRLrq17nav68Ko-WcULHJ1pxu98imtJLbhwrz723g',type:'OBSERVATION',authority:'PARENT_OBSERVATION'}),
   NORMALIZED_OBSERVATIONS:Object.freeze({id:'1Cs5cQUJYEC1Ta7OQXi5hUWnKkQHVOHByRiWtwKsC0uE',type:'OBSERVATION',authority:'NORMALIZED_OBSERVATION',independentVote:false}),
+  COACH_STRATEGY_SNAPSHOT_20260802:Object.freeze({id:'17eV-wwO-JlqQF7s4FPpL3URz6uwZt20S',type:'STRATEGY_SNAPSHOT',authority:'COACH_STRATEGY_SNAPSHOT',effectiveAt:'2026-08-02',currentPolicy:false,independentVote:false}),
   OLD_MASTER:Object.freeze({id:'1n8o28UPsNuyi8_9OlZvE5D7JBwjgZKdg',type:'HISTORICAL_REFERENCE',authority:'NUMERIC_MASTER'}),
   OLD_BATTING_DETAIL:Object.freeze({id:'1mNRMN8ChOnDolOoIQ9kHCh2mGionaxai',type:'HISTORICAL_REFERENCE',authority:'BATTING_DETAIL'}),
   OLD_PITCHING_DETAIL:Object.freeze({id:'1thxQXAdswckPVdmXdvRXPeuVAfDtskUB',type:'HISTORICAL_REFERENCE',authority:'PITCHING_DETAIL'}),
