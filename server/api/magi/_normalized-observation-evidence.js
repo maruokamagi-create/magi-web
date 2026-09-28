@@ -1,5 +1,6 @@
 import { getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const GOOGLE_SHEET_MIME='application/vnd.google-apps.spreadsheet';
 const text=v=>String(v??'').trim();
@@ -25,7 +26,7 @@ async function exportCsv(meta){
 }
 function key(parts){return parts.map(text).join('|').normalize('NFKC');}
 
-const SOURCE_ID=process.env.MAGI_NORMALIZED_OBSERVATIONS_FILE_ID||'1Cs5cQUJYEC1Ta7OQXi5hUWnKkQHVOHByRiWtwKsC0uE';
+const SOURCE_ID=process.env.MAGI_NORMALIZED_OBSERVATIONS_FILE_ID||evidenceSource('NORMALIZED_OBSERVATIONS').id;
 const SOURCE_NAME='《MAGI》指導者・保護者 観察情報統合台帳';
 
 export async function buildNormalizedObservationEvidence({players=[],accessContext={},metadataProvider=getDriveFileMetadata,sheetCsvProvider=null}={}){
