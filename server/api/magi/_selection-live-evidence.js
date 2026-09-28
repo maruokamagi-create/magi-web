@@ -339,6 +339,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
     coachObservationStatus: kind==='PITCHING_ROLE' ? (coachEvidence?.status|| (wantsCoachPitchingEvidence?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED')) : 'NOT_APPLICABLE',
+    coachObservationError: kind==='PITCHING_ROLE' && wantsCoachPitchingEvidence && coachResult?.status==='rejected' ? String(coachResult.reason?.code||coachResult.reason?.message||'coach_observation_unavailable') : '',
+    coachObservationHttpStatus: kind==='PITCHING_ROLE' && wantsCoachPitchingEvidence && coachResult?.status==='rejected' ? (Number(coachResult.reason?.status)||null) : null,
     selectionKind:kind,
     gameInnings,
     scope: audit?.seasonLabel||'2026-2027現チーム',
