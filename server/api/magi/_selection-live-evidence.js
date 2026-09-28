@@ -7,8 +7,9 @@ import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
 import { buildAppearanceFieldingEvidence } from './_appearance-fielding-evidence.js';
 import { buildCoachObservationEvidence } from './_coach-observation-evidence.js';
 import { buildNormalizedObservationEvidence } from './_normalized-observation-evidence.js';
+import { buildCoachStrategySnapshotEvidence } from './_coach-strategy-snapshot-evidence.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v16-no-dynamic-lineup-hardcodes';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v17-dated-strategy-reference';
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
@@ -135,7 +136,7 @@ function pitchingPlanGameInnings(question,routed){
   return 7;
 }
 
-export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,normalizedObservationProvider=buildNormalizedObservationEvidence,staffAccessContext=null}={}){
+export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,normalizedObservationProvider=buildNormalizedObservationEvidence,coachStrategyProvider=buildCoachStrategySnapshotEvidence,staffAccessContext=null}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
@@ -144,7 +145,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const wantsUsageEvidence=!isPitchingKind(kind);
   const wantsCoachPitchingEvidence=kind==='PITCHING_ROLE' && Boolean(staffAccessContext);
   const wantsNormalizedObservations=Boolean(staffAccessContext);
-  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult]=await Promise.allSettled([
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult,strategyResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
@@ -152,7 +153,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     isPitchingKind(kind) ? pitchingProvider('old') : Promise.resolve(null),
     wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null),
     wantsCoachPitchingEvidence ? coachObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
-    wantsNormalizedObservations ? normalizedObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null)
+    wantsNormalizedObservations ? normalizedObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
+    staffAccessContext ? coachStrategyProvider({accessContext:staffAccessContext}) : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
@@ -260,6 +262,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   const coachEvidence=coachResult?.status==='fulfilled'?coachResult.value:null;
   const normalizedObservationEvidence=normalizedObservationResult?.status==='fulfilled'?normalizedObservationResult.value:null;
+  const strategyEvidence=strategyResult?.status==='fulfilled'?strategyResult.value:null;
   if(wantsNormalizedObservations){
     if(normalizedObservationEvidence?.status==='COMPLETE'){
       // For PITCHING_ROLE the raw coach provider is already present, so exclude
@@ -274,6 +277,13 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     }else if(normalizedObservationResult?.status==='rejected'){
       lines.push(`【観察Evidence】Access Gateまたは取得処理で利用不可。推測で補わない：${normalizedObservationResult.reason?.code||normalizedObservationResult.reason?.message||'取得エラー'}`);
     }
+  }
+
+  if(strategyEvidence?.status==='REFERENCE_ONLY'){
+    lines.push(
+      `【過去の指導者起用方針】${strategyEvidence.effectiveAt}時点の起用案を補助Evidenceとして登録。現在の固定方針ではなく、最新の実起用・数値Evidence・日付の新しい指導者観察より優先しない。`,
+      strategyEvidence.textExtractable ? strategyEvidence.text : '本文はPDFのためこの経路では未展開。内容を推測で補わない。'
+    );
   }
 
   if(kind==='PITCHING_ROLE'){
@@ -331,6 +341,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }
 
   const sources=[];
+  if(strategyEvidence?.source) sources.push({...strategyEvidence.source,season:'current',priority:'DATED_STRATEGY_REFERENCE',effectiveAt:strategyEvidence.effectiveAt,currentPolicy:false});
   if(usageEvidence?.status==='COMPLETE') sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
   if(normalizedObservationEvidence?.status==='COMPLETE' && normalizedObservationEvidence.source) sources.push({...normalizedObservationEvidence.source,season:'current',priority:'NORMALIZED_OBSERVATION'});
   if(kind==='PITCHING_ROLE' && coachEvidence?.status==='COMPLETE' && coachEvidence.source) sources.push({...coachEvidence.source,season:'current',priority:'COACH_OBSERVATION'});
