@@ -150,6 +150,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          grep -Fq "evidenceSource('CURRENT_MASTER').id" server/api/magi/_drive-live-audit.js
+          grep -Fq "evidenceSource('OLD_MASTER').id" server/api/magi/_drive-live-audit.js
+          ! grep -Fq 'listMagiDriveTree' server/api/magi/_drive-live-audit.js
           grep -Fq "evidenceSource('CURRENT_BATTING_DETAIL').id" server/api/magi/_recent-batting-form.js
           grep -Fq "evidenceSource(cfg.sourceKey).id" server/api/magi/_pitching-detail-evidence.js
           grep -Fq "evidenceSource('CURRENT_APPEARANCE_DETAIL').id" server/api/magi/_appearance-fielding-evidence.js
