@@ -23,6 +23,9 @@ on:
       - 'server/api/magi/_drive-live-audit.js'
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_pitching-detail-evidence.js'
+      - 'server/api/magi/_appearance-fielding-evidence.js'
+      - 'server/api/magi/_coach-observation-evidence.js'
+      - 'server/api/magi/_staff-evidence-access.js'
       - 'server/api/magi/core.js'
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
@@ -165,5 +168,5 @@ jobs:
 
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
           cat /tmp/selection.json; echo
-          jq -e '.ok==true and .fullLineupReady==true and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
+          jq -e '.ok==true and .fullLineupReady==true and .closerPitchingReady==true and .adminCoachEvidenceReady==true and .memberCoachEvidenceBlocked==true and .adminCoachObservationStatus=="COMPLETE" and .memberCoachObservationStatus!="COMPLETE" and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
           echo 'PRODUCTION LIVE NUMERIC MASTER EVIDENCE: PASS'
