@@ -146,6 +146,18 @@ jobs:
           console.log('STAFF EVIDENCE ACCESS + COACH/PARENT/NORMALIZED PARSING: PASS');
           NODE
 
+      - name: Pin official 鰐渕 spelling
+        shell: bash
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'NODE'
+          import {CURRENT_ROSTER,canonicalPlayerNameStrict} from './server/api/magi/_roster.js';
+          if(!CURRENT_ROSTER.includes('鰐渕 将太'))throw new Error('official 鰐渕 roster spelling missing');
+          if(CURRENT_ROSTER.includes('鰐淵 将太'))throw new Error('wrong 鰐淵 spelling entered official roster');
+          if(canonicalPlayerNameStrict('鰐淵 将太')!=='鰐渕 将太')throw new Error('鰐淵 typo alias did not resolve to 鰐渕');
+          console.log('OFFICIAL 鰐渕 SPELLING: PASS');
+          NODE
+
       - name: Wait for production deployment
         run: sleep 45
 
