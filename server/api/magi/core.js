@@ -111,12 +111,12 @@ async function attachAppearanceEvidence(evidence,{reviewKind='',focusPlayer=''}=
   if(focusPlayer)evidence.focusPlayer=focusPlayer;
   return evidence;
 }
-async function buildSpecialSampleEvidence({question,routed,semantic}){
+async function buildSpecialSampleEvidence({question,routed,semantic,staffAccessContext=null}){
   const teamReview=isTeamReviewSample(question);
   const starter=starterSamplePlayer(question);
   if(!teamReview&&!starter)return null;
   const forcedRouted={...routed,players:[],domains:['LINEUP']};
-  const evidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:forcedRouted});
+  const evidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:forcedRouted,staffAccessContext});
   if(!evidence)return null;
   await attachAppearanceEvidence(evidence,{reviewKind:teamReview?'TEAM_REVIEW':'STARTER_EVALUATION',focusPlayer:starter});
   if(teamReview){
@@ -154,7 +154,7 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
       }
     }
 
-    const specialEvidence=effectiveResolution?.evidence?null:await buildSpecialSampleEvidence({question,routed,semantic});
+    const specialEvidence=effectiveResolution?.evidence?null:await buildSpecialSampleEvidence({question,routed,semantic,staffAccessContext});
     if(specialEvidence){
       effectiveResolution={version:specialEvidence.resolverVersion,status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_SAMPLE_REVIEW',evidence:specialEvidence};
     }else if(!effectiveResolution?.evidence){
