@@ -27,6 +27,16 @@ export default async function handler(req,res){
       question:'現時点のベストオーダーを審議して',
       routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}
     });
+    const adminFullPacket=await buildCurrentSelectionEvidence({
+      question:'現時点のベストオーダーを審議して',
+      routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},
+      staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+    });
+    const memberFullPacket=await buildCurrentSelectionEvidence({
+      question:'現時点のベストオーダーを審議して',
+      routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},
+      staffAccessContext:{role:'member',purpose:'DELIBERATION'}
+    });
     const closerPacket=await buildCurrentSelectionEvidence({
       question:'クローザーは誰がいい？',
       routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}
@@ -78,9 +88,23 @@ export default async function handler(req,res){
       && String(closerAdminPacket?.allCurrentTeamCheck?.players?.find(p=>p.name==='坂田 暉馬')?.pitching?.SV??'').trim()==='2';
     const memberCoachEvidenceBlocked=closerMemberPacket?.coachObservationStatus!=='COMPLETE'
       && !memberText.includes('内野守備に専念');
+    const adminObservationText=String(adminFullPacket?.text||'');
+    const memberObservationText=String(memberFullPacket?.text||'');
+    const adminNormalizedObservationReady=adminFullPacket?.normalizedObservationStatus==='COMPLETE'
+      && adminObservationText.includes('【観察Evidence】')
+      && adminObservationText.includes('PARENT')===false
+      && adminObservationText.includes('大野 竜暉')
+      && adminObservationText.includes('精神的な成長');
+    const memberNormalizedObservationBlocked=memberFullPacket?.normalizedObservationStatus!=='COMPLETE'
+      && !memberObservationText.includes('精神的な成長');
+
     res.status(200).json({
-      ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked,
+      ok:fullLineupReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked,
       fullLineupReady,
+      adminNormalizedObservationReady,
+      memberNormalizedObservationBlocked,
+      adminNormalizedObservationStatus:adminFullPacket?.normalizedObservationStatus||'',
+      memberNormalizedObservationStatus:memberFullPacket?.normalizedObservationStatus||'',
       adminCoachEvidenceReady,
       memberCoachEvidenceBlocked,
       adminCoachObservationStatus:closerAdminPacket?.coachObservationStatus||'',
