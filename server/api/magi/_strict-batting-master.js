@@ -1,5 +1,6 @@
 import * as XLSX from 'xlsx';
-import { fetchDriveFileContent, listMagiDriveTree } from '../drive/_service.js';
+import { fetchDriveFileContent, getDriveFileMetadata } from '../drive/_service.js';
+import { evidenceSource } from './_evidence-source-map.js';
 
 const STATS_TOKEN = '03_STATS_成績データ';
 const MASTER_TOKEN = '00_MASTER_正本';
@@ -23,12 +24,6 @@ function resolveSeason(value) {
 
 function norm(value) {
   return String(value ?? '').replace(/[\s　]+/g, '').trim();
-}
-
-function isAuthoritativeXlsm(file, season) {
-  const name = String(file?.name || '');
-  const path = String(file?.path || '');
-  return /\.xlsm$/i.test(name) && path.includes(season.token) && path.includes(STATS_TOKEN) && path.includes(MASTER_TOKEN);
 }
 
 function displayDecimal(value) {
@@ -122,11 +117,11 @@ function findStrictBattingRow(sheets, playerName) {
 
 export async function runStrictBattingMasterAudit({ season:seasonValue='current', players=[] } = {}) {
   const season = resolveSeason(seasonValue);
-  const tree = await listMagiDriveTree({ fresh:true });
-  const candidates = tree.filter(file => isAuthoritativeXlsm(file, season));
-  if (candidates.length !== 1) throw new Error(`${season.label}の00_MASTER_正本XLSMを一意に特定できませんでした (${candidates.length})`);
-
-  const file = candidates[0];
+  const sourceKey=season.key==='current'?'CURRENT_MASTER':'OLD_MASTER';
+  const envKey=season.key==='current'?'MAGI_CURRENT_MASTER_FILE_ID':'MAGI_OLD_MASTER_FILE_ID';
+  const id=process.env[envKey]||evidenceSource(sourceKey).id;
+  const file=await getDriveFileMetadata(id);
+  if(!/\.xlsm$/i.test(String(file?.name||''))) throw new Error(`${season.label}の正本IDがXLSMではありません: ${String(file?.name||'')}`);
   const fetched = await fetchDriveFileContent(file);
   const sheets = allRows(fetched.buffer);
   const requested = [...new Set((Array.isArray(players) ? players : []).filter(Boolean))];
