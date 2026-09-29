@@ -144,9 +144,9 @@ export default async function handler(req,res){
     const runNatural=mode==='naturalThird'||String(req.query?.naturalThird||'')==='1';
     const naturalThird=runNatural?await runNaturalThird(base,naturalPacket):{status:'SKIPPED_BY_DEFAULT',recommendedCandidates:[],centerCandidates:[],personaSelections:{}};
     const naturalThirdError=runNatural?'':'Use ?naturalThird=1 for the dedicated exact natural-third E2E; default run preserves provider capacity for closer E2E.';
-    const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}});
+    const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}});
     const closer=mode==='closer'?await runCloser(base,closerPacket):null;
-    if(mode==='closer'&&(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2'))throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
+    if(mode==='closer'&&(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2'||closerPacket?.coachObservationStatus!=='COMPLETE'||!String(closerPacket?.text||'').includes('坂田 暉馬')))throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
     return res.status(200).json({ok:true,mode,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
   }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error)});}
 }
