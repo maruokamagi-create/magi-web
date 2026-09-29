@@ -35,6 +35,7 @@ on:
       - 'api/magi-selection-live-selftest.js'
       - 'api/magi-persona-live-diagnostic.js'
       - 'api/magi-runtime-stage-diagnostic.js'
+      - 'server/api/magi/_coach-strategy-snapshot-evidence.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
   # final verification refresh 2026-09-25
