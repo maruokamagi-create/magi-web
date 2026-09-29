@@ -282,8 +282,8 @@ jobs:
             "$BASE/api/magi-persona-live-diagnostic?stage=evidence&persona=melchior" \
             "$BASE/api/magi-persona-live-diagnostic?stage=persona&persona=melchior"; do
             echo "=== $url ==="
-            http_code=$(curl -L --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$url" -o /tmp/persona-diagnostic.json)
-            cat /tmp/persona-diagnostic.json; echo
+            http_code=$(curl -L --max-time 25 --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$url" -o /tmp/persona-diagnostic.json || true)
+            cat /tmp/persona-diagnostic.json 2>/dev/null || true; echo
             echo "HTTP $http_code"
           done
 
@@ -294,8 +294,8 @@ jobs:
           BASE='https://magi-web.vercel.app'
           for probe in lineup lineupAdmin lineupMember closer closerAdmin closerMember pitchingPlan naturalThird; do
             echo "=== EVIDENCE PROBE $probe ==="
-            http_code=$(curl -L --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-selection-live-selftest?probe=$probe" -o /tmp/evidence-probe.json)
-            cat /tmp/evidence-probe.json; echo
+            http_code=$(curl -L --max-time 25 --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-selection-live-selftest?probe=$probe" -o /tmp/evidence-probe.json || true)
+            cat /tmp/evidence-probe.json 2>/dev/null || true; echo
             echo "HTTP $http_code"
           done
 
