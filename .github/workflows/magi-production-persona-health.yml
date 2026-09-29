@@ -1,4 +1,5 @@
 name: MAGI Production Persona Health
+# verify dynamic gateway module loading
 
 on:
   workflow_dispatch:
