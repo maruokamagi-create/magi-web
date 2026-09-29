@@ -106,8 +106,12 @@ jobs:
             else
               jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
             fi
-            curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
+            http_code=$(curl -L --retry 2 --retry-delay 3 --retry-all-errors -sS -w '%{http_code}' -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile")
             cat "$outfile"; echo
+            if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+              echo "persona endpoint HTTP $http_code" >&2
+              exit 22
+            fi
             sleep 2
           }
 
