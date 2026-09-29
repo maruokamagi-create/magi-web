@@ -25,43 +25,16 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
-    const packet=await buildCurrentSelectionEvidence({
-      question:'現時点のベストオーダーを審議して',
-      routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}
-    });
-    const adminFullPacket=await buildCurrentSelectionEvidence({
-      question:'現時点のベストオーダーを審議して',
-      routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},
-      staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
-    });
-    const memberFullPacket=await buildCurrentSelectionEvidence({
-      question:'現時点のベストオーダーを審議して',
-      routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},
-      staffAccessContext:{role:'member',purpose:'DELIBERATION'}
-    });
-    const closerPacket=await buildCurrentSelectionEvidence({
-      question:'クローザーは誰がいい？',
-      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}
-    });
-    const closerAdminPacket=await buildCurrentSelectionEvidence({
-      question:'クローザーは誰がいい？',
-      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},
-      staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
-    });
-    const closerMemberPacket=await buildCurrentSelectionEvidence({
-      question:'クローザーは誰がいい？',
-      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},
-      staffAccessContext:{role:'member',purpose:'DELIBERATION'}
-    });
-    const pitchingPlanPacket=await buildCurrentSelectionEvidence({
-      question:'7回制の投手運用を考えて',
-      routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_PLAN'},
-      staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
-    });
-    const naturalThirdPacket=await buildCurrentSelectionEvidence({
-      question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',
-      routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}
-    });
+    const [packet,adminFullPacket,memberFullPacket,closerPacket,closerAdminPacket,closerMemberPacket,pitchingPlanPacket,naturalThirdPacket]=await Promise.all([
+      buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}}),
+      buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
+      buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},staffAccessContext:{role:'member',purpose:'DELIBERATION'}}),
+      buildCurrentSelectionEvidence({question:'クローザーは誰がいい？',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}}),
+      buildCurrentSelectionEvidence({question:'クローザーは誰がいい？',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
+      buildCurrentSelectionEvidence({question:'クローザーは誰がいい？',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},staffAccessContext:{role:'member',purpose:'DELIBERATION'}}),
+      buildCurrentSelectionEvidence({question:'7回制の投手運用を考えて',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_PLAN'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
+      buildCurrentSelectionEvidence({question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}})
+    ]);
     const players=packet?.allCurrentTeamCheck?.players||[];
     const names=players.map(x=>x.name);
     const exact=names.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>names.includes(name));
