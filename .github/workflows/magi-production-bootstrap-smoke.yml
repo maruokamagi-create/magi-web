@@ -282,8 +282,12 @@ jobs:
           grep -Fq '/chat-ui-canonical-v387.js?v=387' /tmp/index.html
           echo 'PRODUCTION BOOTSTRAP ASSETS: PASS'
 
-          curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json
+          http_code=$(curl -L --retry 2 --retry-delay 3 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json)
           cat /tmp/selection.json; echo
+          if [ "$http_code" -lt 200 ] || [ "$http_code" -ge 300 ]; then
+            echo "selection selftest HTTP $http_code" >&2
+            exit 22
+          fi
           jq -r '"COACH DIAGNOSTIC: adminStatus=\(.adminCoachObservationStatus) adminError=\(.adminCoachObservationError) adminHttp=\(.adminCoachObservationHttpStatus) memberStatus=\(.memberCoachObservationStatus) memberError=\(.memberCoachObservationError) memberHttp=\(.memberCoachObservationHttpStatus)"' /tmp/selection.json
           jq -r '"OBSERVATION DIAGNOSTIC: adminStatus=\(.adminNormalizedObservationStatus) adminError=\(.adminNormalizedObservationError) adminHttp=\(.adminNormalizedObservationHttpStatus) memberStatus=\(.memberNormalizedObservationStatus) memberError=\(.memberNormalizedObservationError) memberHttp=\(.memberNormalizedObservationHttpStatus)"' /tmp/selection.json
           jq -e '.ok==true and .fullLineupReady==true and .dynamicLineupRulesReady==true and .adminNormalizedObservationReady==true and .memberNormalizedObservationBlocked==true and .adminNormalizedObservationStatus=="COMPLETE" and .memberNormalizedObservationStatus!="COMPLETE" and .closerPitchingReady==true and .adminCoachEvidenceReady==true and .memberCoachEvidenceBlocked==true and .adminCoachObservationStatus=="COMPLETE" and .memberCoachObservationStatus!="COMPLETE" and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
