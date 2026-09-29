@@ -18,10 +18,6 @@ on:
   # final verification refresh 2026-09-25
 
 
-concurrency:
-  group: magi-production-heavy-deliberation
-  cancel-in-progress: false
-
 jobs:
   reproducibility:
     runs-on: ubuntu-latest
