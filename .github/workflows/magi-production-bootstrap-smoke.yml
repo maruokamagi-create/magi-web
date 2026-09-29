@@ -33,8 +33,6 @@ on:
       - 'server/api/magi/core.js'
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
-      - 'api/magi-persona-live-diagnostic.js'
-      - 'api/magi-runtime-stage-diagnostic.js'
       - 'server/api/magi/_coach-strategy-snapshot-evidence.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
@@ -274,31 +272,6 @@ jobs:
           grep -Fq 'const requestedNames=focusPlayer?' server/api/magi/_appearance-detail-evidence.js
           grep -Fq "if (!naturalPlayerReview && !resolution?.requestedDocument && focusNames.length" server/api/magi/core.js
           echo 'NATURAL TEAM/PLAYER EVALUATION ROUTING: PASS'
-
-      - name: Diagnose production runtime stages
-        run: |
-          set -euo pipefail
-          BASE='https://magi-web.vercel.app'
-          for stage in base vercelCacheImport xlsxImport auditImport selectionImport selectionStub auditCurrent auditOld auditPair recentSix appearanceFielding; do
-            echo "=== RUNTIME STAGE $stage ==="
-            code=$(curl -L --max-time 25 --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-runtime-stage-diagnostic?stage=$stage" -o /tmp/runtime-stage.json || true)
-            cat /tmp/runtime-stage.json 2>/dev/null || true; echo
-            echo "HTTP $code"
-          done
-
-      - name: Diagnose production Evidence and persona stages
-        shell: bash
-        run: |
-          set -euo pipefail
-          BASE='https://magi-web.vercel.app'
-          for url in \
-            "$BASE/api/magi-persona-live-diagnostic?stage=evidence&persona=melchior" \
-            "$BASE/api/magi-persona-live-diagnostic?stage=persona&persona=melchior"; do
-            echo "=== $url ==="
-            http_code=$(curl -L --max-time 25 --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$url" -o /tmp/persona-diagnostic.json || true)
-            cat /tmp/persona-diagnostic.json 2>/dev/null || true; echo
-            echo "HTTP $http_code"
-          done
 
       - name: Probe isolated production Evidence paths
         shell: bash
