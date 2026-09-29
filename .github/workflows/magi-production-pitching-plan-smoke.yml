@@ -18,6 +18,11 @@ on:
   workflow_dispatch:
   # verification refresh 2026-09-25
 
+
+concurrency:
+  group: magi-production-heavy-deliberation
+  cancel-in-progress: false
+
 jobs:
   production-pitching-plan:
     runs-on: ubuntu-latest
