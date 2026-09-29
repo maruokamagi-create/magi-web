@@ -7,9 +7,33 @@ import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
 import { buildAppearanceFieldingEvidence } from './_appearance-fielding-evidence.js';
 import { buildCoachObservationEvidence } from './_coach-observation-evidence.js';
 import { buildNormalizedObservationEvidence } from './_normalized-observation-evidence.js';
-import { buildCoachStrategySnapshotEvidence } from './_coach-strategy-snapshot-evidence.js';
+import { getDriveFileMetadata } from '../drive/_service.js';
+import { evidenceSource } from './_evidence-source-map.js';
+import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
 export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v17-dated-strategy-reference';
+
+const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
+async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
+  assertStaffEvidenceAccess({...(accessContext||{}),sourceType:'COACH_STRATEGY_SNAPSHOT'});
+  const id=process.env.MAGI_COACH_STRATEGY_20260802_FILE_ID||COACH_STRATEGY_SOURCE.id;
+  const meta=await getDriveFileMetadata(id);
+  const normalized=String(meta?.name||'').normalize('NFKC').replace(/\s+/g,'');
+  if(!/\.pdf$/i.test(String(meta?.name||'')) || !normalized.includes('ポジション起用案_20260802')){
+    throw new Error(`coach_strategy_snapshot_source_mismatch:${String(meta?.name||'')}`);
+  }
+  return {
+    status:'REFERENCE_ONLY',
+    version:'coach-strategy-snapshot-v2-metadata-only',
+    effectiveAt:COACH_STRATEGY_SOURCE.effectiveAt,
+    currentPolicy:false,
+    independentVote:false,
+    source:{id,name:meta.name||'現段階でのポジション起用案_20260802.pdf',type:COACH_STRATEGY_SOURCE.type,authority:COACH_STRATEGY_SOURCE.authority},
+    textExtractable:false,
+    text:'',
+    rule:'2026-08-02時点の指導者起用案。現在の固定方針ではない。最新の実起用・数値Evidence・日付の新しい指導者観察より優先しない。'
+  };
+}
 
 function text(v){ return String(v ?? '').trim(); }
 function normalized(question){ return text(question).normalize('NFKC'); }
