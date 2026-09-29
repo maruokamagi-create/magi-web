@@ -1,23 +1,8 @@
 name: MAGI Production Pitching Plan Smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'server/api/magi/persona.js'
-      - 'server/api/magi/orchestrate.js'
-      - 'server/api/magi/_pitching-plan.js'
-      - 'server/api/magi/_prompts.js'
-      - 'server/api/magi/_persona-output-guard.js'
-      - 'server/api/magi/_cross-output-guard.js'
-      - 'server/api/magi/_selection-live-evidence.js'
-      - 'server/api/magi/_pitching-detail-evidence.js'
-      - 'server/api/magi/_evidence-source-map.js'
-      - 'api/magi-selection-live-selftest.js'
-      - '.github/workflows/magi-production-pitching-plan-smoke.yml'
+  workflow_call:
   workflow_dispatch:
-  # verification refresh 2026-09-25
-
 
 jobs:
   production-pitching-plan:
