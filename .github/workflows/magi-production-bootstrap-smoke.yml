@@ -273,6 +273,20 @@ jobs:
           grep -Fq "if (!naturalPlayerReview && !resolution?.requestedDocument && focusNames.length" server/api/magi/core.js
           echo 'NATURAL TEAM/PLAYER EVALUATION ROUTING: PASS'
 
+      - name: Diagnose production Evidence and persona stages
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          for url in \
+            "$BASE/api/magi-persona-live-diagnostic?stage=evidence&persona=melchior" \
+            "$BASE/api/magi-persona-live-diagnostic?stage=persona&persona=melchior"; do
+            echo "=== $url ==="
+            http_code=$(curl -L --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$url" -o /tmp/persona-diagnostic.json)
+            cat /tmp/persona-diagnostic.json; echo
+            echo "HTTP $http_code"
+          done
+
       - name: Verify production bootstrap and live master Evidence
         shell: bash
         run: |
