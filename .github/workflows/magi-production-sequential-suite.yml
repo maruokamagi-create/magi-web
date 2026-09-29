@@ -1,4 +1,5 @@
 name: MAGI Production Sequential Deliberation Suite
+# suite refresh after live selftest syntax repair
 
 on:
   push:
