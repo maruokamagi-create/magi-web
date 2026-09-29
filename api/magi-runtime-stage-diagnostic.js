@@ -18,6 +18,28 @@ export default async function handler(req,res){
       const mod=await import('../server/api/magi/_drive-live-audit.js');
       return res.status(200).json({ok:true,stage,hasAudit:typeof mod.runDriveLiveAudit==='function',elapsedMs:Date.now()-started});
     }
+    if(stage==='selectionImport'){
+      const mod=await import('../server/api/magi/_selection-live-evidence.js');
+      return res.status(200).json({ok:true,stage,hasBuilder:typeof mod.buildCurrentSelectionEvidence==='function',elapsedMs:Date.now()-started});
+    }
+    if(stage==='selectionStub'){
+      const mod=await import('../server/api/magi/_selection-live-evidence.js');
+      const roster=(await import('../server/api/magi/_roster.js')).CURRENT_ROSTER;
+      const playersByName=Object.fromEntries(roster.map(name=>[name,{batting:{AVG:'.300',AB:'20',OPS:'.800'},pitching:null}]));
+      const audit=async({season})=>({season,seasonLabel:season==='old'?'2025-2026旧チーム':'2026-2027現チーム',source:{name:season==='old'?'old.xlsm':'2026-2027.xlsm'},extracted:{periodStart:'2026-08-02',periodEnd:'2026-09-29',playersByName}});
+      const nullProvider=async()=>null;
+      const appearance=async()=>({status:'COMPLETE',players:roster.map(name=>({name,appearance:{},fielding:{}})),sources:[]});
+      const packet=await mod.buildCurrentSelectionEvidence({
+        question:'現時点のベストオーダーを審議して',
+        routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},
+        auditProvider:audit,
+        appearanceFieldingProvider:appearance,
+        coachObservationProvider:nullProvider,
+        normalizedObservationProvider:nullProvider,
+        coachStrategyProvider:nullProvider
+      });
+      return res.status(200).json({ok:true,stage,count:packet?.count||0,kind:packet?.selectionKind||'',elapsedMs:Date.now()-started});
+    }
     if(stage==='auditOld'){
       const mod=await import('../server/api/magi/_drive-live-audit.js');
       const packet=await mod.runDriveLiveAudit({season:'old'});
