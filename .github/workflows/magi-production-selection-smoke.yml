@@ -1,21 +1,8 @@
 name: MAGI Production Selection Smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'server/api/magi/persona.js'
-      - 'server/api/magi/_persona-output-guard.js'
-      - 'server/api/magi/_prompts.js'
-      - 'server/api/magi/orchestrate.js'
-      - 'server/api/magi/_roster.js'
-      - 'server/api/magi/core.js'
-      - 'server/api/magi/_selection-live-evidence.js'
-      - 'server/api/magi/_drive-live-audit.js'
-      - '.github/workflows/magi-production-selection-smoke.yml'
+  workflow_call:
   workflow_dispatch:
-  # verification refresh 2026-09-25
-
 
 jobs:
   production-selection:
