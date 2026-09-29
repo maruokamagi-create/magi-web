@@ -105,7 +105,14 @@ function neutralizeSummarySpeech(value,label){
     .replace(/私の/g,`${who}の`);
   return s;
 }
-function compactSummaryText(value,max=180){\n  let s=txt(value).replace(/(?:^|[\\s　])(?:[①②③④⑤⑥⑦⑧⑨⑩]|[1-9][.)）])(?:[\\s　]*)/g,' ').replace(/\\s+/g,' ').trim();\n  if(!s)return'';\n  const sentences=s.split(/(?<=[。！？!?])/).map(x=>x.trim()).filter(Boolean);\n  s=(sentences.slice(0,2).join(' ')||s).trim();\n  return s.length>max?s.slice(0,max-1)+'…':s;\n}\nfunction cleanReason(value,result,label){
+function compactSummaryText(value,max=180){
+  let s=txt(value).replace(/(?:^|[\s　])(?:[①②③④⑤⑥⑦⑧⑨⑩]|[1-9][.)）])(?:[\s　]*)/g,' ').replace(/\s+/g,' ').trim();
+  if(!s)return'';
+  const sentences=s.split(/(?<=[。！？!?])/).map(x=>x.trim()).filter(Boolean);
+  s=(sentences.slice(0,2).join(' ')||s).trim();
+  return s.length>max?s.slice(0,max-1)+'…':s;
+}
+function cleanReason(value,result,label){
   const candidates=[value?.candidateBasis,value?.primaryReason,value?.publicStatement,value?.changeReason];
   for(const raw of candidates){
     let s=sanitizeSpeech(raw,result);if(!s)continue;
