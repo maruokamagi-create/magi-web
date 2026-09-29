@@ -1,0 +1,25 @@
+name: MAGI Production Persona Health
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/magi-production-persona-health.yml'
+
+jobs:
+  persona-health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Probe production persona handler
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          cat >/tmp/body.json <<'JSON'
+          {"persona":"melchior","phase":"PRIMARY","case":{"id":"PERSONA-HEALTH","question":"大野 竜暉について、確認できるEvidenceだけで評価して","mode":"proposal","evidence":{"text":"大野 竜暉：確認用Evidence。","selectionKind":"","authoritativeCurrentRoster":[]}}}
+          JSON
+          code=$(curl -L -sS -w '%{http_code}' -H "Origin: $BASE" -H 'Content-Type: application/json' -d @/tmp/body.json "$BASE/api/magi/persona" -o /tmp/response.txt || true)
+          echo "HTTP=$code"
+          cat /tmp/response.txt; echo
+          test "$code" != "000"
