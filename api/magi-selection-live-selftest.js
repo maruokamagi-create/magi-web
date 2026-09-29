@@ -82,6 +82,8 @@ export default async function handler(req,res){
       && adminObservationText.includes('現在の固定方針ではなく');
     const memberStrategyReferenceBlocked=memberFullPacket?.strategySnapshotStatus!=='REFERENCE_ONLY'
       && !memberObservationText.includes('【過去の指導者起用方針】');
+    const pitchingPlanCoachReady=pitchingPlanEvidence?.selectionKind==='PITCHING_PLAN' && pitchingPlanEvidence?.coachObservationStatus==='COMPLETE' && String(pitchingPlanEvidence?.text||'').includes('【指導者観察・投手起用】');
+    const pitchingPlanCoachDeduped=!String(pitchingPlanEvidence?.text||'').includes('統合指導者ダミー');
     const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
     const naturalNames=naturalPlayers.map(x=>x.name);
     const naturalThirdReady=Boolean(naturalThirdPacket)&&naturalThirdPacket?.selectionKind==='BATTING_ORDER'&&naturalNames.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>naturalNames.includes(name))&&naturalPlayers.filter(hasCoreBatting).length===14&&String(naturalThirdPacket?.text||'').includes('【現チーム全14選手・打撃】');
