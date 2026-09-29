@@ -260,7 +260,8 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
     const players = Array.isArray(semantic?.players) ? semantic.players : [];
     const observations = await buildObservationEvidence({
       players,
-      team: !players.length || /チーム|ベンチ|全体/.test(question)
+      team: !players.length || /チーム|ベンチ|全体/.test(question),
+      accessContext: staffAccessContext
     });
     if (observations.entries.length) {
       const packet = effectiveResolution?.evidence || { text: '', sources: [], files: [] };
