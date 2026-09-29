@@ -19,6 +19,8 @@ function playerLineHasCoreNumbers(body,name){
   return ['打率','打数','OPS'].every(label=>new RegExp(`${escapeRegExp(label)}\\s*${number}`,'i').test(line));
 }
 
+export const config={maxDuration:60};
+
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Robots-Tag','noindex, nofollow');
