@@ -1,0 +1,16 @@
+name: MAGI Persona Import Health
+on:
+  push:
+    paths:
+      - 'api/magi-persona-import-health.js'
+      - '.github/workflows/magi-persona-import-health.yml'
+  workflow_dispatch:
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - run: sleep 45
+      - shell: bash
+        run: |
+          set -euo pipefail
+          curl -L -sS -w '\nHTTP=%{http_code}\n' https://magi-web.vercel.app/api/magi-persona-import-health
