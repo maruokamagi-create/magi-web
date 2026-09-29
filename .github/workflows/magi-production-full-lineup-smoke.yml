@@ -1,20 +1,8 @@
 name: MAGI Production Full Lineup Smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'api/magi-gateway.js'
-      - 'server/api/magi/persona.js'
-      - 'server/api/magi/orchestrate.js'
-      - 'server/api/magi/_gemini.js'
-      - 'server/api/magi/_full-lineup.js'
-      - 'server/api/magi/_selection-live-evidence.js'
-      - 'server/api/magi/_cross-output-guard.js'
-      - '.github/workflows/magi-production-full-lineup-smoke.yml'
+  workflow_call:
   workflow_dispatch:
-  # verification refresh 2026-09-25
-
 
 jobs:
   production-full-lineup:
