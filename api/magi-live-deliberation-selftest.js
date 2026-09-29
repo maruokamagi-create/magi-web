@@ -135,16 +135,18 @@ export default async function handler(req,res){
     const host=String(req.headers?.['x-forwarded-host']||req.headers?.host||'magi-web.vercel.app').split(',')[0].trim();const proto=String(req.headers?.['x-forwarded-proto']||'https').split(',')[0].trim();const base=`${proto}://${host}`;
     const packet=await buildCurrentSelectionEvidence({question:QUESTION,routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}});const players=packet?.allCurrentTeamCheck?.players||[];
     const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
-    const result=await runOnce(base,packet);const digest=stableDigest(result);
+    const mode=String(req.query?.mode||'lineup');
+    const result=mode==='lineup'?await runOnce(base,packet):null;
+    const digest=result?stableDigest(result):'';
     const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
     const naturalPlayers=naturalPacket?.allCurrentTeamCheck?.players||[];
     const naturalReady=naturalPacket?.selectionKind==='BATTING_ORDER'&&Number(naturalPacket?.count)===14&&naturalPlayers.length===14&&CURRENT_ROSTER.every(name=>naturalPlayers.some(p=>p?.name===name));if(!naturalReady)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
-    const runNatural=String(req.query?.naturalThird||'')==='1';
+    const runNatural=mode==='naturalThird'||String(req.query?.naturalThird||'')==='1';
     const naturalThird=runNatural?await runNaturalThird(base,naturalPacket):{status:'SKIPPED_BY_DEFAULT',recommendedCandidates:[],centerCandidates:[],personaSelections:{}};
     const naturalThirdError=runNatural?'':'Use ?naturalThird=1 for the dedicated exact natural-third E2E; default run preserves provider capacity for closer E2E.';
     const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}});
-    const closer=await runCloser(base,closerPacket);
-    if(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2')throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
-    return res.status(200).json({ok:true,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result.final.status,lineup:result.final.lineup.map(x=>({slot:x.slot,name:x.name})),digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...closer}});
+    const closer=mode==='closer'?await runCloser(base,closerPacket):null;
+    if(mode==='closer'&&(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2'))throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
+    return res.status(200).json({ok:true,mode,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
   }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error)});}
 }
