@@ -17,10 +17,6 @@ on:
   workflow_dispatch:
 
 
-concurrency:
-  group: magi-production-heavy-deliberation
-  cancel-in-progress: false
-
 jobs:
   exact-live-best-order:
     runs-on: ubuntu-latest
