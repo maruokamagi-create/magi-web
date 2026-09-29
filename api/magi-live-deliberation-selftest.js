@@ -126,7 +126,10 @@ async function runCloser(base,packet){
   if(String(sakata?.pitching?.SV??'')!=='2') throw new Error('CLOSER_SAKATA_SAVE_NOT_2');
   const mentionsSave=PERSONAS.some(p=>JSON.stringify(primary[p]).includes('セーブ'))||PERSONAS.some(p=>JSON.stringify(second[p]).includes('セーブ'))||JSON.stringify(final).includes('セーブ');
   if(!mentionsSave) throw new Error('CLOSER_SAVE_EVIDENCE_NOT_USED');
-  return {primary:Object.fromEntries(PERSONAS.map(p=>[p,primary[p]?.candidatePlayers||[]])),second:Object.fromEntries(PERSONAS.map(p=>[p,second[p]?.candidatePlayers||[]])),centerCandidates:final?.centerCandidates||[],recommendedCandidates:final?.recommendedCandidates||[],sakataSaveCount:String(sakata.pitching.SV),saveEvidenceUsed:mentionsSave};
+  const rationale=Object.fromEntries(PERSONAS.map(p=>[p,{primaryBasis:primary[p]?.candidateBasis||'',primaryFacts:primary[p]?.facts||[],primaryAnalysis:primary[p]?.analysis||[],primaryWarnings:primary[p]?.warnings||[],primaryConflict:Boolean(primary[p]?.dataConflict),secondBasis:second[p]?.candidateBasis||'',secondAnalysis:second[p]?.analysis||[],secondWarnings:second[p]?.warnings||[],secondConflict:Boolean(second[p]?.dataConflict)}]));
+  const rationaleText=JSON.stringify(rationale);
+  const mentionsCurrentConcern=/制球|安定しない|内野守備|専念/.test(rationaleText);
+  return {primary:Object.fromEntries(PERSONAS.map(p=>[p,primary[p]?.candidatePlayers||[]])),second:Object.fromEntries(PERSONAS.map(p=>[p,second[p]?.candidatePlayers||[]])),centerCandidates:final?.centerCandidates||[],recommendedCandidates:final?.recommendedCandidates||[],sakataSaveCount:String(sakata.pitching.SV),saveEvidenceUsed:mentionsSave,currentConcernUsed:mentionsCurrentConcern,rationale};
 }
 
 export default async function handler(req,res){
