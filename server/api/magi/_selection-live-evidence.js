@@ -267,7 +267,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     if(normalizedObservationEvidence?.status==='COMPLETE'){
       // For PITCHING_ROLE the raw coach provider is already present, so exclude
       // normalized coach rows to prevent the same observation becoming two votes.
-      const visible=(normalizedObservationEvidence.observations||[]).filter(o=>kind!=='PITCHING_ROLE'||o.sourceType!=='指導者');
+      const visible=(normalizedObservationEvidence.observations||[]).filter(o=>!isPitchingKind(kind)||o.sourceType!=='指導者');
       if(visible.length){
         lines.push(
           '【観察Evidence】統合台帳は原本の正規化ビュー。数値成績とは別系統で扱い、原本と同一の観察は独立票として二重加点しない。',
@@ -344,7 +344,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(strategyEvidence?.source) sources.push({...strategyEvidence.source,season:'current',priority:'DATED_STRATEGY_REFERENCE',effectiveAt:strategyEvidence.effectiveAt,currentPolicy:false});
   if(usageEvidence?.status==='COMPLETE') sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
   if(normalizedObservationEvidence?.status==='COMPLETE' && normalizedObservationEvidence.source) sources.push({...normalizedObservationEvidence.source,season:'current',priority:'NORMALIZED_OBSERVATION'});
-  if(kind==='PITCHING_ROLE' && coachEvidence?.status==='COMPLETE' && coachEvidence.source) sources.push({...coachEvidence.source,season:'current',priority:'COACH_OBSERVATION'});
+  if(isPitchingKind(kind) && coachEvidence?.status==='COMPLETE' && coachEvidence.source) sources.push({...coachEvidence.source,season:'current',priority:'COACH_OBSERVATION'});
   if(isPitchingKind(kind)&&currentPitching?.source) sources.push({...currentPitching.source,season:'current',priority:'PRIMARY_PITCHING_DETAIL'});
   if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
