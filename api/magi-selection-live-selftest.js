@@ -25,6 +25,24 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');
   res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
+    const probe=String(req.query?.probe||'all');
+    const probeCases={
+      lineup:()=>buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}}),
+      lineupAdmin:()=>buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
+      lineupMember:()=>buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},staffAccessContext:{role:'member',purpose:'DELIBERATION'}}),
+      closer:()=>buildCurrentSelectionEvidence({question:'クローザーは誰がいい？',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}}),
+      closerAdmin:()=>buildCurrentSelectionEvidence({question:'クローザーは誰がいい？',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
+      closerMember:()=>buildCurrentSelectionEvidence({question:'クローザーは誰がいい？',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},staffAccessContext:{role:'member',purpose:'DELIBERATION'}}),
+      pitchingPlan:()=>buildCurrentSelectionEvidence({question:'7回制の投手運用を考えて',routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_PLAN'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
+      naturalThird:()=>buildCurrentSelectionEvidence({question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}})
+    };
+    if(probe!=='all'){
+      const run=probeCases[probe];
+      if(!run)return res.status(400).json({ok:false,error:'unknown_probe',available:Object.keys(probeCases)});
+      const started=Date.now();
+      const p=await run();
+      return res.status(200).json({ok:true,probe,elapsedMs:Date.now()-started,selectionKind:p?.selectionKind||'',count:p?.count||0,coachObservationStatus:p?.coachObservationStatus||'',normalizedObservationStatus:p?.normalizedObservationStatus||''});
+    }
     const [packet,adminFullPacket,memberFullPacket,closerPacket,closerAdminPacket,closerMemberPacket,pitchingPlanPacket,naturalThirdPacket]=await Promise.all([
       buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}}),
       buildCurrentSelectionEvidence({question:'現時点のベストオーダーを審議して',routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}}),
