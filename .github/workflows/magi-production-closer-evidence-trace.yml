@@ -1,4 +1,5 @@
 name: MAGI Production Closer Evidence Trace
+# persona coach-observation weighting verification
 
 on:
   workflow_dispatch:
