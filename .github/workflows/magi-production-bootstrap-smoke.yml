@@ -278,7 +278,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          for stage in base vercelCacheImport xlsxImport auditImport auditCurrent auditOld auditPair recentSix appearanceFielding; do
+          for stage in base vercelCacheImport xlsxImport auditImport selectionImport selectionStub auditCurrent auditOld auditPair recentSix appearanceFielding; do
             echo "=== RUNTIME STAGE $stage ==="
             code=$(curl -L --max-time 25 --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-runtime-stage-diagnostic?stage=$stage" -o /tmp/runtime-stage.json || true)
             cat /tmp/runtime-stage.json 2>/dev/null || true; echo
