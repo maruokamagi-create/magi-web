@@ -180,6 +180,9 @@ jobs:
           grep -Fq "owner:'chat-ui-canonical-v387'" chat-single-owner-v414.js
           grep -Fq 'removesLegacyCrossDuplicates:true' chat-single-owner-v414.js
           echo 'CHAT SINGLE OWNER: PASS'
+          grep -Fq 'function compactSummaryText' magi-control-summary-v377.js
+          grep -Fq 'sentences.slice(0,2)' magi-control-summary-v377.js
+          echo 'FINAL SUMMARY COMPACTION: PASS'
           echo 'CANONICAL EVIDENCE SOURCE MAP: PASS'
 
       - name: Reject stale dynamic lineup hardcodes
