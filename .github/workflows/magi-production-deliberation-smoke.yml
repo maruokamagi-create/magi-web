@@ -1,18 +1,8 @@
 name: MAGI Production Deliberation Smoke
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'server/api/magi/persona.js'
-      - 'server/api/magi/_persona-output-guard.js'
-      - 'server/api/magi/_prompts.js'
-      - 'server/api/magi/orchestrate.js'
-      - 'server/api/magi/_roster.js'
-      - '.github/workflows/magi-production-deliberation-smoke.yml'
+  workflow_call:
   workflow_dispatch:
-  # verification refresh 2026-09-25
-
 
 jobs:
   production-deliberation:
