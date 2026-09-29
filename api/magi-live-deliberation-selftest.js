@@ -139,7 +139,7 @@ export default async function handler(req,res){
     const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
     const naturalPlayers=naturalPacket?.allCurrentTeamCheck?.players||[];
     const naturalReady=naturalPacket?.selectionKind==='BATTING_ORDER'&&Number(naturalPacket?.count)===14&&naturalPlayers.length===14&&CURRENT_ROSTER.every(name=>naturalPlayers.some(p=>p?.name===name));if(!naturalReady)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
-    const naturalThird={status:'SKIPPED_IN_COMBINED_RUN',recommendedCandidates:[],centerCandidates:[],personaSelections:{}}; const naturalThirdError='Skipped here to reserve provider capacity for closer E2E; natural-third has its own regression coverage.';
+    const runNatural=String(req.query?.naturalThird||'')==='1';\n    const naturalThird=runNatural?await runNaturalThird(base,naturalPacket):{status:'SKIPPED_BY_DEFAULT',recommendedCandidates:[],centerCandidates:[],personaSelections:{}};\n    const naturalThirdError=runNatural?'':'Use ?naturalThird=1 for the dedicated exact natural-third E2E; default run preserves provider capacity for closer E2E.';
     const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'}});
     const closer=await runCloser(base,closerPacket);
     if(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2')throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
