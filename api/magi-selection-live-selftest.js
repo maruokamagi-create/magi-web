@@ -95,8 +95,6 @@ export default async function handler(req,res){
       && String(closerAdminPacket?.allCurrentTeamCheck?.players?.find(p=>p.name==='坂田 暉馬')?.pitching?.SV??'').trim()==='2';
     const memberCoachEvidenceBlocked=closerMemberPacket?.coachObservationStatus!=='COMPLETE'
       && !memberText.includes('内野守備に専念');
-    const adminObservationText=String(adminFullPacket?.text||'');
-    const memberObservationText=String(memberFullPacket?.text||'');
     const adminNormalizedObservationReady=adminFullPacket?.normalizedObservationStatus==='COMPLETE'
       && adminObservationText.includes('【観察Evidence】')
       && adminObservationText.includes('PARENT')===false
