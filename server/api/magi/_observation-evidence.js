@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
-import { googleDriveFetch } from '../drive/_service.js';
+import { googleDriveFetch } from '../drive/_service.js';\nimport { evidenceSource } from './_evidence-source-map.js';
 
-export const OBSERVATION_SHEET_ID = '1Cs5cQUJYEC1Ta7OQXi5hUWnKkQHVOHByRiWtwKsC0uE';
+export const OBSERVATION_SHEET_ID = process.env.MAGI_NORMALIZED_OBSERVATION_SHEET_ID || evidenceSource('NORMALIZED_OBSERVATIONS').id;
 const SOURCE_URL = `https://docs.google.com/spreadsheets/d/${OBSERVATION_SHEET_ID}/edit`;
 const CACHE_MS = 5 * 60 * 1000;
 let cached = null;
