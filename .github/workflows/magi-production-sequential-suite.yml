@@ -1,4 +1,5 @@
 name: MAGI Production Sequential Deliberation Suite
+# closer staff-evidence verification
 # suite refresh after live selftest syntax repair
 
 on:
