@@ -33,6 +33,7 @@ on:
       - 'server/api/magi/core.js'
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
+      - 'api/magi-persona-live-diagnostic.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
   # final verification refresh 2026-09-25
@@ -292,3 +293,17 @@ jobs:
           jq -r '"OBSERVATION DIAGNOSTIC: adminStatus=\(.adminNormalizedObservationStatus) adminError=\(.adminNormalizedObservationError) adminHttp=\(.adminNormalizedObservationHttpStatus) memberStatus=\(.memberNormalizedObservationStatus) memberError=\(.memberNormalizedObservationError) memberHttp=\(.memberNormalizedObservationHttpStatus)"' /tmp/selection.json
           jq -e '.ok==true and .fullLineupReady==true and .dynamicLineupRulesReady==true and .adminNormalizedObservationReady==true and .memberNormalizedObservationBlocked==true and .adminNormalizedObservationStatus=="COMPLETE" and .memberNormalizedObservationStatus!="COMPLETE" and .closerPitchingReady==true and .adminCoachEvidenceReady==true and .memberCoachEvidenceBlocked==true and .adminCoachObservationStatus=="COMPLETE" and .memberCoachObservationStatus!="COMPLETE" and .selectionKind=="FULL_LINEUP" and .rosterExact==true and .count==14 and .playersWithCoreBatting==14 and .textHasCurrentNumbers==true and (.sourceName|contains("2026-2027"))' /tmp/selection.json >/dev/null
           echo 'PRODUCTION LIVE NUMERIC MASTER EVIDENCE: PASS'
+
+      - name: Diagnose production Evidence and persona stages
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          for url in \
+            "$BASE/api/magi-persona-live-diagnostic?stage=evidence&persona=melchior" \
+            "$BASE/api/magi-persona-live-diagnostic?stage=persona&persona=melchior"; do
+            echo "=== $url ==="
+            http_code=$(curl -L --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$url" -o /tmp/persona-diagnostic.json)
+            cat /tmp/persona-diagnostic.json; echo
+            echo "HTTP $http_code"
+          done
