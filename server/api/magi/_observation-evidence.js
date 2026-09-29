@@ -1,5 +1,7 @@
 import * as XLSX from 'xlsx';
-import { googleDriveFetch } from '../drive/_service.js';\nimport { evidenceSource } from './_evidence-source-map.js';
+import { googleDriveFetch } from '../drive/_service.js';
+import { evidenceSource } from './_evidence-source-map.js';
+import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
 export const OBSERVATION_SHEET_ID = process.env.MAGI_NORMALIZED_OBSERVATION_SHEET_ID || evidenceSource('NORMALIZED_OBSERVATIONS').id;
 const SOURCE_URL = `https://docs.google.com/spreadsheets/d/${OBSERVATION_SHEET_ID}/edit`;
@@ -104,7 +106,8 @@ export function summarizeObservationEvidence(all, { players = [], team = false }
   });
 }
 
-export async function buildObservationEvidence({ players = [], team = false } = {}) {
+export async function buildObservationEvidence({ players = [], team = false, accessContext = null } = {}) {
+  assertStaffEvidenceAccess({...(accessContext||{}),sourceType:'NORMALIZED_OBSERVATION'});
   const all = await loadObservations();
   const entries = summarizeObservationEvidence(all, { players, team });
   const names = players.map(norm);
