@@ -105,14 +105,14 @@ function neutralizeSummarySpeech(value,label){
     .replace(/私の/g,`${who}の`);
   return s;
 }
-function cleanReason(value,result,label){
+function compactSummaryText(value,max=180){\n  let s=txt(value).replace(/(?:^|[\\s　])(?:[①②③④⑤⑥⑦⑧⑨⑩]|[1-9][.)）])(?:[\\s　]*)/g,' ').replace(/\\s+/g,' ').trim();\n  if(!s)return'';\n  const sentences=s.split(/(?<=[。！？!?])/).map(x=>x.trim()).filter(Boolean);\n  s=(sentences.slice(0,2).join(' ')||s).trim();\n  return s.length>max?s.slice(0,max-1)+'…':s;\n}\nfunction cleanReason(value,result,label){
   const candidates=[value?.candidateBasis,value?.primaryReason,value?.publicStatement,value?.changeReason];
   for(const raw of candidates){
     let s=sanitizeSpeech(raw,result);if(!s)continue;
     const before=s;s=stripLineupRecital(s);
     if(!s||(/^1番/.test(s)&&/9番/.test(s)))continue;
     if(s===before&&/^(?:1番|候補|再選定)/.test(s)&&/9番/.test(s))continue;
-    return neutralizeSummarySpeech(s,label);
+    return compactSummaryText(neutralizeSummarySpeech(s,label));
   }
   return'';
 }
@@ -191,8 +191,8 @@ function buildFullLineup(result){
   else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立しませんでした。表示中の打順は比較のための参考案（暫定）で、正式採用ではありません。';
 
   const decisiveReasons=decisionType==='DEADLOCK'?[]:unique(supportGroup.rows.map(e=>cleanReason(e.value,result,e.label))).filter(Boolean).slice(0,2);
-  const mainDisagreement=conflictText(supportGroup.order,others);
-  const minorityOpinion=minority?cleanReason(minority.value,result,minority.label):'';
+  const mainDisagreement=compactSummaryText(conflictText(supportGroup.order,others),150);
+  const minorityOpinion=minority?compactSummaryText(cleanReason(minority.value,result,minority.label),160):'';
   const majorChanges=primarySecondChanges(result,entries);
   const reDeliberationConditions=practicalConditions(result,supportGroup.order);
 
