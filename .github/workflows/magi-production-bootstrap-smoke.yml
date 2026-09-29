@@ -33,7 +33,6 @@ on:
       - 'server/api/magi/core.js'
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
-      - 'server/api/magi/_coach-strategy-snapshot-evidence.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
   # final verification refresh 2026-09-25
