@@ -287,6 +287,18 @@ jobs:
             echo "HTTP $http_code"
           done
 
+      - name: Probe isolated production Evidence paths
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          for probe in lineup lineupAdmin lineupMember closer closerAdmin closerMember pitchingPlan naturalThird; do
+            echo "=== EVIDENCE PROBE $probe ==="
+            http_code=$(curl -L --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-selection-live-selftest?probe=$probe" -o /tmp/evidence-probe.json)
+            cat /tmp/evidence-probe.json; echo
+            echo "HTTP $http_code"
+          done
+
       - name: Verify production bootstrap and live master Evidence
         shell: bash
         run: |
