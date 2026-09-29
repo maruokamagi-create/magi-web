@@ -74,7 +74,15 @@ export default async function handler(req,res){
       && !body.includes('武田 晴琉翔は左翼が第一適性')
       && !body.includes('大久保 陽翔は現チームのキャプテン')
       && !body.includes('1番 大野 竜暉、2番 坂田 暉馬');
-    const strategyReferenceReady=adminFullPacket?.strategySnapshotStatus==='REFERENCE_ONLY'\n      && adminObservationText.includes('【過去の指導者起用方針】')\n      && adminObservationText.includes('2026-08-02')\n      && adminObservationText.includes('現在の固定方針ではなく');\n    const memberStrategyReferenceBlocked=memberFullPacket?.strategySnapshotStatus!=='REFERENCE_ONLY'\n      && !memberObservationText.includes('【過去の指導者起用方針】');\n    const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
+    const adminObservationText=String(adminFullPacket?.text||'');
+    const memberObservationText=String(memberFullPacket?.text||'');
+    const strategyReferenceReady=adminFullPacket?.strategySnapshotStatus==='REFERENCE_ONLY'
+      && adminObservationText.includes('【過去の指導者起用方針】')
+      && adminObservationText.includes('2026-08-02')
+      && adminObservationText.includes('現在の固定方針ではなく');
+    const memberStrategyReferenceBlocked=memberFullPacket?.strategySnapshotStatus!=='REFERENCE_ONLY'
+      && !memberObservationText.includes('【過去の指導者起用方針】');
+    const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
     const naturalNames=naturalPlayers.map(x=>x.name);
     const naturalThirdReady=Boolean(naturalThirdPacket)&&naturalThirdPacket?.selectionKind==='BATTING_ORDER'&&naturalNames.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>naturalNames.includes(name))&&naturalPlayers.filter(hasCoreBatting).length===14&&String(naturalThirdPacket?.text||'').includes('【現チーム全14選手・打撃】');
     const closerPlayers=closerPacket?.allCurrentTeamCheck?.players||[];
