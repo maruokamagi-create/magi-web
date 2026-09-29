@@ -67,14 +67,14 @@ export default async function handler(req,res){
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
-    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v16-no-dynamic-lineup-hardcodes'
+    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v17-dated-strategy-reference'
       && body.includes('標準オーダーをコード内の固定打順から決めない')
       && !body.includes('現在の上位5人の基準線')
       && !body.includes('橋向 結都は先発投手でない日は遊撃・6番')
       && !body.includes('武田 晴琉翔は左翼が第一適性')
       && !body.includes('大久保 陽翔は現チームのキャプテン')
       && !body.includes('1番 大野 竜暉、2番 坂田 暉馬');
-    const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
+    const strategyReferenceReady=adminFullPacket?.strategySnapshotStatus==='REFERENCE_ONLY'\n      && adminObservationText.includes('【過去の指導者起用方針】')\n      && adminObservationText.includes('2026-08-02')\n      && adminObservationText.includes('現在の固定方針ではなく');\n    const memberStrategyReferenceBlocked=memberFullPacket?.strategySnapshotStatus!=='REFERENCE_ONLY'\n      && !memberObservationText.includes('【過去の指導者起用方針】');\n    const naturalPlayers=naturalThirdPacket?.allCurrentTeamCheck?.players||[];
     const naturalNames=naturalPlayers.map(x=>x.name);
     const naturalThirdReady=Boolean(naturalThirdPacket)&&naturalThirdPacket?.selectionKind==='BATTING_ORDER'&&naturalNames.length===CURRENT_ROSTER.length&&CURRENT_ROSTER.every(name=>naturalNames.includes(name))&&naturalPlayers.filter(hasCoreBatting).length===14&&String(naturalThirdPacket?.text||'').includes('【現チーム全14選手・打撃】');
     const closerPlayers=closerPacket?.allCurrentTeamCheck?.players||[];
@@ -106,7 +106,7 @@ export default async function handler(req,res){
       && !memberObservationText.includes('精神的な成長');
 
     res.status(200).json({
-      ok:fullLineupReady&&dynamicLineupRulesReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked,
+      ok:fullLineupReady&&dynamicLineupRulesReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked&&strategyReferenceReady&&memberStrategyReferenceBlocked,
       fullLineupReady,
       dynamicLineupRulesReady,
       adminNormalizedObservationReady,
