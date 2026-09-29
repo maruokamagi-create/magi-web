@@ -34,6 +34,7 @@ on:
       - 'api/magi-gateway.js'
       - 'api/magi-selection-live-selftest.js'
       - 'api/magi-persona-live-diagnostic.js'
+      - 'api/magi-runtime-stage-diagnostic.js'
       - '.github/workflows/magi-production-bootstrap-smoke.yml'
   workflow_dispatch:
   # final verification refresh 2026-09-25
@@ -272,6 +273,17 @@ jobs:
           grep -Fq 'const requestedNames=focusPlayer?' server/api/magi/_appearance-detail-evidence.js
           grep -Fq "if (!naturalPlayerReview && !resolution?.requestedDocument && focusNames.length" server/api/magi/core.js
           echo 'NATURAL TEAM/PLAYER EVALUATION ROUTING: PASS'
+
+      - name: Diagnose production runtime stages
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          for stage in base vercelCacheImport xlsxImport auditImport auditCurrent; do
+            echo "=== RUNTIME STAGE $stage ==="
+            code=$(curl -L --max-time 25 --retry 1 --retry-delay 2 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-runtime-stage-diagnostic?stage=$stage" -o /tmp/runtime-stage.json || true)
+            cat /tmp/runtime-stage.json 2>/dev/null || true; echo
+            echo "HTTP $code"
+          done
 
       - name: Diagnose production Evidence and persona stages
         shell: bash
