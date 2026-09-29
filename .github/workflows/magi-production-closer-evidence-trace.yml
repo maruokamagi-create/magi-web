@@ -1,0 +1,25 @@
+name: MAGI Production Closer Evidence Trace
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'api/magi-live-deliberation-selftest.js'
+      - '.github/workflows/magi-production-closer-evidence-trace.yml'
+
+jobs:
+  closer-evidence-trace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - name: Wait for production deployment
+        run: sleep 45
+      - name: Trace closer Evidence into persona reasoning
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=closer" -o /tmp/closer.json
+          jq '{ok,mode,closer:{coachObservationStatus:.closer.coachObservationStatus,packetConcernPresent:.closer.packetConcernPresent,currentConcernUsed:.closer.currentConcernUsed,packetConcernLines:.closer.packetConcernLines,sakataSaveCount:.closer.sakataSaveCount,saveEvidenceUsed:.closer.saveEvidenceUsed,centerCandidates:.closer.centerCandidates}}' /tmp/closer.json
+          jq -e '.ok==true and .mode=="closer" and .closer.coachObservationStatus=="COMPLETE" and .closer.sakataSaveCount=="2" and .closer.saveEvidenceUsed==true' /tmp/closer.json >/dev/null
+          echo 'PRODUCTION CLOSER EVIDENCE TRACE: COMPLETE'
