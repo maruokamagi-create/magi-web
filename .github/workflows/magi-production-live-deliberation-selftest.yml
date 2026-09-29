@@ -1,21 +1,8 @@
 name: MAGI Production Live Deliberation Selftest
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'api/magi-live-deliberation-selftest.js'
-      - 'server/api/magi/core.js'
-      - 'server/api/magi/persona.js'
-      - 'server/api/magi/orchestrate.js'
-      - 'server/api/magi/_selection-live-evidence.js'
-      - 'server/api/magi/_canonical-cache.js'
-      - 'magi-formal-runner-v373.js'
-      - 'magi-app-bootstrap-v363.js'
-      - 'main-live-answer-v362.js'
-      - '.github/workflows/magi-production-live-deliberation-selftest.yml'
+  workflow_call:
   workflow_dispatch:
-
 
 jobs:
   exact-live-best-order:
