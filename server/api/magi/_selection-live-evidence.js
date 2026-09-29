@@ -286,7 +286,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     );
   }
 
-  if(kind==='PITCHING_ROLE'){
+  if(isPitchingKind(kind)){
     if(wantsCoachPitchingEvidence && coachEvidence?.status==='COMPLETE'){
       const pitchingCoachObs=(coachEvidence.observations||[]).filter(o=>/投手|投球|制球|継投|イニング|クローザー|抑え|守護神/.test(`${o.category} ${o.statement}`));
       if(pitchingCoachObs.length){
