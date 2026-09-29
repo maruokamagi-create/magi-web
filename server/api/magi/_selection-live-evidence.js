@@ -370,7 +370,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     normalizedObservationStatus: normalizedObservationEvidence?.status|| (wantsNormalizedObservations?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
     normalizedObservationError: wantsNormalizedObservations && normalizedObservationResult?.status==='rejected' ? String(normalizedObservationResult.reason?.code||normalizedObservationResult.reason?.message||'normalized_observation_unavailable') : '',
     normalizedObservationHttpStatus: wantsNormalizedObservations && normalizedObservationResult?.status==='rejected' ? (Number(normalizedObservationResult.reason?.status)||null) : null,
-    coachObservationStatus: kind==='PITCHING_ROLE' ? (coachEvidence?.status|| (wantsCoachPitchingEvidence?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED')) : 'NOT_APPLICABLE',
+    coachObservationStatus: isPitchingKind(kind) ? (coachEvidence?.status|| (wantsCoachPitchingEvidence?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED')) : 'NOT_APPLICABLE',
     coachObservationError: kind==='PITCHING_ROLE' && wantsCoachPitchingEvidence && coachResult?.status==='rejected' ? String(coachResult.reason?.code||coachResult.reason?.message||'coach_observation_unavailable') : '',
     coachObservationHttpStatus: kind==='PITCHING_ROLE' && wantsCoachPitchingEvidence && coachResult?.status==='rejected' ? (Number(coachResult.reason?.status)||null) : null,
     selectionKind:kind,
