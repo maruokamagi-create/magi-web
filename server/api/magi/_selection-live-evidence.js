@@ -364,7 +364,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
-    normalizedObservationStatus: normalizedObservationEvidence?.status|| (wantsNormalizedObservations?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
+    strategySnapshotStatus: strategyEvidence?.status|| (staffAccessContext?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),\n    strategySnapshotError: staffAccessContext && strategyResult?.status==='rejected' ? String(strategyResult.reason?.code||strategyResult.reason?.message||'strategy_snapshot_unavailable') : '',\n    strategySnapshotHttpStatus: staffAccessContext && strategyResult?.status==='rejected' ? (Number(strategyResult.reason?.status)||null) : null,\n    normalizedObservationStatus: normalizedObservationEvidence?.status|| (wantsNormalizedObservations?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
     normalizedObservationError: wantsNormalizedObservations && normalizedObservationResult?.status==='rejected' ? String(normalizedObservationResult.reason?.code||normalizedObservationResult.reason?.message||'normalized_observation_unavailable') : '',
     normalizedObservationHttpStatus: wantsNormalizedObservations && normalizedObservationResult?.status==='rejected' ? (Number(normalizedObservationResult.reason?.status)||null) : null,
     coachObservationStatus: kind==='PITCHING_ROLE' ? (coachEvidence?.status|| (wantsCoachPitchingEvidence?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED')) : 'NOT_APPLICABLE',
