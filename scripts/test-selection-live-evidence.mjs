@@ -124,6 +124,6 @@ assert.equal(withoutOld.count,14);
 assert.ok(withoutOld.text.includes('今回は現チーム正本だけで判断する'));
 assert.ok(withoutOld.text.includes('3賢人は独立して全打順を作り'));
 assert.ok(withoutOld.text.includes('具体的な打順番号と選手名'));
-assert.ok(withoutOld.dataRule.includes('現チーム通算を主評価'));
+assert.ok(withoutOld.dataRule.includes('現チーム通算・直近6・出場詳細・守備詳細'));
 
 console.log('SELECTION LIVE EVIDENCE RESULT: PASS');
