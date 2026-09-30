@@ -11,6 +11,10 @@ on:
   workflow_dispatch:
   # verification refresh 2026-09-25
 
+concurrency:
+  group: magi-production-dialogue-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   production-direct-dialogue:
     runs-on: ubuntu-latest
