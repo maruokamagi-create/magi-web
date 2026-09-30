@@ -1,5 +1,5 @@
 name: MAGI Production Persona Health
-# verify persona route after gateway change
+# verify persona after repository ESM declaration
 
 on:
   workflow_dispatch:
