@@ -29,6 +29,7 @@ on:
       - 'scripts/test-persona-second-fallback.mjs'
       - 'scripts/test-lineup-persona-grounding.mjs'
       - 'scripts/test-dialogue-resilient-fallback.mjs'
+      - 'scripts/test-dialogue-core-kinds.mjs'
       - 'scripts/test-cross-dialogue-ui-contract.mjs'
       - 'scripts/test-user-language-summary.mjs'
       - 'scripts/test-pitching-plan-output-guard.mjs'
@@ -76,6 +77,9 @@ jobs:
 
       - name: Run direct dialogue fallback cases
         run: node --experimental-default-type=module scripts/test-dialogue-resilient-fallback.mjs
+
+      - name: Run core debate-kind cases
+        run: node --experimental-default-type=module scripts/test-dialogue-core-kinds.mjs
 
       - name: Run direct dialogue UI contract cases
         run: node --experimental-default-type=module scripts/test-cross-dialogue-ui-contract.mjs
