@@ -303,6 +303,27 @@ function batchTurnRequests(primary) {
   });
 }
 
+function normalizeDirectStatement(statement, speakerLabel, targetJapanese) {
+  let s = text(statement);
+  // Keep the dialogue firm without allowing insulting second-person address.
+  s = s.replace(/お前|てめえ/g, 'あなた');
+
+  const speaker = TURN_ORDER.find(p => p.label === text(speakerLabel).toUpperCase());
+  if (speaker?.key === 'melchior') {
+    s = s.replace(/(?:俺|僕)(?=は|が|の|も|なら|では|として|、|。)/g, '私');
+  } else if (speaker?.key === 'balthasar') {
+    s = s.replace(/(?:私|僕)(?=は|が|の|も|なら|では|として|、|。)/g, '俺');
+  } else if (speaker?.key === 'casper') {
+    s = s.replace(/(?:私|俺)(?=は|が|の|も|なら|では|として|、|。)/g, '僕');
+  }
+
+  // If the model omitted the addressee but otherwise produced a usable reply,
+  // prefix the required Wise Man instead of discarding the whole batch.
+  const target = text(targetJapanese);
+  if (target && !s.includes(target)) s = `${target}、${s}`;
+  return s;
+}
+
 function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
   const rows = Array.isArray(rawDialogue) ? rawDialogue : [];
   const issues = [];
@@ -310,6 +331,7 @@ function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
   for (let i = 0; i < requests.length; i++) {
     const req = requests[i];
     const raw = canonicalizePlayerData(rows[i] || {});
+    raw.statement = normalizeDirectStatement(raw?.statement, req.speaker, req.targetJapanese);
     const targetMaterial = req.targetSourceMaterial;
     const ownMaterial = req.ownPrimaryMaterial;
     if (!rows[i]) {
