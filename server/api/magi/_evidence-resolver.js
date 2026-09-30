@@ -1,5 +1,4 @@
 import * as XLSX from 'xlsx';
-import pdfParseImport from 'pdf-parse';
 import { fetchDriveFileContent } from '../drive/_service.js';
 import { listMagiKnowledgeTree } from '../drive/_knowledge-scope.js';
 
@@ -11,7 +10,6 @@ const PDF_MIME = 'application/pdf';
 const MAX_TEXT = 24000;
 const MAX_ROWS = 180;
 const MAX_COLS = 24;
-const pdfParse = pdfParseImport?.default || pdfParseImport;
 
 function text(v){ return String(v ?? '').trim(); }
 function norm(v){
@@ -98,6 +96,10 @@ function textFileContent(buffer,fileName){
   return {content:clamp(`【資料】${fileName}\n${s}`),rowCount:s.split(/\r?\n/).length,sheets:[]};
 }
 async function pdfFileContent(buffer,fileName){
+  // pdf-parse v1 executes its bundled test-file path when imported in some
+  // serverless ESM builds. Keep PDF parsing off the common CORE startup path.
+  const mod=await import('pdf-parse');
+  const pdfParse=mod?.default?.default || mod?.default || mod;
   if(typeof pdfParse!=='function') throw new Error('PDF parser unavailable');
   const parsed=await pdfParse(buffer);
   const body=text(parsed?.text);
