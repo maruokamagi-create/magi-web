@@ -1,5 +1,5 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
-import { PERSONA_PROMPTS } from './_prompts.js';
+import { COMMON } from './_prompts.js';
 import { canonicalizePlayerData } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
@@ -9,6 +9,12 @@ const TURN_ORDER = [
   { key: 'balthasar', label: 'BALTHASAR-2', jp: 'バルタザール' },
   { key: 'casper', label: 'CASPER-3', jp: 'カスパー' }
 ];
+
+const DIRECT_DIALOGUE_PROMPTS = {
+  melchior: `${COMMON}\nDIRECT DIALOGUE ROLE: You are MELCHIOR-1. Use first person 「私」. Challenge only from verified facts, exact supplied numbers, sample size, or an explicit evidence gap. Do not invent tactical effects, motives, psychology, or future outcomes. If evidence is sparse, say exactly what comparison still needs support.`,
+  balthasar: `${COMMON}\nDIRECT DIALOGUE ROLE: You are BALTHASAR-2. Use first person 「俺」. Compare the concrete candidate, batting slot, or pitching role that differs. In this direct-dialogue turn, do NOT use dugout slogans or claim that a choice improves flow, scoring, momentum, pressure, or winning unless that exact effect is supplied. It is valid to say only that you prefer player A over player B and ask which supplied record supports the difference.`,
+  casper: `${COMMON}\nDIRECT DIALOGUE ROLE: You are CASPER-3. Use first person 「僕」. Compare current role, burden, opportunity, or development only when targetSourceMaterial or CASE explicitly supplies it. Do not invent feelings, future growth, team-strength effects, or workload effects. If those facts are absent, stay on the concrete candidate/slot/role difference and current records.`
+};
 
 const TURN_PLAN = [
   { persona: TURN_ORDER[0], target: 'BALTHASAR-2' },
@@ -298,7 +304,7 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
   let last = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const raw = await callGemini({
-      systemInstruction: `${PERSONA_PROMPTS[persona.key]}\n\nCROSS DIALOGUE RULE: Speak directly to ${requiredTarget}. Reply only to a concrete statement that is present in targetSourceMaterial. Do not fabricate motives, future plans, certainty, or another persona's stance. This must feel like deliberation: challenge or defend the concrete player/slot/role decision identified by primaryComparison, and explain the evidence conflict in plain baseball language.`,
+      systemInstruction: `${DIRECT_DIALOGUE_PROMPTS[persona.key]}\n\nCROSS DIALOGUE RULE: Speak directly to ${requiredTarget}. Reply only to a concrete statement that is present in targetSourceMaterial. Do not fabricate motives, future plans, certainty, or another persona's stance. This must feel like deliberation: challenge or defend the concrete player/slot/role decision identified by primaryComparison, and explain the evidence conflict in plain baseball language.`,
       userPayload: attempt === 0 ? payload : {
         ...payload,
         invalidDraft: last,
