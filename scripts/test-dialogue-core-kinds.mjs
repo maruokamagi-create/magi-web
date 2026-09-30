@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { debateKind, primaryDecisionSummary, challengesFromDialogue } from '../server/api/magi/dialogue.js';
+import { debateKind, primaryDecisionSummary, challengesFromDialogue, batchTurnRequests } from '../server/api/magi/dialogue.js';
 
 assert.equal(debateKind({selectionKind:'FULL_LINEUP',question:'ベストオーダーは？'}),'FULL_LINEUP');
 assert.equal(debateKind({selectionKind:'BATTING_ORDER',question:'3番は誰がいい？'}),'BATTING_ORDER');
@@ -36,5 +36,19 @@ const challenges=challengesFromDialogue([
 assert.deepEqual(challenges.melchior,['Mへの確認']);
 assert.deepEqual(challenges.balthasar,['Bへの確認']);
 assert.deepEqual(challenges.casper,['Cへの確認']);
+
+const lineupPrimary={
+  melchior:{persona:'MELCHIOR-1',candidatePlayers:['大野 竜暉','坂田 暉馬','嶋田 栄志','中嶋 玲月','大久保 陽翔','鰐渕 将太','井坂 悠聖','橋向 結都','武田 晴琉翔'],publicStatement:'私は今の記録からこの打順を選びます。'},
+  balthasar:{persona:'BALTHASAR-2',candidatePlayers:['大野 竜暉','坂田 暉馬','中嶋 玲月','大久保 陽翔','嶋田 栄志','鰐渕 将太','橋向 結都','井坂 悠聖','武田 晴琉翔'],publicStatement:'俺はこの打順でいく。'},
+  casper:{persona:'CASPER-3',candidatePlayers:['大野 竜暉','坂田 暉馬','中嶋 玲月','大久保 陽翔','嶋田 栄志','鰐渕 将太','橋向 結都','井坂 悠聖','武田 晴琉翔'],publicStatement:'僕はこの打順にします。'}
+};
+const batch=batchTurnRequests(lineupPrimary,'FULL_LINEUP',{question:'ベストオーダーは？',selectionKind:'FULL_LINEUP'});
+assert.equal(batch.length,3);
+assert.deepEqual(batch.map(x=>x.target),['BALTHASAR-2','CASPER-3','MELCHIOR-1']);
+assert.deepEqual(batch.map(x=>x.focusDifference.label),['3番','3番','3番']);
+assert.equal(batch[0].focusDifference.speakerPlayer,'嶋田 栄志');
+assert.equal(batch[0].focusDifference.targetPlayer,'中嶋 玲月');
+assert.equal(batch[1].focusDifference.speakerPlayer,'中嶋 玲月');
+assert.equal(batch[1].focusDifference.targetPlayer,'中嶋 玲月');
 
 console.log('DIALOGUE CORE DEBATE KINDS: PASS');
