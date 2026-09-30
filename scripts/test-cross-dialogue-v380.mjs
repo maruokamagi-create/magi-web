@@ -4,6 +4,7 @@ import vm from 'node:vm';
 
 const routerSrc=fs.readFileSync(new URL('../cross-dialogue-router-v380.js',import.meta.url),'utf8');
 const serverSrc=fs.readFileSync(new URL('../server/api/magi/dialogue.js',import.meta.url),'utf8');
+const resilientSrc=fs.readFileSync(new URL('../server/api/magi/dialogue-resilient.js',import.meta.url),'utf8');
 const uiSrc=fs.readFileSync(new URL('../chat-ui-canonical-v387.js',import.meta.url),'utf8');
 const languageSrc=fs.readFileSync(new URL('../magi-user-language-v382.js',import.meta.url),'utf8');
 const indexSrc=fs.readFileSync(new URL('../index.html',import.meta.url),'utf8');
@@ -55,6 +56,10 @@ assert.match(serverSrc,/違う打順番号と選手を優先して直接議論/,
 assert.match(serverSrc,/PITCHING_PLAN/,'direct dialogue must support pitching plans');
 assert.match(serverSrc,/PITCHING_ROLE/,'direct dialogue must support a single pitching role');
 assert.match(serverSrc,/BATTING_ORDER/,'direct dialogue must support a single batting slot');
+assert.match(resilientSrc,/speaker: 'balthasar', target: 'casper'/,'fallback cycle must challenge CASPER');
+assert.match(resilientSrc,/speaker: 'casper', target: 'melchior'/,'fallback cycle must challenge MELCHIOR');
+assert.match(resilientSrc,/dialogueFallbackUsed: true/,'fallback dialogue must be explicitly marked');
+assert.match(uiSrc,/dialogueFallbackUsed===true\)return\[\]/,'fallback text must not be rendered as real direct dialogue');
 
 assert.match(uiSrc,/MAGI_CHAT_UI_CANONICAL_V387/,'canonical chat renderer must be active');
 assert.match(uiSrc,/directDebateKinds:\['FULL_LINEUP','BATTING_ORDER','PITCHING_ROLE','PITCHING_PLAN'\]/,'four core selection debates must use direct dialogue rendering');
