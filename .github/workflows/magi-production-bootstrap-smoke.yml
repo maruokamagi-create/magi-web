@@ -18,6 +18,7 @@ on:
       - 'magi-core-client-guard-v363.js'
       - 'main-live-answer-v362.js'
       - 'magi-ui-runner-guard-v359.js'
+      - 'magi-production-stability-v412.js'
       - 'lineup-finalizer-v350.js'
       - 'engine-progress-v358.js'
       - 'server/api/magi/_canonical-cache.js'
@@ -61,6 +62,10 @@ jobs:
           node --check wise-men-chat-repair-v389.js
           node --check chat-single-owner-v414.js
           node --check lineup-reasons-v415.js
+          node --check magi-production-stability-v412.js
+          grep -Fq '/magi-production-stability-v412.js?v=417' index.html
+          grep -Fq "return 'magi:stable:v417:'" magi-production-stability-v412.js
+          grep -Fq 'hasLegacySecondFallback' magi-production-stability-v412.js
           grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' chat-ui-canonical-v387.js
           ! grep -Fq '${esc(person.jp)}<span>${esc(person.name)}</span>' chat-ui-canonical-v387.js
           ! grep -Fq '${esc(persona.jp)}<span>${esc(persona.label)}</span>' wise-men-chat-repair-v389.js
