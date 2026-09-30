@@ -17,6 +17,10 @@ on:
       - '.github/workflows/magi-production-sequential-suite.yml'
   workflow_dispatch:
 
+concurrency:
+  group: magi-production-sequential-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   selection:
     uses: ./.github/workflows/magi-production-selection-smoke.yml
