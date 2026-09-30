@@ -25,6 +25,7 @@ const DIRECT_DIALOGUE_SYSTEM = [
   'sourceClaimは、そのturnのtargetSourceMaterialに実在する短い原文をそのままコピーしてください。言い換えは禁止です。',
   'statementは相手の日本語名を呼び、sourceClaimへ直接答える1〜3文の自然な野球の会話にしてください。',
   '相手が言っていない動機・心理・方針・役割歴を作らないでください。入力にない数値を作らないでください。',
+  'targetSourceMaterial にその語や意味が明記されていない限り、「固定」「固定起用」「待つ」「数字が揃うまで待つ」「急ぐ」「焦る」「育成を優先」「負担が大きい」を相手の考えとして持ち込んではいけません。',
   '得点、勝利、流れ、勢い、プレッシャー、成長、疲労、将来効果は入力に明記されていない限り主張しないでください。',
   '材料が薄いときは、具体的な候補・打順・役割の違いを示し「どの確認済み記録でこちらを優先するか」を問い返すだけで構いません。',
   'Evidence、正式ロスター、構造化、プロトコル等の内部用語を利用者向け発言に出さないでください。',
@@ -442,7 +443,7 @@ async function generateDialogueBatch({ caseData, primary, summary }) {
         ...basePayload,
         invalidDraft: last?.raw || null,
         validationIssues: last?.issues || [],
-        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手を比較せず、共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
+        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手を比較せず、共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。targetSourceMaterialに明記されていない固定・待つ・急ぐ・焦る・育成優先・負担を相手の前提として追加しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
       },
       responseSchema: dialogueBatchSchema
     });
