@@ -60,7 +60,7 @@ function personRow(body,item,seen,result){
   let speech=item.speech;const api=summaryApi();if(api?.sanitizeSpeech&&result)speech=api.sanitizeSpeech(speech,result)||speech;
   const row=document.createElement('div');row.className=`magiMsg ${person.cls}`;
   const actions=(item.judge||ev)?`<div class="magiMsgActions">${item.judge?`<span class="magiJudgeTag">${esc(item.judge)}</span>`:''}${ev?'<button type="button" class="magiEvidenceToggle">根拠を見る ▾</button>':''}</div>`:'';
-  row.innerHTML=`<img class="magiAvatar" src="${person.img}" alt="${esc(person.jp)}"><div class="magiMsgCol"><div class="magiSender">${esc(person.jp)}<span>${esc(person.name)}</span></div><div class="magiBubble"><span class="magiSpeechText">${esc(speech)}</span>${actions}${ev?`<div class="magiEvidence">${ev}</div>`:''}</div></div>`;
+  row.innerHTML=`<img class="magiAvatar" src="${person.img}" alt="${esc(person.jp)}"><div class="magiMsgCol"><div class="magiSender">${esc(person.jp)}</div><div class="magiBubble"><span class="magiSpeechText">${esc(speech)}</span>${actions}${ev?`<div class="magiEvidence">${ev}</div>`:''}</div></div>`;
   body.appendChild(row);
 }
 function directRow(body,turn,result){
