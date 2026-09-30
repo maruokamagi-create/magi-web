@@ -147,15 +147,13 @@ export default async function handler(req, res) {
   const capture = createCaptureResponse();
   await magiPersona(req, capture);
 
+  // A SECOND-round generation failure must not be converted into a successful
+  // "primary maintained" judgment. Returning the transient failure lets the
+  // production stability layer retry the complete PRIMARY -> CROSS -> SECOND ->
+  // FINAL sequence, so the public result only contains a real second judgment.
   if (isTransientPersonaFailure(capture)) {
-    const fallback = buildSecondFallback(req?.body);
-    if (fallback) {
-      res.statusCode = 200;
-      res.setHeader('Content-Type', 'application/json; charset=utf-8');
-      res.setHeader('Cache-Control', 'no-store');
-      res.setHeader('X-MAGI-Persona-Fallback', 'second-primary-maintained');
-      return res.end(JSON.stringify(fallback));
-    }
+    res.setHeader('X-MAGI-Persona-Recovery', 'whole-deliberation-retry-required');
+    return replayCaptured(res, capture);
   }
 
   if (Number(capture.statusCode) >= 200 && Number(capture.statusCode) < 300) {
