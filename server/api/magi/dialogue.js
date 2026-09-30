@@ -189,8 +189,14 @@ function unsupportedCertainty(statement, availableMaterial) {
 function unsupportedTacticalNarrative(statement, availableMaterial) {
   const s = text(statement);
   const material = text(availableMaterial);
-  const phrases = ['試合の流れ','畳みかけ','勢いをつけ','流れを作','得点につなが','チャンスを広げ','プレッシャーをかけ','打線が回る','勝負をかけ','連動性として機能','打線の厚みが増す'];
-  return phrases.some(phrase => s.includes(phrase) && !material.includes(phrase));
+  const phrases = ['試合の流れ','畳みかけ','勢いをつけ','流れを作','得点につなが','チャンスを広げ','プレッシャーをかけ','打線が回る','勝負をかけ','連動性として機能','打線の厚みが増す','得点圏の流れ','勝ちに行く','スムーズにつながる','途切れさせない'];
+  if (phrases.some(phrase => s.includes(phrase) && !material.includes(phrase))) return true;
+  const effectPatterns = [
+    /流れ.{0,10}(?:良く|よく|スムーズ|作る|生む|変える|途切れ)/,
+    /(?:得点|チャンス|勝利|勝ち).{0,14}(?:増える|増やす|生む|つながる|近づく|呼び込む)/,
+    /(?:打線|攻撃).{0,14}(?:機能する|厚みが増す|活性化する|回る)/
+  ];
+  return effectPatterns.some(re => re.test(s) && !re.test(material));
 }
 
 function statementGroundIssue(statement, target, caseData, targetMaterial, ownMaterial, allSame) {
@@ -294,7 +300,7 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
         ...payload,
         invalidDraft: last,
         rejectionReason: last?.rejectionReason || '',
-        correction: 'Fix the exact rejectionReason. target/sourcePersona must equal targetPersona. sourceClaim must be an exact copied substring of targetSourceMaterial. Remove invented motives, slogans, arbitrary future horizons, unsupported superlatives, unsupported tactical effects, and generic persona rhetoric. Use primaryComparison to name an actual differing player/slot/role. If target material is sparse, ask or challenge the concrete difference without inventing why it changes runs, flow, pressure, growth, or future results. If all three primary choices are the same, verify a real weakness, evidence gap, or review condition instead of merely agreeing.'
+        correction: 'Fix the exact rejectionReason. target/sourcePersona must equal targetPersona. sourceClaim must be an exact copied substring of targetSourceMaterial. Remove invented motives, slogans, arbitrary future horizons, unsupported superlatives, unsupported tactical effects, and generic persona rhetoric. Do not say the lineup will flow smoothly, keep scoring flow alive, create momentum, increase lineup thickness, or help win unless that exact effect is supplied. Use primaryComparison to name an actual differing player/slot/role. If target material is sparse, ask or challenge the concrete difference without inventing why it changes runs, flow, pressure, growth, or future results. If all three primary choices are the same, verify a real weakness, evidence gap, or review condition instead of merely agreeing.'
       },
       responseSchema: turnSchema
     });
