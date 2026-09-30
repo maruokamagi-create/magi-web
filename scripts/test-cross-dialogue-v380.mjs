@@ -22,6 +22,17 @@ let ctx=context(async(url)=>{calls.push(String(url));return{ok:true,status:200};
 await ctx.fetch('/api/magi/orchestrate',{method:'POST',body:JSON.stringify({phase:'CROSS_EXAMINATION',case:{question:'ベストオーダーは？'}})});
 assert.deepEqual(calls,['/api/magi/dialogue'],'full lineup cross must use direct Wise Men dialogue');
 
+for (const [label,caseData] of [
+  ['single batting slot',{question:'3番は誰がいい？',selectionKind:'BATTING_ORDER'}],
+  ['closer',{question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE'}],
+  ['pitching plan',{question:'7回制の投手運用を考えて',selectionKind:'PITCHING_PLAN'}]
+]) {
+  calls=[];
+  ctx=context(async(url)=>{calls.push(String(url));return{ok:true,status:200};});
+  await ctx.fetch('/api/magi/orchestrate',{method:'POST',body:JSON.stringify({phase:'CROSS_EXAMINATION',case:caseData})});
+  assert.deepEqual(calls,['/api/magi/dialogue'],label+' cross must use direct Wise Men dialogue');
+}
+
 calls=[];
 ctx=context(async(url)=>{calls.push(String(url));return{ok:true,status:200};});
 await ctx.fetch('/api/magi/orchestrate',{method:'POST',body:JSON.stringify({phase:'FINAL',case:{question:'ベストオーダーは？'}})});
@@ -41,9 +52,12 @@ assert.match(serverSrc,/試合は待ってくれない\|勝ちに行くぞ/,'Bal
 assert.match(serverSrc,/一番得点を取れる.*圧倒的/,'unsupported tactical certainty must be rejected');
 assert.match(serverSrc,/具体的な打順番号と選手名/,'cross dialogue must challenge a concrete batting-order slot and player');
 assert.match(serverSrc,/違っている番号を優先して直接議論/,'cross dialogue must debate the actual disagreement instead of generic agreement');
+assert.match(serverSrc,/PITCHING_PLAN/,'direct dialogue must support pitching plans');
+assert.match(serverSrc,/PITCHING_ROLE/,'direct dialogue must support a single pitching role');
+assert.match(serverSrc,/BATTING_ORDER/,'direct dialogue must support a single batting slot');
 
 assert.match(uiSrc,/MAGI_CHAT_UI_CANONICAL_V387/,'canonical chat renderer must be active');
-assert.match(uiSrc,/fullLineupNeverRendersLegacyControlTargetRows:true/,'full lineup must never render legacy CONTROL target cards');
+assert.match(uiSrc,/directDebateKinds:\['FULL_LINEUP','BATTING_ORDER','PITCHING_ROLE','PITCHING_PLAN'\]/,'four core selection debates must use direct dialogue rendering');
 assert.match(uiSrc,/fetch\('\/api\/magi\/dialogue'/,'canonical renderer must hydrate direct dialogue itself');
 assert.match(uiSrc,/dialogue\.forEach\(turn=>directRow/,'direct Wise Men dialogue must be rendered from canonical dialogue data');
 assert.doesNotMatch(uiSrc,/controlTargetFor/,'canonical renderer must not reconstruct CONTROL-to-persona challenge cards');
@@ -58,7 +72,8 @@ const second=full.indexOf("addPhase(body,'二次判定')");
 assert.ok(primary>=0&&opening>primary&&dialogue>opening&&closing>dialogue&&second>closing,'canonical phase order must be primary -> CONTROL opening -> direct dialogue -> CONTROL closing -> SECOND');
 
 assert.match(languageSrc,/カスペル\/g,'カスパー'/,'CASPER display typo must be normalized in MAGI results');
-assert.match(indexSrc,/chat-ui-canonical-v387\.js\?v=420/,'production HTML must load refreshed canonical chat renderer');
+assert.match(indexSrc,/cross-dialogue-router-v380\.js\?v=430/,'production HTML must load generalized cross-dialogue router');
+assert.match(indexSrc,/chat-ui-canonical-v387\.js\?v=431/,'production HTML must load generalized canonical chat renderer');
 assert.doesNotMatch(indexSrc,/chat-ui-v196\.js/,'production HTML must not load the legacy chat renderer');
 assert.doesNotMatch(indexSrc,/cross-dialogue-ui-v380\.js/,'production HTML must not load the post-hoc dialogue patcher');
 assert.match(indexSrc,/magi-user-language-v382\.js\?v=385/,'production HTML must load current language normalization revision');
