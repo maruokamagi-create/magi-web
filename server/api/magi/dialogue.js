@@ -321,8 +321,10 @@ function focusDifferenceFor(primary, kind, caseData, speakerKey, targetKey) {
   return { label, speakerPlayer:own[0]||'未提示', targetPlayer:other[0]||'未提示', same:norm(own[0])===norm(other[0]) };
 }
 
-function batchTurnRequests(primary, kind, caseData) {
+export function batchTurnRequests(primary, kind, caseData) {
   return TURN_PLAN.map(step => {
+    const targetPersona = TURN_ORDER.find(p=>p.label===step.target);
+    if (!targetPersona) throw new Error(`Unknown dialogue target: ${step.target}`);
     const targetSourceMaterial = sourceMaterialFor(primary, [], step.target);
     const ownPrimaryMaterial = primaryMaterial(primaryFor(primary, step.persona.key));
     if (!targetSourceMaterial) throw new Error(`Cross dialogue source material is empty for ${step.target}`);
@@ -331,9 +333,9 @@ function batchTurnRequests(primary, kind, caseData) {
       speakerJapanese: step.persona.jp,
       speakerVoice: DIRECT_DIALOGUE_VOICES[step.persona.key],
       target: step.target,
-      targetJapanese: TURN_ORDER.find(p=>p.label===step.target)?.jp || step.target,
+      targetJapanese: targetPersona.jp,
       sourcePersona: step.target,
-      focusDifference: focusDifferenceFor(primary, kind, caseData, step.persona.key, target.key),
+      focusDifference: focusDifferenceFor(primary, kind, caseData, step.persona.key, targetPersona.key),
       ownPrimaryMaterial,
       targetSourceMaterial
     };
