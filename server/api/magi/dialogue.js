@@ -12,8 +12,8 @@ const TURN_ORDER = [
 
 const TURN_PLAN = [
   { persona: TURN_ORDER[0], target: 'BALTHASAR-2' },
-  { persona: TURN_ORDER[1], target: 'MELCHIOR-1' },
-  { persona: TURN_ORDER[2], target: 'BALTHASAR-2' }
+  { persona: TURN_ORDER[1], target: 'CASPER-3' },
+  { persona: TURN_ORDER[2], target: 'MELCHIOR-1' }
 ];
 
 const turnSchema = {
@@ -186,6 +186,13 @@ function unsupportedCertainty(statement, availableMaterial) {
   return phrases.some(phrase => s.includes(phrase) && !material.includes(phrase));
 }
 
+function unsupportedTacticalNarrative(statement, availableMaterial) {
+  const s = text(statement);
+  const material = text(availableMaterial);
+  const phrases = ['試合の流れ','畳みかけ','勢いをつけ','流れを作','得点につなが','チャンスを広げ','プレッシャーをかけ'];
+  return phrases.some(phrase => s.includes(phrase) && !material.includes(phrase));
+}
+
 function statementLooksGrounded(statement, target, sourceClaim, caseData, targetMaterial, ownMaterial, allSame) {
   const s = text(statement);
   if (s.length < 12 || s.length > 260) return false;
@@ -197,6 +204,7 @@ function statementLooksGrounded(statement, target, sourceClaim, caseData, target
   if (!hasFutureCue(caseData?.question) && /半年後|来年|来季|将来|未来|長期|数年後/.test(s)) return false;
   if (unsupportedPremise(s, targetMaterial)) return false;
   if (unsupportedCertainty(s, `${targetMaterial}。${ownMaterial}`)) return false;
+  if (unsupportedTacticalNarrative(s, `${targetMaterial}。${ownMaterial}`)) return false;
   if (/固定(?:起用|する|で)/.test(s) && !/固定/.test(text(targetMaterial))) return false;
   if (allSame && !/(ただ|一方|確認|条件|見直|変え|どう|どこ|何|懸念|弱点)/.test(s)) return false;
   return true;
