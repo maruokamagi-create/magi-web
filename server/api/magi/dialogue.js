@@ -1,5 +1,4 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
-import { COMMON } from './_prompts.js';
 import { canonicalizePlayerData } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
@@ -10,11 +9,24 @@ const TURN_ORDER = [
   { key: 'casper', label: 'CASPER-3', jp: 'カスパー' }
 ];
 
-const DIRECT_DIALOGUE_PROMPTS = {
-  melchior: `${COMMON}\nDIRECT DIALOGUE ROLE: You are MELCHIOR-1. Use first person 「私」. Challenge only from verified facts, exact supplied numbers, sample size, or an explicit evidence gap. Do not invent tactical effects, motives, psychology, or future outcomes. If evidence is sparse, say exactly what comparison still needs support.`,
-  balthasar: `${COMMON}\nDIRECT DIALOGUE ROLE: You are BALTHASAR-2. Use first person 「俺」. Compare the concrete candidate, batting slot, or pitching role that differs. In this direct-dialogue turn, do NOT use dugout slogans or claim that a choice improves flow, scoring, momentum, pressure, or winning unless that exact effect is supplied. It is valid to say only that you prefer player A over player B and ask which supplied record supports the difference.`,
-  casper: `${COMMON}\nDIRECT DIALOGUE ROLE: You are CASPER-3. Use first person 「僕」. Compare current role, burden, opportunity, or development only when targetSourceMaterial or CASE explicitly supplies it. Do not invent feelings, future growth, team-strength effects, or workload effects. If those facts are absent, stay on the concrete candidate/slot/role difference and current records.`
+const DIRECT_DIALOGUE_VOICES = {
+  melchior: 'メルキオール。日本語の一人称は「私」。確認できる記録・数値・母数・情報不足だけで相手案を検証する。',
+  balthasar: 'バルタザール。日本語の一人称は「俺」。候補・打順・投手役割の具体的な違いを比較する。ただし勝利・得点・流れ・勢い等の効果は、入力に明記されている場合以外は作らない。',
+  casper: 'カスパー。日本語の一人称は「僕」。役割・負担・機会・成長は入力に明記された事実だけを使う。心理・将来効果は作らない。'
 };
+
+const DIRECT_DIALOGUE_SYSTEM = [
+  'あなたはMAGIの公開相互検証を生成する制御層です。MAGI CONTROLとして発言せず、指定された3賢人本人の短い直接対話だけをJSONで返します。',
+  'turnRequestsを上から順に1件ずつ処理し、dialogueを必ず3件返してください。',
+  '各turnのspeaker/target/sourcePersonaはturnRequestsの指定どおりにしてください。',
+  'sourceClaimは、そのturnのtargetSourceMaterialに実在する短い原文をそのままコピーしてください。言い換えは禁止です。',
+  'statementは相手の日本語名を呼び、sourceClaimへ直接答える1〜3文の自然な野球の会話にしてください。',
+  '相手が言っていない動機・心理・方針・役割歴を作らないでください。入力にない数値を作らないでください。',
+  '得点、勝利、流れ、勢い、プレッシャー、成長、疲労、将来効果は入力に明記されていない限り主張しないでください。',
+  '材料が薄いときは、具体的な候補・打順・役割の違いを示し「どの確認済み記録でこちらを優先するか」を問い返すだけで構いません。',
+  'Evidence、正式ロスター、構造化、プロトコル等の内部用語を利用者向け発言に出さないでください。',
+  '隠れた思考過程は出さず、公開可能な発言だけ返してください。'
+].join(' ');
 
 const TURN_PLAN = [
   { persona: TURN_ORDER[0], target: 'BALTHASAR-2' },
@@ -32,6 +44,14 @@ const turnSchema = {
     statement: { type: 'STRING' }
   },
   required: ['speaker','target','sourcePersona','sourceClaim','statement']
+};
+
+const dialogueBatchSchema = {
+  type: 'OBJECT',
+  properties: {
+    dialogue: { type: 'ARRAY', items: turnSchema }
+  },
+  required: ['dialogue']
 };
 
 const text = value => String(value ?? '').trim();
@@ -265,6 +285,88 @@ function jstContext() {
   return { timeZone: 'Asia/Tokyo', currentDateTime: formatted };
 }
 
+function batchTurnRequests(primary) {
+  return TURN_PLAN.map(step => {
+    const targetSourceMaterial = sourceMaterialFor(primary, [], step.target);
+    const ownPrimaryMaterial = primaryMaterial(primaryFor(primary, step.persona.key));
+    if (!targetSourceMaterial) throw new Error(`Cross dialogue source material is empty for ${step.target}`);
+    return {
+      speaker: step.persona.label,
+      speakerJapanese: step.persona.jp,
+      speakerVoice: DIRECT_DIALOGUE_VOICES[step.persona.key],
+      target: step.target,
+      targetJapanese: TURN_ORDER.find(p=>p.label===step.target)?.jp || step.target,
+      sourcePersona: step.target,
+      ownPrimaryMaterial,
+      targetSourceMaterial
+    };
+  });
+}
+
+function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
+  const rows = Array.isArray(rawDialogue) ? rawDialogue : [];
+  const issues = [];
+  const normalized = [];
+  for (let i = 0; i < requests.length; i++) {
+    const req = requests[i];
+    const raw = canonicalizePlayerData(rows[i] || {});
+    const targetMaterial = req.targetSourceMaterial;
+    const ownMaterial = req.ownPrimaryMaterial;
+    if (!rows[i]) {
+      issues.push(`turn ${i+1}: MISSING_TURN`);
+      continue;
+    }
+    const speaker = text(raw?.speaker).toUpperCase();
+    const target = text(raw?.target).toUpperCase();
+    const sourcePersona = text(raw?.sourcePersona).toUpperCase();
+    if (speaker !== req.speaker) issues.push(`turn ${i+1}: WRONG_SPEAKER`);
+    if (target !== req.target || sourcePersona !== req.sourcePersona) issues.push(`turn ${i+1}: WRONG_TARGET`);
+    if (!exactSourceClaim(targetMaterial, raw?.sourceClaim)) issues.push(`turn ${i+1}: SOURCE_CLAIM_NOT_EXACT`);
+    const statementIssue = statementGroundIssue(raw?.statement, req.target, caseData, targetMaterial, ownMaterial, summary.allSame);
+    if (statementIssue) issues.push(`turn ${i+1}: ${statementIssue}`);
+    normalized.push({
+      speaker: req.speaker,
+      target: req.target,
+      sourcePersona: req.sourcePersona,
+      sourceClaim: text(raw?.sourceClaim),
+      statement: text(raw?.statement)
+    });
+  }
+  if (rows.length !== requests.length) issues.push(`DIALOGUE_COUNT_${rows.length}`);
+  return { ok: issues.length === 0, issues, dialogue: normalized };
+}
+
+async function generateDialogueBatch({ caseData, primary, summary }) {
+  const turnRequests = batchTurnRequests(primary);
+  const basePayload = {
+    phase: 'CROSS_DIALOGUE_BATCH',
+    temporalContext: jstContext(),
+    case: canonicalizePlayerData(caseData),
+    primaryComparison: summary,
+    debateRule: debateInstruction(summary.kind, caseData),
+    turnRequests: canonicalizePlayerData(turnRequests),
+    instruction: '3件を一度に生成してください。各発言は別人格の実際の一次判断へ直接返答し、候補・打順・役割の具体的な違いを扱ってください。'
+  };
+
+  let last = null;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    const raw = await callGemini({
+      systemInstruction: DIRECT_DIALOGUE_SYSTEM,
+      userPayload: attempt === 0 ? basePayload : {
+        ...basePayload,
+        invalidDraft: last?.raw || null,
+        validationIssues: last?.issues || [],
+        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
+      },
+      responseSchema: dialogueBatchSchema
+    });
+    const checked = validateBatchDialogue(raw?.dialogue, turnRequests, caseData, summary);
+    if (checked.ok) return checked.dialogue;
+    last = { raw, issues: checked.issues };
+  }
+  throw new Error(`Grounded cross dialogue batch failed: ${(last?.issues || []).join(', ')}`);
+}
+
 async function generateTurn({ persona, requiredTarget, caseData, primary, previousDialogue, summary }) {
   const targetMaterial = sourceMaterialFor(primary, previousDialogue, requiredTarget);
   const ownMaterial = primaryMaterial(primaryFor(primary, persona.key));
@@ -348,10 +450,7 @@ export default async function handler(req, res) {
 
     const primary = canonicalizePlayerData(body.primary);
     const summary = { ...primaryDecisionSummary(primary, kind, body.case), kind };
-    const dialogue = [];
-    for (const step of TURN_PLAN) {
-      dialogue.push(await generateTurn({ persona: step.persona, requiredTarget: step.target, caseData: body.case, primary, previousDialogue: dialogue, summary }));
-    }
+    const dialogue = await generateDialogueBatch({ caseData: body.case, primary, summary });
 
     return sendJson(res, 200, canonicalizePlayerData({
       agreement: summary.agreement,
