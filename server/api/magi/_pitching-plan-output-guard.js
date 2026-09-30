@@ -88,7 +88,7 @@ function validatePitchingPlanText(caseData,value){
   // Aggregate ERA/IP/APP do not establish consistency or stability by themselves.
   const hasStabilityEvidence=/(?:安定|安定性|継続性|ばらつき|試合別|登板別|標準偏差|連続.{0,8}(?:登板|試合))/.test(factual);
   if(!hasStabilityEvidence){
-    const unsupported=parts.find(s=>!isEvidenceGapStatement(s)&&/(?:安定している|安定した投球|安定感|安定した成績|安定した実績|安定して抑え)/.test(s));
+    const unsupported=parts.find(s=>!isEvidenceGapStatement(s)&&!/回答文に、確認できた記録と合わない内容があるため再確認が必要です/.test(s)&&!/(?:集計値だけから投球の安定性・再現性を事実として推定している)/.test(s)&&/(?:安定している|安定した投球|安定感|安定した成績|安定した実績|安定して抑え)/.test(s));
     if(unsupported)issues.push('集計値だけから投球の安定性・再現性を事実として推定している');
   }
 
