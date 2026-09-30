@@ -5,7 +5,13 @@ window.MAGI_CHAT_SINGLE_OWNER_V414=true;
 function cleanup(){
  const view=document.getElementById('magiChatView');if(!view)return;
  view.dataset.magiChatOwner='canonical-v387';
- view.querySelectorAll('[data-magi-wise-repair="dialogue"],[data-magi-direct-dialogue="true"]').forEach(n=>n.remove());
+ // Keep exactly one real Wise Men cross-dialogue path. The v390 repair may
+ // replace the canonical body after hydration; in that case its dialogue rows
+ // are the only real cross-examination and must not be deleted.
+ const canonical=[...view.querySelectorAll('[data-magi-canonical-direct-dialogue="true"]')];
+ const repaired=[...view.querySelectorAll('[data-magi-wise-repair="dialogue"]')];
+ if(canonical.length)repaired.forEach(n=>n.remove());
+ view.querySelectorAll('[data-magi-direct-dialogue="true"]').forEach(n=>n.remove());
  view.querySelectorAll('.magiMsg').forEach(row=>{
    const sender=String(row.querySelector('.magiSender')?.textContent||'').trim();
    if(/^MAGI CONTROL\s*→/.test(sender))row.remove();
