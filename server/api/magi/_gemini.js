@@ -6,7 +6,11 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 const DEFAULT_MODEL = 'gemini-3.5-flash';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
-const MAX_BODY_BYTES = 220_000;
+// FULL_LINEUP SECOND requests contain the validated CASE evidence plus the
+// persona's primary judgment and cross-examination context. The same evidence
+// already fits the PRIMARY request, so allow bounded headroom for those extra
+// structured fields instead of rejecting the SECOND request at the gateway.
+const MAX_BODY_BYTES = 512_000;
 // Keep every Gemini call bounded. A persona endpoint can perform deterministic
 // correction passes, so retrying the same model inside every pass can multiply
 // latency beyond the serverless execution window. One model attempt per pass is
