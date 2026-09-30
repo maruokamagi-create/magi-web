@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { debateKind, primaryDecisionSummary, challengesFromDialogue, batchTurnRequests } from '../server/api/magi/dialogue.js';
+import { debateKind, primaryDecisionSummary, challengesFromDialogue, batchTurnRequests, normalizeDirectStatement, speakerVoiceIssue, sameFocusIssue } from '../server/api/magi/dialogue.js';
 
 assert.equal(debateKind({selectionKind:'FULL_LINEUP',question:'ベストオーダーは？'}),'FULL_LINEUP');
 assert.equal(debateKind({selectionKind:'BATTING_ORDER',question:'3番は誰がいい？'}),'BATTING_ORDER');
@@ -50,5 +50,13 @@ assert.equal(batch[0].focusDifference.speakerPlayer,'嶋田 栄志');
 assert.equal(batch[0].focusDifference.targetPlayer,'中嶋 玲月');
 assert.equal(batch[1].focusDifference.speakerPlayer,'中嶋 玲月');
 assert.equal(batch[1].focusDifference.targetPlayer,'中嶋 玲月');
+
+const quoted=normalizeDirectStatement('バルタザール、俺は中嶋 玲月を3番にする。「僕は大野 竜暉を3番にします」とカスパーは言っている。','BALTHASAR-2','カスパー');
+assert.match(quoted,/俺は中嶋 玲月/);
+assert.match(quoted,/「僕は大野 竜暉/,'quoted target first-person must be preserved');
+assert.equal(speakerVoiceIssue('バルタザール、私の案は中嶋 玲月です。','BALTHASAR-2'),'WRONG_FIRST_PERSON');
+assert.equal(speakerVoiceIssue('バルタザール、俺の案は中嶋 玲月です。「僕は大野 竜暉」と相手は言っています。','BALTHASAR-2'),'');
+assert.equal(sameFocusIssue('カスパー、中嶋 玲月と中嶋 玲月の違いを比較したい。',{same:true,speakerPlayer:'中嶋 玲月',targetPlayer:'中嶋 玲月'}),'SELF_COMPARISON');
+assert.equal(sameFocusIssue('カスパー、3番の中嶋 玲月は一致しています。見直し条件を確認したい。',{same:true,speakerPlayer:'中嶋 玲月',targetPlayer:'中嶋 玲月'}),'');
 
 console.log('DIALOGUE CORE DEBATE KINDS: PASS');
