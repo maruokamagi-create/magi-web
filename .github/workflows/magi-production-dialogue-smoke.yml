@@ -49,6 +49,7 @@ jobs:
             ([.dialogue[].statement|contains("MAGI CONTROL")]|any|not) and
             ([.dialogue[].statement|test("お前|てめえ")]|any|not) and
             ((.dialogueFallbackUsed == true) or ([.dialogue[].statement|test("3番|4番|5番|7番")]|all)) and
+            ((.dialogueFallbackUsed == true) or ([.dialogue[].statement|test("3番の3番|4番の4番|5番の5番|中嶋 玲月と中嶋 玲月")]|any|not)) and
             ((.dialogueFallbackUsed != true) or ([.warnings[]?|contains("直接対話を取得できなかった")]|any))
           ' /tmp/dialogue.json >/dev/null
           echo 'PRODUCTION DIRECT THREE-WISE-MEN DIALOGUE: PASS'
@@ -81,6 +82,7 @@ jobs:
             (.challenges.casper|length)>=1 and
             ([.dialogue[].statement|contains("3番")]|all) and
             ([.dialogue[].statement|contains("大野 竜暉")]|all) and
-            ([.dialogue[].statement|test("お前|てめえ")]|any|not)
+            ([.dialogue[].statement|test("お前|てめえ")]|any|not) and
+            ([.dialogue[].statement|test("3番の3番|大野 竜暉と大野 竜暉")]|any|not)
           ' /tmp/slot-dialogue.json >/dev/null
           echo 'PRODUCTION SINGLE-SLOT DIRECT DIALOGUE: PASS'
