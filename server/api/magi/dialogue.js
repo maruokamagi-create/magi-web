@@ -2,6 +2,7 @@ import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJs
 import { PERSONA_PROMPTS } from './_prompts.js';
 import { canonicalizePlayerData } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
+import { isPitchingPlanQuestion } from './_pitching-plan.js';
 
 const TURN_ORDER = [
   { key: 'melchior', label: 'MELCHIOR-1', jp: 'メルキオール' },
@@ -33,6 +34,81 @@ const norm = value => text(value).normalize('NFKC').replace(/[\s　]+/g, '');
 function validCase(body) {
   const q = text(body?.case?.question);
   return q.length >= 2 && q.length <= 12000;
+}
+
+function debateKind(caseData) {
+  if (isFullLineupQuestion(caseData)) return 'FULL_LINEUP';
+  if (isPitchingPlanQuestion(caseData) || String(caseData?.selectionKind || caseData?.evidence?.selectionKind || '').toUpperCase() === 'PITCHING_PLAN') return 'PITCHING_PLAN';
+  const kind = String(caseData?.selectionKind || caseData?.evidence?.selectionKind || '').toUpperCase();
+  if (kind === 'PITCHING_ROLE') return 'PITCHING_ROLE';
+  if (kind === 'BATTING_ORDER') return 'BATTING_ORDER';
+  const q = text(caseData?.question).normalize('NFKC');
+  if (/(?:クローザー|抑え).{0,20}(?:誰|だれ|候補|選ぶ|選んで|決めて|いい)/.test(q)) return 'PITCHING_ROLE';
+  if (/[1-9１-９一二三四五六七八九]番(?:打者)?.{0,20}(?:誰|だれ|候補|選ぶ|選んで|決めて|いい)/.test(q)) return 'BATTING_ORDER';
+  return '';
+}
+function requestedBattingSlot(caseData) {
+  const q = text(caseData?.question).normalize('NFKC');
+  const m = q.match(/([1-9１-９])番/);
+  if (!m) return '打順';
+  const map = {'１':'1','２':'2','３':'3','４':'4','５':'5','６':'6','７':'7','８':'8','９':'9'};
+  return `${map[m[1]] || m[1]}番`;
+}
+function candidateList(primary, key) {
+  const value = primaryFor(primary, key);
+  return Array.isArray(value?.candidatePlayers) ? value.candidatePlayers.map(text).filter(Boolean) : [];
+}
+function primaryDecisionSummary(primary, kind, caseData) {
+  if (kind === 'FULL_LINEUP') return primaryLineupSummary(primary);
+  const rows = TURN_ORDER.map(p => ({ ...p, candidates: candidateList(primary, p.key) }));
+  const first = rows.map(row => row.candidates[0] || '');
+  const allSame = first.every(Boolean) && first.slice(1).every(name => norm(name) === norm(first[0]));
+  if (kind === 'PITCHING_PLAN') {
+    const roles = ['先発','第2投手','終盤','クローザー'];
+    const disagreement = [];
+    for (let i = 0; i < roles.length; i++) {
+      const names = rows.map(row => row.candidates[i] || '未提示');
+      if (new Set(names.map(norm)).size <= 1) continue;
+      disagreement.push(`${roles[i]}：${rows.map((row,j)=>`${row.jp} ${names[j]}`).join('／')}`);
+    }
+    if (!disagreement.length) return {
+      allSame: true,
+      agreement: ['3賢人の一次投手プランは4役とも一致しています。'],
+      disagreement: ['役割配置そのものではなく、各役割を支える根拠と見直し条件を直接確認します。']
+    };
+    return { allSame:false, agreement:['同じ役割配置は維持しつつ、違う役割について直接検証します。'], disagreement:disagreement.slice(0,3) };
+  }
+  const label = kind === 'PITCHING_ROLE' ? 'クローザー候補' : `${requestedBattingSlot(caseData)}候補`;
+  if (allSame) return {
+    allSame:true,
+    agreement:[`3賢人の一次判断は第1候補 ${first[0]} で一致しています。`],
+    disagreement:[`候補そのものではなく、${first[0]}を${label.replace('候補','')}に置く根拠の弱点と見直し条件を直接確認します。`]
+  };
+  return { allSame:false, agreement:[], disagreement:[`${label}：${rows.map((row,i)=>`${row.jp} ${first[i] || '未提示'}`).join('／')}`] };
+}
+function debateInstruction(kind, caseData) {
+  if (kind === 'FULL_LINEUP') return [
+    '現在のベストオーダー審議です。違う打順番号と選手を優先して直接議論してください。',
+    '打順が違う場合は、少なくとも1つの具体的な打順番号と選手名を出し、自分の配置を優先する根拠を相手の主張へ直接ぶつけてください。',
+    '3人の打順が同じなら、その並びで最も弱い根拠または見直し条件を具体的に突いてください。',
+    '15打数以上の選手を母数不足だけで批判しません。相手投手の左右は、ユーザーが明示的に求めない限り通常の論点にしません。'
+  ].join(' ');
+  if (kind === 'PITCHING_PLAN') return [
+    '現在の投手運用審議です。先発、第2投手、終盤、クローザーのうち実際に違う役割を優先して直接議論してください。',
+    '少なくとも1つの役割名と選手名を出し、ERA、投球回、奪三振、与四球、SVなどCASEに実際にある記録だけを根拠にしてください。',
+    'セーブ歴、高圧場面、疲労、連投耐性、役割適性を記録なしに作らないでください。'
+  ].join(' ');
+  if (kind === 'PITCHING_ROLE') return [
+    '質問で指定された1つの投手役割だけを審議します。',
+    '第1候補が違うなら候補選手名を直接ぶつけ、ERA、投球回、奪三振、与四球、WHIP、SV、明示された指導者観察など実際にある材料を比較してください。',
+    '先発能力や長いイニングを投げられることだけでクローザー適性を証明したことにしないでください。'
+  ].join(' ');
+  const slot = requestedBattingSlot(caseData);
+  return [
+    `現在の${slot}候補の審議です。第1候補が違うなら、その候補名を直接ぶつけてください。`,
+    '打率、出塁率、長打率、OPS、得点圏、打数、打点、四球、盗塁などCASEに実際にある現在の打撃記録を使い、なぜその打順に置くのかを比較してください。',
+    '将来の得点や勝利を確定的に語らず、現在の役割適合を議論してください。'
+  ].join(' ');
 }
 
 function primaryFor(primary, key) {
@@ -164,14 +240,12 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
     `あなたは ${requiredTarget} に直接返答します。target と sourcePersona は必ず ${requiredTarget} にしてください。`,
     'targetSourceMaterial を実際に読み、相手が本当に述べた内容だけに返答してください。人格設定から相手の主張・性格・意図を想像して攻撃してはいけません。',
     'sourceClaim には targetSourceMaterial から短い原文をそのまま抜き出してください。言い換えは禁止です。',
-    'statement はその sourceClaim への直接の返答にしてください。相手の日本語名を呼びかけ、1〜3文の自然な野球の会話にします。打順が違う場合は、少なくとも1つの具体的な打順番号と選手名を出し、なぜ自分の配置を優先するのかを相手の根拠に直接ぶつけてください。単なる感想や「考えは分かる」で終わらせません。',
-    '現在のベストオーダー審議です。質問に将来時点の指定がない限り、半年後・来年・将来・未来などへ勝手に時間軸を移してはいけません。',
-    'バルタザールは「試合は待ってくれない」「勝ちに行くぞ」のような決まり文句ではなく、実際の打順・選手・記録のつながりについて具体的に話してください。根拠なしに「一番得点を取れる」「圧倒的」と断定してはいけません。',
-    'カスパーは、一次判断や相手発言にない育成方針・心理・半年後の構想を作ってはいけません。現在の役割、負担、成長材料が明示されている範囲だけで話してください。',
-    '3人の打順が同じなら、単に「自分も同じ」で終わらず、その並びの中で最も弱い根拠または見直し条件を具体的に突いてください。打順が違うなら、違っている番号を優先して直接議論してください。',
+    'statement はその sourceClaim への直接の返答にしてください。相手の日本語名を呼びかけ、1〜3文の自然な野球の会話にします。単なる感想や「考えは分かる」で終わらせません。',
+    debateInstruction(summary.kind, caseData),
+    '質問に将来時点の指定がない限り、半年後・来年・将来・未来などへ勝手に時間軸を移してはいけません。',
+    'バルタザールは決まり文句ではなく、実際の選手・役割・記録のつながりについて具体的に話してください。根拠なしに「一番得点を取れる」「圧倒的」と断定してはいけません。',
+    'カスパーは、一次判断や相手発言にない育成方針・心理・将来構想を作ってはいけません。現在の役割、負担、成長材料が明示されている範囲だけで話してください。',
     '「固定する」と相手が言っていないのに固定起用を批判してはいけません。「数字が揃うまで待つ」と言っていないのに待つ姿勢を批判してはいけません。「急いでいる」「焦っている」など相手の動機を勝手に付けてはいけません。',
-    '丸岡中の通常のベストオーダー審議では、15打数以上は実用上十分な母数として扱います。15打数以上の選手を母数不足だけで批判しません。',
-    '相手投手の左右は、ユーザーが明示的に求めない限り通常の論点にしません。',
     '利用者向けに Evidence、照合、正式ロスター、構造化、プロトコル等のシステム用語を使いません。',
     '隠れた思考過程は出さず、公開してよい短い発言だけ返してください。'
   ].join(' ');
@@ -192,11 +266,11 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
   let last = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const raw = await callGemini({
-      systemInstruction: `${PERSONA_PROMPTS[persona.key]}\n\nCROSS DIALOGUE RULE: Speak directly to ${requiredTarget}. Reply only to a concrete statement that is present in targetSourceMaterial. Do not fabricate motives, future plans, certainty, or another persona's stance. This must feel like deliberation: challenge or defend a concrete batting-order decision, name the slot/player involved, and explain the evidence conflict in plain baseball language.`,
+      systemInstruction: `${PERSONA_PROMPTS[persona.key]}\n\nCROSS DIALOGUE RULE: Speak directly to ${requiredTarget}. Reply only to a concrete statement that is present in targetSourceMaterial. Do not fabricate motives, future plans, certainty, or another persona's stance. This must feel like deliberation: challenge or defend the concrete player/slot/role decision identified by primaryComparison, and explain the evidence conflict in plain baseball language.`,
       userPayload: attempt === 0 ? payload : {
         ...payload,
         invalidDraft: last,
-        correction: 'target/sourcePersona must equal targetPersona. sourceClaim must be an exact copied substring of targetSourceMaterial. Remove invented motives, slogans, arbitrary future horizons, unsupported superlatives, and generic persona rhetoric. If all three lineups are the same, verify a real reason or review condition instead of merely agreeing.'
+        correction: 'target/sourcePersona must equal targetPersona. sourceClaim must be an exact copied substring of targetSourceMaterial. Remove invented motives, slogans, arbitrary future horizons, unsupported superlatives, and generic persona rhetoric. If all three primary choices are the same, verify a real weakness, evidence gap, or review condition instead of merely agreeing.'
       },
       responseSchema: turnSchema
     });
@@ -223,10 +297,11 @@ export default async function handler(req, res) {
   try {
     const body = await readBody(req);
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
-    if (!body?.primary || !isFullLineupQuestion(body.case)) return sendJson(res, 400, { error: 'Full-lineup primary judgments are required' });
+    const kind = debateKind(body.case);
+    if (!body?.primary || !kind) return sendJson(res, 400, { error: 'Supported selection primary judgments are required' });
 
     const primary = canonicalizePlayerData(body.primary);
-    const summary = primaryLineupSummary(primary);
+    const summary = { ...primaryDecisionSummary(primary, kind, body.case), kind };
     const dialogue = [];
     for (const step of TURN_PLAN) {
       dialogue.push(await generateTurn({ persona: step.persona, requiredTarget: step.target, caseData: body.case, primary, previousDialogue: dialogue, summary }));
