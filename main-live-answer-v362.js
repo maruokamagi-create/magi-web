@@ -81,6 +81,7 @@ async function waitFor(fnName,ms=6000){const start=Date.now();while(Date.now()-s
 async function runFullReport(result,original,btn){hidePanel();const kind=result.reportKind,q=$('q'),old=q?.value,synthetic=reportQuery(result,original);if(q)q.value=synthetic;setRouter(`質問理解 → ${kind==='BATTING'?'打撃':kind==='PITCHING'?'投手':'守備'}フルレポート`,'REPORT',`理解結果：${txt(result?.understoodRequest||result?.semantic?.understoodRequest)}`);if($('status'))$('status').textContent='質問の意図に合わせて正本データを集計しています…';try{if(kind==='BATTING'){const hydrate=await waitFor('MAGI_STATS_SERVER_HYDRATE');if(!hydrate)throw new Error('打撃正本データ取得処理を準備できませんでした');const hydrated=await hydrate(synthetic);if(!hydrated)throw new Error('打撃正本データを取得できませんでした');const fn=await waitFor('MAGI_STATS_REPORT_FN');if(!fn)throw new Error('打撃レポート処理を準備できませんでした');await fn.call(window)}else if(kind==='PITCHING'){const fn=await waitFor('MAGI_PITCH_DIRECT_FN');if(!fn)throw new Error('投手レポート処理を準備できませんでした');await fn.call(window)}else if(kind==='FIELDING'){const fn=await waitFor('MAGI_RUN_FIELDING_REPORT');if(!fn)throw new Error('守備レポート処理を準備できませんでした');await fn(synthetic)}else throw new Error('対応するレポート種類がありません');contextPush('assistant',`${txt(result?.understoodRequest||result?.semantic?.understoodRequest)}。フルレポートを表示した。`)}finally{if(q&&old!==undefined)q.value=old;if(btn){btn.disabled=false;btn.textContent='MAGI実行'}}}
 async function deliberate(result){
   const runner=formalRunner();if(!runner)throw new Error('正式MAGI審議ランナーを呼び出せません');
+  const response=$('response');if(response){response.hidden=false;response.removeAttribute('aria-hidden');}
   const packet=result?.evidencePacket||null,kind=result?.selectionKind||packet?.selectionKind||'',question=txt($('q')?.value);
   if(String(kind).toUpperCase()==='FULL_LINEUP'&&!fullLineupPacketReady(packet))throw new Error('ベストオーダー用の正本14名データを取得できなかったため審議を開始しません');
   const governedPacket=applyTeamPolicy(packet);
@@ -93,7 +94,28 @@ async function deliberate(result){
   contextPush('assistant',`${txt(result?.understoodRequest)||question}について正本成績を使って3賢人審議を実行した。`);
   return out;
 }
-function clearPreviousResult(){hidePanel();$('response')?.classList.remove('show');const judge=$('judge');if(judge){judge.querySelectorAll('.engineError').forEach(n=>n.remove());}const chat=$('magiChatView');if(chat)chat.innerHTML='';window.MAGI_LAST_DELIBERATION_RESULT=null;document.dispatchEvent(new CustomEvent('magi:new-question'));}
+function clearPreviousResult(){
+  hidePanel();
+  const response=$('response');
+  if(response){
+    response.classList.remove('show');
+    response.hidden=true;
+    response.setAttribute('aria-hidden','true');
+    response.querySelectorAll('.engineError,.magiFinalDecisionHero').forEach(n=>n.remove());
+  }
+  const judge=$('judge');
+  if(judge)judge.querySelectorAll('.engineError').forEach(n=>n.remove());
+  const chat=$('magiChatView');if(chat)chat.innerHTML='';
+  const protocol=$('engineProtocol');if(protocol)protocol.innerHTML='';
+  for(const id of ['caseMeta','caseQuestion','verdict','reason','next','v1','v2','v3','mText','bText','cText','mBasis','bBasis','cBasis','mConcern','bConcern','cConcern']){
+    const el=$(id);if(el)el.textContent='';
+  }
+  const status=$('status');if(status)status.textContent='新しい質問を準備中…';
+  window.MAGI_LAST_DELIBERATION_RESULT=null;
+  window.MAGI_LAST_FORMAL_ERROR=null;
+  document.dispatchEvent(new CustomEvent('magi:new-question'));
+  window.MAGI_PROGRESS_V358?.reset?.('質問全体の意味を理解中');
+}
 async function execute(btn){const q=txt($('q')?.value);if(!q){if($('status'))$('status').textContent='相談内容を入力してください。';return}if(busy)return;clearPreviousResult();busy=true;window.MAGI_LAST_SEMANTIC_EXECUTION={question:q,startedAt:new Date().toISOString(),phase:'QUESTION_UNDERSTANDING',completed:false};const started=performance.now(),oldText=btn?.textContent;contextPush('user',q);try{hidePanel();if(btn){btn.disabled=true;btn.textContent='質問を理解中…'}setRouter('質問を理解しています','THINK','単語一致ではなく、質問全体の意味・対象・期間・目的を確認しています。');if($('status'))$('status').textContent='質問内容を理解しています…';let r=await requestCore(q);if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){r=await resolveClarification(r,q);if(!r){if($('status'))$('status').textContent='確認を中止しました。';return}if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){showAnswer(r,performance.now()-started);return}}window.MAGI_LAST_SEMANTIC_EXECUTION={...window.MAGI_LAST_SEMANTIC_EXECUTION,phase:'ROUTED',action:txt(r?.action),route:txt(r?.route),selectionKind:txt(r?.selectionKind),reportKind:txt(r?.reportKind)};if(r?.action==='FULL_REPORT')return await runFullReport(r,q,btn);if(r?.action==='DELIBERATE'||r?.route==='DELIBERATION')return await deliberate(r);if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){showAnswer(r,performance.now()-started);return}if(r?.handled!==false){showAnswer(r,performance.now()-started);return}throw new Error('安全に処理経路を確定できませんでした')}catch(e){console.warn('[MAGI semantic v362]',e?.message||e);$('response')?.classList.remove('show');if(e?.status===401){if($('status'))$('status').textContent='LINEログインを確認してください。'}else if(e?.status===403){if($('status'))$('status').textContent='利用承認を確認してください。'}else if(e?.status===426){if($('status'))$('status').textContent='MAGIが更新されました。ページを再読み込みしてください。';setRouter('更新が必要','UPDATE','古い画面では審議結果を出しません。')}else{if($('status'))$('status').textContent=`処理を停止しました：${txt(e?.message)||'正本データ処理を完了できませんでした'}`;setRouter('処理停止','RETRY','正本Evidenceが揃わない、または画面と一致しない場合は結果を出しません。')}}finally{if(window.MAGI_LAST_SEMANTIC_EXECUTION)window.MAGI_LAST_SEMANTIC_EXECUTION={...window.MAGI_LAST_SEMANTIC_EXECUTION,completed:true,finishedAt:new Date().toISOString()};if(btn){btn.disabled=false;if(/質問を理解中|審議中/.test(btn.textContent||''))btn.textContent=oldText||'MAGI実行'}busy=false}}
 
 window.MAGI_SEMANTIC_RUN_V2=execute;
