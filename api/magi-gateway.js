@@ -57,10 +57,17 @@ export default async function handler(req, res) {
     if (typeof fn !== 'function') throw new Error(`Handler not found: ${key}`);
     return await fn(req, res);
   } catch (error) {
-    console.error('[MAGI gateway]', key, error?.message || error);
+    const message = String(error?.message || error || '');
+    console.error('[MAGI gateway]', key, message);
     if (res.headersSent) return;
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    return res.end(JSON.stringify({ ok: false, error: 'MAGI gateway failed' }));
+    const importMatch = message.match(/(?:Cannot find package|does not provide an export named|Cannot find module)[^\n]*/i);
+    return res.end(JSON.stringify({
+      ok: false,
+      error: 'MAGI gateway failed',
+      code: 'MAGI_GATEWAY_MODULE_LOAD_FAILED',
+      diagnostic: importMatch ? importMatch[0].slice(0, 240) : 'module_load_failed'
+    }));
   }
 }
