@@ -51,7 +51,7 @@ assert.match(serverSrc,/半年後.*来年.*将来.*未来/,'arbitrary future hor
 assert.match(serverSrc,/試合は待ってくれない\|勝ちに行くぞ/,'Balthasar canned rhetoric must be rejected');
 assert.match(serverSrc,/一番得点を取れる.*圧倒的/,'unsupported tactical certainty must be rejected');
 assert.match(serverSrc,/具体的な打順番号と選手名/,'cross dialogue must challenge a concrete batting-order slot and player');
-assert.match(serverSrc,/違っている番号を優先して直接議論/,'cross dialogue must debate the actual disagreement instead of generic agreement');
+assert.match(serverSrc,/違う打順番号と選手を優先して直接議論/,'full-lineup dialogue must debate the actual disagreement instead of generic agreement');
 assert.match(serverSrc,/PITCHING_PLAN/,'direct dialogue must support pitching plans');
 assert.match(serverSrc,/PITCHING_ROLE/,'direct dialogue must support a single pitching role');
 assert.match(serverSrc,/BATTING_ORDER/,'direct dialogue must support a single batting slot');
