@@ -44,7 +44,7 @@ ctx=context(async(url)=>{calls.push(String(url));if(String(url)==='/api/magi/dia
 await ctx.fetch('/api/magi/orchestrate',{method:'POST',body:JSON.stringify({phase:'CROSS_EXAMINATION',case:{question:'ベストオーダーは？'}})});
 assert.deepEqual(calls,['/api/magi/dialogue','/api/magi/orchestrate'],'dialogue failure must fall back to the existing cross route');
 
-assert.match(serverSrc,/sourceClaim.*exact copied substring|sourceClaim には targetSourceMaterial/s,'dialogue must ground every reply in an actual prior claim');
+assert.match(serverSrc,/sourceClaim.{0,80}(?:原文をそのままコピー|targetSourceMaterial)/s,'dialogue must ground every reply in an actual prior claim');
 assert.match(serverSrc,/15打数以上は実用上十分/,'15 at-bats policy must be explicit');
 assert.match(serverSrc,/相手投手の左右.*明示的に求めない限り/,'handedness must not be a default debate topic');
 assert.match(serverSrc,/急いでいる.*焦っている|急ぎ\|焦り/,'fabricated urgency motives must be prohibited');
