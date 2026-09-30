@@ -298,12 +298,22 @@ function focusDifferenceFor(primary, kind, caseData, speakerKey, targetKey) {
     const b = validateFullLineupOrder(other);
     if (!a.ok || !b.ok) return null;
     let idx = a.order.findIndex((name,i)=>norm(name)!==norm(b.order[i]));
+    if (idx < 0) {
+      const third = TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
+      const thirdOrder = third ? validateFullLineupOrder(candidateList(primary, third.key)) : null;
+      if (thirdOrder?.ok) idx = a.order.findIndex((name,i)=>norm(name)!==norm(thirdOrder.order[i]));
+    }
     if (idx < 0) idx = 0;
     return { label:`${idx+1}番`, speakerPlayer:a.order[idx], targetPlayer:b.order[idx], same:norm(a.order[idx])===norm(b.order[idx]) };
   }
   if (kind === 'PITCHING_PLAN') {
     const roles=['先発','第2投手','終盤','クローザー'];
     let idx=roles.findIndex((_,i)=>norm(own[i])!==norm(other[i]));
+    if(idx<0){
+      const third=TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
+      const thirdCandidates=third?candidateList(primary,third.key):[];
+      idx=roles.findIndex((_,i)=>norm(own[i])!==norm(thirdCandidates[i]));
+    }
     if(idx<0)idx=0;
     return { label:roles[idx], speakerPlayer:own[idx]||'未提示', targetPlayer:other[idx]||'未提示', same:norm(own[idx])===norm(other[idx]) };
   }
