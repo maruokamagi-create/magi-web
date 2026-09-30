@@ -193,21 +193,24 @@ function unsupportedTacticalNarrative(statement, availableMaterial) {
   return phrases.some(phrase => s.includes(phrase) && !material.includes(phrase));
 }
 
-function statementLooksGrounded(statement, target, sourceClaim, caseData, targetMaterial, ownMaterial, allSame) {
+function statementGroundIssue(statement, target, caseData, targetMaterial, ownMaterial, allSame) {
   const s = text(statement);
-  if (s.length < 12 || s.length > 260) return false;
+  if (s.length < 12 || s.length > 260) return 'STATEMENT_LENGTH';
   const targetPersona = TURN_ORDER.find(p => p.label === target);
   const addressesTarget = !targetPersona || s.includes(targetPersona.jp) || s.includes(targetPersona.label.split('-')[0]);
-  if (!addressesTarget) return false;
-  if (/Evidence|EVIDENCE|照合|正式ロスター|構造化|プロトコル/.test(s)) return false;
-  if (/試合は待ってくれない|勝ちに行くぞ/.test(s)) return false;
-  if (!hasFutureCue(caseData?.question) && /半年後|来年|来季|将来|未来|長期|数年後/.test(s)) return false;
-  if (unsupportedPremise(s, targetMaterial)) return false;
-  if (unsupportedCertainty(s, `${targetMaterial}。${ownMaterial}`)) return false;
-  if (unsupportedTacticalNarrative(s, `${targetMaterial}。${ownMaterial}`)) return false;
-  if (/固定(?:起用|する|で)/.test(s) && !/固定/.test(text(targetMaterial))) return false;
-  if (allSame && !/(ただ|一方|確認|条件|見直|変え|どう|どこ|何|懸念|弱点)/.test(s)) return false;
-  return true;
+  if (!addressesTarget) return 'TARGET_NOT_ADDRESSED';
+  if (/Evidence|EVIDENCE|照合|正式ロスター|構造化|プロトコル/.test(s)) return 'INTERNAL_LANGUAGE';
+  if (/試合は待ってくれない|勝ちに行くぞ/.test(s)) return 'CANNED_RHETORIC';
+  if (!hasFutureCue(caseData?.question) && /半年後|来年|来季|将来|未来|長期|数年後/.test(s)) return 'UNREQUESTED_FUTURE';
+  if (unsupportedPremise(s, targetMaterial)) return 'UNSUPPORTED_PREMISE';
+  if (unsupportedCertainty(s, `${targetMaterial}。${ownMaterial}`)) return 'UNSUPPORTED_CERTAINTY';
+  if (unsupportedTacticalNarrative(s, `${targetMaterial}。${ownMaterial}`)) return 'UNSUPPORTED_TACTICAL_NARRATIVE';
+  if (/固定(?:起用|する|で)/.test(s) && !/固定/.test(text(targetMaterial))) return 'INVENTED_FIXED_USAGE';
+  if (allSame && !/(ただ|一方|確認|条件|見直|変え|どう|どこ|何|懸念|弱点)/.test(s)) return 'NO_REAL_CHALLENGE';
+  return '';
+}
+function statementLooksGrounded(statement, target, sourceClaim, caseData, targetMaterial, ownMaterial, allSame) {
+  return !statementGroundIssue(statement, target, caseData, targetMaterial, ownMaterial, allSame);
 }
 
 function lineupOf(primary, key) {
@@ -289,7 +292,8 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
       userPayload: attempt === 0 ? payload : {
         ...payload,
         invalidDraft: last,
-        correction: 'target/sourcePersona must equal targetPersona. sourceClaim must be an exact copied substring of targetSourceMaterial. Remove invented motives, slogans, arbitrary future horizons, unsupported superlatives, and generic persona rhetoric. If all three primary choices are the same, verify a real weakness, evidence gap, or review condition instead of merely agreeing.'
+        rejectionReason: last?.rejectionReason || '',
+        correction: 'Fix the exact rejectionReason. target/sourcePersona must equal targetPersona. sourceClaim must be an exact copied substring of targetSourceMaterial. Remove invented motives, slogans, arbitrary future horizons, unsupported superlatives, unsupported tactical effects, and generic persona rhetoric. Use primaryComparison to name an actual differing player/slot/role. If target material is sparse, ask or challenge the concrete difference without inventing why it changes runs, flow, pressure, growth, or future results. If all three primary choices are the same, verify a real weakness, evidence gap, or review condition instead of merely agreeing.'
       },
       responseSchema: turnSchema
     });
@@ -297,9 +301,16 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
     result.speaker = persona.label;
     result.sourcePersona = requiredTarget;
     result.target = requiredTarget;
+    if (!exactSourceClaim(targetMaterial, result.sourceClaim)) {
+      last = { ...result, rejectionReason: 'SOURCE_CLAIM_NOT_EXACT' };
+      continue;
+    }
+    const rejectionReason = statementGroundIssue(result.statement, requiredTarget, caseData, targetMaterial, ownMaterial, summary.allSame);
+    if (rejectionReason) {
+      last = { ...result, rejectionReason };
+      continue;
+    }
     last = result;
-    if (!exactSourceClaim(targetMaterial, result.sourceClaim)) continue;
-    if (!statementLooksGrounded(result.statement, requiredTarget, result.sourceClaim, caseData, targetMaterial, ownMaterial, summary.allSame)) continue;
     return {
       speaker: persona.label,
       target: requiredTarget,
