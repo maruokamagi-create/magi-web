@@ -395,13 +395,7 @@ export function speakerVoiceIssue(statement, speakerLabel) {
 export function sameFocusIssue(statement, focus) {
   if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
   if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
-  const player = text(focus.speakerPlayer).replace(/[.*+?^$(){}|[\]\\]/g,'\\export function sameFocusIssue(statement, focus) {
-  if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
-  if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
-  const player = text(focus.speakerPlayer).replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
-  const repeated = new RegExp(player + '.{0,28}' + player).test(text(statement));
-  return repeated && /違い|どちら|比較/.test(text(statement)) ? 'SELF_COMPARISON' : '';
-}');
+  const player = text(focus.speakerPlayer).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const occurrences = text(statement).match(new RegExp(player,'g')) || [];
   return occurrences.length > 1 ? 'SELF_COMPARISON' : '';
 }
