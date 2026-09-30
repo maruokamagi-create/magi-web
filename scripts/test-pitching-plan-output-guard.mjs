@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { validatePitchingPlanPersonaOutput, validatePitchingPlanCrossOutput } from '../server/api/magi/_pitching-plan-output-guard.js';
+import { recoverSoftPitchingPlanLanguage } from '../server/api/magi/persona.js';
 
 const players=[
   {name:'井坂 悠聖',pitching:null},
@@ -39,5 +40,49 @@ assert.ok(issues.some(x=>x.includes('母数基準')));
 const withThreshold={...CASE,evidence:{...CASE.evidence,sampleThreshold:'クローザー候補は最低5登板を母数基準とする'}};
 issues=validatePitchingPlanPersonaOutput(withThreshold,result({warnings:['坂田 暉馬はクローザーとして十分な母数には達していません。']}));
 assert.deepEqual(issues,[]);
+
+
+const recoverable={
+  persona:'CASPER',
+  candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','坂田 暉馬'],
+  facts:['任意'],analysis:['任意'],prediction:['任意'],
+  confidence:'LOW',judgment:'YELLOW',primaryReason:'不正な将来表現',publicStatement:'不正な将来表現',
+  warnings:[],reviewRequested:true,reviewReason:'soft',dataConflict:false
+};
+assert.equal(recoverSoftPitchingPlanLanguage(
+  recoverable,
+  ['分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'],
+  true,
+  CASE
+),true);
+assert.equal(recoverable.judgment,'BLUE');
+assert.equal(recoverable.reviewRequested,false);
+assert.match(recoverable.publicStatement,/僕は、先発 橋向 結都/);
+assert.deepEqual(recoverable.analysis,[]);
+assert.deepEqual(recoverable.prediction,[]);
+
+const hardFailure={
+  persona:'CASPER',
+  candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','坂田 暉馬'],
+  facts:[],analysis:[],prediction:[],warnings:[]
+};
+assert.equal(recoverSoftPitchingPlanLanguage(
+  hardFailure,
+  ['投球記録がある選手数4人はEvidenceの実数5人と一致しない'],
+  true,
+  CASE
+),false);
+
+const ineligible={
+  persona:'CASPER',
+  candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','中嶋 玲月'],
+  facts:[],analysis:[],prediction:[],warnings:[]
+};
+assert.equal(recoverSoftPitchingPlanLanguage(
+  ineligible,
+  ['分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'],
+  true,
+  CASE
+),false);
 
 console.log('PITCHING PLAN OUTPUT GUARD RESULT: PASS');
