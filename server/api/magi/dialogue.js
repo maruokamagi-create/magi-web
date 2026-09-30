@@ -20,7 +20,7 @@ const DIRECT_DIALOGUE_SYSTEM = [
   'turnRequestsを上から順に1件ずつ処理し、dialogueを必ず3件返してください。',
   '各turnのspeaker/target/sourcePersonaはturnRequestsの指定どおりにしてください。',
   '各turnのfocusDifferenceにlabel・speakerPlayer・targetPlayerがある場合、statementにその3項目を必ず明記し、実際の争点を直接扱ってください。',
-  'focusDifference.same=true の場合、speakerPlayer と targetPlayer は同じ結論です。同じ選手を「AとAの違い」「どちらがよい」と比較してはいけません。共通の配置を確認したうえで、根拠または見直し条件を相手に問い返してください。',
+  'focusDifference.same=true の場合、speakerPlayer と targetPlayer は同じ結論です。同じ選手名をstatement内で2回並べたり「AとAの違い」「どちらがよい」と比較してはいけません。comparisonPlayerがある場合は、共通のspeakerPlayer案とcomparisonPlayer案を比較し、なぜ共通案を維持するか相手に問い返してください。comparisonPlayerがない場合は、共通案の根拠または見直し条件を問い返してください。',
   'speakerVoiceの一人称を守ってください。メルキオール=私、バルタザール=俺、カスパー=僕です。相手のsourceClaimを引用するときは、その引用内の一人称を勝手に変えないでください。',
   'sourceClaimは、そのturnのtargetSourceMaterialに実在する短い原文をそのままコピーしてください。言い換えは禁止です。',
   'statementは相手の日本語名を呼び、sourceClaimへ直接答える1〜3文の自然な野球の会話にしてください。',
@@ -300,28 +300,47 @@ function focusDifferenceFor(primary, kind, caseData, speakerKey, targetKey) {
     const a = validateFullLineupOrder(own);
     const b = validateFullLineupOrder(other);
     if (!a.ok || !b.ok) return null;
+    const third = TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
+    const thirdOrder = third ? validateFullLineupOrder(candidateList(primary, third.key)) : null;
     let idx = a.order.findIndex((name,i)=>norm(name)!==norm(b.order[i]));
-    if (idx < 0) {
-      const third = TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
-      const thirdOrder = third ? validateFullLineupOrder(candidateList(primary, third.key)) : null;
-      if (thirdOrder?.ok) idx = a.order.findIndex((name,i)=>norm(name)!==norm(thirdOrder.order[i]));
-    }
+    if (idx < 0 && thirdOrder?.ok) idx = a.order.findIndex((name,i)=>norm(name)!==norm(thirdOrder.order[i]));
     if (idx < 0) idx = 0;
-    return { label:`${idx+1}番`, speakerPlayer:a.order[idx], targetPlayer:b.order[idx], same:norm(a.order[idx])===norm(b.order[idx]) };
+    const same = norm(a.order[idx])===norm(b.order[idx]);
+    return {
+      label:`${idx+1}番`,
+      speakerPlayer:a.order[idx],
+      targetPlayer:b.order[idx],
+      same,
+      comparisonPlayer:same && thirdOrder?.ok && norm(thirdOrder.order[idx])!==norm(a.order[idx]) ? thirdOrder.order[idx] : ''
+    };
   }
   if (kind === 'PITCHING_PLAN') {
     const roles=['先発','第2投手','終盤','クローザー'];
+    const third=TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
+    const thirdCandidates=third?candidateList(primary,third.key):[];
     let idx=roles.findIndex((_,i)=>norm(own[i])!==norm(other[i]));
-    if(idx<0){
-      const third=TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
-      const thirdCandidates=third?candidateList(primary,third.key):[];
-      idx=roles.findIndex((_,i)=>norm(own[i])!==norm(thirdCandidates[i]));
-    }
+    if(idx<0) idx=roles.findIndex((_,i)=>norm(own[i])!==norm(thirdCandidates[i]));
     if(idx<0)idx=0;
-    return { label:roles[idx], speakerPlayer:own[idx]||'未提示', targetPlayer:other[idx]||'未提示', same:norm(own[idx])===norm(other[idx]) };
+    const same=norm(own[idx])===norm(other[idx]);
+    return {
+      label:roles[idx],
+      speakerPlayer:own[idx]||'未提示',
+      targetPlayer:other[idx]||'未提示',
+      same,
+      comparisonPlayer:same && thirdCandidates[idx] && norm(thirdCandidates[idx])!==norm(own[idx]) ? thirdCandidates[idx] : ''
+    };
   }
   const label = kind === 'PITCHING_ROLE' ? 'クローザー' : requestedBattingSlot(caseData);
-  return { label, speakerPlayer:own[0]||'未提示', targetPlayer:other[0]||'未提示', same:norm(own[0])===norm(other[0]) };
+  const same=norm(own[0])===norm(other[0]);
+  const third=TURN_ORDER.find(p=>p.key!==speakerKey && p.key!==targetKey);
+  const thirdTop=third?candidateList(primary,third.key)[0]:'';
+  return {
+    label,
+    speakerPlayer:own[0]||'未提示',
+    targetPlayer:other[0]||'未提示',
+    same,
+    comparisonPlayer:same && thirdTop && norm(thirdTop)!==norm(own[0]) ? thirdTop : ''
+  };
 }
 
 export function batchTurnRequests(primary, kind, caseData) {
@@ -376,9 +395,15 @@ export function speakerVoiceIssue(statement, speakerLabel) {
 export function sameFocusIssue(statement, focus) {
   if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
   if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
+  const player = text(focus.speakerPlayer).replace(/[.*+?^$(){}|[\]\\]/g,'\\export function sameFocusIssue(statement, focus) {
+  if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
+  if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
   const player = text(focus.speakerPlayer).replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
   const repeated = new RegExp(player + '.{0,28}' + player).test(text(statement));
   return repeated && /違い|どちら|比較/.test(text(statement)) ? 'SELF_COMPARISON' : '';
+}');
+  const occurrences = text(statement).match(new RegExp(player,'g')) || [];
+  return occurrences.length > 1 ? 'SELF_COMPARISON' : '';
 }
 function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
   const rows = Array.isArray(rawDialogue) ? rawDialogue : [];
@@ -411,6 +436,7 @@ function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
     if (focus?.label && !statement.includes(focus.label)) issues.push(`turn ${i+1}: FOCUS_ROLE_MISSING`);
     if (focus?.speakerPlayer && !statement.includes(focus.speakerPlayer)) issues.push(`turn ${i+1}: SPEAKER_FOCUS_PLAYER_MISSING`);
     if (focus?.targetPlayer && !statement.includes(focus.targetPlayer)) issues.push(`turn ${i+1}: TARGET_FOCUS_PLAYER_MISSING`);
+    if (focus?.same && focus?.comparisonPlayer && !statement.includes(focus.comparisonPlayer)) issues.push(`turn ${i+1}: COMPARISON_PLAYER_MISSING`);
     normalized.push({
       speaker: req.speaker,
       target: req.target,
@@ -443,7 +469,7 @@ async function generateDialogueBatch({ caseData, primary, summary }) {
         ...basePayload,
         invalidDraft: last?.raw || null,
         validationIssues: last?.issues || [],
-        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手を比較せず、共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。targetSourceMaterialに明記されていない固定・待つ・急ぐ・焦る・育成優先・負担を相手の前提として追加しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
+        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手名を2回繰り返さず、comparisonPlayerがあれば共通案とその別案を比較し、なければ共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。targetSourceMaterialに明記されていない固定・待つ・急ぐ・焦る・育成優先・負担を相手の前提として追加しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
       },
       responseSchema: dialogueBatchSchema
     });
