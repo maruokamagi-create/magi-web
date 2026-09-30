@@ -6,6 +6,7 @@ on:
     paths:
       - 'index.html'
       - 'chat-ui-canonical-v387.js'
+      - 'wise-men-chat-repair-v389.js'
       - 'chat-single-owner-v414.js'
       - 'lineup-reasons-v415.js'
       - 'magi-control-summary-v377.js'
@@ -52,13 +53,17 @@ jobs:
         run: |
           set -euo pipefail
           grep -q '/magi-app-bootstrap-v363.js?v=418' index.html
-          grep -q '/chat-ui-canonical-v387.js?v=387' index.html
+          grep -q '/chat-ui-canonical-v387.js?v=420' index.html
+          grep -q '/wise-men-chat-repair-v389.js?v=420' index.html
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
           node --check chat-ui-canonical-v387.js
+          node --check wise-men-chat-repair-v389.js
           node --check chat-single-owner-v414.js
           node --check lineup-reasons-v415.js
           grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' chat-ui-canonical-v387.js
+          ! grep -Fq '${esc(person.jp)}<span>${esc(person.name)}</span>' chat-ui-canonical-v387.js
+          ! grep -Fq '${esc(persona.jp)}<span>${esc(persona.label)}</span>' wise-men-chat-repair-v389.js
           echo 'CANONICAL BOOTSTRAP CORE: PASS'
 
       - name: Verify deterministic CONTROL summary policy
