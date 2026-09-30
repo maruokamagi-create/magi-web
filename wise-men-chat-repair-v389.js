@@ -116,7 +116,8 @@ function installStyle(){
 }
 async function hydrateDialogue(result){
   if(!result||!isFullLineup(result))return result;
-  const existing=Array.isArray(result?.crossExamination?.dialogue)?result.crossExamination.dialogue.filter(x=>x?.speaker&&x?.statement):[];
+  const cross=result?.crossExamination||{};
+  const existing=cross?.dialogueFallbackUsed===true?[]:(Array.isArray(cross?.dialogue)?cross.dialogue.filter(x=>x?.speaker&&x?.statement):[]);
   if(existing.length)return result;
   const caseId=String(result?.case?.id||'');
   if(lastHydrated&&lastCaseId===caseId)return lastHydrated;
@@ -126,7 +127,7 @@ async function hydrateDialogue(result){
   try{
     const res=await fetch('/api/magi/dialogue',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phase:'CROSS_EXAMINATION',case:result.case,primary:result.primary}),signal:controller.signal});
     const direct=await res.json().catch(()=>null);
-    if(seq!==hydrateSeq||!res.ok||!Array.isArray(direct?.dialogue)||!direct.dialogue.length)return result;
+    if(seq!==hydrateSeq||!res.ok||direct?.dialogueFallbackUsed===true||!Array.isArray(direct?.dialogue)||!direct.dialogue.length)return result;
     const hydrated={...result,crossExamination:{...(result.crossExamination||{}),...direct}};
     lastHydrated=hydrated;lastCaseId=caseId;
     return hydrated;
@@ -147,7 +148,7 @@ async function repair(){
     const primary=personaEntries(result.primary);
     const second=personaEntries(result.second);
     if(primary.length!==3||second.length!==3)return false;
-    const dialogue=Array.isArray(result?.crossExamination?.dialogue)?result.crossExamination.dialogue.filter(x=>x?.speaker&&x?.statement):[];
+    const dialogue=result?.crossExamination?.dialogueFallbackUsed===true?[]:(Array.isArray(result?.crossExamination?.dialogue)?result.crossExamination.dialogue.filter(x=>x?.speaker&&x?.statement):[]);
     const signature=JSON.stringify({
       primary:primary.map(([,v])=>[publicSpeech(v),v?.facts,v?.analysis,v?.warnings]),
       dialogue:dialogue.map(v=>[v.speaker,v.target,v.statement]),
