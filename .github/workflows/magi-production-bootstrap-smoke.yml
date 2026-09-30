@@ -6,6 +6,8 @@ on:
     paths:
       - 'index.html'
       - 'chat-ui-canonical-v387.js'
+      - 'chat-single-owner-v414.js'
+      - 'lineup-reasons-v415.js'
       - 'magi-control-summary-v377.js'
       - 'result-layout-v189.js'
       - 'selection-polish-v218.js'
@@ -54,6 +56,8 @@ jobs:
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
           node --check chat-ui-canonical-v387.js
+          node --check chat-single-owner-v414.js
+          node --check lineup-reasons-v415.js
           grep -Fq 'MAGI_CHAT_UI_CANONICAL_V387' chat-ui-canonical-v387.js
           echo 'CANONICAL BOOTSTRAP CORE: PASS'
 
@@ -180,6 +184,9 @@ jobs:
           grep -Fq 'chat-single-owner-v414.js?v=417' index.html
           grep -Fq "owner:'chat-ui-canonical-v387'" chat-single-owner-v414.js
           grep -Fq 'removesLegacyCrossDuplicates:true' chat-single-owner-v414.js
+          grep -Fq 'if(canonical.length)repaired.forEach' chat-single-owner-v414.js
+          grep -Fq '参考ベストオーダー（暫定）' lineup-reasons-v415.js
+          grep -Fq 'function metricRank' lineup-reasons-v415.js
           echo 'CHAT SINGLE OWNER: PASS'
           grep -Fq 'function compactSummaryText' magi-control-summary-v377.js
           grep -Fq 'sentences.slice(0,2)' magi-control-summary-v377.js
