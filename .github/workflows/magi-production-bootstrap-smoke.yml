@@ -285,6 +285,23 @@ jobs:
             echo "HTTP $http_code"
           done
 
+      - name: Probe real production CORE gateway load
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          http_code=$(curl -L --max-time 25 -sS -w '%{http_code}' \
+            -H 'X-MAGI-Client-Version: 363' \
+            -H 'X-MAGI-Runtime-Version: 363' \
+            "$BASE/api/magi/core" -o /tmp/core-load.json || true)
+          cat /tmp/core-load.json 2>/dev/null || true; echo
+          echo "CORE LOAD HTTP $http_code"
+          if [ "$http_code" != "405" ]; then
+            echo "real production CORE gateway did not reach requirePost; expected 405, got $http_code" >&2
+            exit 22
+          fi
+          echo 'PRODUCTION CORE GATEWAY LOAD: PASS'
+
       - name: Verify production bootstrap and live master Evidence
         shell: bash
         run: |
