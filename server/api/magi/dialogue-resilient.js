@@ -79,7 +79,15 @@ function fallbackStatement(speaker, target, ownOrder, targetOrder) {
 }
 
 
-function genericFallbackStatement(kind, speaker, target, ownCandidates, targetCandidates) {
+function battingSlotLabel(caseData) {
+  const q = text(caseData?.question).normalize('NFKC');
+  const m = q.match(/([1-9１-９])番/);
+  if (!m) return '打順';
+  const map = {'１':'1','２':'2','３':'3','４':'4','５':'5','６':'6','７':'7','８':'8','９':'9'};
+  return `${map[m[1]] || m[1]}番`;
+}
+
+function genericFallbackStatement(kind, caseData, speaker, target, ownCandidates, targetCandidates) {
   const ownTop = ownCandidates[0] || '未提示';
   const targetTop = targetCandidates[0] || '未提示';
 
@@ -95,7 +103,7 @@ function genericFallbackStatement(kind, speaker, target, ownCandidates, targetCa
     return `${target.jp}、あなたは${roles[idx]}に${other}、${speaker.first}は${own}を置いています。今ある投手記録だけで、どちらをこの役割に置くか比べたいです。`;
   }
 
-  const role = kind === 'PITCHING_ROLE' ? 'クローザー' : 'この打順';
+  const role = kind === 'PITCHING_ROLE' ? 'クローザー' : battingSlotLabel(caseData);
   if (norm(ownTop) === norm(targetTop)) {
     return `${target.jp}、${role}の第一候補${ownTop}は${speaker.first}も同じです。今ある記録で、この判断を維持する条件と見直す条件を確認したいです。`;
   }
@@ -140,7 +148,7 @@ export function buildFallbackDialogue(body) {
       const ownCandidates = candidatesOf(primary, speaker.key);
       const targetCandidates = candidatesOf(primary, target.key);
       if (!ownCandidates.length || !targetCandidates.length) return null;
-      statement = genericFallbackStatement(kind, speaker, target, ownCandidates, targetCandidates);
+      statement = genericFallbackStatement(kind, body?.case || {}, speaker, target, ownCandidates, targetCandidates);
     }
 
     dialogue.push({
