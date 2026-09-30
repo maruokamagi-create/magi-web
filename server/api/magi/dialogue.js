@@ -20,7 +20,7 @@ const DIRECT_DIALOGUE_SYSTEM = [
   'turnRequestsを上から順に1件ずつ処理し、dialogueを必ず3件返してください。',
   '各turnのspeaker/target/sourcePersonaはturnRequestsの指定どおりにしてください。',
   '各turnのfocusDifferenceにlabel・speakerPlayer・targetPlayerがある場合、statementにその3項目を必ず明記し、実際の争点を直接扱ってください。',
-  'focusDifference.same=true の場合、speakerPlayer と targetPlayer は同じ結論です。同じ選手名をstatement内で2回並べたり「AとAの違い」「どちらがよい」と比較してはいけません。comparisonPlayerがある場合は、共通のspeakerPlayer案とcomparisonPlayer案を比較し、なぜ共通案を維持するか相手に問い返してください。comparisonPlayerがない場合は、共通案の根拠または見直し条件を問い返してください。',
+  'focusDifference.same=true の場合、speakerPlayer と targetPlayer は同じ結論です。「AとA」「Aと『A』」のように同じ選手同士を比較してはいけません。comparisonPlayerがある場合は、共通のspeakerPlayer案とcomparisonPlayer案を比較し、なぜ共通案を維持するか相手に問い返してください。comparisonPlayerがない場合は、共通案の根拠または見直し条件を問い返してください。',
   'speakerVoiceの一人称を守ってください。メルキオール=私、バルタザール=俺、カスパー=僕です。相手のsourceClaimを引用するときは、その引用内の一人称を勝手に変えないでください。',
   'sourceClaimは、そのturnのtargetSourceMaterialに実在する短い原文をそのままコピーしてください。言い換えは禁止です。',
   'statementは相手の日本語名を呼び、sourceClaimへ直接答える1〜3文の自然な野球の会話にしてください。',
@@ -396,8 +396,8 @@ export function sameFocusIssue(statement, focus) {
   if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
   if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
   const player = text(focus.speakerPlayer).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
-  const occurrences = text(statement).match(new RegExp(player,'g')) || [];
-  return occurrences.length > 1 ? 'SELF_COMPARISON' : '';
+  const selfPair = new RegExp(player + '\\s*と\\s*[「『]?\\s*' + player).test(text(statement));
+  return selfPair ? 'SELF_COMPARISON' : '';
 }
 function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
   const rows = Array.isArray(rawDialogue) ? rawDialogue : [];
@@ -463,7 +463,7 @@ async function generateDialogueBatch({ caseData, primary, summary }) {
         ...basePayload,
         invalidDraft: last?.raw || null,
         validationIssues: last?.issues || [],
-        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手名を2回繰り返さず、comparisonPlayerがあれば共通案とその別案を比較し、なければ共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。targetSourceMaterialに明記されていない固定・待つ・急ぐ・焦る・育成優先・負担を相手の前提として追加しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
+        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手同士を比較せず、comparisonPlayerがあれば共通案とその別案を比較し、なければ共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。targetSourceMaterialに明記されていない固定・待つ・急ぐ・焦る・育成優先・負担を相手の前提として追加しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
       },
       responseSchema: dialogueBatchSchema
     });
