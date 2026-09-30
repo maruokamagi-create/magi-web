@@ -27,4 +27,47 @@ assert.ok(result.warnings.some(x=>x.includes('直接対話を取得できなか�
 assert.match(result.dialogue[0].statement,/バルタザール/);
 assert.match(result.dialogue[1].statement,/カスパー/);
 assert.match(result.dialogue[2].statement,/メルキオール/);
+
+
+const slotBody={
+  case:{question:'3番は誰がいい？',selectionKind:'BATTING_ORDER'},
+  primary:{
+    melchior:{persona:'MELCHIOR-1',candidatePlayers:['大野 竜暉','中嶋 玲月','長侶 穹'],publicStatement:'3番は大野 竜暉を第一候補にします。'},
+    balthasar:{persona:'BALTHASAR-2',candidatePlayers:['中嶋 玲月','大野 竜暉','長侶 穹'],publicStatement:'3番は中嶋 玲月を第一候補にする。'},
+    casper:{persona:'CASPER-3',candidatePlayers:['大野 竜暉','中嶋 玲月','長侶 穹'],publicStatement:'僕は3番を大野 竜暉にします。'}
+  }
+};
+const slotResult=buildFallbackDialogue(slotBody);
+assert.ok(slotResult);
+assert.equal(slotResult.dialogueFallbackUsed,true);
+assert.equal(slotResult.dialogue.length,3);
+assert.ok(slotResult.challenges.melchior.length>=1);
+assert.ok(slotResult.challenges.balthasar.length>=1);
+assert.ok(slotResult.challenges.casper.length>=1);
+assert.match(slotResult.disagreement.join(' '),/3番候補/);
+
+const closerBody={
+  case:{question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE'},
+  primary:{
+    melchior:{persona:'MELCHIOR-1',candidatePlayers:['大野 竜暉','大久保 陽翔'],publicStatement:'クローザーは大野 竜暉を第一候補にします。'},
+    balthasar:{persona:'BALTHASAR-2',candidatePlayers:['大久保 陽翔','大野 竜暉'],publicStatement:'俺は大久保 陽翔を第一候補にする。'},
+    casper:{persona:'CASPER-3',candidatePlayers:['大野 竜暉','大久保 陽翔'],publicStatement:'僕は大野 竜暉を第一候補にします。'}
+  }
+};
+const closerResult=buildFallbackDialogue(closerBody);
+assert.ok(closerResult);
+assert.match(closerResult.disagreement.join(' '),/クローザー候補/);
+
+const planBody={
+  case:{question:'7回制の投手運用は？',selectionKind:'PITCHING_PLAN'},
+  primary:{
+    melchior:{persona:'MELCHIOR-1',candidatePlayers:['橋向 結都','大久保 陽翔','大野 竜暉','坂田 暉馬'],publicStatement:'この4役で組みます。'},
+    balthasar:{persona:'BALTHASAR-2',candidatePlayers:['橋向 結都','大野 竜暉','大久保 陽翔','坂田 暉馬'],publicStatement:'俺はこの4役で組む。'},
+    casper:{persona:'CASPER-3',candidatePlayers:['大久保 陽翔','橋向 結都','大野 竜暉','坂田 暉馬'],publicStatement:'僕はこの4役で組みます。'}
+  }
+};
+const planResult=buildFallbackDialogue(planBody);
+assert.ok(planResult);
+assert.ok(planResult.disagreement.some(x=>/先発|第2投手|終盤|クローザー/.test(x)));
+
 console.log('DIALOGUE RESILIENT FALLBACK: PASS');
