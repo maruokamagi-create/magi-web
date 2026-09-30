@@ -1,4 +1,5 @@
 import magiPersona from './persona.js';
+import { CURRENT_ROSTER } from './_roster.js';
 
 function parseJson(text) {
   try { return JSON.parse(String(text || '')); }
@@ -78,7 +79,14 @@ function sanitizeLineupPersona(body, payload) {
     return false;
   };
 
-  const cleanText = value => joinSentences(splitSentences(value).filter(s => !forbiddenSentence(s)));
+  const stripCurrentHonorifics = value => {
+    let s = String(value || '');
+    for (const name of CURRENT_ROSTER) {
+      s = s.split(`${name}くん`).join(name).split(`${name}君`).join(name);
+    }
+    return s;
+  };
+  const cleanText = value => stripCurrentHonorifics(joinSentences(splitSentences(value).filter(s => !forbiddenSentence(s))));
   const cleanArray = value => Array.isArray(value)
     ? value.map(cleanText).filter(Boolean)
     : [];
