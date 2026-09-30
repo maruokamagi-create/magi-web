@@ -4,9 +4,9 @@ if(window.MAGI_LINEUP_REASONS_V415)return;
 window.MAGI_LINEUP_REASONS_V415=true;
 
 const PERSONAS=[
-  {key:'melchior',label:'MELCHIOR'},
-  {key:'balthasar',label:'BALTHASAR'},
-  {key:'casper',label:'CASPER'}
+  {key:'melchior',label:'メルキオール'},
+  {key:'balthasar',label:'バルタザール'},
+  {key:'casper',label:'カスパー'}
 ];
 const norm=s=>String(s??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
@@ -47,9 +47,9 @@ function finalNames(r){return Array.isArray(r?.final?.lineup)?r.final.lineup.map
 function orderOf(v){return Array.isArray(v?.candidatePlayers)?v.candidatePlayers.map(x=>String(x||'').trim()).filter(Boolean):[];}
 function personaLabel(key,value,index){
   const raw=String(value?.persona||key||'').toUpperCase();
-  if(raw.includes('MELCHIOR'))return'MELCHIOR';
-  if(raw.includes('BALTHASAR'))return'BALTHASAR';
-  if(raw.includes('CASPER'))return'CASPER';
+  if(raw.includes('MELCHIOR'))return'メルキオール';
+  if(raw.includes('BALTHASAR'))return'バルタザール';
+  if(raw.includes('CASPER'))return'カスパー';
   return PERSONAS[index]?.label||String(key||`WISE-${index+1}`).toUpperCase();
 }
 function secondEntries(r){
@@ -110,22 +110,60 @@ function statEvidence(slot,st){
   if(slot===8)return`出塁率 ${obp}、四球 ${bb}、死球 ${hbp}、盗塁 ${sb}。`;
   return`出塁率 ${obp}、四球 ${bb}、死球 ${hbp}、盗塁 ${sb}。`;
 }
-function tacticalIntent(slot){
-  if(slot===1)return'最初に出塁機会を作り、走塁も含めて得点の入口を担わせる配置。';
-  if(slot===2)return'1番で作った流れを切らず、自らも出塁して中軸へつなぐ配置。';
-  if(slot===3)return'上位の走者を返す力と、4番へ打席をつなぐ力の両方を求める配置。';
-  if(slot===4)return'長打・得点圏・打点を中心に、打線の得点源を担わせる中軸配置。';
-  if(slot===5)return'4番の後ろで得点機会を継続し、中軸の厚みを作る配置。';
-  if(slot===6)return'中軸後の攻撃を切らさず、もう一度出塁・得点機会を作る配置。';
-  if(slot===7)return'下位打線の中で出塁機会を作り、8・9番へ攻撃を残す配置。';
-  if(slot===8)return'打撃だけでなく9人全体の守備成立も含め、下位から次の攻撃へつなぐ配置。';
-  return'下位から1番へ打順を戻す接続点として、出塁できた時の価値を重視する配置。';
+function metricRank(st,key,selectedStats){
+  const value=num(st?.[key]);if(value===null)return null;
+  const values=selectedStats.map(x=>num(x?.[key])).filter(v=>v!==null);
+  if(!values.length)return null;
+  const better=values.filter(v=>v>value).length;
+  return {rank:better+1,total:values.length,value};
+}
+function rankText(st,key,label,selectedStats,rate=true){
+  const r=metricRank(st,key,selectedStats);if(!r)return'';
+  return `${label}は最終${r.total}人中${r.rank}位（${rate?fmtRate(r.value):fmtInt(r.value)}）`;
+}
+function specificReason(slot,st,selectedStats,support){
+  if(!st)return'確認できた打撃数値が不足しているため、審議支持と守備成立を主な根拠として表示しています。';
+  const parts=[];
+  if(slot===1){
+    parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'SB','盗塁',selectedStats,false));
+    return `${parts.filter(Boolean).join('、')}。先頭で出塁と走塁を使う配置意図を、確認できる数値で説明できます。`;
+  }
+  if(slot===2){
+    parts.push(rankText(st,'AVG','打率',selectedStats),rankText(st,'OPS','OPS',selectedStats));
+    return `${parts.filter(Boolean).join('、')}。上位で打席を多く回す意味はありますが、2番配置そのものの支持は${support}/3で、ここは審議上の争点です。`;
+  }
+  if(slot===3){
+    parts.push(rankText(st,'OPS','OPS',selectedStats),rankText(st,'SLG','長打率',selectedStats),rankText(st,'RISP','得点圏打率',selectedStats));
+    return `${parts.filter(Boolean).join('、')}。上位の走者を返す役割と4番へつなぐ役割の両方を想定した配置です。支持は${support}/3なので別案も残ります。`;
+  }
+  if(slot===4){
+    parts.push(rankText(st,'SLG','長打率',selectedStats),rankText(st,'OPS','OPS',selectedStats),rankText(st,'RISP','得点圏打率',selectedStats));
+    return `${parts.filter(Boolean).join('、')}。4番は3賢人の一致度を最優先の根拠としており、打撃数値だけで決めた配置ではありません。`;
+  }
+  if(slot===5){
+    parts.push(rankText(st,'RBI','打点',selectedStats,false),rankText(st,'RISP','得点圏打率',selectedStats),rankText(st,'OPS','OPS',selectedStats));
+    return `${parts.filter(Boolean).join('、')}。4番の後ろで得点機会を続ける役として、打点・得点圏・OPSを確認材料にしています。`;
+  }
+  if(slot===6){
+    parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'OPS','OPS',selectedStats),rankText(st,'RISP','得点圏打率',selectedStats));
+    return `${parts.filter(Boolean).join('、')}。中軸後でもう一度走者を作る役割を重視した配置で、支持は${support}/3です。`;
+  }
+  if(slot===7){
+    parts.push(rankText(st,'AVG','打率',selectedStats),rankText(st,'OBP','出塁率',selectedStats));
+    return `${parts.filter(Boolean).join('、')}。この位置は打撃数値だけでなく、守備を含む9人全体の成立と${support}/3の審議支持を合わせて決めた配置です。`;
+  }
+  if(slot===8){
+    parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'BB','四球',selectedStats,false));
+    return `${parts.filter(Boolean).join('、')}。下位打線での打撃だけでなく、守備位置を重複なく成立させる条件も含めた配置です。`;
+  }
+  parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'BB','四球',selectedStats,false),rankText(st,'SB','盗塁',selectedStats,false));
+  return `${parts.filter(Boolean).join('、')}。9番から1番へ打順を戻す接続点として、四球・出塁・走塁を確認材料にしています。`;
 }
 function overview(r,entries,names){
   const top=groupCount(entries),source=selectedSource(r,entries,names);
   if(top===3)return'3賢人の二次判定が1〜9番まで完全一致しました。下の理由は、各打順について「3賢人の一致」と「確認済みの今季打撃データ」を分けて表示しています。';
   if(top===2)return`3賢人の二次案は2対1に分かれました。多数側の同一打順を最終案として表示しています。${source?`表示案は${source}の二次案と一致します。`:''} 各打順では一致数と反対案も併記します。`;
-  return`3賢人の二次案は1対1対1で分かれ、正式な多数派はありません。${source?`表示中は${source}の二次案を参考案として採用しています。`:''} 3案に共通して選ばれた選手を多く含み、各選手の配置が3案の平均的な打順位置から大きく外れない「実在する二次案」を表示し、架空の第4案は作っていません。`;
+  return`3賢人の二次案は1対1対1で分かれ、正式な多数派はありません。${source?`表示中は${source}の二次案を参考案として採用しています。`:''} 3案を平均して新しい打順を作るのではなく、実際に3賢人が提示した案の中から、選手構成と打順位置の全体的なずれが最も小さい案を比較用に表示しています。`;
 }
 function supportText(n){return n===3?'3/3一致':n===2?'2/3支持':n===1?'1/3・争点あり':'0/3・整合要確認';}
 function supportClass(n){return n===3?'strong':n<=1?'split':'';}
@@ -147,6 +185,17 @@ function render(r,data){
   const old=hero.querySelector('.magiLineupReasons');if(old)old.remove();
   const section=document.createElement('section');section.className='magiLineupReasons';section.setAttribute('aria-label','1番から9番の選定理由');
   const statsMap=new Map((data?.players||[]).map(p=>[norm(p.name),p]));
+  const selectedStats=names.map(name=>statsMap.get(norm(name))).filter(Boolean);
+  const topGroup=groupCount(entries);
+  const heroTitle=hero.querySelector('.magiFinalDecisionTitle');
+  const outerVerdict=hero.closest('.final')?.querySelector('.verdict');
+  if(topGroup===1){
+    if(heroTitle)heroTitle.textContent='公式戦想定 参考ベストオーダー（暫定）';
+    if(outerVerdict)outerVerdict.textContent='参考ベストオーダー（暫定）';
+  }else{
+    if(heroTitle)heroTitle.textContent='公式戦想定 ベストオーダー';
+    if(outerVerdict)outerVerdict.textContent='最終ベストオーダー';
+  }
   let html=`<div class="magiLineupReasonsHead"><div class="magiLineupReasonsTitle">1〜9番 選定理由</div><div class="magiLineupReasonsSub">WHY THIS ORDER</div></div>`;
   html+=`<div class="magiLineupReasonsOverview">${esc(overview(r,entries,names))}</div>`;
   if(hasFallback(entries)){
@@ -162,7 +211,7 @@ function render(r,data){
     html+=`<article class="magiLineupReasonCard"><div class="magiLineupReasonHead"><div class="magiLineupReasonName"><span class="magiLineupReasonSlot">${slot}番</span><span>${esc(name)}</span></div><span class="magiLineupReasonSupport ${supportClass(support)}">${supportText(support)}</span></div>`;
     html+=`<div class="magiLineupReasonLine"><b>審議根拠：</b>${esc(reasoningLine(support,slot,name))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>データ根拠：</b>${esc(statEvidence(slot,st))}</div>`;
-    html+=`<div class="magiLineupReasonLine"><b>配置意図：</b>${esc(tacticalIntent(slot))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>配置理由：</b>${esc(specificReason(slot,st,selectedStats,support))}</div>`;
     if(alts.length)html+=`<div class="magiLineupReasonAlternatives"><b>同じ打順位置の別案：</b> ${esc(alts.join(' ／ '))}</div>`;
     html+='</article>';
   });
@@ -188,5 +237,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v415',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v417',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
 })();
