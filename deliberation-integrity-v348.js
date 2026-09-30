@@ -53,7 +53,7 @@ async function postJSON(url,payload,options={}){
       const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const body=await res.json().catch(()=>({}));
       if(res.ok)return body;
-      const err=new Error(body?.error||`MAGI API error ${res.status}`);err.status=res.status;err.retryExhausted=body?.retryExhausted===true;lastError=err;
+      const err=new Error(body?.error||`MAGI API error ${res.status}`);err.status=res.status;err.code=String(body?.code||'');err.apiEndpoint=url;err.retryExhausted=body?.retryExhausted===true;lastError=err;
       if(err.retryExhausted||!(res.status===408||res.status===429||res.status>=500))throw err;
     }catch(error){lastError=error;if(error?.retryExhausted)throw error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error}
   }
@@ -93,14 +93,19 @@ function recoverSoftLineup(v,persona,caseData){
 function recoverSet(set,caseData){const out={};for(const p of PERSONAS)out[p]=recoverSoftLineup(set?.[p],p,caseData);return out}
 
 async function runPrimary(caseData,options){
-  const rows=[];
-  for(const persona of PERSONAS){
-    const result=await postJSON('/api/magi/persona',{phase:'PRIMARY',persona,case:caseData},options);
-    rows.push([persona,result]);
-  }
-  return recoverSet(Object.fromEntries(rows),caseData);
+  try{
+    const rows=[];
+    for(const persona of PERSONAS){
+      const result=await postJSON('/api/magi/persona',{phase:'PRIMARY',persona,case:caseData},options);
+      rows.push([persona,result]);
+    }
+    return recoverSet(Object.fromEntries(rows),caseData);
+  }catch(error){error.magiStage='PRIMARY';throw error}
 }
-async function runCross(caseData,primaryLocked,options){return postJSON('/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary:reveal(primaryLocked)},options)}
+async function runCross(caseData,primaryLocked,options){
+  try{return await postJSON('/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary:reveal(primaryLocked)},options)}
+  catch(error){error.magiStage='CROSS';throw error}
+}
 function crossForPersona(cross,persona,independenceReview=''){
   const c=clone(cross||{}),all=clone(c?.challenges||{}),toSelf=Array.isArray(all?.[persona])?all[persona]:[];
   c.challengeToSelf=toSelf;
@@ -111,13 +116,15 @@ function crossForPersona(cross,persona,independenceReview=''){
   return c;
 }
 async function runSecond(caseData,primaryLocked,cross,options,independenceReview=''){
-  const revealed=reveal(primaryLocked);
-  const rows=[];
-  for(const persona of PERSONAS){
-    const result=await postJSON('/api/magi/persona',{phase:'SECOND',persona,case:caseData,primarySelf:revealed[persona],crossExamination:crossForPersona(cross,persona,independenceReview)},options);
-    rows.push([persona,result]);
-  }
-  return recoverSet(Object.fromEntries(rows),caseData);
+  try{
+    const revealed=reveal(primaryLocked);
+    const rows=[];
+    for(const persona of PERSONAS){
+      const result=await postJSON('/api/magi/persona',{phase:'SECOND',persona,case:caseData,primarySelf:revealed[persona],crossExamination:crossForPersona(cross,persona,independenceReview)},options);
+      rows.push([persona,result]);
+    }
+    return recoverSet(Object.fromEntries(rows),caseData);
+  }catch(error){error.magiStage=independenceReview?'INDEPENDENCE_RECHECK':'SECOND';throw error}
 }
 function allSameLineup(second,caseData){
   if(!isFullLineup(caseData))return false;
@@ -125,7 +132,10 @@ function allSameLineup(second,caseData){
   if(seq.some(x=>x.length!==9))return false;
   return seq.slice(1).every(x=>x.every((v,i)=>v===seq[0][i]));
 }
-async function finalize(caseData,primaryLocked,cross,second,options){return postJSON('/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary:reveal(primaryLocked),crossExamination:cross,second:clone(second)},options)}
+async function finalize(caseData,primaryLocked,cross,second,options){
+  try{return await postJSON('/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary:reveal(primaryLocked),crossExamination:cross,second:clone(second)},options)}
+  catch(error){error.magiStage='FINAL';throw error}
+}
 
 async function deliberate(input,options={}){
   const caseData=normalizeCase(input);
