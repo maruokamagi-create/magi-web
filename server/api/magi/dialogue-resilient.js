@@ -73,6 +73,16 @@ function fallbackStatement(speaker, target, ownOrder, targetOrder) {
   return `${target.jp}、あなたは${slot + 1}番に${other}、僕は${own}を置いています。今の役割と打線のつながりを見ながら、この違いを確認したいです。`;
 }
 
+function captureFailureReason(capture, settled) {
+  if (!settled) return 'DIALOGUE_BUDGET_EXCEEDED';
+  try {
+    const parsed = JSON.parse(String(capture?.body || '{}'));
+    return text(parsed?.detail || parsed?.code || parsed?.error || 'DIALOGUE_GENERATION_FAILED');
+  } catch {
+    return text(capture?.body) || 'DIALOGUE_GENERATION_FAILED';
+  }
+}
+
 export function buildFallbackDialogue(body) {
   const primary = canonicalizePlayerData(body?.primary || {});
   const summary = lineupSummary(primary);
@@ -120,6 +130,7 @@ export default async function handler(req, res) {
   if (!settled || Number(capture.statusCode) >= 500) {
     const fallback = buildFallbackDialogue(req?.body);
     if (fallback) {
+      fallback.dialogueFallbackReason = captureFailureReason(capture, settled);
       res.statusCode = 200;
       res.setHeader('Content-Type', 'application/json; charset=utf-8');
       res.setHeader('Cache-Control', 'no-store');
