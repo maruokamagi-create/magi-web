@@ -1,3 +1,6 @@
+const MIN_CORE_CLIENT_VERSION = 363;
+const MIN_RUNTIME_VERSION = 363;
+
 const routes = {
   'magi-core': () => import('../server/api/magi/core.js'),
   'magi-fielding-report': () => import('../server/api/magi/fielding-report.js'),
