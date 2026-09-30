@@ -115,15 +115,20 @@ function sanitizeLineupPersona(body, payload) {
 }
 
 
-export function markSecondTransientRetryable(body, payload) {
-  if (String(body?.phase || '').toUpperCase() !== 'SECOND') return payload;
+export function markTransientPersonaRetryable(body, payload) {
+  const phase = String(body?.phase || '').toUpperCase();
+  if (phase !== 'PRIMARY' && phase !== 'SECOND') return payload;
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
   return {
     ...payload,
     retryExhausted: false,
     retryFreshRequest: true,
-    retryScope: 'SECOND_REQUEST'
+    retryScope: phase === 'SECOND' ? 'SECOND_REQUEST' : 'PRIMARY_REQUEST'
   };
+}
+
+export function markSecondTransientRetryable(body, payload) {
+  return markTransientPersonaRetryable(body, payload);
 }
 
 export function sanitizeSuccessfulPersona(body, payload) {
@@ -139,9 +144,10 @@ export default async function handler(req, res) {
   // whole deliberation. No synthetic "primary maintained" judgment is created.
   if (isTransientPersonaFailure(capture)) {
     const payload = parseJson(capture.body);
-    const retryPayload = markSecondTransientRetryable(req?.body, payload);
+    const retryPayload = markTransientPersonaRetryable(req?.body, payload);
     const isSecond = String(req?.body?.phase || '').toUpperCase() === 'SECOND';
-    res.setHeader('X-MAGI-Persona-Recovery', isSecond ? 'retry-second-request' : 'whole-deliberation-retry-required');
+    const isPrimary = String(req?.body?.phase || '').toUpperCase() === 'PRIMARY';
+    res.setHeader('X-MAGI-Persona-Recovery', isSecond ? 'retry-second-request' : (isPrimary ? 'retry-primary-request' : 'whole-deliberation-retry-required'));
     return replayCaptured(res, capture, retryPayload && typeof retryPayload === 'object' ? retryPayload : null);
   }
 
