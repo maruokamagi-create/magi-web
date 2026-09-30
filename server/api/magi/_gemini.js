@@ -15,7 +15,7 @@ const MAX_BODY_BYTES = 512_000;
 // correction passes, so retrying the same model inside every pass can multiply
 // latency beyond the serverless execution window. One model attempt per pass is
 // intentional; canonical mode may still move to a fallback model when allowed.
-const GEMINI_TIMEOUT_MS = 9_000;
+const GEMINI_TIMEOUT_MS = 15_000;
 const RATE_WINDOW_MS = 60_000;
 // A complete MAGI deliberation uses multiple persona/cross/final requests and
 // the browser may retry the whole run once after a transient failure. 36 keeps
@@ -256,7 +256,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   const strict = getConsistencyMode() === 'strict';
   const models = strict
     ? [getGeminiModel()]
-    : [getGeminiModel(), getGeminiFallbackModel()]
+    : [getGeminiModel(), getGeminiFallbackModel(), getGeminiLastResortModel()]
         .filter((model, index, arr) => model && arr.indexOf(model) === index);
 
   let lastError;
