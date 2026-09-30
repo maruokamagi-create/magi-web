@@ -1,5 +1,5 @@
 name: MAGI Production Persona Health
-# verify dynamic gateway module loading
+# verify persona route after gateway change
 
 on:
   workflow_dispatch:
