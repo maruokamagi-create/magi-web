@@ -20,6 +20,8 @@ const DIRECT_DIALOGUE_SYSTEM = [
   'turnRequestsを上から順に1件ずつ処理し、dialogueを必ず3件返してください。',
   '各turnのspeaker/target/sourcePersonaはturnRequestsの指定どおりにしてください。',
   '各turnのfocusDifferenceにlabel・speakerPlayer・targetPlayerがある場合、statementにその3項目を必ず明記し、実際の争点を直接扱ってください。',
+  'focusDifference.same=true の場合、speakerPlayer と targetPlayer は同じ結論です。同じ選手を「AとAの違い」「どちらがよい」と比較してはいけません。共通の配置を確認したうえで、根拠または見直し条件を相手に問い返してください。',
+  'speakerVoiceの一人称を守ってください。メルキオール=私、バルタザール=俺、カスパー=僕です。相手のsourceClaimを引用するときは、その引用内の一人称を勝手に変えないでください。',
   'sourceClaimは、そのturnのtargetSourceMaterialに実在する短い原文をそのままコピーしてください。言い換えは禁止です。',
   'statementは相手の日本語名を呼び、sourceClaimへ直接答える1〜3文の自然な野球の会話にしてください。',
   '相手が言っていない動機・心理・方針・役割歴を作らないでください。入力にない数値を作らないでください。',
@@ -345,24 +347,38 @@ export function batchTurnRequests(primary, kind, caseData) {
 function normalizeDirectStatement(statement, speakerLabel, targetJapanese) {
   let s = text(statement);
   // Keep the dialogue firm without allowing insulting second-person address.
+  // Do not rewrite first-person words globally: a statement may quote the
+  // target's actual 「私／俺／僕」 wording and that quote must remain intact.
   s = s.replace(/お前|てめえ/g, 'あなた');
 
-  const speaker = TURN_ORDER.find(p => p.label === text(speakerLabel).toUpperCase());
-  if (speaker?.key === 'melchior') {
-    s = s.replace(/(?:俺|僕)(?=は|が|の|も|なら|では|として|、|。)/g, '私');
-  } else if (speaker?.key === 'balthasar') {
-    s = s.replace(/(?:私|僕)(?=は|が|の|も|なら|では|として|、|。)/g, '俺');
-  } else if (speaker?.key === 'casper') {
-    s = s.replace(/(?:私|俺)(?=は|が|の|も|なら|では|として|、|。)/g, '僕');
-  }
+  // Remove awkward duplicated role labels such as 「3番の3番」 without
+  // changing any player name, statistic, or quoted claim.
+  s = s.replace(/([1-9]番)の\1/g, '$1');
+  s = s.replace(/(先発|第2投手|終盤|クローザー)の\1/g, '$1');
 
-  // If the model omitted the addressee but otherwise produced a usable reply,
-  // prefix the required Wise Man instead of discarding the whole batch.
   const target = text(targetJapanese);
-  if (target && !s.includes(target)) s = `${target}、${s}`;
+  if (target && !s.includes(target)) s = target + '、' + s;
   return s;
 }
 
+function speakerVoiceIssue(statement, speakerLabel) {
+  // Ignore direct quotations when checking first-person voice.
+  const outsideQuotes = text(statement).replace(/「[^」]*」/g, '');
+  const speaker = TURN_ORDER.find(p=>p.label===text(speakerLabel).toUpperCase());
+  if (!speaker) return '';
+  const used = [...outsideQuotes.matchAll(/(私|俺|僕)(?=は|が|の|も|なら|では|として|たち|、|。)/g)].map(m=>m[1]);
+  if (!used.length) return '';
+  const allowed = speaker.key==='melchior' ? '私' : speaker.key==='balthasar' ? '俺' : '僕';
+  return used.some(v=>v!==allowed) ? 'WRONG_FIRST_PERSON' : '';
+}
+
+function sameFocusIssue(statement, focus) {
+  if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
+  if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
+  const player = text(focus.speakerPlayer).replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
+  const repeated = new RegExp(player + '.{0,28}' + player).test(text(statement));
+  return repeated && /違い|どちら|比較/.test(text(statement)) ? 'SELF_COMPARISON' : '';
+}
 function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
   const rows = Array.isArray(rawDialogue) ? rawDialogue : [];
   const issues = [];
@@ -385,8 +401,12 @@ function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
     if (!exactSourceClaim(targetMaterial, raw?.sourceClaim)) issues.push(`turn ${i+1}: SOURCE_CLAIM_NOT_EXACT`);
     const statementIssue = statementGroundIssue(raw?.statement, req.target, caseData, targetMaterial, ownMaterial, summary.allSame);
     if (statementIssue) issues.push(`turn ${i+1}: ${statementIssue}`);
+    const voiceIssue = speakerVoiceIssue(raw?.statement, req.speaker);
+    if (voiceIssue) issues.push(`turn ${i+1}: ${voiceIssue}`);
     const focus = req.focusDifference;
     const statement = text(raw?.statement);
+    const sameIssue = sameFocusIssue(statement, focus);
+    if (sameIssue) issues.push(`turn ${i+1}: ${sameIssue}`);
     if (focus?.label && !statement.includes(focus.label)) issues.push(`turn ${i+1}: FOCUS_ROLE_MISSING`);
     if (focus?.speakerPlayer && !statement.includes(focus.speakerPlayer)) issues.push(`turn ${i+1}: SPEAKER_FOCUS_PLAYER_MISSING`);
     if (focus?.targetPlayer && !statement.includes(focus.targetPlayer)) issues.push(`turn ${i+1}: TARGET_FOCUS_PLAYER_MISSING`);
@@ -422,7 +442,7 @@ async function generateDialogueBatch({ caseData, primary, summary }) {
         ...basePayload,
         invalidDraft: last?.raw || null,
         validationIssues: last?.issues || [],
-        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
+        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。same=trueなら同じ選手を比較せず、共通案の根拠か見直し条件を問うてください。一人称はメルキオール=私、バルタザール=俺、カスパー=僕を守り、相手の引用内の一人称は変更しないでください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
       },
       responseSchema: dialogueBatchSchema
     });
