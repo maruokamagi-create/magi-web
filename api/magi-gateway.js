@@ -3,7 +3,7 @@ const routes = {
   'magi-fielding-report': () => import('../server/api/magi/fielding-report.js'),
   'magi-health': () => import('../server/api/magi/health.js'),
   'magi-orchestrate': () => import('../server/api/magi/orchestrate.js'),
-  'magi-persona': () => import('../server/api/magi/persona.js'),
+  'magi-persona': () => import('../server/api/magi/persona-resilient.js'),
   'magi-dialogue': () => import('../server/api/magi/dialogue-resilient.js')
 };
 
