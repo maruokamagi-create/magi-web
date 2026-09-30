@@ -147,7 +147,19 @@ const runner=async function({question,evidence=null,selectionKind='',semantic=nu
     progress(99,'最終結果の構造・Evidence整合性を確認済み','FINAL VALIDATION');
     return capturedResult||uiResult;
   }catch(error){
-    progressError('正式審議を完了できませんでした');
+    const stage=text(error?.magiStage||'');
+    const code=text(error?.code||'');
+    const status=Number(error?.status||0);
+    const diagnostic=[stage,code||(status?`HTTP ${status}`:'')].filter(Boolean).join(' / ');
+    window.MAGI_LAST_FORMAL_ERROR={
+      stage:stage||null,
+      code:code||null,
+      status:status||null,
+      endpoint:text(error?.apiEndpoint||'')||null,
+      message:text(error?.message||'')||null,
+      at:new Date().toISOString()
+    };
+    progressError(diagnostic?`正式審議を完了できませんでした（${diagnostic}）`:'正式審議を完了できませんでした');
     throw error;
   }finally{
     activeEvidence=null;
