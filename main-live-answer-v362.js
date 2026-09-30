@@ -47,11 +47,14 @@ function fullLineupPacketReady(packet){return Number(packet?.count)===14&&packet
 function applyTeamPolicy(packet){return packet&&typeof packet==='object'?{...packet,teamPolicy:TEAM_POLICY}:packet}
 function renderAuthoritativeEvidence(packet){
   if(!packet)return;
+  // Raw DATA HUB payload is deliberation input, not public result content.
+  // Keep it out of the rendered page; only the compact source summary remains visible.
   const box=$('dataEvidence');
   if(box){
-    const body=txt(packet.text);
-    box.classList.add('show');
-    box.textContent=`DATA HUB 正本データ（サーバー取得）\n参照：${(packet.files||[]).join('、')}\n\n${body}`;
+    box.classList.remove('show');
+    box.textContent='';
+    box.hidden=true;
+    box.setAttribute('aria-hidden','true');
   }
   const meta=$('caseMeta');
   if(meta){
@@ -64,15 +67,14 @@ function renderAuthoritativeEvidence(packet){
     meta.innerHTML=html;
   }
 }
-function assertVisibleEvidence(packet,kind){
+function assertLoadedEvidence(packet,kind){
   if(String(kind||'').toUpperCase()!=='FULL_LINEUP')return;
   if(!fullLineupPacketReady(packet))throw new Error('現チーム14名の正本Evidenceが揃っていないため結果を公開しません');
   const meta=txt($('caseMeta')?.textContent);
-  if(!meta.includes('DATA HUB：14件参照'))throw new Error('画面のDATA HUB表示が正本Evidenceと一致しないため結果を公開しません');
-  const shown=txt($('dataEvidence')?.textContent);
+  if(!meta.includes('DATA HUB：14件参照'))throw new Error('画面のDATA HUB件数が正本Evidenceと一致しないため結果を公開しません');
   const players=packetPlayers(packet);
-  if(!players.every(p=>shown.includes(txt(p.name))))throw new Error('現チーム14名の成績が画面に表示されていないため結果を公開しません');
-  if(!/(?:打率|AVG)\s*[.:：]?\s*(?:\.\d+|0\.\d+)/.test(shown)||!/(?:OPS)\s*[.:：]?\s*(?:\.\d+|0\.\d+)/.test(shown))throw new Error('正本の打撃数値が画面に表示されていないため結果を公開しません');
+  if(!players.every(p=>txt(p?.name)))throw new Error('現チーム14名の選手名Evidenceが不完全なため結果を公開しません');
+  if(!players.every(p=>Number.isFinite(Number(p?.batting?.AVG))&&Number.isFinite(Number(p?.batting?.OPS))))throw new Error('正本の打率・OPS Evidenceが不完全なため結果を公開しません');
 }
 function reportQuery(result,original){const s=result?.semantic||result||{},p=txt((s.players||result.players||[])[0]);let period='';switch(s.timeScope||result.timeScope){case'CAREER':period='通算';break;case'CURRENT_SEASON':period='現チーム';break;case'PREVIOUS_SEASON':period='旧チーム';break;case'SPECIFIC_SEASON':period=txt(s.specificSeason||result.specificSeason);break;case'RECENT_6':case'RECENT':period='直近';break;default:period='通算';}const kind=result.reportKind;if(kind==='PITCHING')return`${p}の${period}投手成績一覧を見せて`;if(kind==='FIELDING')return`${p}の${period}守備成績一覧を見せて`;if(kind==='BATTING')return`${p}の${period}打撃成績一覧を見せて`;return original}
 async function waitFor(fnName,ms=6000){const start=Date.now();while(Date.now()-start<ms){if(typeof window[fnName]==='function')return window[fnName];await new Promise(r=>setTimeout(r,80))}return null}
@@ -87,7 +89,7 @@ async function deliberate(result){
   if($('status'))$('status').textContent='正本成績を確認。3賢人審議を開始します…';
   const out=await runner({question,evidence:governedPacket,selectionKind:kind,semantic:result?.semantic||null});
   renderAuthoritativeEvidence(governedPacket);
-  assertVisibleEvidence(governedPacket,kind);
+  assertLoadedEvidence(governedPacket,kind);
   contextPush('assistant',`${txt(result?.understoodRequest)||question}について正本成績を使って3賢人審議を実行した。`);
   return out;
 }
