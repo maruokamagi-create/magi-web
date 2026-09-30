@@ -4,7 +4,7 @@ export default async function handler(req,res){
     const response=await fetch(base+'/api/magi/persona',{
       method:'POST',
       headers:{'content-type':'application/json','origin':base},
-      body:JSON.stringify({persona:'melchior',phase:'PRIMARY',case:{id:'PERSONA-HEALTH',question:'大野 竜暉について、確認できるEvidenceだけで評価して',mode:'proposal',evidence:{text:'大野 竜暉：確認用Evidence。',selectionKind:'',authoritativeCurrentRoster:[]}}})
+      body:JSON.stringify({persona:'melchior',phase:'PRIMARY',case:{id:'PERSONA-HEALTH-2',question:'大野 竜暉について、確認できるEvidenceだけで評価して',mode:'proposal',evidence:{text:'大野 竜暉：確認用Evidence。',selectionKind:'',authoritativeCurrentRoster:[]}}})
     });
     const text=await response.text();
     res.status(200).json({ok:response.ok,status:response.status,body:text});
