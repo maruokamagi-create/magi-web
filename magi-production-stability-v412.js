@@ -6,9 +6,26 @@ const txt=v=>String(v??'').trim();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const stable=v=>{if(Array.isArray(v))return v.map(stable);if(v&&typeof v==='object'){const o={};Object.keys(v).sort().forEach(k=>{if(!['id','createdAt'].includes(k))o[k]=stable(v[k])});return o}return v};
 function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
-function key(question,evidence,kind){return 'magi:stable:v416:'+hash(JSON.stringify(stable({question:txt(question).normalize('NFKC'),evidence,kind:txt(kind).toUpperCase()})))}
-function get(k){try{const v=JSON.parse(localStorage.getItem(k)||'null');return v?.result||null}catch(_){return null}}
-function put(k,result){try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),result}))}catch(_){}}
+function key(question,evidence,kind){return 'magi:stable:v417:'+hash(JSON.stringify(stable({question:txt(question).normalize('NFKC'),evidence,kind:txt(kind).toUpperCase()})))}
+function hasLegacySecondFallback(result){
+ const second=result?.second;
+ if(!second||typeof second!=='object')return false;
+ const stack=[second];
+ while(stack.length){
+  const value=stack.pop();
+  if(!value||typeof value!=='object')continue;
+  if(value.secondFallbackUsed===true||txt(value.secondFallbackReason))return true;
+  for(const child of Object.values(value)){
+   if(child&&typeof child==='object')stack.push(child);
+   else if(typeof child==='string'&&/二次判定で一時的な通信障害|一次判断を暫定維持/.test(child))return true;
+  }
+ }
+ return false;
+}
+function complete(result){return Boolean(result?.primary&&result?.crossExamination&&result?.second&&result?.final)}
+function usable(result){return complete(result)&&!hasLegacySecondFallback(result)}
+function get(k){try{const v=JSON.parse(localStorage.getItem(k)||'null');const result=v?.result||null;return usable(result)?result:null}catch(_){return null}}
+function put(k,result){if(!usable(result))return;try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),result}))}catch(_){}}
 function ready(){return window.MAGI_APP_RUNTIME?.ready===true&&typeof window.MAGI_FORMAL_UI_RUNNER_V2==='function'&&window.MAGI_PROGRESS_V358?.version==='progress-v358-event-driven'&&window.MAGI_DELIBERATION_SERIAL_V374===true}
 async function warm(){const start=Date.now();while(!ready()&&Date.now()-start<30000)await sleep(100);if(!ready())throw new Error('MAGIの全機能が準備完了していないため審議を開始しません');}
 const base=window.fetch.bind(window);
@@ -21,7 +38,7 @@ let installed=false;
 function install(){
  const baseRunner=window.MAGI_FORMAL_UI_RUNNER_V2;
  if(typeof baseRunner!=='function')return false;
- if(baseRunner.__magiStableV412)return true;
+ if(baseRunner.__magiStableV417)return true;
  const wrapped=async function(args={}){
    await window.MAGI_PRODUCTION_PREFLIGHT_V412();
    const k=key(args.question,args.evidence,args.selectionKind);
@@ -33,7 +50,8 @@ function install(){
    for(let attempt=1;attempt<=2;attempt++){
      try{
        const result=await baseRunner(args);
-       if(!result?.primary||!result?.crossExamination||!result?.second||!result?.final)throw new Error('審議結果が途中で欠落したため公開しません');
+       if(!complete(result))throw new Error('審議結果が途中で欠落したため公開しません');
+       if(hasLegacySecondFallback(result))throw new Error('旧式の暫定二次判定を検出したため、審議を最初から再実行します');
        put(k,result);
        return result;
      }catch(e){last=e;if(attempt<2){window.MAGI_PROGRESS_V358?.update?.(20,'初回通信を再準備して審議を最初から再実行します','RECOVERY');await sleep(1200);}}
@@ -41,8 +59,8 @@ function install(){
    if(cached){window.MAGI_LAST_DELIBERATION_RESULT=JSON.parse(JSON.stringify(cached));document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:JSON.parse(JSON.stringify(cached))}));return cached;}
    throw last||new Error('MAGI審議を完了できませんでした');
  };
- wrapped.meta=Object.freeze({...baseRunner.meta,productionStability:'v412',sameInputReplay:true,wholeRunRetry:true,preflight:true});
- wrapped.__magiStableV412=true;
+ wrapped.meta=Object.freeze({...baseRunner.meta,productionStability:'v417',sameInputReplay:true,wholeRunRetry:true,preflight:true});
+ wrapped.__magiStableV417=true;
  window.MAGI_FORMAL_UI_RUNNER_V2=wrapped;
  window.MAGI_FORMAL_UI_RUNNER_V3=wrapped;
  return true;
