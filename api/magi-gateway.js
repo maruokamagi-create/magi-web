@@ -67,7 +67,7 @@ export default async function handler(req, res) {
       ok: false,
       error: 'MAGI gateway failed',
       code: 'MAGI_GATEWAY_MODULE_LOAD_FAILED',
-      diagnostic: importMatch ? importMatch[0].slice(0, 240) : 'module_load_failed'
+      diagnostic: importMatch ? importMatch[0].slice(0, 240) : `module_load_failed:${String(error?.name || 'Error').slice(0,40)}:${message.slice(0,160)}`
     }));
   }
 }
