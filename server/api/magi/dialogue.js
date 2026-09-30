@@ -19,6 +19,7 @@ const DIRECT_DIALOGUE_SYSTEM = [
   'あなたはMAGIの公開相互検証を生成する制御層です。MAGI CONTROLとして発言せず、指定された3賢人本人の短い直接対話だけをJSONで返します。',
   'turnRequestsを上から順に1件ずつ処理し、dialogueを必ず3件返してください。',
   '各turnのspeaker/target/sourcePersonaはturnRequestsの指定どおりにしてください。',
+  '各turnのfocusDifferenceにlabel・speakerPlayer・targetPlayerがある場合、statementにその3項目を必ず明記し、実際の争点を直接扱ってください。',
   'sourceClaimは、そのturnのtargetSourceMaterialに実在する短い原文をそのままコピーしてください。言い換えは禁止です。',
   'statementは相手の日本語名を呼び、sourceClaimへ直接答える1〜3文の自然な野球の会話にしてください。',
   '相手が言っていない動機・心理・方針・役割歴を作らないでください。入力にない数値を作らないでください。',
@@ -151,7 +152,7 @@ function primaryMaterial(value) {
     ...(Array.isArray(value?.facts) ? value.facts : []),
     ...(Array.isArray(value?.analysis) ? value.analysis : []),
     ...(Array.isArray(value?.warnings) ? value.warnings : [])
-  ].map(text).filter(Boolean).join('。');
+  ].map(text).filter(Boolean).map(s=>s.replace(/[。．.]+$/g,'')).join('。');
 }
 
 function dialogueMaterial(turns, label) {
@@ -285,7 +286,32 @@ function jstContext() {
   return { timeZone: 'Asia/Tokyo', currentDateTime: formatted };
 }
 
-function batchTurnRequests(primary) {
+function focusDifferenceFor(primary, kind, caseData, speakerKey, targetKey) {
+  const speaker = TURN_ORDER.find(p=>p.key===speakerKey);
+  const target = TURN_ORDER.find(p=>p.key===targetKey);
+  const own = candidateList(primary, speakerKey);
+  const other = candidateList(primary, targetKey);
+  if (!speaker || !target) return null;
+
+  if (kind === 'FULL_LINEUP') {
+    const a = validateFullLineupOrder(own);
+    const b = validateFullLineupOrder(other);
+    if (!a.ok || !b.ok) return null;
+    let idx = a.order.findIndex((name,i)=>norm(name)!==norm(b.order[i]));
+    if (idx < 0) idx = 0;
+    return { label:`${idx+1}番`, speakerPlayer:a.order[idx], targetPlayer:b.order[idx], same:norm(a.order[idx])===norm(b.order[idx]) };
+  }
+  if (kind === 'PITCHING_PLAN') {
+    const roles=['先発','第2投手','終盤','クローザー'];
+    let idx=roles.findIndex((_,i)=>norm(own[i])!==norm(other[i]));
+    if(idx<0)idx=0;
+    return { label:roles[idx], speakerPlayer:own[idx]||'未提示', targetPlayer:other[idx]||'未提示', same:norm(own[idx])===norm(other[idx]) };
+  }
+  const label = kind === 'PITCHING_ROLE' ? 'クローザー' : requestedBattingSlot(caseData);
+  return { label, speakerPlayer:own[0]||'未提示', targetPlayer:other[0]||'未提示', same:norm(own[0])===norm(other[0]) };
+}
+
+function batchTurnRequests(primary, kind, caseData) {
   return TURN_PLAN.map(step => {
     const targetSourceMaterial = sourceMaterialFor(primary, [], step.target);
     const ownPrimaryMaterial = primaryMaterial(primaryFor(primary, step.persona.key));
@@ -297,6 +323,7 @@ function batchTurnRequests(primary) {
       target: step.target,
       targetJapanese: TURN_ORDER.find(p=>p.label===step.target)?.jp || step.target,
       sourcePersona: step.target,
+      focusDifference: focusDifferenceFor(primary, kind, caseData, step.persona.key, target.key),
       ownPrimaryMaterial,
       targetSourceMaterial
     };
@@ -346,6 +373,11 @@ function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
     if (!exactSourceClaim(targetMaterial, raw?.sourceClaim)) issues.push(`turn ${i+1}: SOURCE_CLAIM_NOT_EXACT`);
     const statementIssue = statementGroundIssue(raw?.statement, req.target, caseData, targetMaterial, ownMaterial, summary.allSame);
     if (statementIssue) issues.push(`turn ${i+1}: ${statementIssue}`);
+    const focus = req.focusDifference;
+    const statement = text(raw?.statement);
+    if (focus?.label && !statement.includes(focus.label)) issues.push(`turn ${i+1}: FOCUS_ROLE_MISSING`);
+    if (focus?.speakerPlayer && !statement.includes(focus.speakerPlayer)) issues.push(`turn ${i+1}: SPEAKER_FOCUS_PLAYER_MISSING`);
+    if (focus?.targetPlayer && !statement.includes(focus.targetPlayer)) issues.push(`turn ${i+1}: TARGET_FOCUS_PLAYER_MISSING`);
     normalized.push({
       speaker: req.speaker,
       target: req.target,
@@ -359,7 +391,7 @@ function validateBatchDialogue(rawDialogue, requests, caseData, summary) {
 }
 
 async function generateDialogueBatch({ caseData, primary, summary }) {
-  const turnRequests = batchTurnRequests(primary);
+  const turnRequests = batchTurnRequests(primary, summary.kind, caseData);
   const basePayload = {
     phase: 'CROSS_DIALOGUE_BATCH',
     temporalContext: jstContext(),
@@ -378,7 +410,7 @@ async function generateDialogueBatch({ caseData, primary, summary }) {
         ...basePayload,
         invalidDraft: last?.raw || null,
         validationIssues: last?.issues || [],
-        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
+        correction: 'validationIssuesをすべて直し、dialogueを3件すべて再生成してください。各turnのfocusDifferenceのlabel・speakerPlayer・targetPlayerをstatementに必ず入れてください。sourceClaimは各targetSourceMaterialの原文をそのままコピーしてください。入力にない得点・勝利・流れ・勢い・心理・将来効果を追加しないでください。'
       },
       responseSchema: dialogueBatchSchema
     });
