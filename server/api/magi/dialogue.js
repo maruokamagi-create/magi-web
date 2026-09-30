@@ -344,7 +344,7 @@ export function batchTurnRequests(primary, kind, caseData) {
   });
 }
 
-function normalizeDirectStatement(statement, speakerLabel, targetJapanese) {
+export function normalizeDirectStatement(statement, speakerLabel, targetJapanese) {
   let s = text(statement);
   // Keep the dialogue firm without allowing insulting second-person address.
   // Do not rewrite first-person words globally: a statement may quote the
@@ -361,7 +361,7 @@ function normalizeDirectStatement(statement, speakerLabel, targetJapanese) {
   return s;
 }
 
-function speakerVoiceIssue(statement, speakerLabel) {
+export function speakerVoiceIssue(statement, speakerLabel) {
   // Ignore direct quotations when checking first-person voice.
   const outsideQuotes = text(statement).replace(/「[^」]*」/g, '');
   const speaker = TURN_ORDER.find(p=>p.label===text(speakerLabel).toUpperCase());
@@ -372,7 +372,7 @@ function speakerVoiceIssue(statement, speakerLabel) {
   return used.some(v=>v!==allowed) ? 'WRONG_FIRST_PERSON' : '';
 }
 
-function sameFocusIssue(statement, focus) {
+export function sameFocusIssue(statement, focus) {
   if (!focus?.same || !focus?.speakerPlayer || !focus?.targetPlayer) return '';
   if (norm(focus.speakerPlayer)!==norm(focus.targetPlayer)) return '';
   const player = text(focus.speakerPlayer).replace(/[.*+?^$(){}|[\]\\]/g,'\\$&');
