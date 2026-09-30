@@ -50,6 +50,8 @@ assert.equal(batch[0].focusDifference.speakerPlayer,'嶋田 栄志');
 assert.equal(batch[0].focusDifference.targetPlayer,'中嶋 玲月');
 assert.equal(batch[1].focusDifference.speakerPlayer,'中嶋 玲月');
 assert.equal(batch[1].focusDifference.targetPlayer,'中嶋 玲月');
+assert.equal(batch[1].focusDifference.same,true);
+assert.equal(batch[1].focusDifference.comparisonPlayer,'嶋田 栄志');
 
 const quoted=normalizeDirectStatement('バルタザール、俺は中嶋 玲月を3番にする。「僕は大野 竜暉を3番にします」とカスパーは言っている。','BALTHASAR-2','カスパー');
 assert.match(quoted,/俺は中嶋 玲月/);
