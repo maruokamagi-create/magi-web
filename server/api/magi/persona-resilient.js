@@ -49,6 +49,64 @@ function isTransientPersonaFailure(capture) {
   return payload?.code === 'PERSONA_GENERATION_FAILED' || payload?.retryExhausted === true;
 }
 
+function isGenericCurrentLineup(body) {
+  const q = String(body?.case?.question || '').normalize('NFKC');
+  const lineup = /ベストオーダー|打順|オーダー|打線/.test(q) || String(body?.case?.selectionKind || '').toUpperCase() === 'FULL_LINEUP';
+  const futureAsked = /将来|半年後|来年|来季|育成|成長|長期/.test(q);
+  return lineup && !futureAsked;
+}
+
+function splitSentences(value) {
+  return String(value || '').split(/(?<=[。！？!?])/).map(s => s.trim()).filter(Boolean);
+}
+
+function joinSentences(parts) {
+  return parts.join(' ').replace(/\s+/g, ' ').trim();
+}
+
+function sanitizeLineupPersona(body, payload) {
+  if (!payload || typeof payload !== 'object' || !isGenericCurrentLineup(body)) return payload;
+  const evidenceText = JSON.stringify(body?.case?.evidence || {});
+  const hasConfirmedCaptain = /(?:キャプテン|主将)(?!候補)/.test(evidenceText);
+  const hasMentalLeadership = /精神的(?:な)?(?:柱|支柱)|精神面|メンタル|士気|まとめ役|リーダーシップ|牽引力/.test(evidenceText);
+
+  const forbiddenSentence = sentence => {
+    const s = String(sentence || '');
+    if (!hasConfirmedCaptain && /(?:キャプテン|主将|副主将)(?:として|の|を|に|で)/.test(s)) return true;
+    if (!hasMentalLeadership && /精神的(?:な)?(?:柱|支柱|まとまり)|精神面の柱|チームの精神的|士気を|まとめ役|リーダーシップ/.test(s)) return true;
+    if (/(?:半年後|来年|来季|将来|今後の成長|成長につなが|育成につなが)/.test(s)) return true;
+    return false;
+  };
+
+  const cleanText = value => joinSentences(splitSentences(value).filter(s => !forbiddenSentence(s)));
+  const cleanArray = value => Array.isArray(value)
+    ? value.map(cleanText).filter(Boolean)
+    : [];
+
+  const out = {
+    ...payload,
+    candidateBasis: cleanText(payload.candidateBasis),
+    facts: cleanArray(payload.facts),
+    analysis: cleanArray(payload.analysis),
+    prediction: cleanArray(payload.prediction),
+    primaryReason: cleanText(payload.primaryReason),
+    publicStatement: cleanText(payload.publicStatement),
+    warnings: cleanArray(payload.warnings),
+    reviewReason: cleanText(payload.reviewReason),
+    changeReason: cleanText(payload.changeReason)
+  };
+
+  const order = Array.isArray(out.candidatePlayers) ? out.candidatePlayers.map(v => String(v || '').trim()).filter(Boolean) : [];
+  const orderText = order.length === 9 ? order.map((name, index) => `${index + 1}番${name}`).join('、') : '';
+  if (!out.candidateBasis) out.candidateBasis = '現在確認できる記録と打線のつながりを基準に、この順番を選びました。';
+  if (!out.primaryReason) out.primaryReason = '現在確認できる記録を基準に、現時点の打順として判断しました。';
+  if (!out.publicStatement) out.publicStatement = orderText
+    ? `${orderText} の順です。現在確認できる記録を基準に判断しました。`
+    : '現在確認できる記録を基準に判断しました。';
+  return out;
+}
+
+
 export function markSecondTransientRetryable(body, payload) {
   if (String(body?.phase || '').toUpperCase() !== 'SECOND') return payload;
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
