@@ -73,7 +73,7 @@ assert.ok(primary>=0&&opening>primary&&dialogue>opening&&closing>dialogue&&secon
 
 assert.match(languageSrc,/カスペル\/g,'カスパー'/,'CASPER display typo must be normalized in MAGI results');
 assert.match(indexSrc,/cross-dialogue-router-v380\.js\?v=430/,'production HTML must load generalized cross-dialogue router');
-assert.match(indexSrc,/chat-ui-canonical-v387\.js\?v=431/,'production HTML must load generalized canonical chat renderer');
+assert.match(indexSrc,/chat-ui-canonical-v387\.js\?v=434/,'production HTML must load generalized canonical chat renderer');
 assert.doesNotMatch(indexSrc,/chat-ui-v196\.js/,'production HTML must not load the legacy chat renderer');
 assert.doesNotMatch(indexSrc,/cross-dialogue-ui-v380\.js/,'production HTML must not load the post-hoc dialogue patcher');
 assert.match(indexSrc,/magi-user-language-v382\.js\?v=385/,'production HTML must load current language normalization revision');
