@@ -164,11 +164,11 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
     `あなたは ${requiredTarget} に直接返答します。target と sourcePersona は必ず ${requiredTarget} にしてください。`,
     'targetSourceMaterial を実際に読み、相手が本当に述べた内容だけに返答してください。人格設定から相手の主張・性格・意図を想像して攻撃してはいけません。',
     'sourceClaim には targetSourceMaterial から短い原文をそのまま抜き出してください。言い換えは禁止です。',
-    'statement はその sourceClaim への直接の返答にしてください。相手の日本語名を呼びかけ、1〜3文の自然な野球の会話にします。',
+    'statement はその sourceClaim への直接の返答にしてください。相手の日本語名を呼びかけ、1〜3文の自然な野球の会話にします。打順が違う場合は、少なくとも1つの具体的な打順番号と選手名を出し、なぜ自分の配置を優先するのかを相手の根拠に直接ぶつけてください。単なる感想や「考えは分かる」で終わらせません。',
     '現在のベストオーダー審議です。質問に将来時点の指定がない限り、半年後・来年・将来・未来などへ勝手に時間軸を移してはいけません。',
     'バルタザールは「試合は待ってくれない」「勝ちに行くぞ」のような決まり文句ではなく、実際の打順・選手・記録のつながりについて具体的に話してください。根拠なしに「一番得点を取れる」「圧倒的」と断定してはいけません。',
     'カスパーは、一次判断や相手発言にない育成方針・心理・半年後の構想を作ってはいけません。現在の役割、負担、成長材料が明示されている範囲だけで話してください。',
-    '3人の打順が同じなら、単に「自分も同じ」で終わらず、その並びの理由または見直し条件を、実際に出ている材料の範囲で具体的に確認してください。',
+    '3人の打順が同じなら、単に「自分も同じ」で終わらず、その並びの中で最も弱い根拠または見直し条件を具体的に突いてください。打順が違うなら、違っている番号を優先して直接議論してください。',
     '「固定する」と相手が言っていないのに固定起用を批判してはいけません。「数字が揃うまで待つ」と言っていないのに待つ姿勢を批判してはいけません。「急いでいる」「焦っている」など相手の動機を勝手に付けてはいけません。',
     '丸岡中の通常のベストオーダー審議では、15打数以上は実用上十分な母数として扱います。15打数以上の選手を母数不足だけで批判しません。',
     '相手投手の左右は、ユーザーが明示的に求めない限り通常の論点にしません。',
@@ -192,7 +192,7 @@ async function generateTurn({ persona, requiredTarget, caseData, primary, previo
   let last = null;
   for (let attempt = 0; attempt < 3; attempt++) {
     const raw = await callGemini({
-      systemInstruction: `${PERSONA_PROMPTS[persona.key]}\n\nCROSS DIALOGUE RULE: Speak directly to ${requiredTarget}. Reply only to a concrete statement that is present in targetSourceMaterial. Do not fabricate motives, future plans, certainty, or another persona's stance.`,
+      systemInstruction: `${PERSONA_PROMPTS[persona.key]}\n\nCROSS DIALOGUE RULE: Speak directly to ${requiredTarget}. Reply only to a concrete statement that is present in targetSourceMaterial. Do not fabricate motives, future plans, certainty, or another persona's stance. This must feel like deliberation: challenge or defend a concrete batting-order decision, name the slot/player involved, and explain the evidence conflict in plain baseball language.`,
       userPayload: attempt === 0 ? payload : {
         ...payload,
         invalidDraft: last,
