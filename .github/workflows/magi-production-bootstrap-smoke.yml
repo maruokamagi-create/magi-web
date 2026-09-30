@@ -53,7 +53,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -q '/magi-app-bootstrap-v363.js?v=426' index.html
-          grep -q '/chat-ui-canonical-v387.js?v=420' index.html
+          grep -q '/chat-ui-canonical-v387.js?v=431' index.html
           grep -q '/wise-men-chat-repair-v389.js?v=429' index.html
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
           grep -q 'structuredValidationOnly:true' magi-formal-runner-v373.js
@@ -330,7 +330,7 @@ jobs:
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
           grep -Fq '/magi-app-bootstrap-v363.js?v=426' /tmp/index.html
-          grep -Fq '/chat-ui-canonical-v387.js?v=420' /tmp/index.html
+          grep -Fq '/chat-ui-canonical-v387.js?v=431' /tmp/index.html
           echo 'PRODUCTION BOOTSTRAP ASSETS: PASS'
 
           http_code=$(curl -L --retry 2 --retry-delay 3 --retry-all-errors -sS -w '%{http_code}' "$BASE/api/magi-selection-live-selftest" -o /tmp/selection.json)
