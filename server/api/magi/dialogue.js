@@ -145,6 +145,17 @@ function sourceMaterialFor(primary, previousDialogue, label) {
   ].filter(Boolean).join('。');
 }
 
+function challengesFromDialogue(dialogue) {
+  const out = { melchior: [], balthasar: [], casper: [] };
+  for (const turn of Array.isArray(dialogue) ? dialogue : []) {
+    const target = TURN_ORDER.find(p => p.label === text(turn?.target).toUpperCase());
+    if (!target) continue;
+    const statement = text(turn?.statement);
+    if (statement) out[target.key].push(statement);
+  }
+  return out;
+}
+
 function exactSourceClaim(sourceText, claim) {
   const source = norm(sourceText);
   const needle = norm(claim);
@@ -313,7 +324,7 @@ export default async function handler(req, res) {
       domainConflicts: [],
       warnings: [],
       informationGaps: [],
-      challenges: { melchior: [], balthasar: [], casper: [] },
+      challenges: challengesFromDialogue(dialogue),
       dialogue,
       reviewRequired: false,
       reviewReason: ''
