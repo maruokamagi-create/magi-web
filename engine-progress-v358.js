@@ -70,6 +70,7 @@ document.addEventListener('magi:progress',event=>{
   if(d.done)return complete(d.label||'MAGI 審議完了');
   update(d.pct,d.label,d.step);
 });
+document.addEventListener('magi:new-question',()=>reset('質問全体の意味を理解中'));
 
 document.addEventListener('click',event=>{
   const b=event.target?.closest?.('#magiRunButton,[data-magi-entry="semantic"]');
