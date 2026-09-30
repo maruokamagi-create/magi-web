@@ -48,9 +48,9 @@ jobs:
             (.challenges.casper|length)>=1 and
             ([.dialogue[].statement|contains("MAGI CONTROL")]|any|not) and
             ([.dialogue[].statement|test("お前|てめえ")]|any|not) and
-            ((.dialogueFallbackUsed == true) or ([.dialogue[].statement|test("3番|4番|5番|7番")]|all)) and
-            ((.dialogueFallbackUsed == true) or ([.dialogue[].statement|test("3番の3番|4番の4番|5番の5番|中嶋 玲月と中嶋 玲月")]|any|not)) and
-            ((.dialogueFallbackUsed != true) or ([.warnings[]?|contains("直接対話を取得できなかった")]|any))
+            (.dialogueFallbackUsed != true) and
+            ([.dialogue[].statement|test("3番|4番|5番|7番")]|all) and
+            ([.dialogue[].statement|test("3番の3番|4番の4番|5番の5番|中嶋 玲月と中嶋 玲月")]|any|not)
           ' /tmp/dialogue.json >/dev/null
           echo 'PRODUCTION DIRECT THREE-WISE-MEN DIALOGUE: PASS'
 
