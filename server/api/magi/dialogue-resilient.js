@@ -9,8 +9,8 @@ const PERSONAS = [
 ];
 const PLAN = [
   { speaker: 'melchior', target: 'balthasar' },
-  { speaker: 'balthasar', target: 'melchior' },
-  { speaker: 'casper', target: 'balthasar' }
+  { speaker: 'balthasar', target: 'casper' },
+  { speaker: 'casper', target: 'melchior' }
 ];
 const DIALOGUE_BUDGET_MS = 26_000;
 const text = v => String(v ?? '').trim();
@@ -93,11 +93,16 @@ export function buildFallbackDialogue(body) {
       fallbackUsed: true
     });
   }
+  const challenges = { melchior: [], balthasar: [], casper: [] };
+  for (const turn of dialogue) {
+    const target = PERSONAS.find(p => p.label === turn.target);
+    if (target && turn.statement) challenges[target.key].push(turn.statement);
+  }
   return canonicalizePlayerData({
     agreement: summary.agreement,
     disagreement: summary.disagreement,
-    domainConflicts: [], warnings: [], informationGaps: [],
-    challenges: { melchior: [], balthasar: [], casper: [] },
+    domainConflicts: [], warnings: ['3賢人の直接対話を取得できなかったため、二次判定には一次案から作った確認質問だけを渡しています。'], informationGaps: [],
+    challenges,
     dialogue, reviewRequired: false, reviewReason: '', dialogueFallbackUsed: true
   });
 }
