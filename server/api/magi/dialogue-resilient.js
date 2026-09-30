@@ -1,4 +1,4 @@
-import magiDialogue from './dialogue.js';
+import magiDialogue, { debateKind, primaryDecisionSummary } from './dialogue.js';
 import { canonicalizePlayerData } from './_roster.js';
 import { validateFullLineupOrder } from './_full-lineup.js';
 
@@ -40,6 +40,11 @@ function orderOf(primary, key) {
   const check = validateFullLineupOrder(personaValue(primary, key)?.candidatePlayers);
   return check.ok ? check.order : [];
 }
+function candidatesOf(primary, key) {
+  return Array.isArray(personaValue(primary, key)?.candidatePlayers)
+    ? personaValue(primary, key).candidatePlayers.map(text).filter(Boolean)
+    : [];
+}
 function sourceClaim(value) {
   const candidates = [value?.publicStatement, value?.primaryReason, value?.candidateBasis, ...(Array.isArray(value?.facts) ? value.facts : [])];
   for (const raw of candidates) {
@@ -73,6 +78,30 @@ function fallbackStatement(speaker, target, ownOrder, targetOrder) {
   return `${target.jp}、あなたは${slot + 1}番に${other}、僕は${own}を置いています。今の役割と打線のつながりを見ながら、この違いを確認したいです。`;
 }
 
+
+function genericFallbackStatement(kind, speaker, target, ownCandidates, targetCandidates) {
+  const ownTop = ownCandidates[0] || '未提示';
+  const targetTop = targetCandidates[0] || '未提示';
+
+  if (kind === 'PITCHING_PLAN') {
+    const roles = ['先発','第2投手','終盤','クローザー'];
+    let idx = roles.findIndex((_, i) => norm(ownCandidates[i]) !== norm(targetCandidates[i]));
+    if (idx < 0) idx = 0;
+    const own = ownCandidates[idx] || '未提示';
+    const other = targetCandidates[idx] || '未提示';
+    if (norm(own) === norm(other)) {
+      return `${target.jp}、${roles[idx]}の${own}は${speaker.first}も同じです。今ある投手記録で、この役割を維持する条件と見直す条件を確認したいです。`;
+    }
+    return `${target.jp}、あなたは${roles[idx]}に${other}、${speaker.first}は${own}を置いています。今ある投手記録だけで、どちらをこの役割に置くか比べたいです。`;
+  }
+
+  const role = kind === 'PITCHING_ROLE' ? 'クローザー' : 'この打順';
+  if (norm(ownTop) === norm(targetTop)) {
+    return `${target.jp}、${role}の第一候補${ownTop}は${speaker.first}も同じです。今ある記録で、この判断を維持する条件と見直す条件を確認したいです。`;
+  }
+  return `${target.jp}、あなたは${targetTop}、${speaker.first}は${ownTop}を${role}の第一候補にしています。今ある記録だけで、どちらを優先するか比べたいです。`;
+}
+
 function captureFailureReason(capture, settled) {
   if (!settled) return 'DIALOGUE_BUDGET_EXCEEDED';
   try {
@@ -85,35 +114,61 @@ function captureFailureReason(capture, settled) {
 
 export function buildFallbackDialogue(body) {
   const primary = canonicalizePlayerData(body?.primary || {});
-  const summary = lineupSummary(primary);
+  const kind = debateKind(body?.case || {});
+  if (!kind) return null;
+
+  const fullLineup = kind === 'FULL_LINEUP';
+  const lineup = fullLineup ? lineupSummary(primary) : null;
+  const genericSummary = fullLineup ? null : primaryDecisionSummary(primary, kind, body?.case || {});
+  const summary = fullLineup ? lineup : genericSummary;
   if (!summary) return null;
+
   const dialogue = [];
   for (const step of PLAN) {
     const speaker = PERSONAS.find(p => p.key === step.speaker);
     const target = PERSONAS.find(p => p.key === step.target);
-    const ownOrder = orderOf(primary, speaker.key), targetOrder = orderOf(primary, target.key);
-    const claim = sourceClaim(personaValue(primary, target.key));
-    if (!speaker || !target || ownOrder.length !== 9 || targetOrder.length !== 9 || !claim) return null;
+    const claim = sourceClaim(personaValue(primary, target?.key));
+    if (!speaker || !target || !claim) return null;
+
+    let statement = '';
+    if (fullLineup) {
+      const ownOrder = orderOf(primary, speaker.key);
+      const targetOrder = orderOf(primary, target.key);
+      if (ownOrder.length !== 9 || targetOrder.length !== 9) return null;
+      statement = fallbackStatement(speaker, target, ownOrder, targetOrder);
+    } else {
+      const ownCandidates = candidatesOf(primary, speaker.key);
+      const targetCandidates = candidatesOf(primary, target.key);
+      if (!ownCandidates.length || !targetCandidates.length) return null;
+      statement = genericFallbackStatement(kind, speaker, target, ownCandidates, targetCandidates);
+    }
+
     dialogue.push({
       speaker: speaker.label,
       target: target.label,
       sourcePersona: target.label,
       sourceClaim: claim,
-      statement: fallbackStatement(speaker, target, ownOrder, targetOrder),
+      statement,
       fallbackUsed: true
     });
   }
+
   const challenges = { melchior: [], balthasar: [], casper: [] };
   for (const turn of dialogue) {
     const target = PERSONAS.find(p => p.label === turn.target);
     if (target && turn.statement) challenges[target.key].push(turn.statement);
   }
   return canonicalizePlayerData({
-    agreement: summary.agreement,
-    disagreement: summary.disagreement,
-    domainConflicts: [], warnings: ['3賢人の直接対話を取得できなかったため、二次判定には一次案から作った確認質問だけを渡しています。'], informationGaps: [],
+    agreement: Array.isArray(summary.agreement) ? summary.agreement : [],
+    disagreement: Array.isArray(summary.disagreement) ? summary.disagreement : [],
+    domainConflicts: [],
+    warnings: ['3賢人の直接対話を取得できなかったため、二次判定には一次案から作った確認質問だけを渡しています。'],
+    informationGaps: [],
     challenges,
-    dialogue, reviewRequired: false, reviewReason: '', dialogueFallbackUsed: true
+    dialogue,
+    reviewRequired: false,
+    reviewReason: '',
+    dialogueFallbackUsed: true
   });
 }
 
