@@ -41,8 +41,11 @@ jobs:
           jq -e '
             (.dialogue|length)==3 and
             .dialogue[0].speaker=="MELCHIOR-1" and .dialogue[0].target=="BALTHASAR-2" and
-            .dialogue[1].speaker=="BALTHASAR-2" and .dialogue[1].target=="MELCHIOR-1" and
-            .dialogue[2].speaker=="CASPER-3" and .dialogue[2].target=="BALTHASAR-2" and
+            .dialogue[1].speaker=="BALTHASAR-2" and .dialogue[1].target=="CASPER-3" and
+            .dialogue[2].speaker=="CASPER-3" and .dialogue[2].target=="MELCHIOR-1" and
+            (.challenges.melchior|length)>=1 and
+            (.challenges.balthasar|length)>=1 and
+            (.challenges.casper|length)>=1 and
             ([.dialogue[].statement|contains("MAGI CONTROL")]|any|not)
           ' /tmp/dialogue.json >/dev/null
           echo 'PRODUCTION DIRECT THREE-WISE-MEN DIALOGUE: PASS'
