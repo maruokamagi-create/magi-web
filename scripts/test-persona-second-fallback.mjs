@@ -16,9 +16,12 @@ assert.equal('candidatePlayers' in second, false);
 assert.equal('secondFallbackUsed' in second, false);
 
 const primary = markSecondTransientRetryable({ phase: 'PRIMARY' }, transient);
-assert.equal(primary.retryExhausted, true);
-assert.equal(primary.retryFreshRequest, undefined);
+assert.equal(primary.retryExhausted, false);
+assert.equal(primary.retryFreshRequest, true);
+assert.equal(primary.retryScope, 'PRIMARY_REQUEST');
+assert.equal('candidatePlayers' in primary, false);
+assert.equal('secondFallbackUsed' in primary, false);
 
 assert.equal(markSecondTransientRetryable({ phase: 'SECOND' }, null), null);
 
-console.log('PERSONA SECOND FRESH-REQUEST RETRY: PASS');
+console.log('PERSONA PRIMARY/SECOND FRESH-REQUEST RETRY: PASS');
