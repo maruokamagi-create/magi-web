@@ -36,7 +36,7 @@ function validCase(body) {
   return q.length >= 2 && q.length <= 12000;
 }
 
-function debateKind(caseData) {
+export function debateKind(caseData) {
   if (isFullLineupQuestion(caseData)) return 'FULL_LINEUP';
   if (isPitchingPlanQuestion(caseData) || String(caseData?.selectionKind || caseData?.evidence?.selectionKind || '').toUpperCase() === 'PITCHING_PLAN') return 'PITCHING_PLAN';
   const kind = String(caseData?.selectionKind || caseData?.evidence?.selectionKind || '').toUpperCase();
@@ -58,7 +58,7 @@ function candidateList(primary, key) {
   const value = primaryFor(primary, key);
   return Array.isArray(value?.candidatePlayers) ? value.candidatePlayers.map(text).filter(Boolean) : [];
 }
-function primaryDecisionSummary(primary, kind, caseData) {
+export function primaryDecisionSummary(primary, kind, caseData) {
   if (kind === 'FULL_LINEUP') return primaryLineupSummary(primary);
   const rows = TURN_ORDER.map(p => ({ ...p, candidates: candidateList(primary, p.key) }));
   const first = rows.map(row => row.candidates[0] || '');
@@ -145,7 +145,7 @@ function sourceMaterialFor(primary, previousDialogue, label) {
   ].filter(Boolean).join('。');
 }
 
-function challengesFromDialogue(dialogue) {
+export function challengesFromDialogue(dialogue) {
   const out = { melchior: [], balthasar: [], casper: [] };
   for (const turn of Array.isArray(dialogue) ? dialogue : []) {
     const target = TURN_ORDER.find(p => p.label === text(turn?.target).toUpperCase());
