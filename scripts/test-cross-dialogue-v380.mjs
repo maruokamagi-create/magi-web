@@ -58,6 +58,11 @@ assert.match(serverSrc,/違う打順番号と選手を優先して直接議論/,
 assert.match(serverSrc,/PITCHING_PLAN/,'direct dialogue must support pitching plans');
 assert.match(serverSrc,/PITCHING_ROLE/,'direct dialogue must support a single pitching role');
 assert.match(serverSrc,/BATTING_ORDER/,'direct dialogue must support a single batting slot');
+assert.match(serverSrc,/const dialogueBatchSchema/,'direct dialogue must use a batch response schema');
+assert.match(serverSrc,/async function generateDialogueBatch/,'direct dialogue must generate the three turns as one bounded batch');
+assert.match(serverSrc,/const dialogue = await generateDialogueBatch/,'handler must use the batch dialogue path');
+assert.doesNotMatch(serverSrc,/for \(const step of TURN_PLAN\) \{\s*dialogue\.push\(await generateTurn/s,'handler must not make three sequential turn calls');
+assert.match(serverSrc,/for \(let attempt = 0; attempt < 2; attempt\+\+\)/,'batch dialogue correction must stay bounded to one retry');
 assert.match(resilientSrc,/speaker: 'balthasar', target: 'casper'/,'fallback cycle must challenge CASPER');
 assert.match(resilientSrc,/speaker: 'casper', target: 'melchior'/,'fallback cycle must challenge MELCHIOR');
 assert.match(resilientSrc,/dialogueFallbackUsed: true/,'fallback dialogue must be explicitly marked');
