@@ -39,6 +39,8 @@ assert.match(serverSrc,/急いでいる.*焦っている|急ぎ\|焦り/,'fabric
 assert.match(serverSrc,/半年後.*来年.*将来.*未来/,'arbitrary future horizon must be prohibited for current lineup questions');
 assert.match(serverSrc,/試合は待ってくれない\|勝ちに行くぞ/,'Balthasar canned rhetoric must be rejected');
 assert.match(serverSrc,/一番得点を取れる.*圧倒的/,'unsupported tactical certainty must be rejected');
+assert.match(serverSrc,/具体的な打順番号と選手名/,'cross dialogue must challenge a concrete batting-order slot and player');
+assert.match(serverSrc,/違っている番号を優先して直接議論/,'cross dialogue must debate the actual disagreement instead of generic agreement');
 
 assert.match(uiSrc,/MAGI_CHAT_UI_CANONICAL_V387/,'canonical chat renderer must be active');
 assert.match(uiSrc,/fullLineupNeverRendersLegacyControlTargetRows:true/,'full lineup must never render legacy CONTROL target cards');
@@ -56,7 +58,7 @@ const second=full.indexOf("addPhase(body,'二次判定')");
 assert.ok(primary>=0&&opening>primary&&dialogue>opening&&closing>dialogue&&second>closing,'canonical phase order must be primary -> CONTROL opening -> direct dialogue -> CONTROL closing -> SECOND');
 
 assert.match(languageSrc,/カスペル\/g,'カスパー'/,'CASPER display typo must be normalized in MAGI results');
-assert.match(indexSrc,/chat-ui-canonical-v387\.js\?v=387/,'production HTML must load canonical chat renderer v387');
+assert.match(indexSrc,/chat-ui-canonical-v387\.js\?v=420/,'production HTML must load refreshed canonical chat renderer');
 assert.doesNotMatch(indexSrc,/chat-ui-v196\.js/,'production HTML must not load the legacy chat renderer');
 assert.doesNotMatch(indexSrc,/cross-dialogue-ui-v380\.js/,'production HTML must not load the post-hoc dialogue patcher');
 assert.match(indexSrc,/magi-user-language-v382\.js\?v=385/,'production HTML must load current language normalization revision');
