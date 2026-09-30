@@ -1,5 +1,11 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { sanitizeSuccessfulPersona } from '../server/api/magi/persona-resilient.js';
+
+const personaSrc=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
+assert.match(personaSrc,/PRIMARY publicStatement must not be only a nine-name announcement/);
+assert.match(personaSrc,/SECOND publicStatement must explicitly answer at least one concrete point/);
+assert.match(personaSrc,/specific slot\/player comparison and include at least one exact supplied number/);
 
 const body={case:{question:'ベストオーダーは？',selectionKind:'FULL_LINEUP',evidence:{}}};
 const order=['大野 竜暉','坂田 暉馬','中嶋 玲月','大久保 陽翔','嶋田 栄志','鰐渕 将太','橋向 結都','井坂 悠聖','武田 晴琉翔'];
