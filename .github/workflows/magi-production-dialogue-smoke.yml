@@ -62,8 +62,12 @@ jobs:
             }
           }
           JSON
-          curl -L --fail -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/slot-body.json "$BASE/api/magi/dialogue" -o /tmp/slot-dialogue.json
+          slot_http=$(curl -L -sS -w '%{http_code}' -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/slot-body.json "$BASE/api/magi/dialogue" -o /tmp/slot-dialogue.json || true)
           cat /tmp/slot-dialogue.json; echo
+          echo "SINGLE-SLOT DIALOGUE HTTP $slot_http"
+          if [ "$slot_http" -lt 200 ] || [ "$slot_http" -ge 300 ]; then
+            exit 22
+          fi
           jq -e '
             (.dialogue|length)==3 and
             (.dialogueFallbackUsed != true) and
