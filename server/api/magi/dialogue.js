@@ -338,7 +338,8 @@ export default async function handler(req, res) {
       reviewReason: ''
     }));
   } catch (error) {
-    console.error('[MAGI dialogue]', error?.message || error);
-    return sendJson(res, 500, { error: 'Wise Men dialogue failed' });
+    const detail = text(error?.message || error);
+    console.error('[MAGI dialogue]', detail);
+    return sendJson(res, 500, { error: 'Wise Men dialogue failed', code: 'DIALOGUE_GENERATION_FAILED', detail });
   }
 }
