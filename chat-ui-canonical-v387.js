@@ -32,7 +32,17 @@ function who(t){
 }
 function currentResult(){return window.MAGI_LAST_DELIBERATION_RESULT||null}
 function summaryApi(){return window.MAGI_CONTROL_SUMMARY_V377||null}
-function isFullLineup(result){const k=String(result?.case?.selectionKind||result?.final?.mode||'').toUpperCase();const q=String(result?.case?.question||'').normalize('NFKC');return k==='FULL_LINEUP'||/(?:ベストオーダー|ベスト打順|1番.{0,40}9番|一番.{0,40}九番)/.test(q)}
+function debateKind(result){
+  const k=String(result?.case?.selectionKind||result?.case?.evidence?.selectionKind||result?.final?.mode||'').toUpperCase();
+  if(['FULL_LINEUP','BATTING_ORDER','PITCHING_ROLE','PITCHING_PLAN'].includes(k))return k;
+  const q=String(result?.case?.question||'').normalize('NFKC');
+  if(/(?:ベストオーダー|ベスト打順|1番.{0,40}9番|一番.{0,40}九番)/.test(q))return'FULL_LINEUP';
+  if(/(?:投手|ピッチャー).{0,16}(?:継投|運用|プラン)|先発.{0,30}(?:第2投手|クローザー|抑え)/.test(q))return'PITCHING_PLAN';
+  if(/(?:クローザー|抑え).{0,20}(?:誰|だれ|候補|選ぶ|選んで|決めて|いい)/.test(q))return'PITCHING_ROLE';
+  if(/[1-9１-９一二三四五六七八九]番(?:打者)?.{0,20}(?:誰|だれ|候補|選ぶ|選んで|決めて|いい)/.test(q))return'BATTING_ORDER';
+  return'';
+}
+function isDirectDebate(result){return!!debateKind(result)}
 function dialogueOf(result){return Array.isArray(result?.crossExamination?.dialogue)?result.crossExamination.dialogue.filter(x=>x?.speaker&&x?.statement):[]}
 function parseExchange(ex){
   const speaker=ex.querySelector('.magiSpeaker')?.textContent?.trim()||'';
@@ -49,9 +59,10 @@ function controlOpeningText(result){
   const cross=result?.crossExamination||{};
   const agreement=Array.isArray(cross.agreement)?cross.agreement:[];
   const disagreement=Array.isArray(cross.disagreement)?cross.disagreement:[];
-  if(agreement.some(x=>/1番から9番まで一致|打順案.*一致/.test(String(x))))return 'MAGI CONTROLの見立てでは、3賢人の一次打順案は一致しています。結論だけで終わらせず、この並びを支持する理由と、どんな条件なら見直すのかを互いに確認してください。';
-  if(disagreement.length)return `MAGI CONTROLの見立てでは、今回の主な争点は「${disagreement.slice(0,2).map(x=>String(x).slice(0,68)).join('／')}」です。相手が実際に示した根拠に答えながら、現時点のベストオーダーとしてどの並びに最も根拠があるかを詰めてください。`;
-  return 'MAGI CONTROLの見立てでは、3賢人の一次判断には確認すべき違いがあります。相手が実際に示した根拠だけを材料に、打順の違いとその理由を直接確かめてください。';
+  const kind=debateKind(result);
+  if(disagreement.length)return `MAGI CONTROLの見立てでは、今回の主な争点は「${disagreement.slice(0,2).map(x=>String(x).slice(0,82)).join('／')}」です。結論だけを並べず、相手が実際に示した根拠へ直接答えてください。`;
+  if(agreement.length)return `MAGI CONTROLの見立てでは、一次判断の大枠は一致しています。結論だけで終わらせず、${kind==='PITCHING_PLAN'?'役割配置':kind==='PITCHING_ROLE'?'候補選定':kind==='BATTING_ORDER'?'打順候補':'打順'}の弱点と見直し条件を互いに確認してください。`;
+  return 'MAGI CONTROLの見立てでは、3賢人の一次判断には確認すべき違いがあります。相手が実際に示した根拠だけを材料に、候補・役割・配置の違いを直接確かめてください。';
 }
 function controlClosingText(){return 'MAGI CONTROLはここで相互検証を区切ります。次の二次判定では、今のやり取りを踏まえて、自分の一次案を維持するのか変更するのかを各賢人が改めて判断してください。'}
 function personRow(body,item,seen,result){
@@ -96,7 +107,7 @@ async function waitForDom(seq){
   return null;
 }
 async function hydrateDialogue(result){
-  if(!result||dialogueOf(result).length||!isFullLineup(result)||!result?.primary)return result;
+  if(!result||dialogueOf(result).length||!isDirectDebate(result)||!result?.primary)return result;
   const seq=++hydrateSeq,controller=new AbortController(),timer=setTimeout(()=>controller.abort(),32000);
   try{
     const res=await fetch('/api/magi/dialogue',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({phase:'CROSS_EXAMINATION',case:result.case,primary:result.primary}),signal:controller.signal});
@@ -139,14 +150,14 @@ async function render(result){
   if(!result)return false;
   const seq=++renderSeq;
   const dom=await waitForDom(seq);if(!dom||seq!==renderSeq)return false;
-  const hydrated=isFullLineup(result)?await hydrateDialogue(result):result;if(seq!==renderSeq)return false;
+  const hydrated=isDirectDebate(result)?await hydrateDialogue(result):result;if(seq!==renderSeq)return false;
   window.MAGI_LAST_DELIBERATION_RESULT=hydrated;
   const items=[...dom.live.querySelectorAll('.magiExchange')].map(parseExchange).filter(x=>x.person&&x.speech);
   const old=document.getElementById('magiChatView');if(old)old.remove();
   css();
   const box=document.createElement('section');box.id='magiChatView';box.dataset.magiCanonicalChat='v387';box.innerHTML='<div class="magiChatHead"><b>MAGI 公開審議</b><small>THREE WISE MEN CHAT</small></div><div class="magiChatBody"></div>';
   const body=box.querySelector('.magiChatBody');
-  if(isFullLineup(hydrated))renderFullLineup(body,items,hydrated);else renderGeneric(body,items,hydrated);
+  if(isDirectDebate(hydrated))renderFullLineup(body,items,hydrated);else renderGeneric(body,items,hydrated);
   addFinalSummary(body,hydrated);wireEvidence(box);
   dom.bundle.classList.add('magiChatMode');dom.final.insertAdjacentElement('afterend',box);
   return true;
@@ -155,5 +166,5 @@ function trigger(result){render(result||currentResult())}
 document.addEventListener('magi:deliberation-result',event=>trigger(event.detail||currentResult()));
 let boot=0;const timer=setInterval(()=>{boot++;const result=currentResult();if(result){clearInterval(timer);trigger(result)}else if(boot>160)clearInterval(timer)},250);
 const statusTimer=setInterval(()=>{const status=document.getElementById('status');if(!status)return;if(status.dataset.magiCanonicalChatWatch)return;status.dataset.magiCanonicalChatWatch='true';new MutationObserver(()=>{if(/審議完了|正式審議完了|選択審議完了/.test(status.textContent||''))trigger(currentResult())}).observe(status,{childList:true,subtree:true,characterData:true});clearInterval(statusTimer)},250);
-window.MAGI_CHAT_UI_CANONICAL_META=Object.freeze({version:'chat-ui-canonical-v387',singleRenderPath:true,fullLineupNeverRendersLegacyControlTargetRows:true,directDialogueHydration:true,phaseOrder:'PRIMARY_CONTROL_DIRECT_DIALOGUE_CONTROL_SECOND_FINAL'});
+window.MAGI_CHAT_UI_CANONICAL_META=Object.freeze({version:'chat-ui-canonical-v431',singleRenderPath:true,directDebateKinds:['FULL_LINEUP','BATTING_ORDER','PITCHING_ROLE','PITCHING_PLAN'],directDialogueHydration:true,phaseOrder:'PRIMARY_CONTROL_DIRECT_DIALOGUE_CONTROL_SECOND_FINAL'});
 })();
