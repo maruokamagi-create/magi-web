@@ -53,8 +53,12 @@ function detailHtml(value,phase){
 function personaRow(persona,value,phase){
   const speech=publicSpeech(value);if(!speech)return null;
   const details=detailHtml(value,phase);
+  const rawAxis=phase==='second'
+    ?String(value?.changeReason||value?.candidateBasis||'').trim()
+    :String(value?.candidateBasis||value?.primaryReason||'').trim();
+  const axis=rawAxis&&rawAxis!==speech?(rawAxis.length>150?`${rawAxis.slice(0,148)}…`:rawAxis):'';
   const row=document.createElement('div');row.className=`magiMsg ${persona.cls}`;row.dataset.magiWiseRepair='persona';
-  row.innerHTML=`<img class="magiAvatar" src="${persona.img}" alt="${esc(persona.jp)}"><div class="magiMsgCol"><div class="magiSender">${esc(persona.jp)}</div><div class="magiBubble"><span class="magiSpeechText">${esc(speech)}</span><div class="magiMsgActions"><span class="magiJudgeTag">${esc(judgeText(value,phase))}</span>${details?'<button type="button" class="magiWiseDetailToggle" aria-expanded="false">詳細を見る ▾</button>':''}</div>${details?`<div class="magiWiseDetail">${details}</div>`:''}</div></div>`;
+  row.innerHTML=`<img class="magiAvatar" src="${persona.img}" alt="${esc(persona.jp)}"><div class="magiMsgCol"><div class="magiSender">${esc(persona.jp)}</div><div class="magiBubble"><span class="magiSpeechText">${esc(speech)}</span>${axis?`<div class="magiWiseAxis"><b>${phase==='second'?'再判断の理由':'判断の軸'}：</b>${esc(axis)}</div>`:''}<div class="magiMsgActions"><span class="magiJudgeTag">${esc(judgeText(value,phase))}</span>${details?'<button type="button" class="magiWiseDetailToggle" aria-expanded="false">詳細を見る ▾</button>':''}</div>${details?`<div class="magiWiseDetail">${details}</div>`:''}</div></div>`;
   return row;
 }
 function dialogueRow(turn){
@@ -93,6 +97,8 @@ function installStyle(){
   const s=document.createElement('style');s.id='magi-wise-men-chat-repair-v390-style';
   s.textContent=`
   .magiWiseDetailToggle{border:0;background:transparent;color:#386b98;font-size:11px;line-height:1.2;font-weight:900;padding:3px 0;min-height:0;cursor:pointer}
+  .magiWiseAxis{margin-top:8px;padding:8px 9px;border-left:3px solid #9bb6ca;border-radius:7px;background:#f6f8fa;color:#40586b;font-size:11px;line-height:1.55}
+  .magiWiseAxis b{color:#173d5d}
   .magiWiseDetail{display:none;margin-top:9px;padding:10px 11px;border-radius:10px;background:#f3f6f9;border:1px solid #d5dee6;color:#4c5d6d;font-size:11px;line-height:1.55}
   .magiWiseDetail.open{display:block}
   .magiWiseDetail section+section{margin-top:9px;padding-top:8px;border-top:1px solid #dde5eb}
