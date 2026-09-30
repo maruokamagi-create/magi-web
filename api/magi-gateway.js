@@ -58,6 +58,6 @@ export default async function handler(req, res) {
     if (res.headersSent) return;
     res.statusCode = 500;
     res.setHeader('Content-Type', 'application/json; charset=utf-8');
-    return res.end(JSON.stringify({ ok: false, error: 'MAGI gateway failed', diagnostic: String(error?.stack || error?.message || error).split('\n').slice(0,8) }));
+    return res.end(JSON.stringify({ ok: false, error: 'MAGI gateway failed' }));
   }
 }
