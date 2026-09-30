@@ -63,6 +63,8 @@ function install(){
  wrapped.__magiStableV417=true;
  window.MAGI_FORMAL_UI_RUNNER_V2=wrapped;
  window.MAGI_FORMAL_UI_RUNNER_V3=wrapped;
+ window.MAGI_PRODUCTION_STABILITY_V417_READY=true;
+ document.dispatchEvent(new CustomEvent('magi:production-stability-ready',{detail:{version:'v417'}}));
  return true;
 }
 let n=0,t=setInterval(()=>{n++;if(install()||n>400)clearInterval(t)},50);install();
