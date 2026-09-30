@@ -31,7 +31,7 @@ const TEAM_POLICY=Object.freeze({
 let busy=false;
 
 function mainButton(node){return node?.closest?.('#magiRunButton,[data-magi-run="formal"]')||null}
-function formalRunner(){return typeof window.MAGI_FORMAL_UI_RUNNER_V2==='function'?window.MAGI_FORMAL_UI_RUNNER_V2:null}
+function formalRunner(){const runner=window.MAGI_FORMAL_UI_RUNNER_V2;if(window.MAGI_PRODUCTION_STABILITY_V417_READY!==true||typeof runner!=='function'||runner.__magiStableV417!==true)return null;return runner}
 function contextLoad(){try{const a=JSON.parse(sessionStorage.getItem(CONTEXT_KEY)||'[]');return Array.isArray(a)?a.slice(-10):[]}catch(_){return[]}}
 function contextPush(role,text){text=txt(text);if(!text)return;try{const a=contextLoad();a.push({role,text:text.slice(0,1200)});sessionStorage.setItem(CONTEXT_KEY,JSON.stringify(a.slice(-10)))}catch(_){}}
 function setRouter(title,badge,help){if($('routeValue'))$('routeValue').textContent=title;if($('routeBadge'))$('routeBadge').textContent=badge;if($('routeHelp'))$('routeHelp').textContent=help}
@@ -80,7 +80,7 @@ function reportQuery(result,original){const s=result?.semantic||result||{},p=txt
 async function waitFor(fnName,ms=6000){const start=Date.now();while(Date.now()-start<ms){if(typeof window[fnName]==='function')return window[fnName];await new Promise(r=>setTimeout(r,80))}return null}
 async function runFullReport(result,original,btn){hidePanel();const kind=result.reportKind,q=$('q'),old=q?.value,synthetic=reportQuery(result,original);if(q)q.value=synthetic;setRouter(`質問理解 → ${kind==='BATTING'?'打撃':kind==='PITCHING'?'投手':'守備'}フルレポート`,'REPORT',`理解結果：${txt(result?.understoodRequest||result?.semantic?.understoodRequest)}`);if($('status'))$('status').textContent='質問の意図に合わせて正本データを集計しています…';try{if(kind==='BATTING'){const hydrate=await waitFor('MAGI_STATS_SERVER_HYDRATE');if(!hydrate)throw new Error('打撃正本データ取得処理を準備できませんでした');const hydrated=await hydrate(synthetic);if(!hydrated)throw new Error('打撃正本データを取得できませんでした');const fn=await waitFor('MAGI_STATS_REPORT_FN');if(!fn)throw new Error('打撃レポート処理を準備できませんでした');await fn.call(window)}else if(kind==='PITCHING'){const fn=await waitFor('MAGI_PITCH_DIRECT_FN');if(!fn)throw new Error('投手レポート処理を準備できませんでした');await fn.call(window)}else if(kind==='FIELDING'){const fn=await waitFor('MAGI_RUN_FIELDING_REPORT');if(!fn)throw new Error('守備レポート処理を準備できませんでした');await fn(synthetic)}else throw new Error('対応するレポート種類がありません');contextPush('assistant',`${txt(result?.understoodRequest||result?.semantic?.understoodRequest)}。フルレポートを表示した。`)}finally{if(q&&old!==undefined)q.value=old;if(btn){btn.disabled=false;btn.textContent='MAGI実行'}}}
 async function deliberate(result){
-  const runner=formalRunner();if(!runner)throw new Error('正式MAGI審議ランナーを呼び出せません');
+  const runner=formalRunner();if(!runner)throw new Error('MAGI安全審議ランナーの準備が完了していないため開始しません');
   const response=$('response');if(response){response.hidden=false;response.removeAttribute('aria-hidden');}
   const packet=result?.evidencePacket||null,kind=result?.selectionKind||packet?.selectionKind||'',question=txt($('q')?.value);
   if(String(kind).toUpperCase()==='FULL_LINEUP'&&!fullLineupPacketReady(packet))throw new Error('ベストオーダー用の正本14名データを取得できなかったため審議を開始しません');
