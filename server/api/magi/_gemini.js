@@ -17,7 +17,11 @@ const MAX_BODY_BYTES = 512_000;
 // intentional; canonical mode may still move to a fallback model when allowed.
 const GEMINI_TIMEOUT_MS = 9_000;
 const RATE_WINDOW_MS = 60_000;
-const RATE_MAX = 18;
+// A complete MAGI deliberation uses multiple persona/cross/final requests and
+// the browser may retry the whole run once after a transient failure. 36 keeps
+// per-IP abuse bounded while allowing two legitimate full deliberations (with
+// recovery) inside the same minute without self-triggering HTTP 429.
+const RATE_MAX = 36;
 const buckets = new Map();
 
 const CONSISTENCY_LOCK = String(process.env.MAGI_CONSISTENCY_LOCK || 'off').trim().toLowerCase();
