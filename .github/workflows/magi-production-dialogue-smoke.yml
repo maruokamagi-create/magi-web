@@ -50,3 +50,28 @@ jobs:
             ((.dialogueFallbackUsed != true) or ([.warnings[]?|contains("直接対話を取得できなかった")]|any))
           ' /tmp/dialogue.json >/dev/null
           echo 'PRODUCTION DIRECT THREE-WISE-MEN DIALOGUE: PASS'
+
+          cat > /tmp/slot-body.json <<'JSON'
+          {
+            "phase":"CROSS_EXAMINATION",
+            "case":{"mode":"selection","selectionKind":"BATTING_ORDER","question":"3番は誰がいい？"},
+            "primary":{
+              "melchior":{"persona":"MELCHIOR-1","candidatePlayers":["大野 竜暉","中嶋 玲月","長侶 穹"],"candidateBasis":"OPS .924の大野 竜暉を第一候補にする。","publicStatement":"3番の第一候補は大野 竜暉です。確認できるOPS .924を重視します。"},
+              "balthasar":{"persona":"BALTHASAR-2","candidatePlayers":["中嶋 玲月","大野 竜暉","長侶 穹"],"candidateBasis":"打率 .320の中嶋 玲月を第一候補にする。","publicStatement":"3番は中嶋 玲月を第一候補にします。打率 .320を比較材料にします。"},
+              "casper":{"persona":"CASPER-3","candidatePlayers":["大野 竜暉","中嶋 玲月","長侶 穹"],"candidateBasis":"現在の記録から大野 竜暉を第一候補にする。","publicStatement":"僕は3番の第一候補を大野 竜暉にします。現在の記録を比較して判断します。"}
+            }
+          }
+          JSON
+          curl -L --fail -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/slot-body.json "$BASE/api/magi/dialogue" -o /tmp/slot-dialogue.json
+          cat /tmp/slot-dialogue.json; echo
+          jq -e '
+            (.dialogue|length)==3 and
+            (.dialogueFallbackUsed != true) and
+            .dialogue[0].target=="BALTHASAR-2" and
+            .dialogue[1].target=="CASPER-3" and
+            .dialogue[2].target=="MELCHIOR-1" and
+            (.challenges.melchior|length)>=1 and
+            (.challenges.balthasar|length)>=1 and
+            (.challenges.casper|length)>=1
+          ' /tmp/slot-dialogue.json >/dev/null
+          echo 'PRODUCTION SINGLE-SLOT DIRECT DIALOGUE: PASS'
