@@ -2,6 +2,10 @@ import { isPitchingPlanQuestion } from './_pitching-plan.js';
 
 function text(v){return String(v??'').trim();}
 function sentenceParts(value){return String(value||'').split(/[。！？!?\n]+/).map(s=>s.trim()).filter(Boolean);}
+function isEvidenceGapStatement(sentence){
+  const s=String(sentence||'');
+  return /(?:確認でき(?:ない|ません)|裏付け(?:られない|られません)|証明でき(?:ない|ません)|断定でき(?:ない|ません)|とは言え(?:ない|ません)|根拠(?:が|は)?(?:ない|ありません)|記録(?:が|は)?(?:ない|ありません|含まれていない|含まれていません)|未確認|不明|示されていない|示されていません|前提にでき(?:ない|ません)|直接.{0,12}でき(?:ない|ません))/.test(s);
+}
 
 function pitchingEvidencePlayers(caseData){
   const players=caseData?.evidence?.allCurrentTeamCheck?.players;
@@ -84,7 +88,7 @@ function validatePitchingPlanText(caseData,value){
   // Aggregate ERA/IP/APP do not establish consistency or stability by themselves.
   const hasStabilityEvidence=/(?:安定|安定性|継続性|ばらつき|試合別|登板別|標準偏差|連続.{0,8}(?:登板|試合))/.test(factual);
   if(!hasStabilityEvidence){
-    const unsupported=parts.find(s=>/(?:安定している|安定した投球|安定感|安定した成績|安定した実績|安定して抑え)/.test(s));
+    const unsupported=parts.find(s=>!isEvidenceGapStatement(s)&&/(?:安定している|安定した投球|安定感|安定した成績|安定した実績|安定して抑え)/.test(s));
     if(unsupported)issues.push('集計値だけから投球の安定性・再現性を事実として推定している');
   }
 
