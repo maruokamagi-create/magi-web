@@ -189,7 +189,7 @@ function unsupportedCertainty(statement, availableMaterial) {
 function unsupportedTacticalNarrative(statement, availableMaterial) {
   const s = text(statement);
   const material = text(availableMaterial);
-  const phrases = ['試合の流れ','畳みかけ','勢いをつけ','流れを作','得点につなが','チャンスを広げ','プレッシャーをかけ'];
+  const phrases = ['試合の流れ','畳みかけ','勢いをつけ','流れを作','得点につなが','チャンスを広げ','プレッシャーをかけ','打線が回る','勝負をかけ','連動性として機能','打線の厚みが増す'];
   return phrases.some(phrase => s.includes(phrase) && !material.includes(phrase));
 }
 
@@ -199,6 +199,7 @@ function statementGroundIssue(statement, target, caseData, targetMaterial, ownMa
   const targetPersona = TURN_ORDER.find(p => p.label === target);
   const addressesTarget = !targetPersona || s.includes(targetPersona.jp) || s.includes(targetPersona.label.split('-')[0]);
   if (!addressesTarget) return 'TARGET_NOT_ADDRESSED';
+  if (/お前|てめえ/.test(s)) return 'DISRESPECTFUL_ADDRESS';
   if (/Evidence|EVIDENCE|照合|正式ロスター|構造化|プロトコル/.test(s)) return 'INTERNAL_LANGUAGE';
   if (/試合は待ってくれない|勝ちに行くぞ/.test(s)) return 'CANNED_RHETORIC';
   if (!hasFutureCue(caseData?.question) && /半年後|来年|来季|将来|未来|長期|数年後/.test(s)) return 'UNREQUESTED_FUTURE';
