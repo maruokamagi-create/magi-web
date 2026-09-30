@@ -164,6 +164,46 @@ function jstContext() {
   };
 }
 
+
+export function recoverSoftPitchingPlanLanguage(result, issues, pitchingPlanCase, caseData) {
+  if (!pitchingPlanCase || !Array.isArray(issues) || !issues.length) return false;
+  const check = validatePitchingPlanOrder(result?.candidatePlayers);
+  if (!check.ok) return false;
+
+  const evidencePlayers = Array.isArray(caseData?.evidence?.allCurrentTeamCheck?.players)
+    ? caseData.evidence.allCurrentTeamCheck.players
+    : [];
+  if (evidencePlayers.length) {
+    const eligible = new Set(evidencePlayers
+      .filter(row => row?.pitching && typeof row.pitching === 'object' && Object.values(row.pitching).some(v => String(v ?? '').trim() !== ''))
+      .map(row => playerKey(row?.name))
+      .filter(Boolean));
+    if (!check.order.every(name => eligible.has(playerKey(name)))) return false;
+  }
+
+  const hard = issues.some(issue => /(?:PITCHING_PLAN|正式ロスター|ロスター完全一致|現チーム外|未登録|重複配置|4役必要|4投手で構成|候補抽出|数値.{0,30}(?:一致しない|存在しない)|選手名.{0,30}(?:存在しない|対象外)|投球記録がある選手数.{0,24}一致しない|しか選択肢がない|CASE外)/i.test(String(issue || '')));
+  if (hard) return false;
+
+  const [starter, second, late, closer] = check.order;
+  const persona = String(result?.persona || '').toUpperCase();
+  const firstPerson = persona.startsWith('BALTHASAR') ? '俺' : persona.startsWith('CASPER') ? '僕' : '私';
+
+  result.candidatePlayers = check.order;
+  result.judgment = 'BLUE';
+  result.confidence = 'MEDIUM';
+  result.reviewRequested = false;
+  result.reviewReason = '';
+  result.dataConflict = false;
+  result.facts = [];
+  result.analysis = [];
+  result.prediction = [];
+  result.candidateBasis = `確認できる現チームの投球記録を比較し、先発 ${starter}、第2投手 ${second}、終盤 ${late}、クローザー ${closer} の4役案としました。`;
+  result.primaryReason = '確認できる投球記録の範囲だけで4役を分けた案です。未確認の役割適性や将来効果は根拠にしていません。';
+  result.publicStatement = `${firstPerson}は、先発 ${starter}、第2投手 ${second}、終盤 ${late}、クローザー ${closer} の4役案を維持します。確認できる投球記録だけで判断し、未確認の役割適性や将来効果は使いません。`;
+  result.warnings = ['説明のうち確認できない将来効果・役割適性は判断に使っていません。'];
+  return true;
+}
+
 function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
   if (!fullLineupCase || !Array.isArray(issues) || !issues.length) return false;
   const check = validateFullLineupOrder(result?.candidatePlayers);
@@ -371,7 +411,11 @@ export default async function handler(req, res) {
     result.persona = persona.toUpperCase();
     result.phase = phase;
 
-    if (guardIssues.length && !recoverSoftFullLineupLanguage(result, guardIssues, fullLineupCase)) failClosedPersona(result, guardIssues);
+    if (guardIssues.length
+      && !recoverSoftFullLineupLanguage(result, guardIssues, fullLineupCase)
+      && !recoverSoftPitchingPlanLanguage(result, guardIssues, pitchingPlanCase, body.case)) {
+      failClosedPersona(result, guardIssues);
+    }
 
     if (!candidateCase) {
       result.checkedPlayers = [];
