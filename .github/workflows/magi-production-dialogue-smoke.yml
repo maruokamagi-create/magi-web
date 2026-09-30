@@ -46,6 +46,7 @@ jobs:
             (.challenges.melchior|length)>=1 and
             (.challenges.balthasar|length)>=1 and
             (.challenges.casper|length)>=1 and
-            ([.dialogue[].statement|contains("MAGI CONTROL")]|any|not)
+            ([.dialogue[].statement|contains("MAGI CONTROL")]|any|not) and
+            ((.dialogueFallbackUsed != true) or ([.warnings[]?|contains("直接対話を取得できなかった")]|any))
           ' /tmp/dialogue.json >/dev/null
           echo 'PRODUCTION DIRECT THREE-WISE-MEN DIALOGUE: PASS'
