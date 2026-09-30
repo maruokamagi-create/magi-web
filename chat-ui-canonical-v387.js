@@ -43,7 +43,11 @@ function debateKind(result){
   return'';
 }
 function isDirectDebate(result){return!!debateKind(result)}
-function dialogueOf(result){return Array.isArray(result?.crossExamination?.dialogue)?result.crossExamination.dialogue.filter(x=>x?.speaker&&x?.statement):[]}
+function dialogueOf(result){
+  const cross=result?.crossExamination||{};
+  if(cross?.dialogueFallbackUsed===true)return[];
+  return Array.isArray(cross?.dialogue)?cross.dialogue.filter(x=>x?.speaker&&x?.statement):[];
+}
 function parseExchange(ex){
   const speaker=ex.querySelector('.magiSpeaker')?.textContent?.trim()||'';
   const speech=ex.querySelector('.magiSpeech')?.textContent?.trim()||'';
