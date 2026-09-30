@@ -51,6 +51,8 @@ assert.match(serverSrc,/急いでいる.*焦っている|急ぎ\|焦り/,'fabric
 assert.match(serverSrc,/半年後.*来年.*将来.*未来/,'arbitrary future horizon must be prohibited for current lineup questions');
 assert.match(serverSrc,/試合は待ってくれない\|勝ちに行くぞ/,'Balthasar canned rhetoric must be rejected');
 assert.match(serverSrc,/一番得点を取れる.*圧倒的/,'unsupported tactical certainty must be rejected');
+assert.match(serverSrc,/打線が回る.*勝負をかけ.*連動性として機能.*打線の厚みが増す/,'unsupported tactical effect language must be rejected');
+assert.match(serverSrc,/DISRESPECTFUL_ADDRESS/,'direct dialogue must reject disrespectful second-person address');
 assert.match(serverSrc,/具体的な打順番号と選手名/,'cross dialogue must challenge a concrete batting-order slot and player');
 assert.match(serverSrc,/違う打順番号と選手を優先して直接議論/,'full-lineup dialogue must debate the actual disagreement instead of generic agreement');
 assert.match(serverSrc,/PITCHING_PLAN/,'direct dialogue must support pitching plans');
