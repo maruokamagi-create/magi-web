@@ -201,6 +201,10 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
       const err = new Error(message);
       err.status = response.status;
       err.retryable = isRetryableStatus(response.status);
+      const retryAfter = Number(response.headers?.get?.('retry-after'));
+      if (response.status === 429 && Number.isFinite(retryAfter) && retryAfter > 0) {
+        err.retryAfterSeconds = Math.min(60, Math.ceil(retryAfter));
+      }
       err.failureClass = response.status === 429 ? 'provider_rate_limit'
         : isModelUnavailableMessage(message) ? 'model_unavailable'
         : isRetryableStatus(response.status) ? 'provider_retryable_http'
