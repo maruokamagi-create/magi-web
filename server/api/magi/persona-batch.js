@@ -78,10 +78,21 @@ export default async function handler(req, res) {
         return sendJson(res, 503, { error: 'PRIMARY batch response is incomplete', code: 'PERSONA_BATCH_INCOMPLETE', retryExhausted: false });
       }
       const { result, guardIssues } = finalizePersonaDraft(body, persona, 'PRIMARY', raw[persona]);
+      // Batch PRIMARY is fail-closed: unlike the serial endpoint, it must not
+      // publish a degraded persona merely because the draft can be represented
+      // as YELLOW. Any deterministic guard issue invalidates the whole batch.
       if (guardIssues.length) {
         return sendJson(res, 503, {
           error: 'PRIMARY batch response failed persona validation',
           code: 'PERSONA_BATCH_VALIDATION_FAILED',
+          persona: persona.toUpperCase(),
+          retryExhausted: false
+        });
+      }
+      if (result.reviewRequested === true) {
+        return sendJson(res, 503, {
+          error: 'PRIMARY batch persona requires review',
+          code: 'PERSONA_BATCH_REVIEW_REQUIRED',
           persona: persona.toUpperCase(),
           retryExhausted: false
         });
