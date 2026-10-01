@@ -145,15 +145,37 @@ export default async function handler(req, res) {
       if (!cross) {
         return sendJson(res, 503, { error:'FULL canonical CROSS could not be constructed', code:'PERSONA_FULL_CROSS_FAILED', retryExhausted:true });
       }
-      // Do not publish provisional SECOND yet. This probe proves whether one
-      // provider call can reliably return valid isolated PRIMARY while giving
-      // us the exact server-side CROSS needed for the next validation step.
+      const second = {};
+      for (const persona of PERSONAS) {
+        const challengeToSelf = Array.isArray(cross?.challenges?.[persona]) ? cross.challenges[persona] : [];
+        if (!challengeToSelf.length) {
+          return sendJson(res, 503, { error:'FULL canonical CROSS has no persona challenge', code:'PERSONA_FULL_CROSS_INCOMPLETE', persona:persona.toUpperCase(), retryExhausted:true });
+        }
+        const secondBody = {
+          ...body,
+          primarySelf: primary[persona],
+          crossExamination: {
+            ...cross,
+            challengeToSelf,
+            challengeTarget: persona.toUpperCase(),
+            independenceRule:'他の2人格と同じ結論に合わせる必要はない。違いを作るためだけに変えてもいけない。一次案とEvidenceを自分の専門領域で再検証し、少なくとも1つの別案を比較したうえで、その案を採るか退けるかを自分で決めること。'
+          }
+        };
+        const finalized = finalizePersonaDraft(secondBody, persona, 'SECOND', rawFull.second?.[persona]);
+        if (!rawFull.second?.[persona] || finalized.guardIssues.length || finalized.result.reviewRequested === true) {
+          return sendJson(res, 503, { error:'FULL SECOND failed validation against canonical CROSS context', code:'PERSONA_FULL_SECOND_VALIDATION_FAILED', persona:persona.toUpperCase(), retryExhausted:true });
+        }
+        second[persona] = finalized.result;
+      }
+      // Structural validation now uses the exact server-reconstructed CROSS.
+      // This still proves protocol-level, not separate-process, independence.
       return sendJson(res, 200, {
         experimental:true,
         publishable:false,
+        isolationLevel:'PROTOCOL_LEVEL_SINGLE_PROVIDER_CALL',
         primary,
         cross,
-        secondProvisional:rawFull.second
+        second
       });
     }
 
