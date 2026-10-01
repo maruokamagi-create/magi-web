@@ -91,9 +91,19 @@ jobs:
             else
               jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
             fi
-            curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS \
-              -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
-              -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
+            local headers="${outfile}.headers" status attempt
+            for attempt in 1 2 3 4 5 6; do
+              status="$(curl -L -sS -D "$headers" -w '%{http_code}' \
+                -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+                -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile")"
+              if [[ "$status" =~ ^2 ]]; then break; fi
+              echo "MAGI PERSONA FAILURE persona=$persona phase=$phase attempt=$attempt status=$status" >&2
+              jq -c '{code,error,retryExhausted,retryFreshRequest,retryScope}' "$outfile" >&2 2>/dev/null || true
+              grep -iE '^(retry-after|x-magi-[^:]+):' "$headers" >&2 || true
+              [[ "$status" =~ ^(408|429|500|502|503|504)$ && "$attempt" -lt 6 ]] || return 22
+              sleep 4
+            done
+            [[ "$status" =~ ^2 ]] || return 22
             cat "$outfile"; echo
           }
 
