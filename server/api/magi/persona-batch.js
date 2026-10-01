@@ -29,12 +29,14 @@ function batchSystemInstruction(phase) {
   if (phase === 'FULL') {
     return [
       'MAGI FULL DELIBERATION BATCH PROTOCOL.',
-      'Produce PRIMARY and SECOND work products for all three personas in one structured response.',
-      'For PRIMARY, each persona must reason independently from the shared CASE and must not use another persona output.',
-      'For SECOND, reconsider only from the supplied deterministic cross-examination challenge assigned to that persona and its own PRIMARY.',
-      'Do not seek consensus or majority agreement. Preserve genuine disagreement.',
+      'Return PRIMARY and SECOND work products for all three personas in one structured response, but preserve strict logical phase ordering.',
+      'STEP 1 PRIMARY: each persona reasons independently from the shared CASE. During PRIMARY, another persona output is unavailable and must not be inferred, copied, harmonized, or anticipated.',
+      'STEP 2 CROSS: do not invent free-form cross examination. SECOND may use only the deterministic comparison instruction assigned to that persona.',
+      'STEP 3 SECOND: each persona may reconsider only its own PRIMARY plus its own deterministic comparison instruction and shared CASE evidence. It must not read another persona reasoning, facts, analysis, warnings, confidence, or SECOND output.',
+      'A persona may see another persona candidate name only when its deterministic comparison instruction explicitly names it; this never grants access to that persona reasoning.',
+      'Do not seek consensus or majority agreement. Preserve genuine disagreement. Do not create differences merely to appear independent.',
       'MELCHIOR uses only MELCHIOR role; BALTHASAR only BALTHASAR role; CASPER only CASPER role.',
-      'Return exactly the requested schema.'
+      'Return exactly the requested schema. Never expose hidden reasoning.'
     ].join(' ');
   }
   if (phase === 'SECOND') {
