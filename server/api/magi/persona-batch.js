@@ -1,5 +1,6 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
+import { deterministicFullLineupCross, deterministicSelectionCross, isSelectionCase } from './orchestrate.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
@@ -84,9 +85,23 @@ export default async function handler(req, res) {
       return sendJson(res, 400, { error: 'SECOND batch requires isolated PRIMARY and cross-examination compartments' });
     }
     if (phase === 'FULL') {
-      return sendJson(res, 400, {
-        error: 'FULL batch requires server-deterministic cross examination and is not enabled yet',
-        code: 'PERSONA_FULL_BATCH_NOT_READY'
+      // FULL is intentionally fail-closed until the one-call response schema can
+      // carry both PRIMARY and SECOND while preserving the deterministic CROSS.
+      // Build the authoritative CROSS capability here first so FULL never invents
+      // a second, divergent cross-examination implementation.
+      const crossBuilder = isSelectionCase(body.case)
+        ? deterministicSelectionCross
+        : null;
+      if (!crossBuilder) {
+        return sendJson(res, 400, {
+          error: 'FULL batch is not supported for this case type yet',
+          code: 'PERSONA_FULL_BATCH_UNSUPPORTED_CASE'
+        });
+      }
+      return sendJson(res, 503, {
+        error: 'FULL batch schema is not enabled yet',
+        code: 'PERSONA_FULL_BATCH_NOT_READY',
+        retryExhausted: true
       });
     }
 
