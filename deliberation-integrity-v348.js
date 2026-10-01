@@ -94,6 +94,19 @@ function recoverSet(set,caseData){const out={};for(const p of PERSONAS)out[p]=re
 
 async function runPrimary(caseData,options){
   try{
+    // Prefer the quota-efficient batch PRIMARY endpoint when available.
+    // The endpoint must return the same three individually validated persona
+    // objects. A 404/405 means an older deployment, so retain the serial path
+    // as a compatibility fallback only.
+    try{
+      const batch=await postJSON('/api/magi/persona-batch',{phase:'PRIMARY',case:caseData},options);
+      if(batch&&batch.melchior&&batch.balthasar&&batch.casper){
+        return recoverSet({melchior:batch.melchior,balthasar:batch.balthasar,casper:batch.casper},caseData);
+      }
+      throw new Error('PRIMARY batch response is incomplete');
+    }catch(batchError){
+      if(batchError?.status!==404&&batchError?.status!==405)throw batchError;
+    }
     const rows=[];
     for(const persona of PERSONAS){
       const result=await postJSON('/api/magi/persona',{phase:'PRIMARY',persona,case:caseData},options);
