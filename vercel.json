@@ -61,6 +61,10 @@
       "destination": "/api/magi-gateway?__magi_route=magi-persona"
     },
     {
+      "source": "/api/magi/persona-batch",
+      "destination": "/api/magi-gateway?__magi_route=magi-persona-batch"
+    },
+    {
       "source": "/api/magi/dialogue",
       "destination": "/api/magi-gateway?__magi_route=magi-dialogue"
     }
