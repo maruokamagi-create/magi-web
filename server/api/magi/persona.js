@@ -151,7 +151,7 @@ export function normalizeChangeTracking(result, phase, primarySelf) {
   return result;
 }
 
-function jstContext() {
+export function personaJstContext() {
   const now = new Date();
   const formatted = new Intl.DateTimeFormat('ja-JP', {
     timeZone: 'Asia/Tokyo', year: 'numeric', month: '2-digit', day: '2-digit',
@@ -204,7 +204,7 @@ export function recoverSoftPitchingPlanLanguage(result, issues, pitchingPlanCase
   return true;
 }
 
-function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
+export function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
   if (!fullLineupCase || !Array.isArray(issues) || !issues.length) return false;
   const check = validateFullLineupOrder(result?.candidatePlayers);
   if (!check.ok) return false;
@@ -226,7 +226,7 @@ function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
   return true;
 }
 
-function failClosedPersona(result, issues) {
+export function failClosedPersona(result, issues) {
   const reason = `回答文に、確認できた記録と合わない内容があるため再確認が必要です。${issues.slice(0,3).join('／')}`;
   result.judgment = 'YELLOW';
   result.confidence = 'LOW';
@@ -241,7 +241,7 @@ function failClosedPersona(result, issues) {
   return result;
 }
 
-function correctionDirective(issues) {
+export function personaCorrectionDirective(issues) {
   const list = Array.isArray(issues) ? issues : [];
   const directives = [];
   if (list.some(x => /クローザー|終盤|高圧場面|役割経験/.test(String(x)))) {
@@ -270,7 +270,7 @@ function isOpponentSpecificLineupQuestion(caseData) {
   return /(?:対戦相手|相手投手|相手先発|右投手|左投手|右腕|左腕|対右|対左|左右の相性|相手別|対戦データ|対戦成績)/.test(q);
 }
 
-function normalizeStandardFullLineupDecision(result, caseData) {
+export function normalizeStandardFullLineupDecision(result, caseData) {
   if (!isFullLineupQuestion(caseData) || isOpponentSpecificLineupQuestion(caseData)) return result;
   const check = validateFullLineupOrder(result?.candidatePlayers);
   if (!check.ok || result?.dataConflict === true) return result;
@@ -308,7 +308,7 @@ export default async function handler(req, res) {
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
     if (!validPersonaCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
-    const temporalContext = jstContext();
+    const temporalContext = personaJstContext();
     const historyRule = '2026-2027の現チームEvidenceを主評価とする。ただし2025-2026など過年度の記録がCASE.evidenceに明示されている場合、それは単なる軽い参考ではなく、現在選手の実績・経験・再現性を測る重要な基準線として扱う。過去の大きな母数や継続した出場実績は、その記録が実際に示す範囲で明示的に評価へ入れる。その上で2026-2027通算と直近6試合の状態を重ね、過去だけで現在を上書きせず、少ない現在母数だけで過去の積み上げも消さない。CASE.evidenceにない過年度の選手役割、打順、起用歴、成績、経験は知識や推測で追加しない。旧チームで非レギュラーだった選手の小さい母数だけを現在評価の不利材料にしない。';
     const focusedHistoryRule = 'FOCUSED PROPOSAL HISTORY RULE: Historical facts may be used only when they are explicitly present in CASE.evidence. Generic roster history or role-continuity knowledge must not be imported. Historical innings, ERA, strikeouts, walks, or appearances support only the pitching facts those fields actually state. They do NOT prove prior closer usage, save situations, high-leverage success, pressure handling, end-game experience, or any other role unless CASE.evidence explicitly states that role. Do not turn a raw rate/count into a qualitative claim such as good, bad, high, low, many, few, strong, weak, effective, or reliable without an explicit comparison baseline in CASE.evidence.';
     const effectiveHistoryRule = candidateCase ? historyRule : focusedHistoryRule;
@@ -394,7 +394,7 @@ export default async function handler(req, res) {
 
     const correctionLimit = fullLineupCase ? 1 : 3;
     for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
-      const issueDirective = correctionDirective(guardIssues);
+      const issueDirective = personaCorrectionDirective(guardIssues);
       const correctionPayload = {
         ...payload,
         invalidDraft: result,
