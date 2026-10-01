@@ -179,15 +179,24 @@ jobs:
             --slurpfile pc /tmp/casper-primary.json \
             --slurpfile x /tmp/cross.json \
             '{phase:"SECOND",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},crossExamination:{melchior:$x[0],balthasar:$x[0],casper:$x[0]}}' > /tmp/second-batch-body.json
-          second_batch_status="$(curl -L -sS -D /tmp/second-batch.headers -w '%{http_code}' \
-            -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
-            -d @/tmp/second-batch-body.json "$BASE/api/magi/persona-batch" -o /tmp/second-batch.json)"
-          if [[ ! "$second_batch_status" =~ ^2 ]]; then
-            echo "MAGI SECOND BATCH FAILURE status=$second_batch_status" >&2
+          for second_batch_attempt in 1 2 3; do
+            second_batch_status="$(curl -L -sS -D /tmp/second-batch.headers -w '%{http_code}' \
+              -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+              -d @/tmp/second-batch-body.json "$BASE/api/magi/persona-batch" -o /tmp/second-batch.json)"
+            [[ "$second_batch_status" =~ ^2 ]] && break
+            echo "MAGI SECOND BATCH FAILURE attempt=$second_batch_attempt status=$second_batch_status" >&2
             jq -c '{code,error,persona,retryExhausted,retryFreshRequest,retryScope,diagnostic}' /tmp/second-batch.json >&2 2>/dev/null || true
             grep -iE '^(retry-after|x-magi-[^:]+):' /tmp/second-batch.headers >&2 || true
-            exit 22
-          fi
+            retryable="$(jq -r '.retryFreshRequest == true and .retryExhausted == false' /tmp/second-batch.json 2>/dev/null || echo false)"
+            [[ "$retryable" = true && "$second_batch_attempt" -lt 3 ]] || exit 22
+            retry_after="$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {gsub("\\r","",$2); print $2; exit}' /tmp/second-batch.headers)"
+            [[ "$retry_after" =~ ^[0-9]+$ ]] || retry_after=15
+            (( retry_after > 60 )) && retry_after=60
+            (( retry_after < 10 )) && retry_after=10
+            echo "MAGI SECOND BATCH retry wait=${retry_after}s" >&2
+            sleep "$retry_after"
+          done
+          [[ "$second_batch_status" =~ ^2 ]] || exit 22
           jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/second-batch.json >/dev/null
           for p in melchior balthasar casper; do
             jq --arg p "$p" '.[$p]' /tmp/second-batch.json > "/tmp/${p}-second.json"
