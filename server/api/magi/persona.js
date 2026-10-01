@@ -109,12 +109,12 @@ export function normalizeConditionalJudgment(result, selectionMode) {
   return result;
 }
 
-function candidateSequence(value) {
+export function personaCandidateSequence(value) {
   const rows = Array.isArray(value?.candidatePlayers) ? value.candidatePlayers : [];
   return rows.map(name => playerKey(name) || String(name || '').trim().normalize('NFKC')).filter(Boolean);
 }
 
-function sameSequence(a, b) {
+export function personaSameSequence(a, b) {
   if (a.length !== b.length) return false;
   return a.every((value, index) => value === b[index]);
 }
@@ -130,10 +130,10 @@ export function normalizeChangeTracking(result, phase, primarySelf) {
   const current = String(result?.judgment || '').toUpperCase();
   const judgmentChanged = valid.has(previous) && valid.has(current) && previous !== current;
 
-  const previousCandidates = candidateSequence(primarySelf);
-  const currentCandidates = candidateSequence(result);
+  const previousCandidates = personaCandidateSequence(primarySelf);
+  const currentCandidates = personaCandidateSequence(result);
   const hasCandidateState = previousCandidates.length > 0 || currentCandidates.length > 0;
-  const candidateChanged = hasCandidateState && !sameSequence(previousCandidates, currentCandidates);
+  const candidateChanged = hasCandidateState && !personaSameSequence(previousCandidates, currentCandidates);
   const changed = judgmentChanged || candidateChanged;
 
   result.changedFromPrimary = changed;
@@ -265,7 +265,7 @@ export function personaCorrectionDirective(issues) {
   return directives.join(' ');
 }
 
-function isOpponentSpecificLineupQuestion(caseData) {
+export function isOpponentSpecificLineupQuestion(caseData) {
   const q = String(caseData?.question || '').normalize('NFKC');
   return /(?:対戦相手|相手投手|相手先発|右投手|左投手|右腕|左腕|対右|対左|左右の相性|相手別|対戦データ|対戦成績)/.test(q);
 }
