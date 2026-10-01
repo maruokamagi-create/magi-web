@@ -172,8 +172,25 @@ jobs:
             (.reviewRequired != true)
           ' /tmp/cross.json >/dev/null
 
+          jq -n \
+            --slurpfile c /tmp/case.json \
+            --slurpfile pm /tmp/melchior-primary.json \
+            --slurpfile pb /tmp/balthasar-primary.json \
+            --slurpfile pc /tmp/casper-primary.json \
+            --slurpfile x /tmp/cross.json \
+            '{phase:"SECOND",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},crossExamination:{melchior:$x[0],balthasar:$x[0],casper:$x[0]}}' > /tmp/second-batch-body.json
+          second_batch_status="$(curl -L -sS -D /tmp/second-batch.headers -w '%{http_code}' \
+            -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+            -d @/tmp/second-batch-body.json "$BASE/api/magi/persona-batch" -o /tmp/second-batch.json)"
+          if [[ ! "$second_batch_status" =~ ^2 ]]; then
+            echo "MAGI SECOND BATCH FAILURE status=$second_batch_status" >&2
+            jq -c '{code,error,persona,retryExhausted,retryFreshRequest,retryScope,diagnostic}' /tmp/second-batch.json >&2 2>/dev/null || true
+            grep -iE '^(retry-after|x-magi-[^:]+):' /tmp/second-batch.headers >&2 || true
+            exit 22
+          fi
+          jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/second-batch.json >/dev/null
           for p in melchior balthasar casper; do
-            call_persona "$p" SECOND "/tmp/${p}-second.json" "/tmp/${p}-primary.json" /tmp/cross.json
+            jq --arg p "$p" '.[$p]' /tmp/second-batch.json > "/tmp/${p}-second.json"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
             jq -e --arg p "$expected" '
               .persona==$p and .phase=="SECOND" and
