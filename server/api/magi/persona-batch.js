@@ -89,9 +89,10 @@ export default async function handler(req, res) {
       // carry both PRIMARY and SECOND while preserving the deterministic CROSS.
       // Build the authoritative CROSS capability here first so FULL never invents
       // a second, divergent cross-examination implementation.
-      const crossBuilder = isSelectionCase(body.case)
-        ? deterministicSelectionCross
-        : null;
+      const fullLineupCase = /(?:ベストオーダー|打順|オーダー|ラインナップ)/.test(String(body.case?.question || '')) && /(?:1番|１番|守備位置|ポジション|1.?9番|１.?９番)/.test(String(body.case?.question || ''));
+      const crossBuilder = fullLineupCase
+        ? deterministicFullLineupCross
+        : (isSelectionCase(body.case) ? deterministicSelectionCross : null);
       if (!crossBuilder) {
         return sendJson(res, 400, {
           error: 'FULL batch is not supported for this case type yet',
