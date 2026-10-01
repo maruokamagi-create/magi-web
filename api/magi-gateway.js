@@ -7,6 +7,7 @@ const routes = {
   'magi-health': () => import('../server/api/magi/health.js'),
   'magi-orchestrate': () => import('../server/api/magi/orchestrate.js'),
   'magi-persona': () => import('../server/api/magi/persona-resilient.js'),
+  'magi-persona-batch': () => import('../server/api/magi/persona-batch.js'),
   'magi-dialogue': () => import('../server/api/magi/dialogue-resilient.js')
 };
 
