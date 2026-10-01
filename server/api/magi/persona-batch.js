@@ -15,7 +15,18 @@ const BATCH_SCHEMA = {
   required: PERSONAS
 };
 
-function batchSystemInstruction() {
+function batchSystemInstruction(phase) {
+  if (phase === 'SECOND') {
+    return [
+      'MAGI SECOND BATCH PROTOCOL.',
+      'Generate three separately reasoned SECOND judgments in one structured response.',
+      'Each persona may use only its own PRIMARY judgment and its own cross-examination compartment.',
+      'Never expose or use another persona PRIMARY, challenge, reasoning, or generated SECOND output.',
+      'MELCHIOR uses only MELCHIOR system role; BALTHASAR uses only BALTHASAR system role; CASPER uses only CASPER system role.',
+      'Reconsideration is allowed only from evidence plus that persona own challenge. Do not seek consensus or majority agreement.',
+      'Return exactly the requested schema.'
+    ].join(' ');
+  }
   return [
     'MAGI PRIMARY BATCH PROTOCOL.',
     'Generate three separately reasoned PRIMARY judgments in one structured response.',
@@ -51,22 +62,30 @@ export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
     const body = await readBody(req);
-    if (body?.phase && body.phase !== 'PRIMARY') return sendJson(res, 400, { error: 'PRIMARY batch only' });
+    const phase = body?.phase === 'SECOND' ? 'SECOND' : 'PRIMARY';
     if (!validPersonaCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
+    if (phase === 'SECOND' && (!body?.primary || !body?.crossExamination)) {
+      return sendJson(res, 400, { error: 'SECOND batch requires isolated PRIMARY and cross-examination compartments' });
+    }
 
     const personaRequests = Object.fromEntries(PERSONAS.map(persona => {
-      const { payload } = buildPersonaRequest(body, persona, 'PRIMARY');
+      const isolatedBody = phase === 'SECOND'
+        ? { case: body.case, primarySelf: body.primary?.[persona] || null, crossExamination: body.crossExamination?.[persona] || null }
+        : body;
+      const { payload } = buildPersonaRequest(isolatedBody, persona, phase);
       return [persona, {
         personaRole: PERSONA_PROMPTS[persona],
-        primaryPayload: payload
+        payload
       }];
     }));
 
     const raw = await callGemini({
-      systemInstruction: batchSystemInstruction(),
+      systemInstruction: batchSystemInstruction(phase),
       userPayload: {
-        phase: 'PRIMARY',
-        isolationRule: 'Each persona sees the same CASE evidence but must produce its own judgment without using another persona output.',
+        phase,
+        isolationRule: phase === 'SECOND'
+          ? 'Each persona receives only its own PRIMARY and its own cross-examination compartment. Never cross-read persona compartments.'
+          : 'Each persona sees the same CASE evidence but must produce its own judgment without using another persona output.',
         personas: personaRequests
       },
       responseSchema: BATCH_SCHEMA
@@ -75,15 +94,16 @@ export default async function handler(req, res) {
     const out = {};
     for (const persona of PERSONAS) {
       if (!raw?.[persona] || typeof raw[persona] !== 'object') {
-        return sendJson(res, 503, { error: 'PRIMARY batch response is incomplete', code: 'PERSONA_BATCH_INCOMPLETE', retryExhausted: false });
+        return sendJson(res, 503, { error: phase + ' batch response is incomplete', code: 'PERSONA_BATCH_INCOMPLETE', retryExhausted: false });
       }
-      const { result, guardIssues } = finalizePersonaDraft(body, persona, 'PRIMARY', raw[persona]);
+      const validationBody = phase === 'SECOND' ? { ...body, primarySelf: body.primary?.[persona] || null } : body;
+      const { result, guardIssues } = finalizePersonaDraft(validationBody, persona, phase, raw[persona]);
       // Batch PRIMARY is fail-closed: unlike the serial endpoint, it must not
       // publish a degraded persona merely because the draft can be represented
       // as YELLOW. Any deterministic guard issue invalidates the whole batch.
       if (guardIssues.length) {
         return sendJson(res, 503, {
-          error: 'PRIMARY batch response failed persona validation',
+          error: phase + ' batch response failed persona validation',
           code: 'PERSONA_BATCH_VALIDATION_FAILED',
           persona: persona.toUpperCase(),
           retryExhausted: false
@@ -91,7 +111,7 @@ export default async function handler(req, res) {
       }
       if (result.reviewRequested === true) {
         return sendJson(res, 503, {
-          error: 'PRIMARY batch persona requires review',
+          error: phase + ' batch persona requires review',
           code: 'PERSONA_BATCH_REVIEW_REQUIRED',
           persona: persona.toUpperCase(),
           retryExhausted: false
