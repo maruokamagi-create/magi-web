@@ -131,6 +131,26 @@ function crossForPersona(cross,persona,independenceReview=''){
 async function runSecond(caseData,primaryLocked,cross,options,independenceReview=''){
   try{
     const revealed=reveal(primaryLocked);
+    try{
+      const result=await postJSON('/api/magi/persona-batch',{
+        phase:'SECOND',
+        case:caseData,
+        primary:{
+          melchior:revealed.melchior,
+          balthasar:revealed.balthasar,
+          casper:revealed.casper
+        },
+        crossExamination:{
+          melchior:crossForPersona(cross,'melchior',independenceReview),
+          balthasar:crossForPersona(cross,'balthasar',independenceReview),
+          casper:crossForPersona(cross,'casper',independenceReview)
+        }
+      },options);
+      if(result?.melchior&&result?.balthasar&&result?.casper)return recoverSet(result,caseData);
+      throw new Error('SECOND batch response incomplete');
+    }catch(batchError){
+      if(![404,405].includes(Number(batchError?.status)))throw batchError;
+    }
     const rows=[];
     for(const persona of PERSONAS){
       const result=await postJSON('/api/magi/persona',{phase:'SECOND',persona,case:caseData,primarySelf:revealed[persona],crossExamination:crossForPersona(cross,persona,independenceReview)},options);
