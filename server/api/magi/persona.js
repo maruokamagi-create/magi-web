@@ -5,7 +5,7 @@ import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js'
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
 import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
 
-const schema = {
+export const PERSONA_RESPONSE_SCHEMA = {
   type: 'OBJECT',
   properties: {
     persona: { type: 'STRING' },
@@ -379,7 +379,7 @@ export default async function handler(req, res) {
     let rawResult = await callGemini({
       systemInstruction: PERSONA_PROMPTS[persona],
       userPayload: payload,
-      responseSchema: schema
+      responseSchema: PERSONA_RESPONSE_SCHEMA
     });
     let result = normalizeStandardFullLineupDecision(normalizeChangeTracking(
       normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
@@ -406,7 +406,7 @@ export default async function handler(req, res) {
         rawResult = await callGemini({
           systemInstruction: PERSONA_PROMPTS[persona],
           userPayload: correctionPayload,
-          responseSchema: schema
+          responseSchema: PERSONA_RESPONSE_SCHEMA
         });
       } catch (correctionError) {
         console.warn(`[MAGI persona correction] ${persona} ${phase}: ${correctionError?.message || correctionError}`);
