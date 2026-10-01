@@ -119,8 +119,19 @@ jobs:
             cat "$outfile"; echo
           }
 
+          jq -n --slurpfile c /tmp/case.json '{phase:"PRIMARY",case:$c[0]}' > /tmp/primary-batch-body.json
+          batch_status="$(curl -L -sS -D /tmp/primary-batch.headers -w '%{http_code}' \
+            -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+            -d @/tmp/primary-batch-body.json "$BASE/api/magi/persona-batch" -o /tmp/primary-batch.json)"
+          if [[ ! "$batch_status" =~ ^2 ]]; then
+            echo "MAGI PRIMARY BATCH FAILURE status=$batch_status" >&2
+            jq -c '{code,error,persona,retryExhausted,diagnostic}' /tmp/primary-batch.json >&2 2>/dev/null || true
+            grep -iE '^(retry-after|x-magi-[^:]+):' /tmp/primary-batch.headers >&2 || true
+            exit 22
+          fi
+          jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/primary-batch.json >/dev/null
           for p in melchior balthasar casper; do
-            call_persona "$p" PRIMARY "/tmp/${p}-primary.json"
+            jq --arg p "$p" '.[$p]' /tmp/primary-batch.json > "/tmp/${p}-primary.json"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
             jq -e --arg p "$expected" '
               .persona==$p and .phase=="PRIMARY" and
