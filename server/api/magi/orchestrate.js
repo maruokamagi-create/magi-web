@@ -470,6 +470,17 @@ export default async function handler(req, res) {
             : selectionCase
               ? 'Do not vote yes/no on the question. Compare the three independently extracted candidate lists after the full-player review. Use exact official player names as supplied in the locked judgments. Expose agreement, omissions, differences, risks, information gaps and evidence-grounded challenges. Resolve all relative date and season expressions from temporalContext.'
             : 'Do not decide the case. Use exact official player names as supplied in the locked judgments. Only expose agreement, disagreement, domain conflicts, warnings, information gaps, and evidence-grounded challenges. CASE/evidence remains authoritative: do not introduce unsupported statistics, unrelated players, or historical roles that are not explicitly supported. Resolve all relative date and season expressions from temporalContext.';
+      // Candidate-selection/full-lineup cross examination is deterministic from
+      // the three locked PRIMARY judgments. Avoid an unnecessary Gemini call here:
+      // this preserves real cross-persona challenges while reserving provider quota
+      // for the three independent SECOND judgments.
+      if (selectionCase && !pitchingPlanCase) {
+        const deterministicCross = fullLineupCase
+          ? deterministicFullLineupCross(body.primary)
+          : deterministicSelectionCross(body.primary);
+        if (deterministicCross) return sendJson(res, 200, canonicalizePlayerData(deterministicCross));
+      }
+
       const basePayload = {
         phase: 'CROSS_EXAMINATION',
         temporalContext: jstContext(),
