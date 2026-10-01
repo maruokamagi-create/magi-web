@@ -201,6 +201,10 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
       const err = new Error(message);
       err.status = response.status;
       err.retryable = isRetryableStatus(response.status);
+      err.failureClass = response.status === 429 ? 'provider_rate_limit'
+        : isModelUnavailableMessage(message) ? 'model_unavailable'
+        : isRetryableStatus(response.status) ? 'provider_retryable_http'
+        : 'provider_http';
       throw err;
     }
 
@@ -208,12 +212,14 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
     if (!text) {
       const err = new Error('Gemini returned no text');
       err.retryable = true;
+      err.failureClass = 'empty_text';
       throw err;
     }
     try { return JSON.parse(text); }
     catch {
       const err = new Error('Gemini returned invalid structured JSON');
       err.retryable = true;
+      err.failureClass = 'invalid_structured_json';
       throw err;
     }
   } catch (error) {
@@ -221,6 +227,7 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
       const err = new Error('Gemini request timed out');
       err.timedOut = true;
       err.retryable = true;
+      err.failureClass = 'timeout';
       throw err;
     }
     throw error;
@@ -280,5 +287,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   if (strict && lastError) {
     console.warn(`[MAGI CONSISTENCY LOCK] Primary model failed; fallback suppressed: ${lastError?.message || lastError}`);
   }
-  throw lastError || new Error('Gemini request failed');
+  const finalError = lastError || new Error('Gemini request failed');
+  if (!finalError.failureClass) finalError.failureClass = 'other';
+  throw finalError;
 }
