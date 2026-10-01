@@ -112,7 +112,7 @@ function crossDiscussion(cross){
   };
 }
 
-function deterministicFullLineupCross(primary) {
+export function deterministicFullLineupCross(primary) {
   const specs = [
     ['melchior','メルキオール'],
     ['balthasar','バルタザール'],
@@ -160,7 +160,7 @@ function deterministicFullLineupCross(primary) {
   };
 }
 
-function deterministicSelectionCross(primary) {
+export function deterministicSelectionCross(primary) {
   const specs = [['melchior','メルキオール'],['balthasar','バルタザール'],['casper','カスパー']];
   const rows = specs.map(([key,jp]) => {
     const value = primary?.[key] || {};
