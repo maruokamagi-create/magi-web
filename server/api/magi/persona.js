@@ -30,7 +30,7 @@ export const PERSONA_RESPONSE_SCHEMA = {
   required: ['persona','phase','checkedPlayers','candidatePlayers','candidateBasis','facts','analysis','prediction','confidence','judgment','primaryReason','publicStatement','warnings','dataConflict','reviewRequested','reviewReason','changedFromPrimary','changeReason']
 };
 
-function validCase(body) {
+export function validPersonaCase(body) {
   const q = String(body?.case?.question || '').trim();
   return q.length >= 2 && q.length <= 12000;
 }
@@ -46,7 +46,7 @@ export function isCandidateCase(body) {
   return (domain.test(q) || battingSlot.test(q)) && cue.test(q);
 }
 
-function rosterStatus(values) {
+export function personaRosterStatus(values) {
   const supplied = Array.isArray(values) ? values.map(v => String(v || '').trim()).filter(Boolean) : [];
   const got = new Map();
   for (const name of supplied) {
@@ -70,13 +70,13 @@ function rosterStatus(values) {
   };
 }
 
-function fullLineupIssues(rawResult, fullLineupCase) {
+export function personaFullLineupIssues(rawResult, fullLineupCase) {
   if (!fullLineupCase) return [];
   const check = validateFullLineupOrder(rawResult?.candidatePlayers);
   return check.issues.map(x => `FULL_LINEUP: ${x}`);
 }
 
-function pitchingPlanIssues(rawResult, pitchingPlanCase) {
+export function personaPitchingPlanIssues(rawResult, pitchingPlanCase) {
   if (!pitchingPlanCase) return [];
   const check = validatePitchingPlanOrder(rawResult?.candidatePlayers);
   return check.issues.map(x => `PITCHING_PLAN: ${x}`);
@@ -306,7 +306,7 @@ export default async function handler(req, res) {
     const requestedPitchingPlanInnings = Number(body?.case?.evidence?.gameInnings);
     const pitchingPlanGameInnings = requestedPitchingPlanInnings === 9 ? 9 : 7;
     if (!PERSONA_PROMPTS[persona]) return sendJson(res, 400, { error: 'Unknown persona' });
-    if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
+    if (!validPersonaCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
     const temporalContext = jstContext();
     const historyRule = '2026-2027の現チームEvidenceを主評価とする。ただし2025-2026など過年度の記録がCASE.evidenceに明示されている場合、それは単なる軽い参考ではなく、現在選手の実績・経験・再現性を測る重要な基準線として扱う。過去の大きな母数や継続した出場実績は、その記録が実際に示す範囲で明示的に評価へ入れる。その上で2026-2027通算と直近6試合の状態を重ね、過去だけで現在を上書きせず、少ない現在母数だけで過去の積み上げも消さない。CASE.evidenceにない過年度の選手役割、打順、起用歴、成績、経験は知識や推測で追加しない。旧チームで非レギュラーだった選手の小さい母数だけを現在評価の不利材料にしない。';
@@ -388,8 +388,8 @@ export default async function handler(req, res) {
     ), body.case);
     let guardIssues = [
       ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-      ...fullLineupIssues(rawResult, fullLineupCase),
-      ...pitchingPlanIssues(rawResult, pitchingPlanCase)
+      ...personaFullLineupIssues(rawResult, fullLineupCase),
+      ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
     ];
 
     const correctionLimit = fullLineupCase ? 1 : 3;
@@ -419,8 +419,8 @@ export default async function handler(req, res) {
       ), body.case);
       guardIssues = [
         ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-        ...fullLineupIssues(rawResult, fullLineupCase),
-        ...pitchingPlanIssues(rawResult, pitchingPlanCase)
+        ...personaFullLineupIssues(rawResult, fullLineupCase),
+        ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
       ];
     }
 
@@ -440,7 +440,7 @@ export default async function handler(req, res) {
     }
 
     if (candidateCase) {
-      const rs = rosterStatus(result.checkedPlayers);
+      const rs = personaRosterStatus(result.checkedPlayers);
       if (!rs.complete) {
         const problems = [];
         if (rs.missing.length) problems.push(`未確認：${rs.missing.join('・')}`);
