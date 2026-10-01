@@ -110,11 +110,50 @@ export default async function handler(req, res) {
           code: 'PERSONA_FULL_BATCH_UNSUPPORTED_CASE'
         });
       }
-      return sendJson(res, 503, {
-        error: 'FULL batch execution is not enabled yet',
-        code: 'PERSONA_FULL_BATCH_NOT_READY',
-        retryExhausted: true,
-        diagnostic: { schemaReady: Boolean(FULL_BATCH_SCHEMA), crossReady: Boolean(crossBuilder) }
+      const primaryRequests = Object.fromEntries(PERSONAS.map(persona => {
+        const { payload } = buildPersonaRequest(body, persona, 'PRIMARY');
+        return [persona, { personaRole: PERSONA_PROMPTS[persona], payload }];
+      }));
+      // A single model response cannot literally execute server code between its
+      // PRIMARY and SECOND fields. Therefore FULL remains experimental and its
+      // SECOND fields are not publishable until the server can reconstruct the
+      // canonical CROSS from returned PRIMARY and verify that each SECOND is
+      // consistent with that exact challenge.
+      const rawFull = await callGemini({
+        systemInstruction: batchSystemInstruction('FULL'),
+        userPayload: {
+          phase: 'FULL',
+          case: body.case,
+          primaryPersonas: primaryRequests,
+          crossPolicy: fullLineupCase ? 'CANONICAL_FULL_LINEUP_CROSS' : 'CANONICAL_SELECTION_CROSS',
+          secondRule: 'SECOND is provisional. The server will reject it unless it matches the canonical CROSS reconstructed from PRIMARY.'
+        },
+        responseSchema: FULL_BATCH_SCHEMA
+      });
+      if (!rawFull?.primary || !rawFull?.second) {
+        return sendJson(res, 503, { error:'FULL batch response is incomplete', code:'PERSONA_FULL_BATCH_INCOMPLETE', retryExhausted:true });
+      }
+      const primary = {};
+      for (const persona of PERSONAS) {
+        const finalized = finalizePersonaDraft(body, persona, 'PRIMARY', rawFull.primary?.[persona]);
+        if (!rawFull.primary?.[persona] || finalized.guardIssues.length || finalized.result.reviewRequested === true) {
+          return sendJson(res, 503, { error:'FULL PRIMARY failed validation', code:'PERSONA_FULL_PRIMARY_VALIDATION_FAILED', persona:persona.toUpperCase(), retryExhausted:true });
+        }
+        primary[persona] = finalized.result;
+      }
+      const cross = crossBuilder(primary);
+      if (!cross) {
+        return sendJson(res, 503, { error:'FULL canonical CROSS could not be constructed', code:'PERSONA_FULL_CROSS_FAILED', retryExhausted:true });
+      }
+      // Do not publish provisional SECOND yet. This probe proves whether one
+      // provider call can reliably return valid isolated PRIMARY while giving
+      // us the exact server-side CROSS needed for the next validation step.
+      return sendJson(res, 200, {
+        experimental:true,
+        publishable:false,
+        primary,
+        cross,
+        secondProvisional:rawFull.second
       });
     }
 
