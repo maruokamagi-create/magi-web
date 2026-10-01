@@ -502,7 +502,13 @@ export default async function handler(req, res) {
     const safeFailureClass = ['provider_rate_limit','model_unavailable','provider_retryable_http','provider_http','empty_text','invalid_structured_json','timeout','other'].includes(String(error?.failureClass || ''))
       ? String(error.failureClass)
       : (error?.timedOut === true ? 'timeout' : 'other');
-    try { res.setHeader('X-MAGI-Gemini-Failure', safeFailureClass); } catch {}
+    try {
+      res.setHeader('X-MAGI-Gemini-Failure', safeFailureClass);
+      if (safeFailureClass === 'provider_rate_limit') {
+        const retryAfter = Number(error?.retryAfterSeconds);
+        res.setHeader('Retry-After', String(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(60, Math.ceil(retryAfter)) : 15));
+      }
+    } catch {}
     return sendJson(res, status, {
       error: tooLarge ? '送信データが大きすぎます。' : (transient ? '3賢人の回答を一時的に取得できませんでした。' : '3賢人の回答を作成できませんでした。'),
       code: tooLarge ? 'REQUEST_TOO_LARGE' : 'PERSONA_GENERATION_FAILED',
