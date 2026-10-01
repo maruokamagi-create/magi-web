@@ -16,6 +16,15 @@ const BATCH_SCHEMA = {
   required: PERSONAS
 };
 
+const FULL_BATCH_SCHEMA = {
+  type: 'OBJECT',
+  properties: {
+    primary: BATCH_SCHEMA,
+    second: BATCH_SCHEMA
+  },
+  required: ['primary','second']
+};
+
 function batchSystemInstruction(phase) {
   if (phase === 'FULL') {
     return [
@@ -100,9 +109,10 @@ export default async function handler(req, res) {
         });
       }
       return sendJson(res, 503, {
-        error: 'FULL batch schema is not enabled yet',
+        error: 'FULL batch execution is not enabled yet',
         code: 'PERSONA_FULL_BATCH_NOT_READY',
-        retryExhausted: true
+        retryExhausted: true,
+        diagnostic: { schemaReady: Boolean(FULL_BATCH_SCHEMA), crossReady: Boolean(crossBuilder) }
       });
     }
 
