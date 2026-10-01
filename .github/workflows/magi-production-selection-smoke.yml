@@ -68,6 +68,29 @@ jobs:
           }
           JSON
 
+          # FULL one-provider-call probe: validate PRIMARY -> canonical CROSS -> SECOND
+          # in the production deployment before the legacy multi-call smoke.
+          jq -n --slurpfile c /tmp/case.json '{phase:"FULL",case:$c[0]}' > /tmp/full-batch-body.json
+          full_status="$(curl -L -sS -D /tmp/full-batch.headers -w '%{http_code}' \
+            -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+            -d @/tmp/full-batch-body.json "$BASE/api/magi/persona-batch" -o /tmp/full-batch.json)"
+          echo "MAGI FULL BATCH status=$full_status"
+          if [[ "$full_status" =~ ^2 ]]; then
+            jq -e '
+              .experimental==true and .publishable==false and
+              .isolationLevel=="PROTOCOL_LEVEL_SINGLE_PROVIDER_CALL" and
+              (.primary.melchior|type=="object") and (.primary.balthasar|type=="object") and (.primary.casper|type=="object") and
+              (.cross.challenges.melchior|type=="array") and (.cross.challenges.balthasar|type=="array") and (.cross.challenges.casper|type=="array") and
+              (.second.melchior|type=="object") and (.second.balthasar|type=="object") and (.second.casper|type=="object")
+            ' /tmp/full-batch.json >/dev/null
+            echo "MAGI FULL BATCH PROBE: PASS"
+          else
+            echo "MAGI FULL BATCH PROBE: FAIL" >&2
+            jq -c '{code,error,persona,retryExhausted,retryFreshRequest,retryScope,diagnostic}' /tmp/full-batch.json >&2 2>/dev/null || true
+            grep -iE '^(retry-after|x-magi-[^:]+):' /tmp/full-batch.headers >&2 || true
+            exit 22
+          fi
+
           same_roster(){
             local file="$1"
             jq -S '.checkedPlayers|sort' "$file" > /tmp/actual-roster.json
