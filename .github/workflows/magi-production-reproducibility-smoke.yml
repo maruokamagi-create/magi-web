@@ -93,7 +93,15 @@ jobs:
               grep -iE '^(retry-after|x-magi-[^:]+):' "$headers" >&2 || true
               [[ "$status" =~ ^(408|429|500|502|503|504)$ ]] || return 22
               [[ "$attempt" -lt 6 ]] || return 22
-              sleep 4
+              wait_seconds=4
+              if grep -qi '^x-magi-gemini-failure: provider_rate_limit' "$headers"; then
+                retry_after="$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {gsub("\\r","",$2); print $2; exit}' "$headers")"
+                if [[ "$retry_after" =~ ^[0-9]+$ ]]; then wait_seconds="$retry_after"; else wait_seconds=15; fi
+                (( wait_seconds > 60 )) && wait_seconds=60
+                (( wait_seconds < 10 )) && wait_seconds=10
+              fi
+              echo "MAGI retry wait=${wait_seconds}s" >&2
+              sleep "$wait_seconds"
             done
           }
 
