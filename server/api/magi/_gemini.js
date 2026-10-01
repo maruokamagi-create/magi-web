@@ -288,6 +288,11 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
         slot: index === 0 ? 'primary' : (index === 1 ? 'fallback' : 'last_resort'),
         failureClass: String(error?.failureClass || (error?.timedOut ? 'timeout' : 'other'))
       });
+      // Provider 429 is quota/rate-limit state shared across this API project.
+      // Cycling fallback models immediately only multiplies requests against the
+      // same constrained provider. Return upward so the bounded request-level
+      // backoff can wait before a fresh attempt.
+      if (Number(error?.status) === 429 || error?.failureClass === 'provider_rate_limit') break;
       if (strict || !canFallback(error) || index === models.length - 1) break;
       console.warn(`[MAGI Gemini] ${model} failed, trying fallback ${models[index + 1]}: ${error?.message || error}`);
     }
