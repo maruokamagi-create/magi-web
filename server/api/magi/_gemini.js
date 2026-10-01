@@ -271,6 +271,7 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
         .filter((model, index, arr) => model && arr.indexOf(model) === index);
 
   let lastError;
+  const failureTrail = [];
   for (let index = 0; index < models.length; index++) {
     const model = models[index];
     try {
@@ -283,6 +284,10 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
     } catch (error) {
       lastError = error;
+      failureTrail.push({
+        slot: index === 0 ? 'primary' : (index === 1 ? 'fallback' : 'last_resort'),
+        failureClass: String(error?.failureClass || (error?.timedOut ? 'timeout' : 'other'))
+      });
       if (strict || !canFallback(error) || index === models.length - 1) break;
       console.warn(`[MAGI Gemini] ${model} failed, trying fallback ${models[index + 1]}: ${error?.message || error}`);
     }
@@ -293,5 +298,6 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   }
   const finalError = lastError || new Error('Gemini request failed');
   if (!finalError.failureClass) finalError.failureClass = 'other';
+  finalError.failureTrail = failureTrail;
   throw finalError;
 }
