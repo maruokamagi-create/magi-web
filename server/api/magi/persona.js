@@ -370,6 +370,25 @@ export function buildPersonaRequest(body, persona, phase) {
   return { payload, candidateCase, fullLineupCase, pitchingPlanCase, pitchingRoleCase, pitchingPlanGameInnings };
 }
 
+export function finalizePersonaDraft(body, persona, phase, rawResult) {
+  const candidateCase = isCandidateCase(body);
+  const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
+  const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
+  let result = normalizeStandardFullLineupDecision(normalizeChangeTracking(
+    normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
+    phase,
+    body.primarySelf
+  ), body.case);
+  let guardIssues = [
+    ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
+    ...personaFullLineupIssues(rawResult, fullLineupCase),
+    ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
+  ];
+  result.persona = persona.toUpperCase();
+  result.phase = phase;
+  return { result, guardIssues, candidateCase, fullLineupCase, pitchingPlanCase };
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -392,16 +411,7 @@ export default async function handler(req, res) {
       userPayload: payload,
       responseSchema: PERSONA_RESPONSE_SCHEMA
     });
-    let result = normalizeStandardFullLineupDecision(normalizeChangeTracking(
-      normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
-      phase,
-      body.primarySelf
-    ), body.case);
-    let guardIssues = [
-      ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-      ...personaFullLineupIssues(rawResult, fullLineupCase),
-      ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
-    ];
+    let { result, guardIssues } = finalizePersonaDraft(body, persona, phase, rawResult);
 
     const correctionLimit = fullLineupCase ? 1 : 3;
     for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
