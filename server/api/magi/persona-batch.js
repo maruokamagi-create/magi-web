@@ -16,6 +16,17 @@ const BATCH_SCHEMA = {
 };
 
 function batchSystemInstruction(phase) {
+  if (phase === 'FULL') {
+    return [
+      'MAGI FULL DELIBERATION BATCH PROTOCOL.',
+      'Produce PRIMARY and SECOND work products for all three personas in one structured response.',
+      'For PRIMARY, each persona must reason independently from the shared CASE and must not use another persona output.',
+      'For SECOND, reconsider only from the supplied deterministic cross-examination challenge assigned to that persona and its own PRIMARY.',
+      'Do not seek consensus or majority agreement. Preserve genuine disagreement.',
+      'MELCHIOR uses only MELCHIOR role; BALTHASAR only BALTHASAR role; CASPER only CASPER role.',
+      'Return exactly the requested schema.'
+    ].join(' ');
+  }
   if (phase === 'SECOND') {
     return [
       'MAGI SECOND BATCH PROTOCOL.',
@@ -67,10 +78,16 @@ export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
     const body = await readBody(req);
-    const phase = body?.phase === 'SECOND' ? 'SECOND' : 'PRIMARY';
+    const phase = ['PRIMARY','SECOND','FULL'].includes(body?.phase) ? body.phase : 'PRIMARY';
     if (!validPersonaCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
     if (phase === 'SECOND' && (!body?.primary || !body?.crossExamination)) {
       return sendJson(res, 400, { error: 'SECOND batch requires isolated PRIMARY and cross-examination compartments' });
+    }
+    if (phase === 'FULL') {
+      return sendJson(res, 400, {
+        error: 'FULL batch requires server-deterministic cross examination and is not enabled yet',
+        code: 'PERSONA_FULL_BATCH_NOT_READY'
+      });
     }
 
     const personaRequests = Object.fromEntries(PERSONAS.map(persona => {
