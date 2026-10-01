@@ -80,9 +80,21 @@ jobs:
 
           post(){
             local endpoint="$1" body="$2" out="$3"
-            curl -L --fail --retry 5 --retry-delay 4 --retry-all-errors -sS \
-              -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
-              -d @"$body" "$BASE$endpoint" -o "$out"
+            local headers="${out}.headers" status attempt
+            for attempt in 1 2 3 4 5 6; do
+              status="$(curl -L -sS -D "$headers" -w '%{http_code}' \
+                -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+                -d @"$body" "$BASE$endpoint" -o "$out")"
+              if [[ "$status" =~ ^2 ]]; then return 0; fi
+              echo "MAGI HTTP FAILURE endpoint=$endpoint attempt=$attempt status=$status" >&2
+              if jq -e . "$out" >/dev/null 2>&1; then
+                jq -c '{code,error,retryExhausted,retryFreshRequest,retryScope}' "$out" >&2 || true
+              fi
+              grep -iE '^(retry-after|x-magi-[^:]+):' "$headers" >&2 || true
+              [[ "$status" =~ ^(408|429|500|502|503|504)$ ]] || return 22
+              [[ "$attempt" -lt 6 ]] || return 22
+              sleep 4
+            done
           }
 
           run_once(){
