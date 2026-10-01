@@ -499,6 +499,10 @@ export default async function handler(req, res) {
     const transient = error?.timedOut === true || error?.retryable === true || [408,429,500,502,503,504].includes(Number(error?.status));
     const status = tooLarge ? 413 : (transient ? 503 : 500);
     console.error('[MAGI persona]', error?.message || error);
+    const safeFailureClass = ['provider_rate_limit','model_unavailable','provider_retryable_http','provider_http','empty_text','invalid_structured_json','timeout','other'].includes(String(error?.failureClass || ''))
+      ? String(error.failureClass)
+      : (error?.timedOut === true ? 'timeout' : 'other');
+    try { res.setHeader('X-MAGI-Gemini-Failure', safeFailureClass); } catch {}
     return sendJson(res, status, {
       error: tooLarge ? '送信データが大きすぎます。' : (transient ? '3賢人の回答を一時的に取得できませんでした。' : '3賢人の回答を作成できませんでした。'),
       code: tooLarge ? 'REQUEST_TOO_LARGE' : 'PERSONA_GENERATION_FAILED',
