@@ -110,10 +110,21 @@ export default async function handler(req, res) {
           code: 'PERSONA_FULL_BATCH_UNSUPPORTED_CASE'
         });
       }
-      const primaryRequests = Object.fromEntries(PERSONAS.map(persona => {
+      // FULL shares the same CASE/roster/evidence across all three personas.
+      // Do not repeat that large payload three times: send one authoritative
+      // shared context plus only the persona-specific role/instruction.
+      const builtPrimary = Object.fromEntries(PERSONAS.map(persona => {
         const { payload } = buildPersonaRequest(body, persona, 'PRIMARY');
-        return [persona, { personaRole: PERSONA_PROMPTS[persona], payload }];
+        return [persona, payload];
       }));
+      const sharedPrimary = builtPrimary.melchior;
+      const primaryRequests = Object.fromEntries(PERSONAS.map(persona => [
+        persona,
+        {
+          personaRole: PERSONA_PROMPTS[persona],
+          instruction: builtPrimary[persona].instruction
+        }
+      ]));
       // A single model response cannot literally execute server code between its
       // PRIMARY and SECOND fields. Therefore FULL remains experimental and its
       // SECOND fields are not publishable until the server can reconstruct the
@@ -123,7 +134,12 @@ export default async function handler(req, res) {
         systemInstruction: batchSystemInstruction('FULL'),
         userPayload: {
           phase: 'FULL',
-          case: body.case,
+          sharedContext: {
+            temporalContext: sharedPrimary.temporalContext,
+            authoritativeCurrentRoster: sharedPrimary.authoritativeCurrentRoster,
+            historicalWeightingRule: sharedPrimary.historicalWeightingRule,
+            case: sharedPrimary.case
+          },
           primaryPersonas: primaryRequests,
           crossPolicy: fullLineupCase ? 'CANONICAL_FULL_LINEUP_CROSS' : 'CANONICAL_SELECTION_CROSS',
           secondRule: 'SECOND is provisional. The server will reject it unless it matches the canonical CROSS reconstructed from PRIMARY.'
