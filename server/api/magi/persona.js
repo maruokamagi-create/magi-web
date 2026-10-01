@@ -519,7 +519,18 @@ export default async function handler(req, res) {
     return sendJson(res, status, {
       error: tooLarge ? '送信データが大きすぎます。' : (transient ? '3賢人の回答を一時的に取得できませんでした。' : '3賢人の回答を作成できませんでした。'),
       code: tooLarge ? 'REQUEST_TOO_LARGE' : 'PERSONA_GENERATION_FAILED',
-      retryExhausted: transient
+      retryExhausted: transient,
+      ...(transient ? {
+        diagnostic: {
+          failureClass: safeFailureClass,
+          trail: Array.isArray(error?.failureTrail)
+            ? error.failureTrail.slice(0, 3).map(row => ({
+                slot: ['primary','fallback','last_resort'].includes(String(row?.slot)) ? String(row.slot) : 'unknown',
+                failureClass: ['provider_rate_limit','model_unavailable','provider_retryable_http','provider_http','empty_text','invalid_structured_json','timeout','other'].includes(String(row?.failureClass)) ? String(row.failureClass) : 'other'
+              }))
+            : []
+        }
+      } : {})
     });
   }
 }
