@@ -504,6 +504,13 @@ export default async function handler(req, res) {
       : (error?.timedOut === true ? 'timeout' : 'other');
     try {
       res.setHeader('X-MAGI-Gemini-Failure', safeFailureClass);
+      if (Array.isArray(error?.failureTrail) && error.failureTrail.length) {
+        const safeTrail = error.failureTrail
+          .slice(0, 3)
+          .map(row => `${row.slot}=${row.failureClass}`)
+          .join(',');
+        res.setHeader('X-MAGI-Gemini-Trail', safeTrail);
+      }
       if (safeFailureClass === 'provider_rate_limit') {
         const retryAfter = Number(error?.retryAfterSeconds);
         res.setHeader('Retry-After', String(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(60, Math.ceil(retryAfter)) : 15));
