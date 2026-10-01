@@ -50,10 +50,15 @@ function safeTransient(res, error) {
       res.setHeader('Retry-After', String(Number.isFinite(retryAfter) && retryAfter > 0 ? Math.min(60, Math.ceil(retryAfter)) : 15));
     }
   } catch {}
+  if (transient) {
+    try { res.setHeader('X-MAGI-Persona-Recovery', 'retry-persona-batch-request'); } catch {}
+  }
   return sendJson(res, transient ? 503 : 500, {
-    error: transient ? '3賢人の一次判断を一時的に取得できませんでした。' : '3賢人の一次判断を作成できませんでした。',
+    error: transient ? '3賢人の判断を一時的に取得できませんでした。' : '3賢人の判断を作成できませんでした。',
     code: 'PERSONA_BATCH_GENERATION_FAILED',
-    retryExhausted: transient,
+    retryExhausted: !transient,
+    retryFreshRequest: transient,
+    retryScope: transient ? 'PERSONA_BATCH_REQUEST' : '',
     diagnostic: { failureClass: safeFailureClass }
   });
 }
