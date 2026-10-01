@@ -340,6 +340,22 @@ export default async function handler(req, res) {
             : `This remains a SELECTION question, not a yes/no vote. Do not say you are 賛成 or 反対 to the question. Keep checkedPlayers exactly equal to the authoritative 14-player roster. Reconsider your own candidatePlayers only from concrete evidence and cross-examination; do not change merely to join a majority. Rank candidatePlayers in your current preferred order. Continue historicalWeightingRule, selectionEvidenceRule and temporalContext. For every SELECTION response, any statement about future growth, development, future team strength, future performance, scoring, wins, role stability, conditioning or burden MUST use explicit uncertainty wording such as 「可能性がある」「考えられる」「おそれがある」 unless CASE.evidence explicitly proves that future outcome; otherwise omit the future claim. For a current batting-slot question, use present evidence and current role fit only; do not claim that a candidate will produce runs, wins, scoring opportunities or lineup success. Do not use phrases such as 「勝つための」 as a factual effect of the selection. ${selectionEvidenceRule} If crossExamination introduces a development, tactical or historical premise absent from CASE.evidence, treat it as unverified rather than adopting it. In publicStatement, state plainly which candidates you retain, add, or remove and why, using exact official player names from authoritativeCurrentRoster. For a single batting-slot selection, explicitly answer at least one concrete crossExamination comparison and say whether it changed your first candidate; a bare maintenance statement is invalid. The actual answer is the candidate shortlist, not the judgment enum. Keep it concise and natural. Do not expose hidden chain-of-thought.`
       : focusedProposalRule + 'Rejudge the exact focused proposal independently. Answer the evidence-grounded challenge, but do not adopt an unsupported claim merely because it appeared in crossExamination or another persona output. CASE/evidence remains authoritative. Historical evidence is governed strictly by historicalWeightingRule. If a challenge mentions a role, rate, strength, weakness, pressure situation, or past usage not explicitly in CASE/evidence, identify it as unverified and do not repeat it as fact. State plainly whether your judgment changed and why. Keep it concise and natural. Do not expose hidden chain-of-thought.';
 
+    // SECOND only needs the persona-specific challenges plus compact cross summary.
+    // Sending the complete cross-examination object to every persona duplicates
+    // all three challenge sets and materially enlarges the Gemini request.
+    const compactCrossExamination = phase === 'SECOND' && body.crossExamination
+      ? {
+          agreement: Array.isArray(body.crossExamination.agreement) ? body.crossExamination.agreement : [],
+          disagreement: Array.isArray(body.crossExamination.disagreement) ? body.crossExamination.disagreement : [],
+          domainConflicts: Array.isArray(body.crossExamination.domainConflicts) ? body.crossExamination.domainConflicts : [],
+          warnings: Array.isArray(body.crossExamination.warnings) ? body.crossExamination.warnings : [],
+          informationGaps: Array.isArray(body.crossExamination.informationGaps) ? body.crossExamination.informationGaps : [],
+          challenges: Array.isArray(body.crossExamination?.challenges?.[persona])
+            ? body.crossExamination.challenges[persona]
+            : []
+        }
+      : null;
+
     const payload = phase === 'PRIMARY'
       ? {
           phase,
@@ -356,7 +372,7 @@ export default async function handler(req, res) {
           historicalWeightingRule: effectiveHistoryRule,
           case: body.case,
           ownPrimaryJudgment: body.primarySelf || null,
-          crossExamination: body.crossExamination || null,
+          crossExamination: compactCrossExamination,
           instruction: secondInstruction
         };
 
