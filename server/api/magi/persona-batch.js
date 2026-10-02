@@ -282,7 +282,11 @@ export default async function handler(req, res) {
           persona: persona.toUpperCase(),
           retryExhausted: true,
           retryFreshRequest: false,
-          retryScope: ''
+          retryScope: '',
+          diagnostic: {
+            guardIssueCount: guardIssues.length,
+            guardIssueCodes: guardIssues.map((issue) => String(issue?.code || issue?.type || issue || 'UNKNOWN')).slice(0, 8)
+          }
         });
       }
       if (result.reviewRequested === true) {
