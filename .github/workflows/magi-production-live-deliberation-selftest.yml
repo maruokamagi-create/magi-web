@@ -18,7 +18,27 @@ jobs:
           BASE='https://magi-web.vercel.app'
           curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup" -o /tmp/lineup.json
           cat /tmp/lineup.json; echo
-          jq -e '.ok==true and .mode=="lineup" and .evidence.count==14 and .evidence.selectionKind=="FULL_LINEUP" and .finalStatus=="LINEUP_RESULT" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9) and (.digest|length==16)' /tmp/lineup.json >/dev/null
+          jq -e '
+            .ok==true and .mode=="lineup" and
+            .evidence.count==14 and .evidence.selectionKind=="FULL_LINEUP" and
+            .evidence.appearanceFieldingStatus=="COMPLETE" and
+            .evidence.appearanceStatus=="COMPLETE" and
+            .evidence.fieldingStatus=="COMPLETE" and
+            .evidence.sourceIntegrityStatus=="COMPLETE" and
+            .evidence.duplicateSourceContent==false and
+            .evidence.scoreSheetOriginalCount==11 and
+            .evidence.scoreSheetAppearanceGameCount==11 and
+            .evidence.scoreSheetUnverifiedCount==0 and
+            ((.evidence.scoreSheetVerifiedCount + .evidence.scoreSheetSourceMismatchCount)==11) and
+            .evidence.strategySnapshotCurrentPolicy==false and
+            .finalStatus=="LINEUP_RESULT" and
+            (.lineup|length==9) and
+            (([.lineup[].name]|unique|length)==9) and
+            (([.lineup[].position]|unique|length)==9) and
+            (([.lineup[].position]|sort)==(["一","三","中","二","右","左","投","捕","遊"]|sort)) and
+            ([.lineup[].positionEvidence | ([.officialStarts,.practiceFirstStarts,.totalStarts,.recentStarts,.fieldingAppearances] | any(.>0))] | all) and
+            (.digest|length==16)
+          ' /tmp/lineup.json >/dev/null
           echo 'PRODUCTION EXACT LIVE BEST-ORDER DELIBERATION: PASS'
 
   exact-live-closer:

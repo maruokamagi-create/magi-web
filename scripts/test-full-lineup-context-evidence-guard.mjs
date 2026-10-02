@@ -14,8 +14,8 @@ assert.match(
 );
 assert.match(
   core,
-  /buildCurrentSelectionEvidence\(\{question,routed:selectionRouted\}\)/,
-  'live full-lineup evidence must use the sanitized routing view'
+  /buildCurrentSelectionEvidence\(\{question,routed:selectionRouted,staffAccessContext\}\)/,
+  'live full-lineup evidence must use the sanitized routing view while preserving the guarded staff evidence context'
 );
 assert.match(
   core,

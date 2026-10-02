@@ -32,12 +32,12 @@ jobs:
           node --check magi-formal-runner-v373.js
           node --check magi-app-bootstrap-v363.js
           grep -Fq '/magi-control-summary-v377.js?v=394' index.html
-          grep -Fq '/chat-ui-canonical-v387.js?v=387' index.html
+          grep -Fq '/chat-ui-canonical-v387.js?v=434' index.html
           ! grep -Fq '/chat-ui-v196.js' index.html
           ! grep -Fq '/cross-dialogue-ui-v380.js' index.html
           grep -Fq '/result-layout-v189.js?v=201' index.html
           grep -Fq '/selection-polish-v218.js?v=221' index.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=378' index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=426' index.html
           grep -Fq 'window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult)' magi-formal-runner-v373.js
           grep -Fq "new CustomEvent('magi:deliberation-result'" magi-formal-runner-v373.js
           grep -Fq "label='2対1 MAJORITY'" magi-control-summary-v377.js
@@ -47,7 +47,7 @@ jobs:
           grep -Fq "summarySection('決め手'" chat-ui-canonical-v387.js
           grep -Fq "summarySection('最大の争点'" chat-ui-canonical-v387.js
           grep -Fq '少数意見：${model.minorityPersona}' chat-ui-canonical-v387.js
-          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' chat-ui-canonical-v387.js
+          grep -Fq "if(isDirectDebate(hydrated))renderFullLineup(body,items,hydrated);else renderGeneric(body,items,hydrated)" chat-ui-canonical-v387.js
           grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
           grep -Fq 'structuredConditions()' selection-polish-v218.js
 

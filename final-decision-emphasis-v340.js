@@ -26,6 +26,18 @@ function injectStyle(){
  document.head.appendChild(st);
 }
 
+function structuredLineup(){
+ const root=window.MAGI_LAST_DELIBERATION_RESULT||{};
+ const final=root?.final&&typeof root.final==='object'?root.final:root;
+ if(final?.status!=='LINEUP_RESULT')return null;
+ const rows=Array.isArray(final?.lineup)?final.lineup.slice():[];
+ if(rows.length!==9)return null;
+ rows.sort((a,b)=>Number(a?.slot)-Number(b?.slot));
+ if(rows.some((r,i)=>Number(r?.slot)!==i+1||!String(r?.name||'').trim()))return null;
+ if(new Set(rows.map(r=>String(r.name).normalize('NFKC').replace(/[\s　]/g,''))).size!==9)return null;
+ return {lineup:rows.map(r=>({no:Number(r.slot),name:String(r.name).trim()})),remainder:''};
+}
+
 function parseLineup(text){
  const raw=String(text||'').replace(/\s+/g,' ').trim();
  if(!raw)return null;
@@ -36,7 +48,7 @@ function parseLineup(text){
  let m;
  while((m=re.exec(head))){
    const no=Number(m[1]);
-   const name=String(m[2]||'').trim().replace(/[。．]+$/,'');
+   const name=String(m[2]||'').trim().replace(/[。．]+$/,'').replace(/[（(](?:投手|捕手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼)[）)]$/,'').trim();
    if(no>=1&&no<=9&&name)matches.push({no,name});
  }
  const unique=[];const seen=new Set();
@@ -59,7 +71,8 @@ function emphasize(){
  const response=document.getElementById('response');
  const final=response?.querySelector?.('.final');
  if(!final||final.dataset.magiFinalDecisionEmphasis==='1')return false;
- const found=findLineup(final);
+ const structured=structuredLineup();
+ const found=structured?{parsed:structured,note:null}:findLineup(final);
  if(!found)return false;
  const {parsed,note}=found;
  const verdict=final.querySelector('.verdict');

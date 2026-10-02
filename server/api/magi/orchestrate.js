@@ -3,6 +3,7 @@ import { ORCHESTRATOR } from './_prompts.js';
 import { failClosedCross, validateCrossOutput } from './_cross-output-guard.js';
 import { canonicalizePlayerData, playerKey } from './_roster.js';
 import { buildConsensusLineup, isFullLineupQuestion } from './_full-lineup.js';
+import { assignEvidenceGroundedFielding } from './_lineup-fielding.js';
 import { buildConsensusPitchingPlan, isPitchingPlanQuestion } from './_pitching-plan.js';
 
 const crossSchema = {
@@ -188,7 +189,7 @@ export function deterministicSelectionCross(primary) {
   return { agreement, disagreement, domainConflicts:[], warnings:[], informationGaps:[], challenges };
 }
 
-export function buildFullLineupResult(second, cross) {
+export function buildFullLineupResult(second, cross, caseData={}) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
   const entries = Array.isArray(normalizedSecond) ? normalizedSecond.map((v,i)=>[String(i),v]) : Object.entries(normalizedSecond || {});
@@ -221,10 +222,39 @@ export function buildFullLineupResult(second, cross) {
     });
   }
 
-  const recommendation=consensus.lineup.map(x=>`${x.slot}番 ${x.name}`).join(' / ');
+  const fielding=assignEvidenceGroundedFielding(consensus.lineup,caseData?.evidence?.appearanceFielding);
+  if(fielding.status!=='COMPLETE'){
+    const fieldingReason=fielding.status==='AMBIGUOUS'
+      ? '実績Evidence上で同順位の守備配置が複数残るため、推測で守備位置を確定しない。'
+      : fielding.status==='UNAVAILABLE'
+        ? '出場詳細・守備詳細Evidenceが完全な状態ではないため、守備位置を推測で確定しない。'
+        : '選出9人だけでは、実績Evidenceから9守備位置を一意に成立させられない。';
+    return canonicalizePlayerData({
+      mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',
+      recommendation:'打順案は得られたが、守備位置を実績Evidenceだけで確定できないため最終オーダーは未確定。',
+      lineup:[],
+      battingOrder:consensus.lineup,
+      fieldingStatus:fielding.status,
+      fieldingReason:fielding.reason||'FIELDING_UNRESOLVED',
+      fieldingDetails:fielding,
+      personaLineups:consensus.personaLineups,
+      slotConflicts:consensus.slotConflicts,
+      playerSupport:consensus.playerSupport,
+      confidence:'LOW',
+      majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
+      warnings:compactUnique([...warnings,fieldingReason]),
+      reDeliberationConditions:compactUnique([fieldingReason,...informationGaps,...warnings],5),
+      reviewReason:fieldingReason,
+      crossDiscussion:crossDiscussion(normalizedCross)
+    });
+  }
+
+  const recommendation=fielding.lineup.map(x=>`${x.slot}番 ${x.name}（${x.positionLabel||x.position}）`).join(' / ');
   return canonicalizePlayerData({
     mode:'FULL_LINEUP',status:'LINEUP_RESULT',recommendation,
-    lineup:consensus.lineup,
+    lineup:fielding.lineup,
+    fieldingStatus:fielding.status,
+    fieldingRule:fielding.rule,
     personaLineups:consensus.personaLineups,
     slotConflicts:consensus.slotConflicts,
     playerSupport:consensus.playerSupport,
@@ -543,7 +573,7 @@ export default async function handler(req, res) {
     if (body.phase === 'FINAL') {
       if (!body.primary || !body.second) return sendJson(res, 400, { error: 'Primary and second judgments are required' });
       const result = isFullLineupQuestion(body.case)
-        ? buildFullLineupResult(body.second, body.crossExamination || null)
+        ? buildFullLineupResult(body.second, body.crossExamination || null, body.case || {})
         : isPitchingPlanQuestion(body.case)
           ? buildPitchingPlanResult(body.second, body.crossExamination || null)
           : isSelectionCase(body.case)

@@ -12,6 +12,8 @@ const TARGETS={melchior:'MELCHIOR-1',balthasar:'BALTHASAR-2',casper:'CASPER-3'};
 const FIRST={melchior:'私',balthasar:'俺',casper:'僕'};
 const norm=v=>String(v||'').normalize('NFKC').replace(/[\s　]/g,'');
 const rosterKeys=new Set(CURRENT_ROSTER.map(norm));
+const STANDARD_POSITIONS=['投','捕','一','二','三','遊','左','中','右'];
+const standardPositionKeys=new Set(STANDARD_POSITIONS);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const clone=v=>JSON.parse(JSON.stringify(v??null));
 const text=v=>String(v??'').trim();
@@ -93,9 +95,17 @@ async function runOnce(base,packet,question=QUESTION){
   let second=await doSecond();if(allSame(second))second=await doSecond('3賢人の二次打順が完全一致したため、多数派への同調を排除して独立再検証する。同じ案を維持する場合も代替案を比較した理由を明示する。');
   for(const p of PERSONAS){if(second[p]?.reviewRequested===true||second[p]?.dataConflict===true||!validNine(second[p]))throw new Error(`SECOND_${p.toUpperCase()}_INVALID`);}
   const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second},'FINAL');
-  const names=Array.isArray(final?.lineup)?final.lineup.map(x=>x?.name).filter(Boolean):[];
-  const legal=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)));
-  if(!legal)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}`);
+  const rows=Array.isArray(final?.lineup)?final.lineup:[];
+  const names=rows.map(x=>x?.name).filter(Boolean);
+  const positions=rows.map(x=>text(x?.position)).filter(Boolean);
+  const evidenceSupported=rows.every(x=>{
+    const e=x?.positionEvidence||{};
+    return ['officialStarts','practiceFirstStarts','totalStarts','recentStarts','fieldingAppearances'].some(k=>Number(e[k])>0);
+  });
+  const legal=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&final?.fieldingStatus==='COMPLETE'&&
+    names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)))&&
+    positions.length===9&&new Set(positions).size===9&&positions.every(p=>standardPositionKeys.has(p))&&evidenceSupported;
+  if(!legal)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}_FIELDING_${String(final?.fieldingStatus||'NO_STATUS')}`);
   return {primary:Object.fromEntries(PERSONAS.map(p=>[p,{candidatePlayers:primary[p].candidatePlayers,judgment:primary[p].judgment,confidence:primary[p].confidence}])),cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],challenges:cross?.challenges||{},informationGaps:cross?.informationGaps||[]},second:Object.fromEntries(PERSONAS.map(p=>[p,{candidatePlayers:second[p].candidatePlayers,judgment:second[p].judgment,confidence:second[p].confidence}])),final:{mode:final.mode,status:final.status,lineup:final.lineup,recommendation:final.recommendation,personaLineups:final.personaLineups}};
 }
 
@@ -139,9 +149,30 @@ export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
     const host=String(req.headers?.['x-forwarded-host']||req.headers?.host||'magi-web.vercel.app').split(',')[0].trim();const proto=String(req.headers?.['x-forwarded-proto']||'https').split(',')[0].trim();const base=`${proto}://${host}`;
-    const packet=await buildCurrentSelectionEvidence({question:QUESTION,routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'}});const players=packet?.allCurrentTeamCheck?.players||[];
-    const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
     const mode=String(req.query?.mode||'lineup');
+    const packet=await buildCurrentSelectionEvidence({
+      question:QUESTION,
+      routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},
+      staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+    });const players=packet?.allCurrentTeamCheck?.players||[];
+    const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
+    const scoreCheck=packet?.appearanceFielding?.scoreSheets||{};
+    const scoreAccounted=Number(scoreCheck.originalCount)===11&&Number(scoreCheck.appearanceGameCount)===11&&Number(scoreCheck.unverifiedCount)===0&&Number(scoreCheck.verifiedCount)+Number(scoreCheck.sourceMismatchCount)===11;
+    const appearanceReady=packet?.appearanceFielding?.status==='COMPLETE'&&packet?.appearanceFielding?.appearanceStatus==='COMPLETE'&&packet?.appearanceFielding?.fieldingStatus==='COMPLETE'&&packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent!==true&&scoreAccounted;
+    if(mode==='lineup'&&!appearanceReady){
+      const err=new Error('APPEARANCE_EVIDENCE_NOT_READY');
+      err.diagnostic={
+        appearanceFieldingStatus:packet?.appearanceFielding?.status||'UNAVAILABLE',
+        appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'UNAVAILABLE',
+        fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'UNAVAILABLE',
+        sourceIntegrity:packet?.appearanceFielding?.sourceIntegrity?.status||'UNAVAILABLE',
+        duplicateSourceContent:Boolean(packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent),
+        integrityStatus:packet?.appearanceFielding?.integrity?.status||'UNAVAILABLE',
+        scoreSheetVerificationStatus:packet?.scoreSheetVerificationStatus||'UNAVAILABLE',
+        issues:packet?.appearanceFielding?.issues||[]
+      };
+      throw err;
+    }
     const result=mode==='lineup'?await runOnce(base,packet):null;
     const digest=result?stableDigest(result):'';
     const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
@@ -153,6 +184,27 @@ export default async function handler(req,res){
     const closerPacket=await buildCurrentSelectionEvidence({question:CLOSER_QUESTION,routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},staffAccessContext:{role:'admin',purpose:'DELIBERATION'}});
     const closer=mode==='closer'?await runCloser(base,closerPacket):null;
     if(mode==='closer'&&(!closer?.saveEvidenceUsed||closer?.sakataSaveCount!=='2'||closerPacket?.coachObservationStatus!=='COMPLETE'||!String(closerPacket?.text||'').includes('坂田 暉馬')))throw new Error('CLOSER_FULL_DELIBERATION_NOT_READY');
-    return res.status(200).json({ok:true,mode,question:QUESTION,evidence:{count:packet.count,selectionKind:packet.selectionKind,recentSixStatus:packet?.recentSix?.status||'',historicalStatus:packet?.historicalReference?.status||''},finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
-  }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error)});}
+    return res.status(200).json({ok:true,mode,question:QUESTION,evidence:{
+      count:packet.count,
+      selectionKind:packet.selectionKind,
+      recentSixStatus:packet?.recentSix?.status||'',
+      historicalStatus:packet?.historicalReference?.status||'',
+      appearanceFieldingStatus:packet?.appearanceFielding?.status||'',
+      appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',
+      fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',
+      sourceIntegrityStatus:packet?.appearanceFielding?.sourceIntegrity?.status||'',
+      duplicateSourceContent:Boolean(packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent),
+      scoreSheetVerificationStatus:packet?.scoreSheetVerificationStatus||'',
+      scoreSheetOriginalCount:Number(packet?.appearanceFielding?.scoreSheets?.originalCount)||0,
+      scoreSheetVerifiedCount:Number(packet?.appearanceFielding?.scoreSheets?.verifiedCount)||0,
+      scoreSheetAppearanceGameCount:Number(packet?.appearanceFielding?.scoreSheets?.appearanceGameCount)||0,
+      scoreSheetSourceMismatchCount:Number(packet?.appearanceFielding?.scoreSheets?.sourceMismatchCount)||0,
+      scoreSheetUnverifiedCount:Number(packet?.appearanceFielding?.scoreSheets?.unverifiedCount)||0,
+      normalizedObservationStatus:packet?.normalizedObservationStatus||'',
+      normalizedObservationDatedCount:Number(packet?.normalizedObservationDatedCount)||0,
+      normalizedObservationLatestRecordedAt:packet?.normalizedObservationLatestRecordedAt||'',
+      strategySnapshotStatus:packet?.strategySnapshotStatus||'',
+      strategySnapshotCurrentPolicy:packet?.strategySnapshotCurrentPolicy
+    },finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
+  }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error),diagnostic:error?.diagnostic||null});}
 }
