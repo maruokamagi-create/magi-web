@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
-import { fetchDriveFileContent, getDriveFileMetadata, listMagiDriveTree } from '../drive/_service.js';
+import pdfParse from 'pdf-parse';
+import { fetchDriveFileContent, getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { decodeCsv, parseCsv } from './_recent-batting-form.js';
@@ -8,7 +9,9 @@ const APPEARANCE_FILE_ID=process.env.MAGI_CURRENT_APPEARANCE_FILE_ID||evidenceSo
 const FIELDING_FILE_ID=process.env.MAGI_CURRENT_FIELDING_FILE_ID||evidenceSource('CURRENT_FIELDING_DETAIL').id;
 const text=v=>String(v??'').trim();
 const SCORE_SOURCE=evidenceSource('CURRENT_SCORE_SHEETS');
-const SCORE_ROOT='2026-2027_CURRENT_現チーム/02_SCORE_SHEETS_スコアシート/';
+const SCORE_FILE_DEFS=Array.isArray(SCORE_SOURCE?.files)?SCORE_SOURCE.files:[];
+const SCORE_TEXT_CACHE=new Map();
+const SCORE_POSITION_LABEL=Object.freeze({'1':'投','2':'捕','3':'一','4':'二','5':'三','6':'遊','7':'左','8':'中','9':'右',DH:'DH',PH:'PH',PR:'PR'});
 
 function pick(row,names){for(const name of names){const value=text(row?.[name]);if(value)return value;}return'';}
 function dateKey(value){
