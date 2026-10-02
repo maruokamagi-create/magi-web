@@ -156,7 +156,9 @@ export default async function handler(req,res){
       staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
     });const players=packet?.allCurrentTeamCheck?.players||[];
     const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
-    const appearanceReady=packet?.appearanceFielding?.status==='COMPLETE'&&packet?.appearanceFielding?.appearanceStatus==='COMPLETE'&&packet?.appearanceFielding?.fieldingStatus==='COMPLETE'&&packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent!==true;
+    const scoreCheck=packet?.appearanceFielding?.scoreSheets||{};
+    const scoreAccounted=Number(scoreCheck.originalCount)===11&&Number(scoreCheck.appearanceGameCount)===11&&Number(scoreCheck.unverifiedCount)===0&&Number(scoreCheck.verifiedCount)+Number(scoreCheck.sourceMismatchCount)===11;
+    const appearanceReady=packet?.appearanceFielding?.status==='COMPLETE'&&packet?.appearanceFielding?.appearanceStatus==='COMPLETE'&&packet?.appearanceFielding?.fieldingStatus==='COMPLETE'&&packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent!==true&&scoreAccounted;
     if(mode==='lineup'&&!appearanceReady){
       const err=new Error('APPEARANCE_EVIDENCE_NOT_READY');
       err.diagnostic={
