@@ -3,8 +3,8 @@
 import { buildCanonicalKey, canonicalFingerprint, readCanonicalResult, writeCanonicalResult } from './_canonical-cache.js';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
-const DEFAULT_MODEL = 'gemini-3.5-flash';
-const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash-lite';
+const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
+const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
 // FULL_LINEUP SECOND requests contain the validated CASE evidence plus the
 // persona's primary judgment and cross-examination context. The same evidence
