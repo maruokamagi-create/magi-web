@@ -280,7 +280,9 @@ export default async function handler(req, res) {
           error: phase + ' batch response failed persona validation',
           code: 'PERSONA_BATCH_VALIDATION_FAILED',
           persona: persona.toUpperCase(),
-          retryExhausted: false
+          retryExhausted: true,
+          retryFreshRequest: false,
+          retryScope: ''
         });
       }
       if (result.reviewRequested === true) {
@@ -288,7 +290,9 @@ export default async function handler(req, res) {
           error: phase + ' batch persona requires review',
           code: 'PERSONA_BATCH_REVIEW_REQUIRED',
           persona: persona.toUpperCase(),
-          retryExhausted: false
+          retryExhausted: true,
+          retryFreshRequest: false,
+          retryScope: ''
         });
       }
       out[persona] = result;
