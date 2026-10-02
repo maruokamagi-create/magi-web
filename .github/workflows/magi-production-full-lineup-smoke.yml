@@ -117,6 +117,11 @@ jobs:
             jq -e '.reviewRequested==false and .dataConflict==false and (.candidateBasis|length>0)' "/tmp/${p}-primary.json" >/dev/null
             same_roster "/tmp/${p}-primary.json"
             valid_lineup "/tmp/${p}-primary.json"
+            # Provider quota has repeatedly remained closed for the immediately
+            # following persona even after Retry-After. Pace successful persona
+            # calls as well so a valid full deliberation does not create its own
+            # burst against the provider project.
+            sleep 15
           done
 
           jq -n --slurpfile c /tmp/case.json --slurpfile m /tmp/melchior-primary.json --slurpfile b /tmp/balthasar-primary.json --slurpfile s /tmp/casper-primary.json '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > /tmp/cross-body.json
