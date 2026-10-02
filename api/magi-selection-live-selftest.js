@@ -65,8 +65,10 @@ export default async function handler(req,res){
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
-    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v17-dated-strategy-reference'
+    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v19-source-integrity-guard'
       && body.includes('標準オーダーをコード内の固定打順から決めない')
+      && body.includes('公式戦と練習試合の起用を混同しない')
+      && body.includes('コード内の固定ポジション案で実記録を上書きしない')
       && !body.includes('現在の上位5人の基準線')
       && !body.includes('橋向 結都は先発投手でない日は遊撃・6番')
       && !body.includes('武田 晴琉翔は左翼が第一適性')
