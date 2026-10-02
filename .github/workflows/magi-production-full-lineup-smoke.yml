@@ -67,6 +67,38 @@ jobs:
           }
           JSON
 
+          # Synthetic fielding matrix for schema/solver validation only.
+          # Every current player has evidence for every standard position, with
+          # a non-separable rank product so the maximum-weight 9-position
+          # assignment is unique for any selected nine. This is not a real
+          # player-position policy and must never be copied into production evidence.
+          jq --slurpfile roster /tmp/roster.json '
+            (["投","捕","一","二","三","遊","左","中","右"]) as $positions |
+            .evidence.appearanceFielding = {
+              status:"COMPLETE",
+              appearanceStatus:"COMPLETE",
+              fieldingStatus:"COMPLETE",
+              sourceIntegrity:{status:"COMPLETE",duplicateSourceContent:false},
+              players:[
+                range(0; ($roster[0]|length)) as $i |
+                {
+                  name:$roster[0][$i],
+                  appearance:{
+                    status:"COMPLETE",
+                    officialStartingPositions:(
+                      reduce range(0;9) as $j ({}; . + {($positions[$j]): (($i+1)*($j+1))})
+                    ),
+                    practiceFirstStartingPositions:{},
+                    startingPositions:{},
+                    recentStartingPositions:{}
+                  },
+                  fielding:{status:"COMPLETE",positions:{}}
+                }
+              ]
+            }
+          ' /tmp/case.json > /tmp/case.with-fielding.json
+          mv /tmp/case.with-fielding.json /tmp/case.json
+
           same_roster(){
             jq -S '.checkedPlayers|sort' "$1" > /tmp/actual-roster.json
             jq -S 'sort' /tmp/roster.json > /tmp/expected-roster.json
@@ -146,6 +178,10 @@ jobs:
             (.lineup|length==9) and (([.lineup[].name]|unique|length)==9) and
             ([.lineup[].name as $p | ($roster[0] | index($p)) != null] | all) and
             (([.lineup[].name]|index("宮嵜 翔")) == null) and
+            .fieldingStatus=="COMPLETE" and
+            (([.lineup[].position]|unique|length)==9) and
+            (([.lineup[].position]|sort)==(["一","三","中","二","右","左","投","捕","遊"]|sort)) and
+            ([.lineup[].positionEvidence | ([.officialStarts,.practiceFirstStarts,.totalStarts,.recentStarts,.fieldingAppearances] | any(.>0))] | all) and
             (.personaLineups|keys|length==3) and
             (.crossDiscussion.challenges.melchior|length>0) and
             (.crossDiscussion.challenges.balthasar|length>0) and
