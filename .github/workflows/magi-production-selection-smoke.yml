@@ -68,7 +68,10 @@ jobs:
           }
           JSON
 
-          # FULL one-provider-call experiment was retired after production proved\n          # it cannot reliably return the complete structured deliberation.\n\n          same_roster(){
+          # FULL one-provider-call experiment was retired after production proved
+          # it cannot reliably return the complete structured deliberation.
+
+          same_roster(){
             local file="$1"
             jq -S '.checkedPlayers|sort' "$file" > /tmp/actual-roster.json
             jq -S 'sort' /tmp/roster.json > /tmp/expected-roster.json
