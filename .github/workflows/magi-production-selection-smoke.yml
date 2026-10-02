@@ -131,7 +131,8 @@ jobs:
             echo "MAGI PRIMARY BATCH FAILURE attempt=$batch_attempt status=$batch_status" >&2
             jq -c '{code,error,persona,retryExhausted,retryFreshRequest,retryScope,diagnostic}' /tmp/primary-batch.json >&2 2>/dev/null || true
             grep -iE '^(retry-after|x-magi-[^:]+):' /tmp/primary-batch.headers >&2 || true
-            [[ "$batch_status" =~ ^(408|429|500|502|503|504)$ && "$batch_attempt" -lt 6 ]] || exit 22
+            batch_retryable="$(jq -r '.retryFreshRequest == true and .retryExhausted == false' /tmp/primary-batch.json 2>/dev/null || echo false)"
+            [[ "$batch_retryable" = true && "$batch_status" =~ ^(408|429|500|502|503|504)$ && "$batch_attempt" -lt 6 ]] || exit 22
             batch_wait="$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {gsub("\\r","",$2); print $2; exit}' /tmp/primary-batch.headers)"
             [[ "$batch_wait" =~ ^[0-9]+$ ]] || batch_wait=15
             (( batch_wait > 60 )) && batch_wait=60
