@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { fetchDriveFileContent, getDriveFileMetadata, listMagiDriveTree } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { evidenceSource } from './_evidence-source-map.js';
@@ -52,6 +53,35 @@ function scoreSheetKey(file){
   }else opponent=parts.join('_');
   return {date:`${m[1]}-${m[2]}-${m[3]}`,opponent,gameNo,stage,category};
 }
+function appearanceIntegrity(rows){
+  const groups=new Map();
+  for(const row of rows){
+    const date=dateKey(pick(row,['開催日','対戦日','日付']));
+    const opponent=opponentName(row),label=gameLabel(row);
+    if(!date||!opponent)continue;
+    const key=`${date}|${opponent}|${label}`;
+    const group=groups.get(key)||{date,opponent,label,rowCount:0,orders:[]};
+    group.rowCount+=1;
+    const order=numericOrder(row['打順']);
+    if(order!==null)group.orders.push(order);
+    groups.set(key,group);
+  }
+  const games=[...groups.values()].map(group=>{
+    const unique=[...new Set(group.orders)].sort((a,b)=>a-b);
+    const complete=group.orders.length===9&&unique.length===9&&unique.every((v,i)=>v===i+1);
+    return {...group,uniqueOrders:unique,complete};
+  });
+  const incomplete=games.filter(game=>!game.complete);
+  return {
+    status:games.length>0&&incomplete.length===0?'COMPLETE':'PARTIAL',
+    gameCount:games.length,
+    completeGameCount:games.length-incomplete.length,
+    numericBattingOrderRows:games.reduce((sum,game)=>sum+game.orders.length,0),
+    incompleteGames:incomplete.map(({date,opponent,label,rowCount,orders,uniqueOrders})=>({date,opponent,label,rowCount,numericOrderRows:orders.length,uniqueOrders})),
+    rule:'出場詳細CSVは各試合で打順1〜9が各1件ずつ存在して初めて、スタメン/途中出場・実打順のEvidenceとしてCOMPLETE扱いする。欠損時は0件起用と解釈せずPARTIALにする。'
+  };
+}
+
 function appearanceGameKeys(rows){
   const out=[];const seen=new Set();
   for(const row of rows){
@@ -163,7 +193,12 @@ async function readCsvById(id,expectedName){
   const meta=await getDriveFileMetadata(id);
   if(text(meta.name)!==expectedName)throw new Error(`Drive ID ${id} のファイル名が想定と異なります: ${text(meta.name)}`);
   const fetched=await fetchDriveFileContent(meta);
-  return {meta,rows:parseCsv(decodeCsv(fetched.buffer)).filter(r=>text(r['選手名']))};
+  const buffer=fetched.buffer;
+  return {
+    meta,
+    digest:createHash('sha256').update(buffer).digest('hex'),
+    rows:parseCsv(decodeCsv(buffer)).filter(r=>text(r['選手名']))
+  };
 }
 
 export async function buildAppearanceFieldingEvidence(){
@@ -172,19 +207,37 @@ export async function buildAppearanceFieldingEvidence(){
     readCsvById(FIELDING_FILE_ID,'守備詳細2026-2027.csv')
   ]);
   const scoreSheets=await verifyScoreSheetOriginals(appearance.rows);
+  const integrity=appearanceIntegrity(appearance.rows);
+  const duplicateSourceContent=appearance.meta.id!==fielding.meta.id&&appearance.digest===fielding.digest;
+  const appearanceUsable=integrity.status==='COMPLETE'&&!duplicateSourceContent;
   const players=CURRENT_ROSTER.map(name=>({
     name,
-    appearance:aggregateAppearance(name,appearance.rows),
-    fielding:aggregateFielding(name,fielding.rows)
+    appearance:appearanceUsable
+      ? {status:'COMPLETE',...aggregateAppearance(name,appearance.rows)}
+      : {status:'UNAVAILABLE',reason:duplicateSourceContent?'DUPLICATE_SOURCE_CONTENT':'INCOMPLETE_BATTING_ORDER_ROWS'},
+    fielding:{status:'COMPLETE',...aggregateFielding(name,fielding.rows)}
   }));
+  const issues=[];
+  if(duplicateSourceContent)issues.push('出場詳細CSVと守備詳細CSVの内容SHA-256が一致しており、別正本として扱えない。');
+  if(integrity.status!=='COMPLETE')issues.push(`出場詳細CSVの打順1〜9が揃う試合は ${integrity.completeGameCount}/${integrity.gameCount}。スタメン/途中出場・実打順は未確認扱い。`);
   return {
-    status:'COMPLETE',
+    status:issues.length?'PARTIAL':'COMPLETE',
+    appearanceStatus:appearanceUsable?'COMPLETE':'UNAVAILABLE',
+    fieldingStatus:'COMPLETE',
+    integrity,
+    sourceIntegrity:{
+      status:duplicateSourceContent?'SOURCE_MISMATCH':'COMPLETE',
+      duplicateSourceContent,
+      appearanceDigest:appearance.digest,
+      fieldingDigest:fielding.digest
+    },
+    issues,
     sources:[
       {id:appearance.meta.id,name:appearance.meta.name,mimeType:appearance.meta.mimeType,modifiedTime:appearance.meta.modifiedTime,priority:'PRIMARY_APPEARANCE_DETAIL'},
       {id:fielding.meta.id,name:fielding.meta.name,mimeType:fielding.meta.mimeType,modifiedTime:fielding.meta.modifiedTime,priority:'PRIMARY_FIELDING_DETAIL'}
     ],
     scoreSheets,
     players,
-    rule:'出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。公式戦と練習試合を大会名で分離し、練習試合だけ第1試合（奇数＝公式戦想定のレギュラー起用）と第2試合（偶数＝チャレンジ起用）を分ける。打順1〜9の行をスタメン、打順空欄を途中出場として扱い、投手表示用のP行は重複出場として数えない。守備位置が「遊>投」のように連結される場合、スタメン守備位置は先頭の位置だけを採用し、その後の守備移動は守備詳細CSVの実守備実績として別に数える。'
+    rule:'出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。ただし打順1〜9の構造欠損や守備詳細との内容重複を検出した場合はPARTIALとして、0件起用や実打順を推測しない。守備詳細CSVの実守備位置は別系統の実績として利用できるが、壊れた出場詳細の代替としてスタメン/途中出場を推定しない。'
   };
 }
