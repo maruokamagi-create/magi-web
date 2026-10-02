@@ -26,7 +26,9 @@ jobs:
             .evidence.fieldingStatus=="COMPLETE" and
             .evidence.sourceIntegrityStatus=="COMPLETE" and
             .evidence.duplicateSourceContent==false and
+            .evidence.scoreSheetOriginalCount==11 and
             .evidence.scoreSheetAppearanceGameCount==11 and
+            .evidence.scoreSheetUnverifiedCount==0 and
             ((.evidence.scoreSheetVerifiedCount + .evidence.scoreSheetSourceMismatchCount)==11) and
             .evidence.strategySnapshotCurrentPolicy==false and
             .finalStatus=="LINEUP_RESULT" and
