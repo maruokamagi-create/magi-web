@@ -16,14 +16,59 @@ const BATCH_SCHEMA = {
   required: PERSONAS
 };
 
-const FULL_BATCH_SCHEMA = {
+const FULL_PERSONA_SCHEMA = {
   type: 'OBJECT',
   properties: {
-    primary: BATCH_SCHEMA,
-    second: BATCH_SCHEMA
+    checkedPlayers: { type: 'ARRAY', items: { type: 'STRING' } },
+    candidatePlayers: { type: 'ARRAY', items: { type: 'STRING' } },
+    candidateBasis: { type: 'STRING' },
+    facts: { type: 'ARRAY', items: { type: 'STRING' } },
+    confidence: { type: 'STRING', enum: ['HIGH','MEDIUM','LOW'] },
+    judgment: { type: 'STRING', enum: ['GREEN','BLUE','YELLOW','RED'] },
+    primaryReason: { type: 'STRING' },
+    publicStatement: { type: 'STRING' },
+    warnings: { type: 'ARRAY', items: { type: 'STRING' } },
+    dataConflict: { type: 'BOOLEAN' },
+    reviewRequested: { type: 'BOOLEAN' },
+    reviewReason: { type: 'STRING' },
+    changedFromPrimary: { type: 'BOOLEAN' },
+    changeReason: { type: 'STRING' }
   },
+  required: ['checkedPlayers','candidatePlayers','candidateBasis','facts','confidence','judgment','primaryReason','publicStatement','warnings','dataConflict','reviewRequested','reviewReason','changedFromPrimary','changeReason']
+};
+const FULL_PHASE_SCHEMA = {
+  type: 'OBJECT',
+  properties: Object.fromEntries(PERSONAS.map(persona => [persona, FULL_PERSONA_SCHEMA])),
+  required: PERSONAS
+};
+const FULL_BATCH_SCHEMA = {
+  type: 'OBJECT',
+  properties: { primary: FULL_PHASE_SCHEMA, second: FULL_PHASE_SCHEMA },
   required: ['primary','second']
 };
+
+function inflateFullDraft(raw, persona, phase) {
+  return {
+    persona: persona.toUpperCase(),
+    phase,
+    checkedPlayers: raw?.checkedPlayers || [],
+    candidatePlayers: raw?.candidatePlayers || [],
+    candidateBasis: raw?.candidateBasis || '',
+    facts: raw?.facts || [],
+    analysis: [],
+    prediction: [],
+    confidence: raw?.confidence || 'LOW',
+    judgment: raw?.judgment || 'YELLOW',
+    primaryReason: raw?.primaryReason || '',
+    publicStatement: raw?.publicStatement || '',
+    warnings: raw?.warnings || [],
+    dataConflict: raw?.dataConflict === true,
+    reviewRequested: raw?.reviewRequested === true,
+    reviewReason: raw?.reviewReason || '',
+    changedFromPrimary: raw?.changedFromPrimary === true,
+    changeReason: raw?.changeReason || ''
+  };
+}
 
 function batchSystemInstruction(phase) {
   if (phase === 'FULL') {
@@ -151,7 +196,7 @@ export default async function handler(req, res) {
       }
       const primary = {};
       for (const persona of PERSONAS) {
-        const finalized = finalizePersonaDraft(body, persona, 'PRIMARY', rawFull.primary?.[persona]);
+        const finalized = finalizePersonaDraft(body, persona, 'PRIMARY', inflateFullDraft(rawFull.primary?.[persona], persona, 'PRIMARY'));
         if (!rawFull.primary?.[persona] || finalized.guardIssues.length || finalized.result.reviewRequested === true) {
           return sendJson(res, 503, { error:'FULL PRIMARY failed validation', code:'PERSONA_FULL_PRIMARY_VALIDATION_FAILED', persona:persona.toUpperCase(), retryExhausted:true });
         }
@@ -177,7 +222,7 @@ export default async function handler(req, res) {
             independenceRule:'他の2人格と同じ結論に合わせる必要はない。違いを作るためだけに変えてもいけない。一次案とEvidenceを自分の専門領域で再検証し、少なくとも1つの別案を比較したうえで、その案を採るか退けるかを自分で決めること。'
           }
         };
-        const finalized = finalizePersonaDraft(secondBody, persona, 'SECOND', rawFull.second?.[persona]);
+        const finalized = finalizePersonaDraft(secondBody, persona, 'SECOND', inflateFullDraft(rawFull.second?.[persona], persona, 'SECOND'));
         if (!rawFull.second?.[persona] || finalized.guardIssues.length || finalized.result.reviewRequested === true) {
           return sendJson(res, 503, { error:'FULL SECOND failed validation against canonical CROSS context', code:'PERSONA_FULL_SECOND_VALIDATION_FAILED', persona:persona.toUpperCase(), retryExhausted:true });
         }
