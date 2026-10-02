@@ -11,6 +11,7 @@ const text=v=>String(v??'').trim();
 const SCORE_SOURCE=evidenceSource('CURRENT_SCORE_SHEETS');
 const SCORE_FILE_DEFS=Array.isArray(SCORE_SOURCE?.files)?SCORE_SOURCE.files:[];
 const SCORE_TEXT_CACHE=new Map();
+let SCORE_ORIGINALS_PROMISE=null;
 const SCORE_POSITION_LABEL=Object.freeze({'1':'投','2':'捕','3':'一','4':'二','5':'三','6':'遊','7':'左','8':'中','9':'右',DH:'DH',PH:'PH',PR:'PR'});
 
 function pick(row,names){for(const name of names){const value=text(row?.[name]);if(value)return value;}return'';}
@@ -60,7 +61,8 @@ function scoreSourcePath(meta,def){
 }
 async function loadCanonicalScoreSheetOriginals(){
   if(SCORE_FILE_DEFS.length!==11)throw new Error('canonical_score_sheet_count_mismatch:'+SCORE_FILE_DEFS.length);
-  return Promise.all(SCORE_FILE_DEFS.map(async def=>{
+  if(SCORE_ORIGINALS_PROMISE)return SCORE_ORIGINALS_PROMISE;
+  SCORE_ORIGINALS_PROMISE=Promise.all(SCORE_FILE_DEFS.map(async def=>{
     const meta=await getDriveFileMetadata(def.id);
     if(text(meta.mimeType)!=='application/pdf')throw new Error('score_sheet_mime_mismatch:'+def.id+':'+text(meta.mimeType));
     const actual=text(meta.name).normalize('NFKC').replace(/\.pdf$/i,'');
@@ -68,21 +70,25 @@ async function loadCanonicalScoreSheetOriginals(){
     if(actual!==expected)throw new Error('score_sheet_name_mismatch:'+def.id+':'+actual);
     return {def,key:scoreKeyFromDef(def),file:{...meta,path:scoreSourcePath(meta,def)}};
   }));
+  try{return await SCORE_ORIGINALS_PROMISE;}catch(error){SCORE_ORIGINALS_PROMISE=null;throw error;}
 }
 async function scoreSheetText(original){
   const meta=original?.file||{};
   const cacheKey=String(meta.id)+'|'+String(meta.modifiedTime||'')+'|'+String(meta.size||'');
   const cached=SCORE_TEXT_CACHE.get(cacheKey);
-  if(cached)return cached;
-  const response=await googleDriveFetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(meta.id)+'?alt=media&supportsAllDrives=true');
-  if(!response.ok)throw new Error('score_sheet_fetch_failed:'+meta.id+':'+response.status);
-  const buffer=Buffer.from(await response.arrayBuffer());
-  const parsed=await pdfParse(buffer);
-  const body=String(parsed?.text||'').normalize('NFKC');
-  if(!body.includes('丸岡中'))throw new Error('score_sheet_team_text_missing:'+meta.id);
-  SCORE_TEXT_CACHE.set(cacheKey,body);
+  if(cached)return await cached;
+  const task=(async()=>{
+    const response=await googleDriveFetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(meta.id)+'?alt=media&supportsAllDrives=true');
+    if(!response.ok)throw new Error('score_sheet_fetch_failed:'+meta.id+':'+response.status);
+    const buffer=Buffer.from(await response.arrayBuffer());
+    const parsed=await pdfParse(buffer);
+    const body=String(parsed?.text||'').normalize('NFKC');
+    if(!body.includes('丸岡中'))throw new Error('score_sheet_team_text_missing:'+meta.id);
+    return body;
+  })();
+  SCORE_TEXT_CACHE.set(cacheKey,task);
   if(SCORE_TEXT_CACHE.size>16)SCORE_TEXT_CACHE.delete(SCORE_TEXT_CACHE.keys().next().value);
-  return body;
+  try{return await task;}catch(error){SCORE_TEXT_CACHE.delete(cacheKey);throw error;}
 }
 function scoreStarterMatches(body){
   const matches=[];
