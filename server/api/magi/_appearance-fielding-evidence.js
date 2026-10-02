@@ -259,10 +259,7 @@ function sameIdentity(a,b){
   if(a.category==='OFFICIAL')return !a.stage||!b.stage||a.stage===b.stage;
   return true;
 }
-async function verifyScoreSheetOriginals(appearanceRows){
-  const tree=await listMagiDriveTree({maxItems:2500,maxDepth:14,fresh:false});
-  const files=tree.filter(x=>text(x.path).includes(SCORE_ROOT)&&/スコア原本(?:\.pdf)?$/i.test(text(x.name))&&text(x.mimeType)==='application/pdf');
-  const originals=files.map(file=>({file,key:scoreSheetKey(file)})).filter(x=>x.key);
+async function verifyScoreSheetOriginals(appearanceRows,originals){
   const games=appearanceGameKeys(appearanceRows);
   const verified=[],sourceMismatches=[],unverified=[];
   for(const game of games){
@@ -285,6 +282,7 @@ async function verifyScoreSheetOriginals(appearanceRows){
   const status=(sourceMismatches.length||unverified.length)?'PARTIAL':'COMPLETE';
   return {
     status,
+    recoveryUsed:false,
     sourceSet:{folderId:SCORE_SOURCE.folderId,officialFolderId:SCORE_SOURCE.officialFolderId,practiceFolderId:SCORE_SOURCE.practiceFolderId,authority:SCORE_SOURCE.authority,independentVote:false},
     originalCount:originals.length,
     officialOriginalCount:originals.filter(x=>x.key.category==='OFFICIAL').length,
@@ -296,8 +294,28 @@ async function verifyScoreSheetOriginals(appearanceRows){
     verified:verified.map(x=>({game:x.game,source:{id:x.source.id,name:x.source.name,path:x.source.path}})),
     sourceMismatches,
     unverified,
-    sources:originals.map(x=>({id:x.file.id,name:x.file.name,path:x.file.path,mimeType:x.file.mimeType,modifiedTime:x.file.modifiedTime,category:x.key.category,priority:'PRIMARY_SCORE_SHEET_VERIFICATION'})),
+    sources:originals.map(x=>({id:x.file.id,name:x.file.name,path:x.file.path,mimeType:x.file.mimeType,modifiedTime:x.file.modifiedTime,category:x.key.category,priority:'PRIMARY_SCORE_SHEET_VERIFICATION',independentVote:false})),
     rule:'スコア原本は出場詳細CSVと試合結果の一次照合資料。CSVとPDFを同じ試合の独立Evidenceとして二重加点しない。開催日・公式戦/練習試合・対戦相手・公式戦ラウンドまたは練習試合番号で対応確認し、不一致はSOURCE_MISMATCH/UNVERIFIEDとして残して推測で補完しない。'
+  };
+}
+function recoveredScoreSheetEvidence(originals,recovery){
+  return {
+    status:recovery.status==='COMPLETE'?'RECOVERED':'PARTIAL',
+    recoveryUsed:true,
+    sourceSet:{folderId:SCORE_SOURCE.folderId,officialFolderId:SCORE_SOURCE.officialFolderId,practiceFolderId:SCORE_SOURCE.practiceFolderId,authority:SCORE_SOURCE.authority,independentVote:false},
+    originalCount:originals.length,
+    officialOriginalCount:originals.filter(x=>x.key.category==='OFFICIAL').length,
+    practiceOriginalCount:originals.filter(x=>x.key.category==='PRACTICE').length,
+    appearanceGameCount:recovery.gameCount,
+    verifiedCount:recovery.completeGameCount,
+    sourceMismatchCount:0,
+    unverifiedCount:recovery.gameCount-recovery.completeGameCount,
+    verified:[],
+    sourceMismatches:[],
+    unverified:recovery.games.filter(game=>!game.battingComplete||!game.participantMatch).map(game=>({game:game.game,reason:'SCORE_SHEET_RECOVERY_INCOMPLETE',battingComplete:game.battingComplete,participantMatch:game.participantMatch,recoveredParticipantCount:game.recoveredParticipantCount,fieldingParticipantCount:game.fieldingParticipantCount})),
+    recoveryGames:recovery.games,
+    sources:originals.map(x=>({id:x.file.id,name:x.file.name,path:x.file.path,mimeType:x.file.mimeType,modifiedTime:x.file.modifiedTime,category:x.key.category,priority:'PRIMARY_APPEARANCE_RECOVERY',independentVote:false})),
+    rule:recovery.rule
   };
 }
 
