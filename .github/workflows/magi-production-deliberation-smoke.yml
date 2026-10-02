@@ -48,9 +48,25 @@ jobs:
             else
               jq -n --arg p "$persona" --slurpfile c /tmp/case.json --slurpfile s "$primary_self" --slurpfile x "$cross_file" '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$s[0],crossExamination:$x[0]}' > /tmp/body.json
             fi
-            curl -L --fail --retry 2 --retry-delay 3 -sS \
-              -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
-              -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile"
+            local headers="${outfile}.headers" status attempt retryable retry_after
+            for attempt in 1 2 3 4; do
+              status="$(curl -L -sS -D "$headers" -w '%{http_code}' \
+                -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
+                -d @/tmp/body.json "$BASE/api/magi/persona" -o "$outfile")"
+              if [[ "$status" =~ ^2 ]]; then break; fi
+              echo "MAGI DELIBERATION PERSONA FAILURE persona=$persona phase=$phase attempt=$attempt status=$status" >&2
+              jq -c '{code,error,retryExhausted,retryFreshRequest,retryScope,diagnostic}' "$outfile" >&2 2>/dev/null || true
+              grep -iE '^(retry-after|x-magi-[^:]+):' "$headers" >&2 || true
+              retryable="$(jq -r '.retryFreshRequest == true and .retryExhausted == false' "$outfile" 2>/dev/null || echo false)"
+              [[ "$retryable" = true && "$attempt" -lt 4 ]] || return 22
+              retry_after="$(awk 'BEGIN{IGNORECASE=1} /^retry-after:/ {gsub("\\r","",$2); print $2; exit}' "$headers")"
+              [[ "$retry_after" =~ ^[0-9]+$ ]] || retry_after=15
+              (( retry_after > 60 )) && retry_after=60
+              (( retry_after < 15 )) && retry_after=15
+              echo "MAGI DELIBERATION PERSONA retry wait=${retry_after}s" >&2
+              sleep "$retry_after"
+            done
+            [[ "$status" =~ ^2 ]] || return 22
             cat "$outfile"; echo
           }
 
