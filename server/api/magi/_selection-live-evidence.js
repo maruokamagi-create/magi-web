@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v18-structured-lineup-usage';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v19-source-integrity-guard';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -282,6 +282,19 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
           return `${p.name}：スタメン ${a.starts||0}（公式戦 ${a.officialStarts||0} / 練習第1試合 ${a.practiceFirstStarts||0} / 練習第2試合 ${a.practiceSecondStarts||0}） / 途中出場 ${a.substitutions||0} / 打順 ${orders} / スタメン守備 ${starts} / 実守備 ${field}`;
         })
       );
+    }else if(usageEvidence?.status==='PARTIAL'){
+      lines.push(
+        `【実起用・守備Evidence】PARTIAL：${(usageEvidence.issues||[]).join(' / ')||'出場詳細CSVの完全性を確認できない。'}`,
+        '【重要】出場詳細がPARTIALのため、スタメン回数・途中出場回数・実打順を0件として解釈しない。守備詳細CSVで確認できる実守備位置だけを補助Evidenceとして使用する。',
+        usageEvidence.scoreSheets?.status
+          ? `【スコア原本照合】${usageEvidence.scoreSheets.status}：対応確認 ${usageEvidence.scoreSheets.verifiedCount||0}/${usageEvidence.scoreSheets.appearanceGameCount||0} 試合、SOURCE_MISMATCH ${usageEvidence.scoreSheets.sourceMismatchCount||0}、UNVERIFIED ${usageEvidence.scoreSheets.unverifiedCount||0}。`
+          : '【スコア原本照合】UNAVAILABLE',
+        ...usageEvidence.players.map(p=>{
+          const f=p.fielding||{};
+          const field=Object.entries(f.positions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'守備記録なし';
+          return `${p.name}：出場詳細は未確認 / 実守備 ${field}`;
+        })
+      );
     }else{
       lines.push('【実起用・守備Evidence】取得不可。出場実績・守備実績を推測で補わない。');
     }
@@ -381,8 +394,13 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }:{status:wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE',originalCount:0,officialOriginalCount:0,practiceOriginalCount:0,appearanceGameCount:0,verifiedCount:0,sourceMismatchCount:0,unverifiedCount:0,sourceMismatches:[],unverified:[]};
   const appearanceFielding={
     status:usageEvidence?.status|| (wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE'),
+    appearanceStatus:usageEvidence?.appearanceStatus||'',
+    fieldingStatus:usageEvidence?.fieldingStatus||'',
+    integrity:usageEvidence?.integrity||null,
+    sourceIntegrity:usageEvidence?.sourceIntegrity||null,
+    issues:Array.isArray(usageEvidence?.issues)?usageEvidence.issues:[],
     scoreSheets:scoreSheetVerification,
-    players:usageEvidence?.status==='COMPLETE'&&Array.isArray(usageEvidence.players)?usageEvidence.players:[]
+    players:Array.isArray(usageEvidence?.players)?usageEvidence.players:[]
   };
   const normalizedDates=normalizedObservationEvidence?.status==='COMPLETE'
     ? (normalizedObservationEvidence.observations||[]).map(o=>text(o.recordedAt)).filter(Boolean)
@@ -390,8 +408,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   const sources=[];
   if(strategyEvidence?.source) sources.push({...strategyEvidence.source,season:'current',priority:'DATED_STRATEGY_REFERENCE',effectiveAt:strategyEvidence.effectiveAt,currentPolicy:false});
-  if(usageEvidence?.status==='COMPLETE'){
-    sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
+  if(usageEvidence&&['COMPLETE','PARTIAL'].includes(usageEvidence.status)){
+    sources.push(...(usageEvidence.sources||[]).map(source=>({...source,season:'current'})));
     if(Array.isArray(usageEvidence.scoreSheets?.sources)) sources.push(...usageEvidence.scoreSheets.sources.map(source=>({...source,season:'current',independentVote:false})));
   }
   if(normalizedObservationEvidence?.status==='COMPLETE' && normalizedObservationEvidence.source) sources.push({...normalizedObservationEvidence.source,season:'current',priority:'NORMALIZED_OBSERVATION'});
