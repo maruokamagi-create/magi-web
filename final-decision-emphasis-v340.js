@@ -48,7 +48,7 @@ function parseLineup(text){
  let m;
  while((m=re.exec(head))){
    const no=Number(m[1]);
-   const name=String(m[2]||'').trim().replace(/[。．]+$/,'');
+   const name=String(m[2]||'').trim().replace(/[。．]+$/,'').replace(/[（(](?:投手|捕手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼)[）)]$/,'').trim();
    if(no>=1&&no<=9&&name)matches.push({no,name});
  }
  const unique=[];const seen=new Set();
