@@ -24,8 +24,10 @@ jobs:
             .evidence.appearanceFieldingStatus=="COMPLETE" and
             .evidence.appearanceStatus=="COMPLETE" and
             .evidence.fieldingStatus=="COMPLETE" and
-            .evidence.sourceIntegrityStatus=="COMPLETE" and
-            .evidence.duplicateSourceContent==false and
+            (
+              (.evidence.sourceIntegrityStatus=="COMPLETE" and .evidence.appearanceSourceMode=="CURRENT_CSV" and .evidence.duplicateSourceContent==false) or
+              (.evidence.sourceIntegrityStatus=="RECOVERED_FROM_SCORE_SHEETS" and .evidence.appearanceSourceMode=="SCORE_SHEET_RECOVERY" and .evidence.recoveryStatus=="COMPLETE" and .evidence.recoveryCompleteGameCount==11 and .evidence.duplicateSourceContent==true)
+            ) and
             .evidence.scoreSheetOriginalCount==11 and
             .evidence.scoreSheetAppearanceGameCount==11 and
             .evidence.scoreSheetUnverifiedCount==0 and
