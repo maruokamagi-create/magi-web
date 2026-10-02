@@ -8,6 +8,7 @@ export const EVIDENCE_SOURCES=Object.freeze({
   CURRENT_PITCHING_DETAIL:Object.freeze({id:'12Lw2EfQFktx57z_AEVcteFdO4ayD197C',type:'LIVE_DATA',authority:'PITCHING_DETAIL'}),
   CURRENT_FIELDING_DETAIL:Object.freeze({id:'1gYLconGQoYjFf4JMFL6o5J8P8hcPjQ2Z',type:'LIVE_DATA',authority:'FIELDING_DETAIL'}),
   CURRENT_APPEARANCE_DETAIL:Object.freeze({id:'1qjCyNhl49x7DYwa6FajUsvQJ1DkSLx5V',type:'LIVE_DATA',authority:'APPEARANCE_DETAIL'}),
+  CURRENT_SCORE_SHEETS:Object.freeze({type:'PRIMARY_SOURCE_SET',authority:'SCORE_SHEET_ORIGINAL',folderId:'197eEgXoBnJWof82LWV6NtJxwEkfjK7Qr',officialFolderId:'1RWk4Y1kpN-zVCT_QC0TKMSWwhIt-oEfy',practiceFolderId:'1Q0bxMJQSQaH5ZxF2XwdRFA1kReFUGEUX',season:'2026-2027',independentVote:false,role:'VERIFY_APPEARANCE_AND_GAME_RESULT'}),
   COACH_OBSERVATIONS:Object.freeze({id:'15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM',type:'OBSERVATION',authority:'COACH_OBSERVATION'}),
   PARENT_OBSERVATIONS:Object.freeze({id:'1HlLRLrq17nav68Ko-WcULHJ1pxu98imtJLbhwrz723g',type:'OBSERVATION',authority:'PARENT_OBSERVATION'}),
   NORMALIZED_OBSERVATIONS:Object.freeze({id:'1Cs5cQUJYEC1Ta7OQXi5hUWnKkQHVOHByRiWtwKsC0uE',type:'OBSERVATION',authority:'NORMALIZED_OBSERVATION',independentVote:false}),
