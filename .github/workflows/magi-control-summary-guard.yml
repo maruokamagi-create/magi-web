@@ -47,7 +47,7 @@ jobs:
           grep -Fq "summarySection('決め手'" chat-ui-canonical-v387.js
           grep -Fq "summarySection('最大の争点'" chat-ui-canonical-v387.js
           grep -Fq '少数意見：${model.minorityPersona}' chat-ui-canonical-v387.js
-          grep -Fq 'fullLineupNeverRendersLegacyControlTargetRows:true' chat-ui-canonical-v387.js
+          grep -Fq "if(isDirectDebate(hydrated))renderFullLineup(body,items,hydrated);else renderGeneric(body,items,hydrated)" chat-ui-canonical-v387.js
           grep -Fq "if(!el||el.querySelector('.magiVoteState'))return" result-layout-v189.js
           grep -Fq 'structuredConditions()' selection-polish-v218.js
 
