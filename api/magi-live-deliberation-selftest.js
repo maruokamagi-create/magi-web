@@ -158,7 +158,10 @@ export default async function handler(req,res){
     const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
     const scoreCheck=packet?.appearanceFielding?.scoreSheets||{};
     const scoreAccounted=Number(scoreCheck.originalCount)===11&&Number(scoreCheck.appearanceGameCount)===11&&Number(scoreCheck.unverifiedCount)===0&&Number(scoreCheck.verifiedCount)+Number(scoreCheck.sourceMismatchCount)===11;
-    const appearanceReady=packet?.appearanceFielding?.status==='COMPLETE'&&packet?.appearanceFielding?.appearanceStatus==='COMPLETE'&&packet?.appearanceFielding?.fieldingStatus==='COMPLETE'&&packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent!==true&&scoreAccounted;
+    const appearanceSourceMode=packet?.appearanceFielding?.appearanceSourceMode||'';
+    const sourceIntegrityStatus=packet?.appearanceFielding?.sourceIntegrity?.status||'';
+    const sourceReady=sourceIntegrityStatus==='COMPLETE'||(sourceIntegrityStatus==='RECOVERED_FROM_SCORE_SHEETS'&&appearanceSourceMode==='SCORE_SHEET_RECOVERY'&&packet?.appearanceFielding?.recovery?.status==='COMPLETE');
+    const appearanceReady=packet?.appearanceFielding?.status==='COMPLETE'&&packet?.appearanceFielding?.appearanceStatus==='COMPLETE'&&packet?.appearanceFielding?.fieldingStatus==='COMPLETE'&&sourceReady&&scoreAccounted;
     if(mode==='lineup'&&!appearanceReady){
       const err=new Error('APPEARANCE_EVIDENCE_NOT_READY');
       err.diagnostic={
@@ -166,6 +169,8 @@ export default async function handler(req,res){
         appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'UNAVAILABLE',
         fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'UNAVAILABLE',
         sourceIntegrity:packet?.appearanceFielding?.sourceIntegrity?.status||'UNAVAILABLE',
+        appearanceSourceMode:packet?.appearanceFielding?.appearanceSourceMode||'UNAVAILABLE',
+        recoveryStatus:packet?.appearanceFielding?.recovery?.status||'NOT_USED',
         duplicateSourceContent:Boolean(packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent),
         integrityStatus:packet?.appearanceFielding?.integrity?.status||'UNAVAILABLE',
         scoreSheetVerificationStatus:packet?.scoreSheetVerificationStatus||'UNAVAILABLE',
@@ -193,6 +198,9 @@ export default async function handler(req,res){
       appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',
       fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',
       sourceIntegrityStatus:packet?.appearanceFielding?.sourceIntegrity?.status||'',
+      appearanceSourceMode:packet?.appearanceFielding?.appearanceSourceMode||'',
+      recoveryStatus:packet?.appearanceFielding?.recovery?.status||'',
+      recoveryCompleteGameCount:Number(packet?.appearanceFielding?.recovery?.completeGameCount)||0,
       duplicateSourceContent:Boolean(packet?.appearanceFielding?.sourceIntegrity?.duplicateSourceContent),
       scoreSheetVerificationStatus:packet?.scoreSheetVerificationStatus||'',
       scoreSheetOriginalCount:Number(packet?.appearanceFielding?.scoreSheets?.originalCount)||0,
