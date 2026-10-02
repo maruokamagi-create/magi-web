@@ -13,6 +13,21 @@ function persona(persona,order){return {persona,phase:'SECOND',checkedPlayers:CU
 const SECOND={melchior:persona('MELCHIOR',L1),balthasar:persona('BALTHASAR',L2),casper:persona('CASPER',L3)};
 const CROSS={agreement:['中軸候補の一部は共通する。'],disagreement:['1番と2番の並びで意見が分かれる。'],domainConflicts:[],warnings:[],informationGaps:[],challenges:{melchior:['バルタザールの1番案は現在データで裏付けられるか。'],balthasar:['メルキオールの並びは得点の流れとしてどう勝ちに行く。'],casper:['二人の案で役割集中は起きないか。']}};
 
+const SYNTHETIC_POSITIONS=['投','捕','一','二','三','遊','左','中','右'];
+const SYNTHETIC_FIELDING_CASE={evidence:{appearanceFielding:{
+  status:'COMPLETE',
+  players:L1.map((name,i)=>({
+    name,
+    appearance:{
+      officialStartingPositions:{[SYNTHETIC_POSITIONS[i]]:1},
+      practiceFirstStartingPositions:{},
+      startingPositions:{[SYNTHETIC_POSITIONS[i]]:1},
+      recentStartingPositions:{[SYNTHETIC_POSITIONS[i]]:1}
+    },
+    fielding:{positions:{[SYNTHETIC_POSITIONS[i]]:1}}
+  }))
+}}};
+
 test('L01 full lineup wording is detected',()=>{
   assert.equal(isFullLineupQuestion('ベストオーダー組んで'),true);
   assert.equal(isFullLineupQuestion('次の試合の打順どうする？'),true);
@@ -36,10 +51,12 @@ test('L03 consensus lineup preserves nine unique current players',()=>{
 });
 
 test('L04 final result exposes full lineup and three-sage cross discussion',()=>{
-  const result=buildFullLineupResult(SECOND,CROSS);
+  const result=buildFullLineupResult(SECOND,CROSS,SYNTHETIC_FIELDING_CASE);
   assert.equal(result.mode,'FULL_LINEUP');
   assert.equal(result.status,'LINEUP_RESULT');
+  assert.equal(result.fieldingStatus,'COMPLETE');
   assert.equal(result.lineup.length,9);
+  assert.equal(new Set(result.lineup.map(x=>x.position)).size,9);
   assert.equal(Object.keys(result.personaLineups).length,3);
   assert.ok(result.crossDiscussion.challenges.melchior.length>0);
   assert.ok(result.crossDiscussion.challenges.balthasar.length>0);
@@ -47,14 +64,22 @@ test('L04 final result exposes full lineup and three-sage cross discussion',()=>
   assert.ok(!result.recommendation.includes('宮嵜 翔'));
 });
 
-test('L05 incomplete second-round order fails closed',()=>{
+test('L05 missing fielding evidence fails closed instead of inventing positions',()=>{
+  const result=buildFullLineupResult(SECOND,CROSS);
+  assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
+  assert.equal(result.fieldingStatus,'UNAVAILABLE');
+  assert.equal(result.lineup.length,0);
+  assert.equal(result.battingOrder.length,9);
+});
+
+test('L06 incomplete second-round order fails closed',()=>{
   const broken={...SECOND,casper:{...SECOND.casper,candidatePlayers:L3.slice(0,8)}};
   const result=buildFullLineupResult(broken,CROSS);
   assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
   assert.equal(result.lineup.length,0);
 });
 
-test('L06 live evidence marks full lineup and keeps old team reference-only',async()=>{
+test('L07 live evidence marks full lineup and keeps old team reference-only',async()=>{
   const currentPlayers=Object.fromEntries(CURRENT_ROSTER.map((name,i)=>[name,{batting:{AVG:`.${String(200+i).padStart(3,'0')}`,OPS:`.${String(600+i*10).padStart(3,'0')}`},pitching:null}]));
   const oldPlayers={...currentPlayers,'宮嵜 翔':{batting:{AVG:'.999',OPS:'1.999'}}};
   const provider=async({season})=>season==='current'
