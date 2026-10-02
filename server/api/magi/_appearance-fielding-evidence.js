@@ -377,42 +377,75 @@ async function readCsvById(id,expectedName){
 }
 
 export async function buildAppearanceFieldingEvidence(){
-  const [appearance,fielding]=await Promise.all([
+  const [appearance,fielding,originals]=await Promise.all([
     readCsvById(APPEARANCE_FILE_ID,'出場詳細2026-2027.csv'),
-    readCsvById(FIELDING_FILE_ID,'守備詳細2026-2027.csv')
+    readCsvById(FIELDING_FILE_ID,'守備詳細2026-2027.csv'),
+    loadCanonicalScoreSheetOriginals()
   ]);
-  const scoreSheets=await verifyScoreSheetOriginals(appearance.rows);
-  const integrity=appearanceIntegrity(appearance.rows);
+  const canonicalIntegrity=appearanceIntegrity(appearance.rows);
   const duplicateSourceContent=appearance.meta.id!==fielding.meta.id&&appearance.digest===fielding.digest;
-  const appearanceUsable=integrity.status==='COMPLETE'&&!duplicateSourceContent;
+  const canonicalAppearanceUsable=canonicalIntegrity.status==='COMPLETE'&&!duplicateSourceContent;
+
+  let appearanceRows=appearance.rows;
+  let integrity=canonicalIntegrity;
+  let appearanceSourceMode='CURRENT_CSV';
+  let recovery=null;
+  let scoreSheets=null;
+
+  if(canonicalAppearanceUsable){
+    scoreSheets=await verifyScoreSheetOriginals(appearance.rows,originals);
+  }else{
+    recovery=await recoverAppearanceFromScoreSheets(originals,fielding.rows);
+    if(recovery.status==='COMPLETE'){
+      appearanceRows=recovery.rows;
+      integrity=appearanceIntegrity(appearanceRows);
+      appearanceSourceMode='SCORE_SHEET_RECOVERY';
+    }
+    scoreSheets=recoveredScoreSheetEvidence(originals,recovery);
+  }
+
+  const appearanceUsable=integrity.status==='COMPLETE'&&(canonicalAppearanceUsable||recovery?.status==='COMPLETE');
   const players=CURRENT_ROSTER.map(name=>({
     name,
     appearance:appearanceUsable
-      ? {status:'COMPLETE',...aggregateAppearance(name,appearance.rows)}
-      : {status:'UNAVAILABLE',reason:duplicateSourceContent?'DUPLICATE_SOURCE_CONTENT':'INCOMPLETE_BATTING_ORDER_ROWS'},
+      ? {status:'COMPLETE',sourceMode:appearanceSourceMode,...aggregateAppearance(name,appearanceRows)}
+      : {status:'UNAVAILABLE',reason:duplicateSourceContent?'DUPLICATE_SOURCE_CONTENT_AND_RECOVERY_INCOMPLETE':'INCOMPLETE_BATTING_ORDER_ROWS'},
     fielding:{status:'COMPLETE',...aggregateFielding(name,fielding.rows)}
   }));
+
   const issues=[];
-  if(duplicateSourceContent)issues.push('出場詳細CSVと守備詳細CSVの内容SHA-256が一致しており、別正本として扱えない。');
-  if(integrity.status!=='COMPLETE')issues.push(`出場詳細CSVの打順1〜9が揃う試合は ${integrity.completeGameCount}/${integrity.gameCount}。スタメン/途中出場・実打順は未確認扱い。`);
+  const warnings=[];
+  if(duplicateSourceContent)warnings.push('現在の出場詳細CSVは守備詳細CSVと内容SHA-256が一致しており、出場詳細の正本としては利用していない。');
+  if(canonicalIntegrity.status!=='COMPLETE')warnings.push('現在の出場詳細CSVの打順1〜9が揃う試合は '+canonicalIntegrity.completeGameCount+'/'+canonicalIntegrity.gameCount+'。');
+  if(appearanceSourceMode==='SCORE_SHEET_RECOVERY')warnings.push('登録済み11試合のスコア原本PDFから先発打順・先発守備・途中出場を読み取り、守備詳細CSVの参加選手集合と照合して代替Evidenceを構成した。');
+  if(!appearanceUsable)issues.push('出場詳細CSVが利用不能で、スコア原本からの復旧も完全成立しなかったため、スタメン/途中出場・実打順は未確認扱い。');
+
   return {
-    status:issues.length?'PARTIAL':'COMPLETE',
+    status:appearanceUsable?'COMPLETE':'PARTIAL',
     appearanceStatus:appearanceUsable?'COMPLETE':'UNAVAILABLE',
+    appearanceSourceMode,
     fieldingStatus:'COMPLETE',
     integrity,
+    canonicalIntegrity,
     sourceIntegrity:{
-      status:duplicateSourceContent?'SOURCE_MISMATCH':'COMPLETE',
+      status:appearanceSourceMode==='SCORE_SHEET_RECOVERY'?'RECOVERED_FROM_SCORE_SHEETS':(duplicateSourceContent?'SOURCE_MISMATCH':'COMPLETE'),
       duplicateSourceContent,
+      canonicalAppearanceUsable,
       appearanceDigest:appearance.digest,
-      fieldingDigest:fielding.digest
+      fieldingDigest:fielding.digest,
+      recoveryStatus:recovery?.status||'NOT_USED'
     },
     issues,
+    warnings,
+    recovery:recovery?{status:recovery.status,gameCount:recovery.gameCount,completeGameCount:recovery.completeGameCount,games:recovery.games,rule:recovery.rule}:null,
     sources:[
-      {id:appearance.meta.id,name:appearance.meta.name,mimeType:appearance.meta.mimeType,modifiedTime:appearance.meta.modifiedTime,priority:'PRIMARY_APPEARANCE_DETAIL'},
+      {id:appearance.meta.id,name:appearance.meta.name,mimeType:appearance.meta.mimeType,modifiedTime:appearance.meta.modifiedTime,priority:appearanceSourceMode==='CURRENT_CSV'?'PRIMARY_APPEARANCE_DETAIL':'CORRUPT_CANONICAL_APPEARANCE_REFERENCE',usedForDecision:appearanceSourceMode==='CURRENT_CSV'},
       {id:fielding.meta.id,name:fielding.meta.name,mimeType:fielding.meta.mimeType,modifiedTime:fielding.meta.modifiedTime,priority:'PRIMARY_FIELDING_DETAIL'}
     ],
     scoreSheets,
     players,
-    rule:'出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。ただし打順1〜9の構造欠損や守備詳細との内容重複を検出した場合はPARTIALとして、0件起用や実打順を推測しない。守備詳細CSVの実守備位置は別系統の実績として利用できるが、壊れた出場詳細の代替としてスタメン/途中出場を推定しない。'
+    rule:appearanceSourceMode==='SCORE_SHEET_RECOVERY'
+      ? '現在の出場詳細CSVは構造破損を検出したため判断に使用せず、登録済み11試合のスコア原本PDFを代替正本としてスタメン・途中出場・実打順・先発守備位置を復旧した。復旧結果は守備詳細CSVの各試合参加選手集合と一致した場合だけCOMPLETEとし、PDFとCSVを独立票として二重加点しない。'
+      : '出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。守備詳細CSVの実守備位置は別系統の実績として利用し、スコア原本は一次照合資料として用いる。'
   };
 }
