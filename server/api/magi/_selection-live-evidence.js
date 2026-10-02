@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v17-dated-strategy-reference';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v18-structured-lineup-usage';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -272,14 +272,14 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
       lines.push(
         '【実起用・守備Evidence】出場詳細CSVをスタメン/途中出場/実打順/スタメン守備位置の最優先記録として扱い、守備詳細CSVを実守備位置の補助記録として重ねる。',
         usageEvidence.scoreSheets?.status==='COMPLETE'
-          ? `【スコア原本照合】COMPLETE：出場詳細CSVの ${usageEvidence.scoreSheets.appearanceGameCount} 試合を、スコア原本 ${usageEvidence.scoreSheets.originalCount} 件の集合と日付・対戦相手・試合番号で照合し、${usageEvidence.scoreSheets.verifiedCount} 試合を対応確認。スコア原本は一次照合資料であり、同じ試合をCSVと別票として二重評価しない。`
-          : `【スコア原本照合】${usageEvidence.scoreSheets?.status||'UNAVAILABLE'}：未対応 ${(usageEvidence.scoreSheets?.unmatched||[]).map(g=>`${g.date} ${g.opponent} ${g.label||''}`).join(' / ')||'詳細取得不可'}。不一致を推測で補完しない。`,
+          ? `【スコア原本照合】COMPLETE：出場詳細CSVの ${usageEvidence.scoreSheets.appearanceGameCount} 試合を、公式戦 ${usageEvidence.scoreSheets.officialOriginalCount} 件＋練習試合 ${usageEvidence.scoreSheets.practiceOriginalCount} 件＝スコア原本 ${usageEvidence.scoreSheets.originalCount} 件と照合し、${usageEvidence.scoreSheets.verifiedCount} 試合を対応確認。スコア原本は一次照合資料であり、同じ試合をCSVと別票として二重評価しない。`
+          : `【スコア原本照合】${usageEvidence.scoreSheets?.status||'UNAVAILABLE'}：対応確認 ${usageEvidence.scoreSheets?.verifiedCount||0}/${usageEvidence.scoreSheets?.appearanceGameCount||0} 試合、SOURCE_MISMATCH ${usageEvidence.scoreSheets?.sourceMismatchCount||0}、UNVERIFIED ${usageEvidence.scoreSheets?.unverifiedCount||0}。不一致は推測で補完せず、そのままEvidenceへ残す。`,
         ...usageEvidence.players.map(p=>{
           const a=p.appearance||{}, f=p.fielding||{};
           const orders=Object.entries(a.battingOrders||{}).map(([k,v])=>`${k}番×${v}`).join('、')||'スタメン打順なし';
           const starts=Object.entries(a.startingPositions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'スタメン守備なし';
           const field=Object.entries(f.positions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'守備記録なし';
-          return `${p.name}：スタメン ${a.starts||0} / 途中出場 ${a.substitutions||0} / 打順 ${orders} / スタメン守備 ${starts} / 実守備 ${field}`;
+          return `${p.name}：スタメン ${a.starts||0}（公式戦 ${a.officialStarts||0} / 練習第1試合 ${a.practiceFirstStarts||0} / 練習第2試合 ${a.practiceSecondStarts||0}） / 途中出場 ${a.substitutions||0} / 打順 ${orders} / スタメン守備 ${starts} / 実守備 ${field}`;
         })
       );
     }else{
@@ -367,6 +367,27 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     lines.push('【運用ルール】候補は現チーム14名のみ。まず現チームの現在記録で判断し、旧チーム記録は実績・経験・再現性の重要な比較材料として使う。直近6試合のCSVが取得できた場合は短期状態も重ねる。ここにない数値・役割・性格・将来結果は作らない。母数や比較基準がない場合は、その不足を明示する。');
   }
 
+  const scoreSheetVerification=usageEvidence?.scoreSheets?{
+    status:usageEvidence.scoreSheets.status,
+    originalCount:Number(usageEvidence.scoreSheets.originalCount)||0,
+    officialOriginalCount:Number(usageEvidence.scoreSheets.officialOriginalCount)||0,
+    practiceOriginalCount:Number(usageEvidence.scoreSheets.practiceOriginalCount)||0,
+    appearanceGameCount:Number(usageEvidence.scoreSheets.appearanceGameCount)||0,
+    verifiedCount:Number(usageEvidence.scoreSheets.verifiedCount)||0,
+    sourceMismatchCount:Number(usageEvidence.scoreSheets.sourceMismatchCount)||0,
+    unverifiedCount:Number(usageEvidence.scoreSheets.unverifiedCount)||0,
+    sourceMismatches:Array.isArray(usageEvidence.scoreSheets.sourceMismatches)?usageEvidence.scoreSheets.sourceMismatches:[],
+    unverified:Array.isArray(usageEvidence.scoreSheets.unverified)?usageEvidence.scoreSheets.unverified:[]
+  }:{status:wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE',originalCount:0,officialOriginalCount:0,practiceOriginalCount:0,appearanceGameCount:0,verifiedCount:0,sourceMismatchCount:0,unverifiedCount:0,sourceMismatches:[],unverified:[]};
+  const appearanceFielding={
+    status:usageEvidence?.status|| (wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE'),
+    scoreSheets:scoreSheetVerification,
+    players:usageEvidence?.status==='COMPLETE'&&Array.isArray(usageEvidence.players)?usageEvidence.players:[]
+  };
+  const normalizedDates=normalizedObservationEvidence?.status==='COMPLETE'
+    ? (normalizedObservationEvidence.observations||[]).map(o=>text(o.recordedAt)).filter(Boolean)
+    : [];
+
   const sources=[];
   if(strategyEvidence?.source) sources.push({...strategyEvidence.source,season:'current',priority:'DATED_STRATEGY_REFERENCE',effectiveAt:strategyEvidence.effectiveAt,currentPolicy:false});
   if(usageEvidence?.status==='COMPLETE'){
@@ -394,7 +415,13 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
-    scoreSheetVerificationStatus: usageEvidence?.scoreSheets?.status || (wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE'),
+    appearanceFielding,
+    scoreSheetVerificationStatus: scoreSheetVerification.status,
+    strategySnapshotEffectiveAt: strategyEvidence?.effectiveAt||'',
+    strategySnapshotCurrentPolicy: strategyEvidence?.status==='REFERENCE_ONLY'?Boolean(strategyEvidence.currentPolicy):null,
+    normalizedObservationCount: normalizedObservationEvidence?.status==='COMPLETE'?(normalizedObservationEvidence.observations||[]).length:0,
+    normalizedObservationDatedCount: normalizedDates.length,
+    normalizedObservationLatestRecordedAt: normalizedDates.length?normalizedDates[normalizedDates.length-1]:'',
     strategySnapshotStatus: strategyEvidence?.status|| (staffAccessContext?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
     strategySnapshotError: staffAccessContext && strategyResult?.status==='rejected' ? String(strategyResult.reason?.code||strategyResult.reason?.message||'strategy_snapshot_unavailable') : '',
     strategySnapshotHttpStatus: staffAccessContext && strategyResult?.status==='rejected' ? (Number(strategyResult.reason?.status)||null) : null,
