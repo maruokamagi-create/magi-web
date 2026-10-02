@@ -226,7 +226,9 @@ export function buildFullLineupResult(second, cross, caseData={}) {
   if(fielding.status!=='COMPLETE'){
     const fieldingReason=fielding.status==='AMBIGUOUS'
       ? '実績Evidence上で同順位の守備配置が複数残るため、推測で守備位置を確定しない。'
-      : '選出9人だけでは、実績Evidenceから9守備位置を一意に成立させられない。';
+      : fielding.status==='UNAVAILABLE'
+        ? '出場詳細・守備詳細Evidenceが完全な状態ではないため、守備位置を推測で確定しない。'
+        : '選出9人だけでは、実績Evidenceから9守備位置を一意に成立させられない。';
     return canonicalizePlayerData({
       mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',
       recommendation:'打順案は得られたが、守備位置を実績Evidenceだけで確定できないため最終オーダーは未確定。',
