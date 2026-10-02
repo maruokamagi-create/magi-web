@@ -135,7 +135,9 @@ export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
     const body = await readBody(req);
-    const phase = ['PRIMARY','SECOND','FULL'].includes(body?.phase) ? body.phase : 'PRIMARY';
+    const requestedPhase = String(body?.phase || 'PRIMARY').toUpperCase();
+    if (requestedPhase === 'FULL') return sendJson(res, 410, { error:'FULL batch experiment is retired', code:'PERSONA_FULL_BATCH_RETIRED', retryExhausted:true });
+    const phase = ['PRIMARY','SECOND'].includes(requestedPhase) ? requestedPhase : 'PRIMARY';
     if (!validPersonaCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
     if (phase === 'SECOND' && (!body?.primary || !body?.crossExamination)) {
       return sendJson(res, 400, { error: 'SECOND batch requires isolated PRIMARY and cross-examination compartments' });
