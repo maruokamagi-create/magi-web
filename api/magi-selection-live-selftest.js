@@ -65,7 +65,7 @@ export default async function handler(req,res){
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
-    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v19-source-integrity-guard'
+    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v20-score-sheet-recovery'
       && body.includes('標準オーダーをコード内の固定打順から決めない')
       && body.includes('公式戦と練習試合の起用を混同しない')
       && body.includes('コード内の固定ポジション案で実記録を上書きしない')
@@ -74,6 +74,13 @@ export default async function handler(req,res){
       && !body.includes('武田 晴琉翔は左翼が第一適性')
       && !body.includes('大久保 陽翔は現チームのキャプテン')
       && !body.includes('1番 大野 竜暉、2番 坂田 暉馬');
+    const appearanceSourceMode=packet?.appearanceFielding?.appearanceSourceMode||'';
+    const appearanceRecoveryReady=packet?.appearanceFielding?.status==='COMPLETE'
+      && packet?.appearanceFielding?.appearanceStatus==='COMPLETE'
+      && (
+        (appearanceSourceMode==='CURRENT_CSV' && packet?.appearanceFielding?.sourceIntegrity?.status==='COMPLETE')
+        || (appearanceSourceMode==='SCORE_SHEET_RECOVERY' && packet?.appearanceFielding?.sourceIntegrity?.status==='RECOVERED_FROM_SCORE_SHEETS' && packet?.appearanceFielding?.recovery?.status==='COMPLETE' && Number(packet?.appearanceFielding?.recovery?.completeGameCount)===11)
+      );
     const adminObservationText=String(adminFullPacket?.text||'');
     const memberObservationText=String(memberFullPacket?.text||'');
     const strategyReferenceReady=adminFullPacket?.strategySnapshotStatus==='REFERENCE_ONLY'
@@ -114,9 +121,14 @@ export default async function handler(req,res){
       && !memberObservationText.includes('精神的な成長');
 
     res.status(200).json({
-      ok:fullLineupReady&&dynamicLineupRulesReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked&&strategyReferenceReady&&memberStrategyReferenceBlocked&&pitchingPlanCoachReady&&pitchingPlanCoachDeduped,
+      ok:fullLineupReady&&dynamicLineupRulesReady&&appearanceRecoveryReady&&naturalThirdReady&&closerPitchingReady&&adminCoachEvidenceReady&&memberCoachEvidenceBlocked&&adminNormalizedObservationReady&&memberNormalizedObservationBlocked&&strategyReferenceReady&&memberStrategyReferenceBlocked&&pitchingPlanCoachReady&&pitchingPlanCoachDeduped,
       fullLineupReady,
       dynamicLineupRulesReady,
+      appearanceRecoveryReady,
+      appearanceSourceMode,
+      appearanceSourceIntegrityStatus:packet?.appearanceFielding?.sourceIntegrity?.status||'',
+      appearanceRecoveryStatus:packet?.appearanceFielding?.recovery?.status||'',
+      appearanceRecoveryCompleteGameCount:Number(packet?.appearanceFielding?.recovery?.completeGameCount)||0,
       adminNormalizedObservationReady,
       memberNormalizedObservationBlocked,
       adminNormalizedObservationStatus:adminFullPacket?.normalizedObservationStatus||'',
