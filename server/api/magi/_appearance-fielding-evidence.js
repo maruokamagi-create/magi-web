@@ -117,6 +117,7 @@ async function verifyScoreSheetOriginals(appearanceRows){
 function numericOrder(v){const n=Number(text(v));return Number.isInteger(n)&&n>=1&&n<=9?n:null;}
 function countMap(values){const out={};for(const v of values){const k=text(v);if(k)out[k]=(out[k]||0)+1;}return out;}
 function positionTokens(v){return text(v).split('>').map(x=>x.trim()).filter(Boolean);}
+function startingPosition(v){return positionTokens(v)[0]||'';}
 
 function aggregateAppearance(name,rows){
   const mine=rows.filter(r=>text(r['選手名'])===name);
@@ -134,7 +135,11 @@ function aggregateAppearance(name,rows){
     practiceFirstStarts:practiceFirstStarts.length,
     practiceSecondStarts:practiceSecondStarts.length,
     battingOrders:countMap(starts.map(r=>String(numericOrder(r['打順'])))),
-    startingPositions:countMap(starts.map(r=>r['守備位置'])),
+    startingPositions:countMap(starts.map(r=>startingPosition(r['守備位置']))),
+    officialStartingPositions:countMap(officialStarts.map(r=>startingPosition(r['守備位置']))),
+    practiceFirstStartingPositions:countMap(practiceFirstStarts.map(r=>startingPosition(r['守備位置']))),
+    practiceSecondStartingPositions:countMap(practiceSecondStarts.map(r=>startingPosition(r['守備位置']))),
+    recentStartingPositions:countMap(starts.slice(-6).map(r=>startingPosition(r['守備位置']))),
     latestStarts:starts.slice(-6).map(r=>({
       game:gameLabel(r),
       date:dateKey(pick(r,['開催日','対戦日','日付'])),
@@ -180,6 +185,6 @@ export async function buildAppearanceFieldingEvidence(){
     ],
     scoreSheets,
     players,
-    rule:'出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。公式戦と練習試合を大会名で分離し、練習試合だけ第1試合（奇数＝公式戦想定のレギュラー起用）と第2試合（偶数＝チャレンジ起用）を分ける。打順1〜9の行をスタメン、打順空欄を途中出場として扱い、投手表示用のP行は重複出場として数えない。守備詳細CSVは実際に守った守備位置の補助Evidenceとし、「>」で連結された守備位置は各位置の実績として数える。'
+    rule:'出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。公式戦と練習試合を大会名で分離し、練習試合だけ第1試合（奇数＝公式戦想定のレギュラー起用）と第2試合（偶数＝チャレンジ起用）を分ける。打順1〜9の行をスタメン、打順空欄を途中出場として扱い、投手表示用のP行は重複出場として数えない。守備位置が「遊>投」のように連結される場合、スタメン守備位置は先頭の位置だけを採用し、その後の守備移動は守備詳細CSVの実守備実績として別に数える。'
   };
 }
