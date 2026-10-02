@@ -271,6 +271,9 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     if(usageEvidence?.status==='COMPLETE'){
       lines.push(
         '【実起用・守備Evidence】出場詳細CSVをスタメン/途中出場/実打順/スタメン守備位置の最優先記録として扱い、守備詳細CSVを実守備位置の補助記録として重ねる。',
+        usageEvidence.scoreSheets?.status==='COMPLETE'
+          ? `【スコア原本照合】COMPLETE：出場詳細CSVの ${usageEvidence.scoreSheets.appearanceGameCount} 試合を、スコア原本 ${usageEvidence.scoreSheets.originalCount} 件の集合と日付・対戦相手・試合番号で照合し、${usageEvidence.scoreSheets.verifiedCount} 試合を対応確認。スコア原本は一次照合資料であり、同じ試合をCSVと別票として二重評価しない。`
+          : `【スコア原本照合】${usageEvidence.scoreSheets?.status||'UNAVAILABLE'}：未対応 ${(usageEvidence.scoreSheets?.unmatched||[]).map(g=>`${g.date} ${g.opponent} ${g.label||''}`).join(' / ')||'詳細取得不可'}。不一致を推測で補完しない。`,
         ...usageEvidence.players.map(p=>{
           const a=p.appearance||{}, f=p.fielding||{};
           const orders=Object.entries(a.battingOrders||{}).map(([k,v])=>`${k}番×${v}`).join('、')||'スタメン打順なし';
@@ -366,7 +369,10 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
 
   const sources=[];
   if(strategyEvidence?.source) sources.push({...strategyEvidence.source,season:'current',priority:'DATED_STRATEGY_REFERENCE',effectiveAt:strategyEvidence.effectiveAt,currentPolicy:false});
-  if(usageEvidence?.status==='COMPLETE') sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
+  if(usageEvidence?.status==='COMPLETE'){
+    sources.push(...usageEvidence.sources.map(source=>({...source,season:'current'})));
+    if(Array.isArray(usageEvidence.scoreSheets?.sources)) sources.push(...usageEvidence.scoreSheets.sources.map(source=>({...source,season:'current',independentVote:false})));
+  }
   if(normalizedObservationEvidence?.status==='COMPLETE' && normalizedObservationEvidence.source) sources.push({...normalizedObservationEvidence.source,season:'current',priority:'NORMALIZED_OBSERVATION'});
   if(isPitchingKind(kind) && coachEvidence?.status==='COMPLETE' && coachEvidence.source) sources.push({...coachEvidence.source,season:'current',priority:'COACH_OBSERVATION'});
   if(isPitchingKind(kind)&&currentPitching?.source) sources.push({...currentPitching.source,season:'current',priority:'PRIMARY_PITCHING_DETAIL'});
@@ -388,6 +394,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     text: lines.join('\n'),
     sources,
     resolverVersion: SELECTION_LIVE_EVIDENCE_VERSION,
+    scoreSheetVerificationStatus: usageEvidence?.scoreSheets?.status || (wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE'),
     strategySnapshotStatus: strategyEvidence?.status|| (staffAccessContext?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
     strategySnapshotError: staffAccessContext && strategyResult?.status==='rejected' ? String(strategyResult.reason?.code||strategyResult.reason?.message||'strategy_snapshot_unavailable') : '',
     strategySnapshotHttpStatus: staffAccessContext && strategyResult?.status==='rejected' ? (Number(strategyResult.reason?.status)||null) : null,
