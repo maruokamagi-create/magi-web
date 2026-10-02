@@ -31,31 +31,185 @@ function practiceGameNumber(row){
   const m=gameLabel(row).normalize('NFKC').match(/第\s*(\d+)\s*試合/);
   return m?Number(m[1]):null;
 }
-function scoreCategory(file){
-  const path=text(file?.path);
-  if(path.includes('OFFICIAL_公式戦'))return'OFFICIAL';
-  if(path.includes('PRACTICE_練習試合'))return'PRACTICE';
-  return'UNKNOWN';
+function escapeRegExp(value){return String(value??'').replace(/[-/\\^$*+?.()|[\]{}]/g,'\\$&');}
+const SCORE_ROSTER_PATTERN=[...CURRENT_ROSTER].sort((a,b)=>b.length-a.length).map(escapeRegExp).join('|');
+const SCORE_STARTER_RE=new RegExp('((?:[1-9]|DH)(?:\\.(?:[1-9]|DH))*)\\s+先\\s+('+SCORE_ROSTER_PATTERN+')(?=\\s|$)','g');
+
+function scoreKeyFromDef(def){
+  return {
+    date:text(def?.date),
+    opponent:text(def?.opponent),
+    gameNo:Number.isInteger(def?.gameNo)?def.gameNo:null,
+    stage:text(def?.stage),
+    label:text(def?.label),
+    category:text(def?.category)
+  };
 }
-function scoreSheetKey(file){
-  const name=text(file?.name).normalize('NFKC').replace(/\.pdf$/i,'');
-  const m=name.match(/^(\d{4})-(\d{2})-(\d{2})_(.+)_スコア原本$/);
-  if(!m)return null;
-  const category=scoreCategory(file);
-  const parts=m[4].split('_').map(text).filter(Boolean);
-  if(!parts.length)return null;
-  let opponent='',gameNo=null,stage='';
-  if(category==='PRACTICE'){
-    const last=parts[parts.length-1];
-    const gm=last.match(/^第\s*(\d+)\s*試合$/);
-    if(gm){gameNo=Number(gm[1]);opponent=parts.slice(0,-1).join('_');stage=last;}
-    else opponent=parts.join('_');
-  }else if(category==='OFFICIAL'){
-    stage=parts.length>1?parts[parts.length-1]:'';
-    opponent=parts.length>1?parts.slice(0,-1).join('_'):parts[0];
-  }else opponent=parts.join('_');
-  return {date:`${m[1]}-${m[2]}-${m[3]}`,opponent,gameNo,stage,category};
+function scoreIdentityKey(value){
+  const category=text(value?.category);
+  if(category==='PRACTICE')return text(value?.date)+'|PRACTICE|'+String(Number(value?.gameNo)||0);
+  if(category==='OFFICIAL')return text(value?.date)+'|OFFICIAL|'+text(value?.stage||value?.label);
+  return text(value?.date)+'|UNKNOWN|'+text(value?.label);
 }
+function scorePositionPath(raw){
+  return text(raw).split('.').map(code=>SCORE_POSITION_LABEL[code]||code).filter(Boolean).join(' > ');
+}
+function scoreSourcePath(meta,def){
+  const category=def?.category==='OFFICIAL'?'OFFICIAL_公式戦':'PRACTICE_練習試合';
+  return 'CANONICAL_SCORE_SHEETS/'+category+'/'+text(meta?.name);
+}
+async function loadCanonicalScoreSheetOriginals(){
+  if(SCORE_FILE_DEFS.length!==11)throw new Error('canonical_score_sheet_count_mismatch:'+SCORE_FILE_DEFS.length);
+  return Promise.all(SCORE_FILE_DEFS.map(async def=>{
+    const meta=await getDriveFileMetadata(def.id);
+    if(text(meta.mimeType)!=='application/pdf')throw new Error('score_sheet_mime_mismatch:'+def.id+':'+text(meta.mimeType));
+    const actual=text(meta.name).normalize('NFKC').replace(/\.pdf$/i,'');
+    const expected=def.date+'_'+def.opponent+'_'+def.label+'_スコア原本';
+    if(actual!==expected)throw new Error('score_sheet_name_mismatch:'+def.id+':'+actual);
+    return {def,key:scoreKeyFromDef(def),file:{...meta,path:scoreSourcePath(meta,def)}};
+  }));
+}
+async function scoreSheetText(original){
+  const meta=original?.file||{};
+  const cacheKey=String(meta.id)+'|'+String(meta.modifiedTime||'')+'|'+String(meta.size||'');
+  const cached=SCORE_TEXT_CACHE.get(cacheKey);
+  if(cached)return cached;
+  const response=await googleDriveFetch('https://www.googleapis.com/drive/v3/files/'+encodeURIComponent(meta.id)+'?alt=media&supportsAllDrives=true');
+  if(!response.ok)throw new Error('score_sheet_fetch_failed:'+meta.id+':'+response.status);
+  const buffer=Buffer.from(await response.arrayBuffer());
+  const parsed=await pdfParse(buffer);
+  const body=String(parsed?.text||'').normalize('NFKC');
+  if(!body.includes('丸岡中'))throw new Error('score_sheet_team_text_missing:'+meta.id);
+  SCORE_TEXT_CACHE.set(cacheKey,body);
+  if(SCORE_TEXT_CACHE.size>16)SCORE_TEXT_CACHE.delete(SCORE_TEXT_CACHE.keys().next().value);
+  return body;
+}
+function scoreStarterMatches(body){
+  const matches=[];
+  SCORE_STARTER_RE.lastIndex=0;
+  let match;
+  while((match=SCORE_STARTER_RE.exec(body))){
+    matches.push({rawPosition:match[1],name:match[2],index:match.index,end:SCORE_STARTER_RE.lastIndex});
+  }
+  return matches;
+}
+function scoreSubstitutionRows(body,game){
+  const lines=String(body||'').split(/\r?\n/).map(line=>line.trim());
+  const starterLinePattern=new RegExp('^((?:[1-9]|DH)(?:\\.(?:[1-9]|DH))*)\\s+先\\s+('+SCORE_ROSTER_PATTERN+')(?=\\s|$)');
+  const firstIndex=lines.findIndex(line=>starterLinePattern.test(line));
+  if(firstIndex<0)return [];
+  const pitcherStat=new RegExp('^先\\s+('+SCORE_ROSTER_PATTERN+')\\s+(?:右|左|両)(?:\\s|$)');
+  let endIndex=lines.length;
+  for(let i=firstIndex+1;i<lines.length;i++){
+    if(pitcherStat.test(lines[i])){endIndex=i;break;}
+  }
+  const out=[];
+  const seen=new Set();
+  for(const line of lines.slice(firstIndex,endIndex)){
+    if(starterLinePattern.test(line))continue;
+    const name=CURRENT_ROSTER.find(player=>line.includes(player));
+    if(!name)continue;
+    const at=line.indexOf(name);
+    const prefix=line.slice(0,at).trim().split(/\s+/)[0]||'';
+    if(!/^(?:PH|PR|[1-9])(?:\.(?:PH|PR|[1-9]))*$/.test(prefix))continue;
+    const key=name+'|'+prefix;
+    if(seen.has(key))continue;
+    seen.add(key);
+    out.push({
+      開催日:game.date,
+      大会名:game.category==='OFFICIAL'?'【公式戦】スコア原本復旧':'【練習試合】スコア原本復旧',
+      試合順:game.label,
+      相手校:game.opponent,
+      打順:'',
+      選手名:name,
+      守備位置:scorePositionPath(prefix),
+      _recoveryRole:'SUBSTITUTE'
+    });
+  }
+  return out;
+}
+function fieldingParticipantMap(rows){
+  const map=new Map();
+  for(const row of rows){
+    const date=dateKey(pick(row,['開催日','対戦日','日付']));
+    const category=competitionType(row),label=gameLabel(row);
+    if(!date||category==='UNKNOWN')continue;
+    const gameNo=practiceGameNumber(row);
+    const key=scoreIdentityKey({date,category,gameNo,stage:category==='OFFICIAL'?label:'',label});
+    const set=map.get(key)||new Set();
+    const name=text(row?.['選手名']);
+    if(name)set.add(name);
+    map.set(key,set);
+  }
+  return map;
+}
+function sameNameSet(a,b){
+  if(a.size!==b.size)return false;
+  for(const name of a)if(!b.has(name))return false;
+  return true;
+}
+async function recoverAppearanceFromScoreSheets(originals,fieldingRows){
+  const fieldingParticipants=fieldingParticipantMap(fieldingRows);
+  const games=await Promise.all(originals.map(async original=>{
+    const body=await scoreSheetText(original);
+    const starters=scoreStarterMatches(body);
+    const batting=starters.slice(0,9);
+    const battingNames=batting.map(x=>x.name);
+    const hasDh=batting.some(x=>x.rawPosition.split('.')[0]==='DH');
+    const defenseOnly=hasDh&&starters[9]&&starters[9].rawPosition.split('.')[0]==='1'?starters[9]:null;
+    const game={...original.key,label:original.key.label||original.key.stage||''};
+    const starterRows=batting.map((entry,index)=>({
+      開催日:game.date,
+      大会名:game.category==='OFFICIAL'?'【公式戦】スコア原本復旧':'【練習試合】スコア原本復旧',
+      試合順:game.label,
+      相手校:game.opponent,
+      打順:String(index+1),
+      選手名:entry.name,
+      守備位置:scorePositionPath(entry.rawPosition),
+      _recoveryRole:'BATTING_STARTER'
+    }));
+    if(defenseOnly){
+      starterRows.push({
+        開催日:game.date,
+        大会名:game.category==='OFFICIAL'?'【公式戦】スコア原本復旧':'【練習試合】スコア原本復旧',
+        試合順:game.label,
+        相手校:game.opponent,
+        打順:'P',
+        選手名:defenseOnly.name,
+        守備位置:scorePositionPath(defenseOnly.rawPosition),
+        _recoveryRole:'DEFENSE_ONLY_STARTER'
+      });
+    }
+    const substitutions=scoreSubstitutionRows(body,game);
+    const rows=[...starterRows,...substitutions];
+    const recoveredParticipants=new Set(rows.map(row=>text(row['選手名'])).filter(Boolean));
+    const expectedParticipants=fieldingParticipants.get(scoreIdentityKey(game))||new Set();
+    const battingComplete=batting.length===9&&new Set(battingNames).size===9&&battingNames.every(name=>CURRENT_ROSTER.includes(name));
+    const participantMatch=expectedParticipants.size>0&&sameNameSet(recoveredParticipants,expectedParticipants);
+    return {
+      game,
+      rows,
+      battingComplete,
+      participantMatch,
+      battingNames,
+      defenseOnlyStarter:defenseOnly?.name||'',
+      substitutionNames:substitutions.map(row=>row['選手名']),
+      recoveredParticipantCount:recoveredParticipants.size,
+      fieldingParticipantCount:expectedParticipants.size
+    };
+  }));
+  const rows=games.flatMap(game=>game.rows);
+  const complete=games.length===11&&games.every(game=>game.battingComplete&&game.participantMatch);
+  return {
+    status:complete?'COMPLETE':'PARTIAL',
+    rows,
+    games:games.map(({rows:ignored,...game})=>game),
+    gameCount:games.length,
+    completeGameCount:games.filter(game=>game.battingComplete&&game.participantMatch).length,
+    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み11試合のスコア原本PDFから丸岡の先発打順・先発守備・途中出場を復旧する。各試合の参加選手集合を守備詳細CSVと照合し、一致しない試合は復旧COMPLETEにしない。PDFとCSVを独立票として二重加点しない。'
+  };
+}
+
 function appearanceIntegrity(rows){
   const groups=new Map();
   for(const row of rows){
