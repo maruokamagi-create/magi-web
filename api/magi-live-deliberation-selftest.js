@@ -162,6 +162,28 @@ export default async function handler(req,res){
     const sourceIntegrityStatus=packet?.appearanceFielding?.sourceIntegrity?.status||'';
     const sourceReady=sourceIntegrityStatus==='COMPLETE'||(sourceIntegrityStatus==='RECOVERED_FROM_SCORE_SHEETS'&&appearanceSourceMode==='SCORE_SHEET_RECOVERY'&&packet?.appearanceFielding?.recovery?.status==='COMPLETE');
     const appearanceReady=packet?.appearanceFielding?.status==='COMPLETE'&&packet?.appearanceFielding?.appearanceStatus==='COMPLETE'&&packet?.appearanceFielding?.fieldingStatus==='COMPLETE'&&sourceReady&&scoreAccounted;
+    const structuredObservations=Array.isArray(packet?.normalizedObservations)?packet.normalizedObservations:[];
+    const structuredDatedCount=structuredObservations.filter(o=>text(o?.recordedAt)).length;
+    const directPlayerObservationCount=structuredObservations.filter(o=>rosterKeys.has(norm(o?.player))).length;
+    const observationSensitiveFieldsPresent=structuredObservations.some(o=>Object.prototype.hasOwnProperty.call(o,'provider')||Object.prototype.hasOwnProperty.call(o,'role'));
+    const observationStructureReady=packet?.normalizedObservationStatus==='COMPLETE'
+      && structuredObservations.length>0
+      && directPlayerObservationCount>0
+      && structuredDatedCount===Number(packet?.normalizedObservationDatedCount||0)
+      && !observationSensitiveFieldsPresent
+      && structuredObservations.every(o=>text(o?.recordedAt)&&text(o?.sourceType)&&text(o?.player)&&text(o?.statement)&&o?.independentVote===false);
+    if(mode==='lineup'&&!observationStructureReady){
+      const err=new Error('NORMALIZED_OBSERVATION_STRUCTURE_NOT_READY');
+      err.diagnostic={
+        status:packet?.normalizedObservationStatus||'UNAVAILABLE',
+        structuredCount:structuredObservations.length,
+        structuredDatedCount,
+        expectedDatedCount:Number(packet?.normalizedObservationDatedCount)||0,
+        directPlayerObservationCount,
+        sensitiveFieldsPresent:observationSensitiveFieldsPresent
+      };
+      throw err;
+    }
     if(mode==='lineup'&&!appearanceReady){
       const err=new Error('APPEARANCE_EVIDENCE_NOT_READY');
       err.diagnostic={
@@ -211,6 +233,9 @@ export default async function handler(req,res){
       normalizedObservationStatus:packet?.normalizedObservationStatus||'',
       normalizedObservationDatedCount:Number(packet?.normalizedObservationDatedCount)||0,
       normalizedObservationLatestRecordedAt:packet?.normalizedObservationLatestRecordedAt||'',
+      normalizedObservationStructuredCount:structuredObservations.length,
+      normalizedObservationDirectPlayerCount:directPlayerObservationCount,
+      normalizedObservationSensitiveFieldsPresent:observationSensitiveFieldsPresent,
       strategySnapshotStatus:packet?.strategySnapshotStatus||'',
       strategySnapshotCurrentPolicy:packet?.strategySnapshotCurrentPolicy
     },finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
