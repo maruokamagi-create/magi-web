@@ -70,12 +70,47 @@ assert.equal(packet.sources[1].priority,'HISTORICAL');
 assert.deepEqual(calls.sort(),['current','old']);
 
 const pitchingPacket=await buildCurrentSelectionEvidence({question:'先発投手は誰がいい？',routed:{players:[],domains:['PITCHING']},auditProvider:fakeAudit,pitchingProvider:fakePitching});
+assert.deepEqual(pitchingPacket.normalizedObservations,[]);
 assert.equal(pitchingPacket.selectionKind,'PITCHING_ROLE');
 assert.ok(pitchingPacket.text.includes('【現チーム全14選手・投手】'));
 assert.ok(pitchingPacket.text.includes('防御率'));
 assert.ok(pitchingPacket.text.includes('旧チーム'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('投球回'));
 assert.ok(pitchingPacket.sampleSizeRule.includes('登板数'));
+
+const staffObservationPacket=await buildCurrentSelectionEvidence({
+  question:'先発投手は誰がいい？',
+  routed:{players:[],domains:['PITCHING']},
+  auditProvider:fakeAudit,
+  pitchingProvider:fakePitching,
+  coachObservationProvider:async()=>({status:'COMPLETE',source:{id:'coach',name:'coach'},observations:[]}),
+  normalizedObservationProvider:async()=>({
+    status:'COMPLETE',
+    source:{id:'normalized',name:'normalized'},
+    observations:[{
+      recordedAt:'2026-09-20 20:23:37',
+      sourceType:'指導者',
+      provider:'表示しない提供者名',
+      role:'指導者',
+      player:CURRENT_ROSTER[0],
+      scene:'公式戦',
+      statement:'打席で最後まで振り切れていた。',
+      handling:'観察',
+      observationKey:'obs-1'
+    }]
+  }),
+  coachStrategyProvider:async()=>({status:'REFERENCE_ONLY',effectiveAt:'2026-08-02',currentPolicy:false,textExtractable:false,text:'',source:{id:'strategy',name:'strategy'}}),
+  staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+});
+assert.equal(staffObservationPacket.normalizedObservationStatus,'COMPLETE');
+assert.equal(staffObservationPacket.normalizedObservations.length,1);
+assert.equal(staffObservationPacket.normalizedObservations[0].player,CURRENT_ROSTER[0]);
+assert.equal(staffObservationPacket.normalizedObservations[0].recordedAt,'2026-09-20 20:23:37');
+assert.equal(staffObservationPacket.normalizedObservations[0].sourceType,'指導者');
+assert.equal(staffObservationPacket.normalizedObservations[0].statement,'打席で最後まで振り切れていた。');
+assert.equal('provider' in staffObservationPacket.normalizedObservations[0],false);
+assert.equal('role' in staffObservationPacket.normalizedObservations[0],false);
+assert.equal(staffObservationPacket.normalizedObservations[0].independentVote,false);
 
 const pitchingPlanPacket=await buildCurrentSelectionEvidence({question:'7回制の投手運用を先発→第2投手→終盤→クローザーで組んで',routed:{players:[],domains:['PITCHING','TACTICS'],gameInnings:7},auditProvider:fakeAudit,pitchingProvider:fakePitching});
 assert.equal(pitchingPlanPacket.selectionKind,'PITCHING_PLAN');
