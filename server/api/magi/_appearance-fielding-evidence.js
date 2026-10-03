@@ -312,7 +312,7 @@ function startingPosition(v){return positionTokens(v)[0]||'';}
 
 function aggregateAppearance(name,rows){
   const mine=rows.filter(r=>text(r['選手名'])===name);
-  const starts=mine.filter(r=>numericOrder(r['打順'])!==null);
+  const starts=mine.filter(r=>numericOrder(r['打順'])!==null || text(r['打順']).toUpperCase()==='P');
   const substitutions=mine.filter(r=>numericOrder(r['打順'])===null && text(r['打順']).toUpperCase()!=='P');
   const officialStarts=starts.filter(r=>competitionType(r)==='OFFICIAL');
   const practiceStarts=starts.filter(r=>competitionType(r)==='PRACTICE');
