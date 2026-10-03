@@ -14,6 +14,8 @@ on:
       - 'server/api/magi/_evaluation-routing.js'
       - 'server/api/magi/_semantic-postguard.js'
       - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_appearance-fielding-evidence.js'
+      - 'server/api/magi/_evidence-source-map.js'
       - 'server/api/magi/_full-lineup.js'
       - 'server/api/magi/_pitching-plan.js'
       - 'server/api/magi/_pitching-plan-output-guard.js'
@@ -44,6 +46,16 @@ on:
       - 'scripts/test-pitching-plan-semantic-route.mjs'
       - 'scripts/test-cross-output-guard.mjs'
       - 'scripts/test-persona-case-mode.mjs'
+      - '.github/workflows/magi-deliberation-unit.yml'
+  pull_request:
+    paths:
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_appearance-fielding-evidence.js'
+      - 'server/api/magi/_evidence-source-map.js'
+      - 'server/api/magi/_full-lineup.js'
+      - 'scripts/test-selection-live-evidence.mjs'
+      - 'scripts/test-full-lineup-selection.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
   workflow_dispatch:
 
