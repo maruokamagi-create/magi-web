@@ -99,42 +99,7 @@ function scoreStarterMatches(body){
   }
   return matches;
 }
-function scoreSubstitutionRows(body,game){
-  const lines=String(body||'').split(/\r?\n/).map(line=>line.trim());
-  const starterLinePattern=new RegExp('^((?:[1-9]|DH)(?:\\.(?:[1-9]|DH))*)\\s+先\\s+('+SCORE_ROSTER_PATTERN+')(?=\\s|$)');
-  const firstIndex=lines.findIndex(line=>starterLinePattern.test(line));
-  if(firstIndex<0)return [];
-  const pitcherStat=new RegExp('^先\\s+('+SCORE_ROSTER_PATTERN+')\\s+(?:右|左|両)(?:\\s|$)');
-  let endIndex=lines.length;
-  for(let i=firstIndex+1;i<lines.length;i++){
-    if(pitcherStat.test(lines[i])){endIndex=i;break;}
-  }
-  const out=[];
-  const seen=new Set();
-  for(const line of lines.slice(firstIndex,endIndex)){
-    if(starterLinePattern.test(line))continue;
-    const name=CURRENT_ROSTER.find(player=>line.includes(player));
-    if(!name)continue;
-    const at=line.indexOf(name);
-    const prefix=line.slice(0,at).trim().split(/\s+/)[0]||'';
-    if(!/^(?:PH|PR|[1-9])(?:\.(?:PH|PR|[1-9]))*$/.test(prefix))continue;
-    const key=name+'|'+prefix;
-    if(seen.has(key))continue;
-    seen.add(key);
-    out.push({
-      開催日:game.date,
-      大会名:game.category==='OFFICIAL'?'【公式戦】スコア原本復旧':'【練習試合】スコア原本復旧',
-      試合順:game.label,
-      相手校:game.opponent,
-      打順:'',
-      選手名:name,
-      守備位置:scorePositionPath(prefix),
-      _recoveryRole:'SUBSTITUTE'
-    });
-  }
-  return out;
-}
-function fieldingParticipantMap(rows){
+function fieldingRowsByGame(rows){
   const map=new Map();
   for(const row of rows){
     const date=dateKey(pick(row,['開催日','対戦日','日付']));
@@ -142,20 +107,14 @@ function fieldingParticipantMap(rows){
     if(!date||category==='UNKNOWN')continue;
     const gameNo=practiceGameNumber(row);
     const key=scoreIdentityKey({date,category,gameNo,stage:category==='OFFICIAL'?label:'',label});
-    const set=map.get(key)||new Set();
-    const name=text(row?.['選手名']);
-    if(name)set.add(name);
-    map.set(key,set);
+    const list=map.get(key)||[];
+    list.push(row);
+    map.set(key,list);
   }
   return map;
 }
-function sameNameSet(a,b){
-  if(a.size!==b.size)return false;
-  for(const name of a)if(!b.has(name))return false;
-  return true;
-}
 async function recoverAppearanceFromScoreSheets(originals,fieldingRows){
-  const fieldingParticipants=fieldingParticipantMap(fieldingRows);
+  const fieldingGames=fieldingRowsByGame(fieldingRows);
   const games=await Promise.all(originals.map(async original=>{
     const body=await scoreSheetText(original);
     const starters=scoreStarterMatches(body);
@@ -186,33 +145,54 @@ async function recoverAppearanceFromScoreSheets(originals,fieldingRows){
         _recoveryRole:'DEFENSE_ONLY_STARTER'
       });
     }
-    const substitutions=scoreSubstitutionRows(body,game);
+
+    const actualFieldingRows=fieldingGames.get(scoreIdentityKey(game))||[];
+    const fieldingParticipants=new Set(actualFieldingRows.map(row=>text(row['選手名'])).filter(Boolean));
+    const starterParticipants=new Set(starterRows.map(row=>text(row['選手名'])).filter(Boolean));
+    const substitutions=[];
+    const seenSubstitutions=new Set();
+    for(const row of actualFieldingRows){
+      const name=text(row['選手名']);
+      if(!name||starterParticipants.has(name)||seenSubstitutions.has(name))continue;
+      seenSubstitutions.add(name);
+      substitutions.push({
+        開催日:game.date,
+        大会名:game.category==='OFFICIAL'?'【公式戦】スコア原本復旧':'【練習試合】スコア原本復旧',
+        試合順:game.label,
+        相手校:game.opponent,
+        打順:'',
+        選手名:name,
+        守備位置:text(row['守備位置']),
+        _recoveryRole:'SUBSTITUTE_FROM_FIELDING_DETAIL'
+      });
+    }
+
     const rows=[...starterRows,...substitutions];
-    const recoveredParticipants=new Set(rows.map(row=>text(row['選手名'])).filter(Boolean));
-    const expectedParticipants=fieldingParticipants.get(scoreIdentityKey(game))||new Set();
     const battingComplete=batting.length===9&&new Set(battingNames).size===9&&battingNames.every(name=>CURRENT_ROSTER.includes(name));
-    const participantMatch=expectedParticipants.size>0&&sameNameSet(recoveredParticipants,expectedParticipants);
+    const startersSupported=starterParticipants.size>0&&[...starterParticipants].every(name=>fieldingParticipants.has(name));
+    const participantCoverage=fieldingParticipants.size>0&&rows.length===fieldingParticipants.size;
     return {
       game,
       rows,
       battingComplete,
-      participantMatch,
+      startersSupported,
+      participantCoverage,
       battingNames,
       defenseOnlyStarter:defenseOnly?.name||'',
       substitutionNames:substitutions.map(row=>row['選手名']),
-      recoveredParticipantCount:recoveredParticipants.size,
-      fieldingParticipantCount:expectedParticipants.size
+      recoveredParticipantCount:rows.length,
+      fieldingParticipantCount:fieldingParticipants.size
     };
   }));
   const rows=games.flatMap(game=>game.rows);
-  const complete=games.length===11&&games.every(game=>game.battingComplete&&game.participantMatch);
+  const complete=games.length===11&&games.every(game=>game.battingComplete&&game.startersSupported&&game.participantCoverage);
   return {
     status:complete?'COMPLETE':'PARTIAL',
     rows,
     games:games.map(({rows:ignored,...game})=>game),
     gameCount:games.length,
-    completeGameCount:games.filter(game=>game.battingComplete&&game.participantMatch).length,
-    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み11試合のスコア原本PDFから丸岡の先発打順・先発守備・途中出場を復旧する。各試合の参加選手集合を守備詳細CSVと照合し、一致しない試合は復旧COMPLETEにしない。PDFとCSVを独立票として二重加点しない。'
+    completeGameCount:games.filter(game=>game.battingComplete&&game.startersSupported&&game.participantCoverage).length,
+    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み11試合のスコア原本PDFから先発打順・先発守備を復旧する。途中出場は、守備詳細CSVでその試合に実出場した全選手からスコア原本で確定した先発選手を除いた差集合として確定する。先発全員が守備詳細CSVの実出場集合に存在し、復旧後の全参加選手数が一致した試合だけCOMPLETE扱いする。PDFとCSVを独立票として二重加点しない。'
   };
 }
 
