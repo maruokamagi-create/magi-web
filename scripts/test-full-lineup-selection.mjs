@@ -27,6 +27,20 @@ const SYNTHETIC_FIELDING_CASE={evidence:{appearanceFielding:{
     fielding:{positions:{[SYNTHETIC_POSITIONS[i]]:1}}
   }))
 }}};
+const SUBSTITUTE_ONLY_FIELDING_CASE={evidence:{appearanceFielding:{
+  status:'COMPLETE',
+  players:L1.map((name,i)=>({
+    name,
+    appearance:{
+      officialStartingPositions:{},
+      practiceFirstStartingPositions:{},
+      startingPositions:{[SYNTHETIC_POSITIONS[i]]:1},
+      recentStartingPositions:{},
+      practiceSecondStartingPositions:{[SYNTHETIC_POSITIONS[i]]:1}
+    },
+    fielding:{positions:{[SYNTHETIC_POSITIONS[i]]:2}}
+  }))
+}}};
 
 test('L01 full lineup wording is detected',()=>{
   assert.equal(isFullLineupQuestion('ベストオーダー組んで'),true);
@@ -64,7 +78,15 @@ test('L04 final result exposes full lineup and three-sage cross discussion',()=>
   assert.ok(!result.recommendation.includes('宮嵜 翔'));
 });
 
-test('L05 missing fielding evidence fails closed instead of inventing positions',()=>{
+test('L05 substitute-only or practice-game-two defense does not establish a standard starting position',()=>{
+  const result=buildFullLineupResult(SECOND,CROSS,SUBSTITUTE_ONLY_FIELDING_CASE);
+  assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
+  assert.equal(result.fieldingStatus,'UNRESOLVED');
+  assert.equal(result.lineup.length,0);
+  assert.match(result.fieldingReason,/STANDARD_START/);
+});
+
+test('L06 missing fielding evidence fails closed instead of inventing positions',()=>{
   const result=buildFullLineupResult(SECOND,CROSS);
   assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
   assert.equal(result.fieldingStatus,'UNAVAILABLE');
@@ -72,14 +94,14 @@ test('L05 missing fielding evidence fails closed instead of inventing positions'
   assert.equal(result.battingOrder.length,9);
 });
 
-test('L06 incomplete second-round order fails closed',()=>{
+test('L07 incomplete second-round order fails closed',()=>{
   const broken={...SECOND,casper:{...SECOND.casper,candidatePlayers:L3.slice(0,8)}};
   const result=buildFullLineupResult(broken,CROSS);
   assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
   assert.equal(result.lineup.length,0);
 });
 
-test('L07 live evidence marks full lineup and keeps old team reference-only',async()=>{
+test('L08 live evidence marks full lineup and keeps old team reference-only',async()=>{
   const currentPlayers=Object.fromEntries(CURRENT_ROSTER.map((name,i)=>[name,{batting:{AVG:`.${String(200+i).padStart(3,'0')}`,OPS:`.${String(600+i*10).padStart(3,'0')}`},pitching:null}]));
   const oldPlayers={...currentPlayers,'宮嵜 翔':{batting:{AVG:'.999',OPS:'1.999'}}};
   const provider=async({season})=>season==='current'
