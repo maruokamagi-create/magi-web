@@ -255,12 +255,14 @@ function render(r,data){
   const names=finalNames(r);
   const entries=secondEntries(r).filter(e=>e.order.length===9);
   if(names.length!==9||entries.length!==3)return false;
-  const signature=[names.map(norm).join('|'),...entries.map(e=>e.order.map(norm).join('|'))].join('::');
+  const evidenceStamp=[r?.case?.evidence?.resolverVersion||'',r?.case?.evidence?.recentSix?.windowEnd||'',...(r?.case?.evidence?.sources||[]).map(s=>String(s?.modifiedTime||''))].join('|');
+  const signature=[names.map(norm).join('|'),...entries.map(e=>e.order.map(norm).join('|')),evidenceStamp].join('::');
   if(lastSignature===signature&&hero.querySelector('.magiLineupReasons'))return true;
   const old=hero.querySelector('.magiLineupReasons');if(old)old.remove();
   const section=document.createElement('section');section.className='magiLineupReasons';section.setAttribute('aria-label','1番から9番の選定理由');
-  const statsMap=new Map((data?.players||[]).map(p=>[norm(p.name),p]));
-  const selectedStats=names.map(name=>statsMap.get(norm(name))).filter(Boolean);
+  const layers=evidenceLayers(r,data);
+  const statsMap=layers.currentMap;
+  const allCurrentStats=layers.currentAll;
   const topGroup=groupCount(entries);
   const heroTitle=hero.querySelector('.magiFinalDecisionTitle');
   const outerVerdict=hero.closest('.final')?.querySelector('.verdict');
@@ -272,21 +274,24 @@ function render(r,data){
     if(outerVerdict)outerVerdict.textContent='最終ベストオーダー';
   }
   let html=`<div class="magiLineupReasonsHead"><div class="magiLineupReasonsTitle">1〜9番 選定理由</div><div class="magiLineupReasonsSub">WHY THIS ORDER</div></div>`;
-  html+=`<div class="magiLineupReasonsOverview">${esc(overview(r,entries,names))}</div>`;
+  html+=`<div class="magiLineupReasonsOverview">${esc(overview(r,entries,names,layers))}<br>${esc(observationSummary(layers))}</div>`;
   if(hasFallback(entries)){
     html+='<div class="magiLineupReasonWarning">二次判定に暫定維持データが含まれるため、1〜9番の理由は表示しません。実際の二次判定を取得してから再表示します。</div>';
     section.innerHTML=html;
     const method=hero.querySelector('.magiFinalDecisionMethod'),field=hero.querySelector('.magiFinalFieldingNote');
     if(method)hero.insertBefore(section,method);else if(field)hero.insertBefore(section,field);else hero.appendChild(section);
-    lastSignature=signature;hero.dataset.magiLineupReasons='415';return true;
+    lastSignature=signature;hero.dataset.magiLineupReasons='419';return true;
   }
   html+='<div class="magiLineupReasonList">';
   names.forEach((name,index)=>{
     const slot=index+1,support=exactSlotSupport(entries,slot,name),alts=slotAlternatives(entries,slot,name),st=statsMap.get(norm(name));
     html+=`<article class="magiLineupReasonCard"><div class="magiLineupReasonHead"><div class="magiLineupReasonName"><span class="magiLineupReasonSlot">${slot}番</span><span>${esc(name)}</span></div><span class="magiLineupReasonSupport ${supportClass(support)}">${supportText(support)}</span></div>`;
-    html+=`<div class="magiLineupReasonLine"><b>審議根拠：</b>${esc(reasoningLine(support,slot,name))}</div>`;
-    html+=`<div class="magiLineupReasonLine"><b>データ根拠：</b>${esc(statEvidence(slot,st))}</div>`;
-    html+=`<div class="magiLineupReasonLine"><b>配置理由：</b>${esc(specificReason(slot,st,selectedStats,support))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>審議一致：</b>${esc(reasoningLine(support,slot,name))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>今季通算：</b>${esc(statEvidence(slot,st))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>直近6試合：</b>${esc(recentEvidence(name,layers))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>過去実績：</b>${esc(historicalEvidence(name,layers))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>実起用：</b>${esc(usageEvidence(name,layers))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>配置判断：</b>${esc(specificReason(slot,st,allCurrentStats))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>守備根拠：</b>${esc(fieldingEvidenceLine(rows[index]))}</div>`;
     if(alts.length)html+=`<div class="magiLineupReasonAlternatives"><b>同じ打順位置の別案：</b> ${esc(alts.join(' ／ '))}</div>`;
     html+='</article>';
@@ -297,14 +302,14 @@ function render(r,data){
   const field=hero.querySelector('.magiFinalFieldingNote');
   if(method)hero.insertBefore(section,method);else if(field)hero.insertBefore(section,field);else hero.appendChild(section);
   lastSignature=signature;
-  hero.dataset.magiLineupReasons='415';
+  hero.dataset.magiLineupReasons='419';
   return true;
 }
 async function apply(){
   const r=result();
   if(!r||String(r?.final?.mode||'').toUpperCase()!=='FULL_LINEUP')return false;
   if(finalNames(r).length!==9)return false;
-  const data=await loadStats();
+  const data=hasStructuredBattingEvidence(r)?null:await loadStats();
   return render(r,data);
 }
 function run(){if(scheduled)return;scheduled=true;requestAnimationFrame(async()=>{scheduled=false;await apply().catch(()=>{});});}
@@ -313,5 +318,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v418',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v419',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
 })();
