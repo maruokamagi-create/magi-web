@@ -32,6 +32,11 @@ jobs:
             .evidence.scoreSheetAppearanceGameCount==11 and
             .evidence.scoreSheetUnverifiedCount==0 and
             ((.evidence.scoreSheetVerifiedCount + .evidence.scoreSheetSourceMismatchCount)==11) and
+            .evidence.normalizedObservationStatus=="COMPLETE" and
+            .evidence.normalizedObservationDatedCount>0 and
+            .evidence.normalizedObservationStructuredCount>=.evidence.normalizedObservationDatedCount and
+            .evidence.normalizedObservationDirectPlayerCount>0 and
+            .evidence.normalizedObservationSensitiveFieldsPresent==false and
             .evidence.strategySnapshotCurrentPolicy==false and
             .finalStatus=="LINEUP_RESULT" and
             (.lineup|length==9) and
