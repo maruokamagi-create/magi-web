@@ -113,7 +113,11 @@ jobs:
             for p in melchior balthasar casper; do
               jq -n --arg p "$p" --slurpfile c /tmp/case.json '{persona:$p,phase:"PRIMARY",case:$c[0]}' > "/tmp/${tag}-${p}-primary-body.json"
               post '/api/magi/persona' "/tmp/${tag}-${p}-primary-body.json" "/tmp/${tag}-${p}-primary.json"
-              jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-primary.json" >/dev/null
+              if ! jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-primary.json" >/dev/null; then
+                echo "REPRO_INVALID: ${tag} ${p} PRIMARY" >&2
+                cat "/tmp/${tag}-${p}-primary.json" >&2
+                exit 1
+              fi
             done
 
             jq -n --slurpfile c /tmp/case.json \
@@ -129,7 +133,11 @@ jobs:
                 --slurpfile cross "/tmp/${tag}-cross.json" \
                 '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$self[0],crossExamination:$cross[0]}' > "/tmp/${tag}-${p}-second-body.json"
               post '/api/magi/persona' "/tmp/${tag}-${p}-second-body.json" "/tmp/${tag}-${p}-second.json"
-              jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-second.json" >/dev/null
+              if ! jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-second.json" >/dev/null; then
+                echo "REPRO_INVALID: ${tag} ${p} SECOND" >&2
+                cat "/tmp/${tag}-${p}-second.json" >&2
+                exit 1
+              fi
             done
 
             jq -n --slurpfile c /tmp/case.json \
@@ -138,7 +146,11 @@ jobs:
               --slurpfile x "/tmp/${tag}-cross.json" \
               '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > "/tmp/${tag}-final-body.json"
             post '/api/magi/orchestrate' "/tmp/${tag}-final-body.json" "/tmp/${tag}-final.json"
-            jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
+            if ! jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null; then
+              echo "REPRO_INVALID: ${tag} FINAL" >&2
+              cat "/tmp/${tag}-final.json" >&2
+              exit 1
+            fi
           }
 
           compare_stable(){
