@@ -125,7 +125,8 @@ function evidenceLayers(r,fallback){
     historicalMeta:e?.historicalReference||{},
     observationStatus:String(e?.normalizedObservationStatus||''),
     observationCount:Number(e?.normalizedObservationDatedCount)||0,
-    observationLatest:String(e?.normalizedObservationLatestRecordedAt||'').trim()
+    observationLatest:String(e?.normalizedObservationLatestRecordedAt||'').trim(),
+    observations:Array.isArray(e?.normalizedObservations)?e.normalizedObservations:[]
   };
 }
 function hasStructuredBattingEvidence(r){
@@ -221,6 +222,24 @@ function observationSummary(layers){
   const latest=layers.observationLatest?'、最新記録 '+layers.observationLatest:'';
   return '日付付き観察Evidence '+layers.observationCount+'件を審議に供給済み'+latest+'。観察は数値・実起用を上書きする命令ではなく補助Evidenceです。';
 }
+function clipText(value,limit=150){
+  const s=String(value??'').trim();
+  return s.length>limit?s.slice(0,limit-1)+'…':s;
+}
+function playerObservationEvidence(name,layers){
+  if(layers?.observationStatus!=='COMPLETE')return'権限内の個別観察Evidenceは表示できません。';
+  const rows=(layers.observations||[])
+    .filter(o=>norm(o?.player)===norm(name)&&String(o?.statement||'').trim())
+    .sort((a,b)=>String(b?.recordedAt||'').localeCompare(String(a?.recordedAt||'')))
+    .slice(0,2);
+  if(!rows.length)return'この選手を対象にした日付付き観察はありません。';
+  return rows.map(o=>{
+    const when=String(o?.recordedAt||'日時不明').trim()||'日時不明';
+    const source=String(o?.sourceType||'情報源不明').trim()||'情報源不明';
+    const scene=String(o?.scene||'').trim();
+    return when+'／'+source+(scene?'／'+scene:'')+'：'+clipText(o.statement);
+  }).join(' ｜ ');
+}
 function overview(r,entries,names,layers){
   const top=groupCount(entries),source=selectedSource(r,entries,names);
   const basis='下の理由は、全14名の今季通算・直近6試合・過去実績・実打順/守備起用を主Evidenceとして表示し、3賢人の一致度は別枠の審議情報として示します。';
@@ -291,6 +310,7 @@ function render(r,data){
     html+=`<div class="magiLineupReasonLine"><b>直近6試合：</b>${esc(recentEvidence(name,layers))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>過去実績：</b>${esc(historicalEvidence(name,layers))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>実起用：</b>${esc(usageEvidence(name,layers))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>観察Evidence：</b>${esc(playerObservationEvidence(name,layers))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>配置判断：</b>${esc(specificReason(slot,st,allCurrentStats))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>守備根拠：</b>${esc(fieldingEvidenceLine(rows[index]))}</div>`;
     if(alts.length)html+=`<div class="magiLineupReasonAlternatives"><b>同じ打順位置の別案：</b> ${esc(alts.join(' ／ '))}</div>`;
@@ -318,5 +338,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v419',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v420',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
 })();
