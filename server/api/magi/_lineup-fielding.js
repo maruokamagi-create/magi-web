@@ -25,7 +25,8 @@ function evidenceVector(player,position){
   ];
 }
 function positionSupported(player,position){
-  return evidenceVector(player,position).some(n=>n>0);
+  const vector=evidenceVector(player,position);
+  return vector[0]>0||vector[1]>0;
 }
 function assignmentSignature(byPosition){
   return STANDARD_POSITIONS.map(pos=>`${pos}:${text(byPosition?.[pos]?.name)}`).join('|');
@@ -73,7 +74,7 @@ export function assignEvidenceGroundedFielding(lineup,appearanceFielding){
       })
   ]));
   const uncovered=STANDARD_POSITIONS.filter(position=>candidates[position].length===0);
-  if(uncovered.length)return {status:'UNRESOLVED',reason:'POSITION_WITHOUT_EVIDENCE',uncoveredPositions:uncovered,lineup:batting};
+  if(uncovered.length)return {status:'UNRESOLVED',reason:'POSITION_WITHOUT_STANDARD_START_EVIDENCE',uncoveredPositions:uncovered,lineup:batting};
 
   const positionOrder=[...STANDARD_POSITIONS].sort((a,b)=>candidates[a].length-candidates[b].length||STANDARD_POSITIONS.indexOf(a)-STANDARD_POSITIONS.indexOf(b));
   let bestScore=null;
@@ -104,7 +105,7 @@ export function assignEvidenceGroundedFielding(lineup,appearanceFielding){
   }
   visit(0,[0,0,0,0,0]);
 
-  if(!bestAssignments.length)return {status:'UNRESOLVED',reason:'NO_COMPLETE_NINE_POSITION_MATCHING',lineup:batting};
+  if(!bestAssignments.length)return {status:'UNRESOLVED',reason:'NO_COMPLETE_STANDARD_STARTING_MATCHING',lineup:batting};
   if(bestAssignments.length>1){
     return {
       status:'AMBIGUOUS',
@@ -119,7 +120,7 @@ export function assignEvidenceGroundedFielding(lineup,appearanceFielding){
   const byPlayer=new Map(assignmentDetails(assignment).map(row=>[row.name,row]));
   return {
     status:'COMPLETE',
-    rule:'守備位置は実記録だけから決定する。優先順位は、公式戦スタメン回数→練習第1試合スタメン回数→全スタメン回数→直近スタメン回数→実守備回数。割合ウェイトや選手別の固定ポジション表は使わない。同一根拠で複数配置が並ぶ場合は推測で決めずAMBIGUOUSとする。',
+    rule:'公式戦想定の標準守備は、各選手がその位置で公式戦または練習第1試合に実際に先発したEvidenceがある場合だけ割り当てる。練習第2試合のテスト先発や途中守備だけでは標準先発守備資格にしない。その上で優先順位は、公式戦スタメン回数→練習第1試合スタメン回数→全スタメン回数→直近スタメン回数→実守備回数。割合ウェイトや選手別の固定ポジション表は使わず、9位置を成立できない場合は推測せずUNRESOLVED、同一根拠で複数配置が並ぶ場合はAMBIGUOUSとする。',
     score:bestScore,
     lineup:batting.map(row=>{
       const assigned=byPlayer.get(text(row?.name));
