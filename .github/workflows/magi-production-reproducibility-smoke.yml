@@ -78,6 +78,35 @@ jobs:
           }
           JSON
 
+          # Reproducibility fixture only: synthetic fielding evidence for all nine positions.
+          # A deterministic score matrix gives any selected nine a unique complete assignment.
+          jq '
+            .evidence.appearanceFielding = {
+              status:"COMPLETE",
+              players:[
+                .evidence.allCurrentTeamCheck.players
+                | to_entries[]
+                | . as $player
+                | {
+                    name:$player.value.name,
+                    appearance:{
+                      officialStartingPositions:(
+                        ["投","捕","一","二","三","遊","左","中","右"]
+                        | to_entries
+                        | map({key:.value,value:(($player.key+1)*(.key+1))})
+                        | from_entries
+                      ),
+                      practiceFirstStartingPositions:{},
+                      startingPositions:{},
+                      recentStartingPositions:{}
+                    },
+                    fielding:{positions:{}}
+                  }
+              ]
+            }
+          ' /tmp/case.json > /tmp/case-with-fielding.json
+          mv /tmp/case-with-fielding.json /tmp/case.json
+
           post(){
             local endpoint="$1" body="$2" out="$3"
             local headers="${out}.headers" status attempt
@@ -135,7 +164,7 @@ jobs:
               --slurpfile x "/tmp/${tag}-cross.json" \
               '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > "/tmp/${tag}-final-body.json"
             post '/api/magi/orchestrate' "/tmp/${tag}-final-body.json" "/tmp/${tag}-final.json"
-            jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
+            jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and .fieldingStatus=="COMPLETE" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9) and (([.lineup[].position]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
           }
 
           run_once a
