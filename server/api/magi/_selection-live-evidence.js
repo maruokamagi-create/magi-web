@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v21-standard-start-defense';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v22-observation-reasons';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -417,6 +417,18 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const normalizedDates=normalizedObservationEvidence?.status==='COMPLETE'
     ? (normalizedObservationEvidence.observations||[]).map(o=>text(o.recordedAt)).filter(Boolean)
     : [];
+  const normalizedObservations=normalizedObservationEvidence?.status==='COMPLETE'
+    ? (normalizedObservationEvidence.observations||[]).map(o=>({
+        recordedAt:text(o.recordedAt),
+        sourceType:text(o.sourceType),
+        player:text(o.player),
+        scene:text(o.scene),
+        statement:text(o.statement),
+        handling:text(o.handling),
+        evidenceType:'NORMALIZED_OBSERVATION',
+        independentVote:false
+      }))
+    : [];
 
   const sources=[];
   if(strategyEvidence?.source) sources.push({...strategyEvidence.source,season:'current',priority:'DATED_STRATEGY_REFERENCE',effectiveAt:strategyEvidence.effectiveAt,currentPolicy:false});
@@ -452,6 +464,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     normalizedObservationCount: normalizedObservationEvidence?.status==='COMPLETE'?(normalizedObservationEvidence.observations||[]).length:0,
     normalizedObservationDatedCount: normalizedDates.length,
     normalizedObservationLatestRecordedAt: normalizedDates.length?normalizedDates[normalizedDates.length-1]:'',
+    normalizedObservations,
     strategySnapshotStatus: strategyEvidence?.status|| (staffAccessContext?'UNAVAILABLE':'ACCESS_CONTEXT_REQUIRED'),
     strategySnapshotError: staffAccessContext && strategyResult?.status==='rejected' ? String(strategyResult.reason?.code||strategyResult.reason?.message||'strategy_snapshot_unavailable') : '',
     strategySnapshotHttpStatus: staffAccessContext && strategyResult?.status==='rejected' ? (Number(strategyResult.reason?.status)||null) : null,
