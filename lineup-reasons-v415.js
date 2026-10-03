@@ -43,7 +43,8 @@ function injectStyle(){
 }
 
 function result(){return window.MAGI_LAST_DELIBERATION_RESULT||null;}
-function finalNames(r){return Array.isArray(r?.final?.lineup)?r.final.lineup.map(x=>String(x?.name||'').trim()).filter(Boolean):[];}
+function finalRows(r){return Array.isArray(r?.final?.lineup)?r.final.lineup:[];}
+function finalNames(r){return finalRows(r).map(x=>String(x?.name||'').trim()).filter(Boolean);}
 function orderOf(v){return Array.isArray(v?.candidatePlayers)?v.candidatePlayers.map(x=>String(x||'').trim()).filter(Boolean):[];}
 function personaLabel(key,value,index){
   const raw=String(value?.persona||key||'').toUpperCase();
@@ -173,10 +174,22 @@ function reasoningLine(support,slot,name){
   if(support===2)return`3賢人中2人が二次判定で${slot}番に${name}を配置。多数側が同じ位置を支持しています。`;
   return`この${slot}番配置を支持したのは3賢人中1人です。多数一致ではなく、打線全体の比較で選ばれた参考案上の配置です。`;
 }
+function fieldingEvidenceLine(row){
+  const position=String(row?.positionLabel||row?.position||'').trim();
+  const e=row?.positionEvidence||{};
+  const official=Number(e.officialStarts)||0,practiceFirst=Number(e.practiceFirstStarts)||0,total=Number(e.totalStarts)||0,recent=Number(e.recentStarts)||0,appearances=Number(e.fieldingAppearances)||0;
+  if(!position)return'守備位置が最終結果に含まれていません。';
+  if(total<=0&&appearances<=0)return`${position}：確認できる実起用Evidenceがありません。守備配置の再確認が必要です。`;
+  const base=`${position}：先発 ${total}試合（公式戦 ${official}、練習試合第1試合 ${practiceFirst}）、直近先発 ${recent}試合、守備出場 ${appearances}試合。`;
+  if(total===0&&appearances>0)return base+'先発実績はなく、守備出場のみが根拠のためEvidenceは薄めです。';
+  if(official===0&&practiceFirst===0)return base+'公式戦・練習試合第1試合での先発根拠は確認できません。';
+  return base;
+}
 function render(r,data){
   injectStyle();
   const hero=document.querySelector('.magiFinalDecisionHero');
   if(!hero)return false;
+  const rows=finalRows(r);
   const names=finalNames(r);
   const entries=secondEntries(r).filter(e=>e.order.length===9);
   if(names.length!==9||entries.length!==3)return false;
@@ -212,6 +225,7 @@ function render(r,data){
     html+=`<div class="magiLineupReasonLine"><b>審議根拠：</b>${esc(reasoningLine(support,slot,name))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>データ根拠：</b>${esc(statEvidence(slot,st))}</div>`;
     html+=`<div class="magiLineupReasonLine"><b>配置理由：</b>${esc(specificReason(slot,st,selectedStats,support))}</div>`;
+    html+=`<div class="magiLineupReasonLine"><b>守備根拠：</b>${esc(fieldingEvidenceLine(rows[index]))}</div>`;
     if(alts.length)html+=`<div class="magiLineupReasonAlternatives"><b>同じ打順位置の別案：</b> ${esc(alts.join(' ／ '))}</div>`;
     html+='</article>';
   });
@@ -237,5 +251,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v417',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v418',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
 })();
