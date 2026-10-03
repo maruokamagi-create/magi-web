@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v20-score-sheet-recovery';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v21-standard-start-defense';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -283,8 +283,11 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
           const a=p.appearance||{}, f=p.fielding||{};
           const orders=Object.entries(a.battingOrders||{}).map(([k,v])=>`${k}番×${v}`).join('、')||'スタメン打順なし';
           const starts=Object.entries(a.startingPositions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'スタメン守備なし';
+          const officialPositions=Object.entries(a.officialStartingPositions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'なし';
+          const practiceFirstPositions=Object.entries(a.practiceFirstStartingPositions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'なし';
+          const standardPositions=[...new Set([...Object.keys(a.officialStartingPositions||{}),...Object.keys(a.practiceFirstStartingPositions||{})])].join('・')||'なし';
           const field=Object.entries(f.positions||{}).map(([k,v])=>`${k}×${v}`).join('、')||'守備記録なし';
-          return `${p.name}：スタメン ${a.starts||0}（公式戦 ${a.officialStarts||0} / 練習第1試合 ${a.practiceFirstStarts||0} / 練習第2試合 ${a.practiceSecondStarts||0}） / 途中出場 ${a.substitutions||0} / 打順 ${orders} / スタメン守備 ${starts} / 実守備 ${field}`;
+          return `${p.name}：スタメン ${a.starts||0}（公式戦 ${a.officialStarts||0} / 練習第1試合 ${a.practiceFirstStarts||0} / 練習第2試合 ${a.practiceSecondStarts||0}） / 途中出場 ${a.substitutions||0} / 打順 ${orders} / 標準先発守備資格 ${standardPositions} / 公式戦先発守備 ${officialPositions} / 練習第1先発守備 ${practiceFirstPositions} / 全スタメン守備 ${starts} / 実守備 ${field}`;
         })
       );
     }else if(usageEvidence?.status==='PARTIAL'){
@@ -368,7 +371,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     lines.push(
       '【打順審議ルール】標準オーダーをコード内の固定打順から決めない。現チーム通算、直近6試合、出場詳細、守備詳細、利用可能な観察Evidenceをその都度読み、1〜9番を審議する。過去の基準線や以前の起用案は、それ自体を現在の正解として扱わない。',
       '【打順適性】1〜2番、3〜5番、6〜9番の役割は、出塁・長打・母数・直近状態・実際の打順/守備起用・投手負担をEvidenceから比較して説明する。特定選手をコードだけを根拠に特定打順へ固定しない。',
-      '【守備成立】守備位置は出場詳細CSVを最優先とする。ただし出場詳細CSVの構造破損を検出した場合だけ、登録済みスコア原本から復旧した先発守備を代替Evidenceとして使い、守備詳細CSVを補助として重ねる。コード内の固定ポジション案で実記録を上書きしない。現在の起用方針を観察Evidenceから使う場合は、情報源・時期・観察/提案の区別を明示する。',
+      '【守備成立】公式戦想定の標準オーダーは、投・捕・一・二・三・遊・左・中・右の各位置を、公式戦または練習第1試合でその位置に実際に先発した選手だけで成立させる。練習第2試合のテスト起用や途中守備だけでは標準先発守備資格を成立させない。守備詳細CSVの途中守備は補助Evidenceには使えるが、標準スタメン守備の成立根拠にはしない。出場詳細CSVを最優先とし、構造破損時だけ登録済みスコア原本から復旧した先発守備を代替Evidenceとして使う。コード内の固定ポジション案で実記録を上書きしない。',
       '【練習試合の解釈】公式戦と練習試合の起用を混同しない。実験的起用を通常序列の低下・固定役割の根拠にしない。試合区分をEvidenceから確認できない場合は推測しない。',
       '【理由説明の必須深度】打順を並べるだけ、または抽象説明だけは禁止。一次判断・二次判断とも、①1〜2番、②3〜5番、③6〜9番について具体的な選手名とEvidenceを使って説明する。利用可能な数値Evidenceがある場合は母数と対象期間を併記し、直近と通算の対象が重なる場合は独立Evidenceとして二重評価しない。',
       '【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議では具体的な打順番号と選手名を挙げて相互検証する。直近Evidenceがない場合は「好調」「不調」「最近上向き」などを作らない。旧チームの引退選手を候補に入れない。ここにない数値・役割・性格・将来結果は作らない。'
