@@ -8,6 +8,7 @@ on:
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_evidence-source-map.js'
       - 'api/magi-live-deliberation-selftest.js'
+      - 'lineup-reasons-v415.js'
       - 'server/api/magi/_full-lineup.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
@@ -33,5 +34,11 @@ jobs:
           node --check server/api/magi/_selection-live-evidence.js
           node --check server/api/magi/_appearance-fielding-evidence.js
           node --check api/magi-live-deliberation-selftest.js
+          node --check lineup-reasons-v415.js
+      - name: Guard visible fielding evidence
+        run: |
+          grep -Fq 'function fieldingEvidenceLine(row)' lineup-reasons-v415.js
+          grep -Fq '<b>守備根拠：</b>' lineup-reasons-v415.js
+          grep -Fq '先発実績はなく、守備出場のみが根拠のためEvidenceは薄めです。' lineup-reasons-v415.js
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
