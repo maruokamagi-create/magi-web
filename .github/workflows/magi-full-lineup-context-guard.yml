@@ -16,6 +16,11 @@ on:
     paths:
       - 'server/api/magi/core.js'
       - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_appearance-fielding-evidence.js'
+      - 'server/api/magi/_evidence-source-map.js'
+      - 'api/magi-live-deliberation-selftest.js'
+      - 'lineup-reasons-v415.js'
+      - 'index.html'
       - 'server/api/magi/_full-lineup.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
@@ -35,10 +40,19 @@ jobs:
           node --check server/api/magi/_appearance-fielding-evidence.js
           node --check api/magi-live-deliberation-selftest.js
           node --check lineup-reasons-v415.js
-      - name: Guard visible fielding evidence
+      - name: Guard evidence-grounded lineup reasons
         run: |
-          grep -Fq 'function fieldingEvidenceLine(row)' lineup-reasons-v415.js
+          grep -Fq 'function evidenceLayers(r,fallback)' lineup-reasons-v415.js
+          grep -Fq 'if(!s)return null;' lineup-reasons-v415.js
+          grep -Fq '<b>今季通算：</b>' lineup-reasons-v415.js
+          grep -Fq '<b>直近6試合：</b>' lineup-reasons-v415.js
+          grep -Fq '<b>過去実績：</b>' lineup-reasons-v415.js
+          grep -Fq '<b>実起用：</b>' lineup-reasons-v415.js
           grep -Fq '<b>守備根拠：</b>' lineup-reasons-v415.js
-          grep -Fq '先発実績はなく、守備出場のみが根拠のためEvidenceは薄めです。' lineup-reasons-v415.js
+          grep -Fq '全14名の今季通算・直近6試合・過去実績・実打順/守備起用を主Evidence' lineup-reasons-v415.js
+          grep -Fq '3賢人の一致度そのものを打撃Evidenceの代わりにはしません' lineup-reasons-v415.js
+          grep -Fq '/lineup-reasons-v415.js?v=419' index.html
+          ! grep -Fq '最終${r.total}人中' lineup-reasons-v415.js
+          ! grep -Fq '4番は3賢人の一致度を最優先' lineup-reasons-v415.js
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs

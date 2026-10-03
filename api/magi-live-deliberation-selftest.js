@@ -98,13 +98,13 @@ async function runOnce(base,packet,question=QUESTION){
   const rows=Array.isArray(final?.lineup)?final.lineup:[];
   const names=rows.map(x=>x?.name).filter(Boolean);
   const positions=rows.map(x=>text(x?.position)).filter(Boolean);
-  const evidenceSupported=rows.every(x=>{
+  const standardStartSupported=rows.every(x=>{
     const e=x?.positionEvidence||{};
-    return ['officialStarts','practiceFirstStarts','totalStarts','recentStarts','fieldingAppearances'].some(k=>Number(e[k])>0);
+    return Number(e.officialStarts)>0||Number(e.practiceFirstStarts)>0;
   });
   const legal=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&final?.fieldingStatus==='COMPLETE'&&
     names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)))&&
-    positions.length===9&&new Set(positions).size===9&&positions.every(p=>standardPositionKeys.has(p))&&evidenceSupported;
+    positions.length===9&&new Set(positions).size===9&&positions.every(p=>standardPositionKeys.has(p))&&standardStartSupported;
   if(!legal)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}_FIELDING_${String(final?.fieldingStatus||'NO_STATUS')}`);
   return {primary:Object.fromEntries(PERSONAS.map(p=>[p,{candidatePlayers:primary[p].candidatePlayers,judgment:primary[p].judgment,confidence:primary[p].confidence}])),cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],challenges:cross?.challenges||{},informationGaps:cross?.informationGaps||[]},second:Object.fromEntries(PERSONAS.map(p=>[p,{candidatePlayers:second[p].candidatePlayers,judgment:second[p].judgment,confidence:second[p].confidence}])),final:{mode:final.mode,status:final.status,lineup:final.lineup,recommendation:final.recommendation,personaLineups:final.personaLineups}};
 }
