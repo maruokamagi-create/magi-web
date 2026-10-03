@@ -3,6 +3,7 @@ import { PERSONA_PROMPTS } from './_prompts.js';
 import { validatePersonaOutput } from './_persona-output-guard.js';
 import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
+import { assignEvidenceGroundedFielding } from './_lineup-fielding.js';
 import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
 
 export const PERSONA_RESPONSE_SCHEMA = {
@@ -70,10 +71,21 @@ export function personaRosterStatus(values) {
   };
 }
 
-export function personaFullLineupIssues(rawResult, fullLineupCase) {
+export function personaFullLineupIssues(rawResult, fullLineupCase, caseData=null) {
   if (!fullLineupCase) return [];
   const check = validateFullLineupOrder(rawResult?.candidatePlayers);
-  return check.issues.map(x => `FULL_LINEUP: ${x}`);
+  const issues = check.issues.map(x => `FULL_LINEUP: ${x}`);
+  if (!check.ok) return issues;
+  const appearanceFielding=caseData?.evidence?.appearanceFielding;
+  if (String(appearanceFielding?.status||'')==='COMPLETE') {
+    const batting=check.order.map((name,index)=>({slot:index+1,name}));
+    const fielding=assignEvidenceGroundedFielding(batting,appearanceFielding);
+    if(fielding.status!=='COMPLETE'){
+      const detail=fielding.reason||fielding.status||'UNRESOLVED';
+      issues.push(`FULL_LINEUP_STANDARD_DEFENSE: 選出9人だけでは公式戦または練習第1試合の先発Evidenceから9守備位置を成立できません（${detail}）。途中守備や練習第2試合だけを標準先発守備資格に使わず、9人を見直してください。`);
+    }
+  }
+  return issues;
 }
 
 export function personaPitchingPlanIssues(rawResult, pitchingPlanCase) {
@@ -259,6 +271,9 @@ export function personaCorrectionDirective(issues) {
   if (list.some(x => /FULL_LINEUP/.test(String(x)))) {
     directives.push('This is a full batting-order task. candidatePlayers MUST contain exactly nine distinct current-team players in batting order from No.1 through No.9. Do not return a shortlist, extra bench players, duplicate players, or historical players. If opponent-specific information is absent, produce a standard current lineup rather than refusing to choose.');
   }
+  if (list.some(x => /FULL_LINEUP_STANDARD_DEFENSE/.test(String(x)))) {
+    directives.push('Your previous nine cannot form the standard starting defense from actual official-game or practice-game-one starts. Rebuild candidatePlayers so the same nine can cover P, C, 1B, 2B, 3B, SS, LF, CF, RF using only those starting-position records. Do not use practice-game-two experiments or substitute-only fielding to make a position legal.');
+  }
   if (list.some(x => /PITCHING_PLAN/.test(String(x)))) {
     directives.push('This is a four-role pitching-plan task. candidatePlayers MUST contain exactly four distinct current-team players in this exact role order: STARTER, SECOND PITCHER, LATE, CLOSER. Do not add extra pitchers, duplicate a pitcher, or include retired players.');
   }
@@ -381,7 +396,7 @@ export function finalizePersonaDraft(body, persona, phase, rawResult) {
   ), body.case);
   let guardIssues = [
     ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-    ...personaFullLineupIssues(rawResult, fullLineupCase),
+    ...personaFullLineupIssues(rawResult, fullLineupCase, body.case),
     ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
   ];
   result.persona = persona.toUpperCase();
@@ -440,7 +455,7 @@ export default async function handler(req, res) {
       ), body.case);
       guardIssues = [
         ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
-        ...personaFullLineupIssues(rawResult, fullLineupCase),
+        ...personaFullLineupIssues(rawResult, fullLineupCase, body.case),
         ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
       ];
     }
