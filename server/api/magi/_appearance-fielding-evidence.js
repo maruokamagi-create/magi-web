@@ -298,7 +298,7 @@ function recoveredScoreSheetEvidence(originals,recovery){
     unverifiedCount:recovery.gameCount-recovery.completeGameCount,
     verified:[],
     sourceMismatches:[],
-    unverified:recovery.games.filter(game=>!game.battingComplete||!game.participantMatch).map(game=>({game:game.game,reason:'SCORE_SHEET_RECOVERY_INCOMPLETE',battingComplete:game.battingComplete,participantMatch:game.participantMatch,recoveredParticipantCount:game.recoveredParticipantCount,fieldingParticipantCount:game.fieldingParticipantCount})),
+    unverified:recovery.games.filter(game=>!game.battingComplete||!game.startersSupported||!game.participantCoverage).map(game=>({game:game.game,reason:'SCORE_SHEET_RECOVERY_INCOMPLETE',battingComplete:game.battingComplete,startersSupported:game.startersSupported,participantCoverage:game.participantCoverage,recoveredParticipantCount:game.recoveredParticipantCount,fieldingParticipantCount:game.fieldingParticipantCount})),
     recoveryGames:recovery.games,
     sources:originals.map(x=>({id:x.file.id,name:x.file.name,path:x.file.path,mimeType:x.file.mimeType,modifiedTime:x.file.modifiedTime,category:x.key.category,priority:'PRIMARY_APPEARANCE_RECOVERY',independentVote:false})),
     rule:recovery.rule
