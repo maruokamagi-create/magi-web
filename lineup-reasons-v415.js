@@ -94,9 +94,43 @@ async function loadStats(){
     .finally(()=>{statsPending=null;});
   return statsPending;
 }
-function num(v){const n=Number(String(v??'').replace(/,/g,''));return Number.isFinite(n)?n:null;}
+function num(v){
+  const s=String(v??'').trim().replace(/,/g,'');
+  if(!s)return null;
+  const n=Number(s);
+  return Number.isFinite(n)?n:null;
+}
 function fmtRate(v){const n=num(v);if(n===null)return'—';return n.toFixed(3).replace(/^0/,'').replace(/-0\./,'-.');}
-function fmtInt(v){const n=num(v);return n===null?'—':String(n);}
+function fmtInt(v){const n=num(v);return n===null?'—':String(Math.trunc(n));}
+function flatBatting(player){
+  if(!player)return null;
+  const b=player?.batting&&typeof player.batting==='object'?player.batting:player;
+  return {name:String(player?.name||b?.name||'').trim(),games:player?.games??b?.games??null,...b};
+}
+function mapPlayers(players){return new Map((players||[]).map(p=>flatBatting(p)).filter(p=>p?.name).map(p=>[norm(p.name),p]));}
+function evidenceLayers(r,fallback){
+  const e=r?.case?.evidence||{};
+  const current=Array.isArray(e?.allCurrentTeamCheck?.players)&&e.allCurrentTeamCheck.players.length?e.allCurrentTeamCheck.players:(fallback?.players||[]);
+  const recent=String(e?.recentSix?.status||'')==='COMPLETE'?(e.recentSix.players||[]):[];
+  const historical=String(e?.historicalReference?.status||'')==='COMPLETE'?(e.historicalReference.players||[]):[];
+  const usage=Array.isArray(e?.appearanceFielding?.players)?e.appearanceFielding.players:[];
+  return {
+    evidence:e,
+    currentMap:mapPlayers(current),
+    currentAll:current.map(flatBatting).filter(Boolean),
+    recentMap:mapPlayers(recent),
+    historicalMap:mapPlayers(historical),
+    usageMap:new Map(usage.map(p=>[norm(p?.name),p])),
+    recentMeta:e?.recentSix||{},
+    historicalMeta:e?.historicalReference||{},
+    observationStatus:String(e?.normalizedObservationStatus||''),
+    observationCount:Number(e?.normalizedObservationDatedCount)||0,
+    observationLatest:String(e?.normalizedObservationLatestRecordedAt||'').trim()
+  };
+}
+function hasStructuredBattingEvidence(r){
+  return Array.isArray(r?.case?.evidence?.allCurrentTeamCheck?.players)&&r.case.evidence.allCurrentTeamCheck.players.length===14;
+}
 function statEvidence(slot,st){
   if(!st)return'今季打撃データを取得できなかったため、数値理由は表示しません。';
   const avg=fmtRate(st.AVG),obp=fmtRate(st.OBP),slg=fmtRate(st.SLG),ops=fmtRate(st.OPS),risp=fmtRate(st.RISP);
