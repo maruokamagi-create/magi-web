@@ -80,7 +80,32 @@ jobs:
 
           # Reproducibility fixture only: synthetic fielding evidence for all nine positions.
           # A deterministic score matrix gives any selected nine a unique complete assignment.
-          jq '\n            .evidence.appearanceFielding = {\n              status:"COMPLETE",\n              players:[\n                .evidence.allCurrentTeamCheck.players\n                | to_entries[]\n                | . as $player\n                | {\n                    name:$player.value.name,\n                    appearance:{\n                      officialStartingPositions:(\n                        ["投","捕","一","二","三","遊","左","中","右"]\n                        | to_entries\n                        | map({key:.value,value:(($player.key+1)*(.key+1))})\n                        | from_entries\n                      ),\n                      practiceFirstStartingPositions:{},\n                      startingPositions:{},\n                      recentStartingPositions:{}\n                    },\n                    fielding:{positions:{}}\n                  }\n              ]\n            }\n          ' /tmp/case.json > /tmp/case-with-fielding.json\n          mv /tmp/case-with-fielding.json /tmp/case.json
+          jq '
+            .evidence.appearanceFielding = {
+              status:"COMPLETE",
+              players:[
+                .evidence.allCurrentTeamCheck.players
+                | to_entries[]
+                | . as $player
+                | {
+                    name:$player.value.name,
+                    appearance:{
+                      officialStartingPositions:(
+                        ["投","捕","一","二","三","遊","左","中","右"]
+                        | to_entries
+                        | map({key:.value,value:(($player.key+1)*(.key+1))})
+                        | from_entries
+                      ),
+                      practiceFirstStartingPositions:{},
+                      startingPositions:{},
+                      recentStartingPositions:{}
+                    },
+                    fielding:{positions:{}}
+                  }
+              ]
+            }
+          ' /tmp/case.json > /tmp/case-with-fielding.json
+          mv /tmp/case-with-fielding.json /tmp/case.json
 
           post(){
             local endpoint="$1" body="$2" out="$3"
