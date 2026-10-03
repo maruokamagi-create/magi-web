@@ -38,7 +38,7 @@ jobs:
             (([.lineup[].name]|unique|length)==9) and
             (([.lineup[].position]|unique|length)==9) and
             (([.lineup[].position]|sort)==(["一","三","中","二","右","左","投","捕","遊"]|sort)) and
-            ([.lineup[].positionEvidence | ([.officialStarts,.practiceFirstStarts,.totalStarts,.recentStarts,.fieldingAppearances] | any(.>0))] | all) and
+            ([.lineup[].positionEvidence | (.officialStarts>0 or .practiceFirstStarts>0)] | all) and
             (.digest|length==16)
           ' /tmp/lineup.json >/dev/null
           echo 'PRODUCTION EXACT LIVE BEST-ORDER DELIBERATION: PASS'
