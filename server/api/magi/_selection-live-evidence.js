@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v19-source-integrity-guard';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v20-score-sheet-recovery';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -269,11 +269,16 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const usageEvidence=usageResult?.status==='fulfilled'?usageResult.value:null;
   if(wantsUsageEvidence){
     if(usageEvidence?.status==='COMPLETE'){
+      const recoveredUsage=usageEvidence.appearanceSourceMode==='SCORE_SHEET_RECOVERY';
       lines.push(
-        '【実起用・守備Evidence】出場詳細CSVをスタメン/途中出場/実打順/スタメン守備位置の最優先記録として扱い、守備詳細CSVを実守備位置の補助記録として重ねる。',
-        usageEvidence.scoreSheets?.status==='COMPLETE'
-          ? `【スコア原本照合】COMPLETE：出場詳細CSVの ${usageEvidence.scoreSheets.appearanceGameCount} 試合を、公式戦 ${usageEvidence.scoreSheets.officialOriginalCount} 件＋練習試合 ${usageEvidence.scoreSheets.practiceOriginalCount} 件＝スコア原本 ${usageEvidence.scoreSheets.originalCount} 件と照合し、${usageEvidence.scoreSheets.verifiedCount} 試合を対応確認。スコア原本は一次照合資料であり、同じ試合をCSVと別票として二重評価しない。`
-          : `【スコア原本照合】${usageEvidence.scoreSheets?.status||'UNAVAILABLE'}：対応確認 ${usageEvidence.scoreSheets?.verifiedCount||0}/${usageEvidence.scoreSheets?.appearanceGameCount||0} 試合、SOURCE_MISMATCH ${usageEvidence.scoreSheets?.sourceMismatchCount||0}、UNVERIFIED ${usageEvidence.scoreSheets?.unverifiedCount||0}。不一致は推測で補完せず、そのままEvidenceへ残す。`,
+        recoveredUsage
+          ? '【実起用・守備Evidence】現在の出場詳細CSVは構造破損を検出したため判断には使用しない。登録済み11試合のスコア原本PDFからスタメン/途中出場/実打順/先発守備位置を復旧し、守備詳細CSVの各試合参加選手集合と一致した場合だけ利用する。'
+          : '【実起用・守備Evidence】出場詳細CSVをスタメン/途中出場/実打順/スタメン守備位置の最優先記録として扱い、守備詳細CSVを実守備位置の補助記録として重ねる。',
+        recoveredUsage
+          ? `【スコア原本復旧】RECOVERED：公式戦 ${usageEvidence.scoreSheets?.officialOriginalCount||0} 件＋練習試合 ${usageEvidence.scoreSheets?.practiceOriginalCount||0} 件＝原本 ${usageEvidence.scoreSheets?.originalCount||0} 件から ${usageEvidence.scoreSheets?.verifiedCount||0}/${usageEvidence.scoreSheets?.appearanceGameCount||0} 試合を復旧。壊れた出場詳細CSVは別票として評価しない。`
+          : (usageEvidence.scoreSheets?.status==='COMPLETE'
+            ? `【スコア原本照合】COMPLETE：出場詳細CSVの ${usageEvidence.scoreSheets.appearanceGameCount} 試合を、公式戦 ${usageEvidence.scoreSheets.officialOriginalCount} 件＋練習試合 ${usageEvidence.scoreSheets.practiceOriginalCount} 件＝スコア原本 ${usageEvidence.scoreSheets.originalCount} 件と照合し、${usageEvidence.scoreSheets.verifiedCount} 試合を対応確認。スコア原本は一次照合資料であり、同じ試合をCSVと別票として二重評価しない。`
+            : `【スコア原本照合】${usageEvidence.scoreSheets?.status||'UNAVAILABLE'}：対応確認 ${usageEvidence.scoreSheets?.verifiedCount||0}/${usageEvidence.scoreSheets?.appearanceGameCount||0} 試合、SOURCE_MISMATCH ${usageEvidence.scoreSheets?.sourceMismatchCount||0}、UNVERIFIED ${usageEvidence.scoreSheets?.unverifiedCount||0}。不一致は推測で補完せず、そのままEvidenceへ残す。`),
         ...usageEvidence.players.map(p=>{
           const a=p.appearance||{}, f=p.fielding||{};
           const orders=Object.entries(a.battingOrders||{}).map(([k,v])=>`${k}番×${v}`).join('、')||'スタメン打順なし';
@@ -363,7 +368,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     lines.push(
       '【打順審議ルール】標準オーダーをコード内の固定打順から決めない。現チーム通算、直近6試合、出場詳細、守備詳細、利用可能な観察Evidenceをその都度読み、1〜9番を審議する。過去の基準線や以前の起用案は、それ自体を現在の正解として扱わない。',
       '【打順適性】1〜2番、3〜5番、6〜9番の役割は、出塁・長打・母数・直近状態・実際の打順/守備起用・投手負担をEvidenceから比較して説明する。特定選手をコードだけを根拠に特定打順へ固定しない。',
-      '【守備成立】守備位置は出場詳細CSVを最優先、守備詳細CSVを補助として実起用を確認する。コード内の固定ポジション案で実記録を上書きしない。現在の起用方針を観察Evidenceから使う場合は、情報源・時期・観察/提案の区別を明示する。',
+      '【守備成立】守備位置は出場詳細CSVを最優先とする。ただし出場詳細CSVの構造破損を検出した場合だけ、登録済みスコア原本から復旧した先発守備を代替Evidenceとして使い、守備詳細CSVを補助として重ねる。コード内の固定ポジション案で実記録を上書きしない。現在の起用方針を観察Evidenceから使う場合は、情報源・時期・観察/提案の区別を明示する。',
       '【練習試合の解釈】公式戦と練習試合の起用を混同しない。実験的起用を通常序列の低下・固定役割の根拠にしない。試合区分をEvidenceから確認できない場合は推測しない。',
       '【理由説明の必須深度】打順を並べるだけ、または抽象説明だけは禁止。一次判断・二次判断とも、①1〜2番、②3〜5番、③6〜9番について具体的な選手名とEvidenceを使って説明する。利用可能な数値Evidenceがある場合は母数と対象期間を併記し、直近と通算の対象が重なる場合は独立Evidenceとして二重評価しない。',
       '【運用ルール】1番〜9番は現チーム14名から異なる9名で構成する。3賢人は独立して全打順を作り、クロス審議では具体的な打順番号と選手名を挙げて相互検証する。直近Evidenceがない場合は「好調」「不調」「最近上向き」などを作らない。旧チームの引退選手を候補に入れない。ここにない数値・役割・性格・将来結果は作らない。'
@@ -395,10 +400,14 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const appearanceFielding={
     status:usageEvidence?.status|| (wantsUsageEvidence?'UNAVAILABLE':'NOT_APPLICABLE'),
     appearanceStatus:usageEvidence?.appearanceStatus||'',
+    appearanceSourceMode:usageEvidence?.appearanceSourceMode||'',
     fieldingStatus:usageEvidence?.fieldingStatus||'',
     integrity:usageEvidence?.integrity||null,
+    canonicalIntegrity:usageEvidence?.canonicalIntegrity||null,
     sourceIntegrity:usageEvidence?.sourceIntegrity||null,
     issues:Array.isArray(usageEvidence?.issues)?usageEvidence.issues:[],
+    warnings:Array.isArray(usageEvidence?.warnings)?usageEvidence.warnings:[],
+    recovery:usageEvidence?.recovery||null,
     scoreSheets:scoreSheetVerification,
     players:Array.isArray(usageEvidence?.players)?usageEvidence.players:[]
   };
@@ -421,7 +430,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(historicalReference.source) sources.push({...historicalReference.source,season:'old',priority:'HISTORICAL'});
 
   const pitchingEligible=isPitchingKind(kind)?(currentPitching?.experiencedPlayers||[]):[];  const summary=kind==='FULL_LINEUP'
-    ? `現チーム14名の2026-2027通算正本を主評価にし、${recentSix.status==='COMPLETE'?'打撃詳細CSVから直近6試合を再集計し、':''}出場詳細・守備詳細・利用可能な観察Evidenceと過去実績を重ね、固定打順を前提にせず毎回再審議する1〜9番用Evidenceです。`
+    ? `現チーム14名の2026-2027通算正本を主評価にし、${recentSix.status==='COMPLETE'?'打撃詳細CSVから直近6試合を再集計し、':''}${usageEvidence?.appearanceSourceMode==='SCORE_SHEET_RECOVERY'?'スコア原本から復旧した出場詳細':'出場詳細'}・守備詳細・利用可能な観察Evidenceと過去実績を重ね、固定打順を前提にせず毎回再審議する1〜9番用Evidenceです。`
     : kind==='PITCHING_PLAN'
       ? `現チーム14名の正本投手記録を主評価にし、旧チームの同14名の過去投球記録を参考として付加した${gameInnings}回制4役投手運用の審議用Evidenceです。率系指標は母数とセットで扱います。`
       : `現チーム14名の正本${metricLabel}記録を主評価にし、${recentSix.status==='COMPLETE'?'直近6試合の打撃詳細と、':''}取得できた過去実績を比較材料として付加しました。率系指標は母数とセットで扱います。`;

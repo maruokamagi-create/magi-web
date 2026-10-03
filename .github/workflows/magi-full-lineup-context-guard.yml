@@ -5,6 +5,9 @@ on:
     paths:
       - 'server/api/magi/core.js'
       - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_appearance-fielding-evidence.js'
+      - 'server/api/magi/_evidence-source-map.js'
+      - 'api/magi-live-deliberation-selftest.js'
       - 'server/api/magi/_full-lineup.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
@@ -24,7 +27,11 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '20'
-      - name: Syntax check core
-        run: node --check server/api/magi/core.js
+      - name: Syntax check lineup evidence path
+        run: |
+          node --check server/api/magi/core.js
+          node --check server/api/magi/_selection-live-evidence.js
+          node --check server/api/magi/_appearance-fielding-evidence.js
+          node --check api/magi-live-deliberation-selftest.js
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
