@@ -3,6 +3,9 @@ name: MAGI Production Reproducibility Smoke
 on:
   workflow_call:
   workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/magi-production-reproducibility-smoke.yml'
 
 jobs:
   reproducibility:
@@ -138,6 +141,15 @@ jobs:
             jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
           }
 
+          compare_stable(){
+            local label="$1" a="$2" b="$3"
+            if ! cmp "$a" "$b" >/dev/null; then
+              echo "REPRO_MISMATCH: $label" >&2
+              diff -u "$a" "$b" >&2 || true
+              return 1
+            fi
+          }
+
           run_once a
           # Give the canonical cache writes from the first full deliberation time to become visible before replaying the identical Evidence.
           sleep 3
@@ -146,19 +158,19 @@ jobs:
           for p in melchior balthasar casper; do
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/a-${p}-primary.json" > "/tmp/a-${p}-primary-stable.json"
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/b-${p}-primary.json" > "/tmp/b-${p}-primary-stable.json"
-            cmp "/tmp/a-${p}-primary-stable.json" "/tmp/b-${p}-primary-stable.json"
+            compare_stable "$p PRIMARY" "/tmp/a-${p}-primary-stable.json" "/tmp/b-${p}-primary-stable.json"
 
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/a-${p}-second.json" > "/tmp/a-${p}-second-stable.json"
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/b-${p}-second.json" > "/tmp/b-${p}-second-stable.json"
-            cmp "/tmp/a-${p}-second-stable.json" "/tmp/b-${p}-second-stable.json"
+            compare_stable "$p SECOND" "/tmp/a-${p}-second-stable.json" "/tmp/b-${p}-second-stable.json"
           done
 
           jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/a-cross.json > /tmp/a-cross-stable.json
           jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/b-cross.json > /tmp/b-cross-stable.json
-          cmp /tmp/a-cross-stable.json /tmp/b-cross-stable.json
+          compare_stable "CROSS" /tmp/a-cross-stable.json /tmp/b-cross-stable.json
 
           jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/a-final.json > /tmp/a-final-stable.json
           jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/b-final.json > /tmp/b-final-stable.json
-          cmp /tmp/a-final-stable.json /tmp/b-final-stable.json
+          compare_stable "FINAL" /tmp/a-final-stable.json /tmp/b-final-stable.json
 
           echo 'PRODUCTION SAME QUESTION + SAME EVIDENCE REPRODUCIBILITY: PASS'
