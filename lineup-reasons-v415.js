@@ -131,74 +131,102 @@ function evidenceLayers(r,fallback){
 function hasStructuredBattingEvidence(r){
   return Array.isArray(r?.case?.evidence?.allCurrentTeamCheck?.players)&&r.case.evidence.allCurrentTeamCheck.players.length===14;
 }
+
 function statEvidence(slot,st){
-  if(!st)return'今季打撃データを取得できなかったため、数値理由は表示しません。';
+  if(!st)return'今季通算の打撃データを取得できなかったため、数値を補完しません。';
   const avg=fmtRate(st.AVG),obp=fmtRate(st.OBP),slg=fmtRate(st.SLG),ops=fmtRate(st.OPS),risp=fmtRate(st.RISP);
-  const rbi=fmtInt(st.RBI),bb=fmtInt(st.BB),hbp=fmtInt(st.HBP),sb=fmtInt(st.SB);
-  if(slot===1)return`出塁率 ${obp}、打率 ${avg}、四球 ${bb}、死球 ${hbp}、盗塁 ${sb}。`;
-  if(slot===2)return`打率 ${avg}、出塁率 ${obp}、OPS ${ops}、盗塁 ${sb}。`;
-  if(slot===3)return`OPS ${ops}、長打率 ${slg}、得点圏打率 ${risp}、${rbi}打点。`;
-  if(slot===4)return`OPS ${ops}、長打率 ${slg}、得点圏打率 ${risp}、${rbi}打点。`;
-  if(slot===5)return`OPS ${ops}、長打率 ${slg}、得点圏打率 ${risp}、${rbi}打点。`;
-  if(slot===6)return`打率 ${avg}、出塁率 ${obp}、OPS ${ops}、得点圏打率 ${risp}。`;
-  if(slot===7)return`打率 ${avg}、出塁率 ${obp}、四球 ${bb}、死球 ${hbp}。`;
-  if(slot===8)return`出塁率 ${obp}、四球 ${bb}、死球 ${hbp}、盗塁 ${sb}。`;
-  return`出塁率 ${obp}、四球 ${bb}、死球 ${hbp}、盗塁 ${sb}。`;
+  const ab=fmtInt(st.AB),rbi=fmtInt(st.RBI),bb=fmtInt(st.BB),hbp=fmtInt(st.HBP),sb=fmtInt(st.SB);
+  if(slot===1)return ab+'打数、出塁率 '+obp+'、打率 '+avg+'、四球 '+bb+'、死球 '+hbp+'、盗塁 '+sb+'。';
+  if(slot===2)return ab+'打数、打率 '+avg+'、出塁率 '+obp+'、OPS '+ops+'、盗塁 '+sb+'。';
+  if(slot>=3&&slot<=5)return ab+'打数、OPS '+ops+'、長打率 '+slg+'、得点圏打率 '+risp+'、'+rbi+'打点。';
+  if(slot===6)return ab+'打数、打率 '+avg+'、出塁率 '+obp+'、OPS '+ops+'、得点圏打率 '+risp+'。';
+  if(slot===7)return ab+'打数、打率 '+avg+'、出塁率 '+obp+'、四球 '+bb+'、死球 '+hbp+'。';
+  return ab+'打数、出塁率 '+obp+'、四球 '+bb+'、死球 '+hbp+'、盗塁 '+sb+'。';
 }
-function metricRank(st,key,selectedStats){
+function metricRank(st,key,allStats){
   const value=num(st?.[key]);if(value===null)return null;
-  const values=selectedStats.map(x=>num(x?.[key])).filter(v=>v!==null);
+  const values=(allStats||[]).map(x=>num(x?.[key])).filter(v=>v!==null);
   if(!values.length)return null;
   const better=values.filter(v=>v>value).length;
   return {rank:better+1,total:values.length,value};
 }
-function rankText(st,key,label,selectedStats,rate=true){
-  const r=metricRank(st,key,selectedStats);if(!r)return'';
-  return `${label}は最終${r.total}人中${r.rank}位（${rate?fmtRate(r.value):fmtInt(r.value)}）`;
+function rankText(st,key,label,allStats,rate=true){
+  const r=metricRank(st,key,allStats);if(!r)return'';
+  return label+'は現チーム記録'+r.total+'名中'+r.rank+'位（'+(rate?fmtRate(r.value):fmtInt(r.value))+'）';
 }
-function specificReason(slot,st,selectedStats,support){
-  if(!st)return'確認できた打撃数値が不足しているため、審議支持と守備成立を主な根拠として表示しています。';
+function recentEvidence(name,layers){
+  const meta=layers?.recentMeta||{};
+  if(String(meta.status||'')!=='COMPLETE')return'直近6試合Evidenceは取得できていません。';
+  const st=layers.recentMap.get(norm(name));
+  if(!st)return'直近6試合に該当選手の集計行がありません。';
+  const gameCount=Number(meta.gameCount)||6;
+  const overlap=meta.sameAsCurrentSeasonWindow?' 今季通算と対象試合が重なるため、独立した上昇・下降材料として二重評価しません。':'';
+  return (meta.windowStart||'期間不明')+'〜'+(meta.windowEnd||'期間不明')+'の直近'+gameCount+'試合：出場 '+fmtInt(st.games)+'、'+fmtInt(st.AB)+'打数'+fmtInt(st.H)+'安打、打率 '+fmtRate(st.AVG)+'、出塁率 '+fmtRate(st.OBP)+'、OPS '+fmtRate(st.OPS)+'。'+overlap;
+}
+function historicalEvidence(name,layers){
+  const meta=layers?.historicalMeta||{};
+  if(String(meta.status||'')!=='COMPLETE')return'過去実績Evidenceは取得できていません。';
+  const st=layers.historicalMap.get(norm(name));
+  if(!st||[st.AB,st.H,st.AVG,st.OPS].every(v=>num(v)===null))return'旧チームで確認できる打撃実績はありません。';
+  return (meta.periodStart||'期間不明')+'〜'+(meta.periodEnd||'期間不明')+'：'+fmtInt(st.AB)+'打数'+fmtInt(st.H)+'安打、打率 '+fmtRate(st.AVG)+'、出塁率 '+fmtRate(st.OBP)+'、OPS '+fmtRate(st.OPS)+'。';
+}
+function usageEvidence(name,layers){
+  const row=layers?.usageMap?.get(norm(name));
+  const a=row?.appearance||{};
+  if(String(a.status||'')==='UNAVAILABLE')return'実打順・先発起用は未確認です。';
+  const orders=Object.entries(a.battingOrders||{}).sort((x,y)=>Number(x[0])-Number(y[0])).map(([slot,count])=>slot+'番×'+count).join('、');
+  const standard=[...new Set([...Object.keys(a.officialStartingPositions||{}),...Object.keys(a.practiceFirstStartingPositions||{})])].join('・');
+  return '先発 '+(Number(a.starts)||0)+'試合（公式戦 '+(Number(a.officialStarts)||0)+'／練習第1試合 '+(Number(a.practiceFirstStarts)||0)+'）、実打順 '+(orders||'記録なし')+'、標準先発守備資格 '+(standard||'なし')+'。';
+}
+function specificReason(slot,st,allStats){
+  if(!st)return'今季通算の数値が不足しているため、実起用・直近・過去実績・守備成立を合わせて判断した配置です。';
   const parts=[];
   if(slot===1){
-    parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'SB','盗塁',selectedStats,false));
-    return `${parts.filter(Boolean).join('、')}。先頭で出塁と走塁を使う配置意図を、確認できる数値で説明できます。`;
+    parts.push(rankText(st,'OBP','出塁率',allStats),rankText(st,'SB','盗塁',allStats,false));
+    return parts.filter(Boolean).join('、')+'。1番は出塁と走塁を中心に全14名で比較します。';
   }
   if(slot===2){
-    parts.push(rankText(st,'AVG','打率',selectedStats),rankText(st,'OPS','OPS',selectedStats));
-    return `${parts.filter(Boolean).join('、')}。上位で打席を多く回す意味はありますが、2番配置そのものの支持は${support}/3で、ここは審議上の争点です。`;
+    parts.push(rankText(st,'AVG','打率',allStats),rankText(st,'OBP','出塁率',allStats),rankText(st,'OPS','OPS',allStats));
+    return parts.filter(Boolean).join('、')+'。2番は上位で打席を多く回す前提で、出塁と打撃全体を全14名比較します。';
   }
   if(slot===3){
-    parts.push(rankText(st,'OPS','OPS',selectedStats),rankText(st,'SLG','長打率',selectedStats),rankText(st,'RISP','得点圏打率',selectedStats));
-    return `${parts.filter(Boolean).join('、')}。上位の走者を返す役割と4番へつなぐ役割の両方を想定した配置です。支持は${support}/3なので別案も残ります。`;
+    parts.push(rankText(st,'OPS','OPS',allStats),rankText(st,'SLG','長打率',allStats),rankText(st,'RISP','得点圏打率',allStats));
+    return parts.filter(Boolean).join('、')+'。3番は4番への接続と走者を返す打撃の両面を、今季・直近・過去実績で確認します。';
   }
   if(slot===4){
-    parts.push(rankText(st,'SLG','長打率',selectedStats),rankText(st,'OPS','OPS',selectedStats),rankText(st,'RISP','得点圏打率',selectedStats));
-    return `${parts.filter(Boolean).join('、')}。4番は3賢人の一致度を最優先の根拠としており、打撃数値だけで決めた配置ではありません。`;
+    parts.push(rankText(st,'SLG','長打率',allStats),rankText(st,'OPS','OPS',allStats),rankText(st,'RISP','得点圏打率',allStats));
+    return parts.filter(Boolean).join('、')+'。4番は長打・OPS・得点圏と実際の起用を主なEvidenceにし、3賢人の一致度そのものを打撃Evidenceの代わりにはしません。';
   }
   if(slot===5){
-    parts.push(rankText(st,'RBI','打点',selectedStats,false),rankText(st,'RISP','得点圏打率',selectedStats),rankText(st,'OPS','OPS',selectedStats));
-    return `${parts.filter(Boolean).join('、')}。4番の後ろで得点機会を続ける役として、打点・得点圏・OPSを確認材料にしています。`;
+    parts.push(rankText(st,'RBI','打点',allStats,false),rankText(st,'RISP','得点圏打率',allStats),rankText(st,'OPS','OPS',allStats));
+    return parts.filter(Boolean).join('、')+'。5番は4番後の得点機会を想定し、打点・得点圏・OPSを全14名比較します。';
   }
   if(slot===6){
-    parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'OPS','OPS',selectedStats),rankText(st,'RISP','得点圏打率',selectedStats));
-    return `${parts.filter(Boolean).join('、')}。中軸後でもう一度走者を作る役割を重視した配置で、支持は${support}/3です。`;
+    parts.push(rankText(st,'OBP','出塁率',allStats),rankText(st,'OPS','OPS',allStats),rankText(st,'RISP','得点圏打率',allStats));
+    return parts.filter(Boolean).join('、')+'。6番は中軸後の出塁・打撃継続と守備成立を合わせて確認します。';
   }
   if(slot===7){
-    parts.push(rankText(st,'AVG','打率',selectedStats),rankText(st,'OBP','出塁率',selectedStats));
-    return `${parts.filter(Boolean).join('、')}。この位置は打撃数値だけでなく、守備を含む9人全体の成立と${support}/3の審議支持を合わせて決めた配置です。`;
+    parts.push(rankText(st,'AVG','打率',allStats),rankText(st,'OBP','出塁率',allStats));
+    return parts.filter(Boolean).join('、')+'。7番は打撃数値だけでなく、公式戦想定の9守備位置を先発実績で成立させる条件も含めます。';
   }
   if(slot===8){
-    parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'BB','四球',selectedStats,false));
-    return `${parts.filter(Boolean).join('、')}。下位打線での打撃だけでなく、守備位置を重複なく成立させる条件も含めた配置です。`;
+    parts.push(rankText(st,'OBP','出塁率',allStats),rankText(st,'BB','四球',allStats,false));
+    return parts.filter(Boolean).join('、')+'。8番は下位打線の出塁と、先発守備Evidenceを伴う全体配置の成立を合わせて確認します。';
   }
-  parts.push(rankText(st,'OBP','出塁率',selectedStats),rankText(st,'BB','四球',selectedStats,false),rankText(st,'SB','盗塁',selectedStats,false));
-  return `${parts.filter(Boolean).join('、')}。9番から1番へ打順を戻す接続点として、四球・出塁・走塁を確認材料にしています。`;
+  parts.push(rankText(st,'OBP','出塁率',allStats),rankText(st,'BB','四球',allStats,false),rankText(st,'SB','盗塁',allStats,false));
+  return parts.filter(Boolean).join('、')+'。9番は1番への接続を意識しつつ、出塁・走塁と守備成立を確認します。';
 }
-function overview(r,entries,names){
+function observationSummary(layers){
+  if(layers?.observationStatus!=='COMPLETE')return'観察Evidenceはこの審議では利用不可または未取得です。';
+  const latest=layers.observationLatest?'、最新記録 '+layers.observationLatest:'';
+  return '日付付き観察Evidence '+layers.observationCount+'件を審議に供給済み'+latest+'。観察は数値・実起用を上書きする命令ではなく補助Evidenceです。';
+}
+function overview(r,entries,names,layers){
   const top=groupCount(entries),source=selectedSource(r,entries,names);
-  if(top===3)return'3賢人の二次判定が1〜9番まで完全一致しました。下の理由は、各打順について「3賢人の一致」と「確認済みの今季打撃データ」を分けて表示しています。';
-  if(top===2)return`3賢人の二次案は2対1に分かれました。多数側の同一打順を最終案として表示しています。${source?`表示案は${source}の二次案と一致します。`:''} 各打順では一致数と反対案も併記します。`;
-  return`3賢人の二次案は1対1対1で分かれ、正式な多数派はありません。${source?`表示中は${source}の二次案を参考案として採用しています。`:''} 3案を平均して新しい打順を作るのではなく、実際に3賢人が提示した案の中から、選手構成と打順位置の全体的なずれが最も小さい案を比較用に表示しています。`;
+  const basis='下の理由は、全14名の今季通算・直近6試合・過去実績・実打順/守備起用を主Evidenceとして表示し、3賢人の一致度は別枠の審議情報として示します。';
+  if(top===3)return'3賢人の二次判定が1〜9番まで完全一致しました。'+basis;
+  if(top===2)return'3賢人の二次案は2対1に分かれました。'+(source?'表示案は'+source+'の二次案と一致します。':'')+' '+basis;
+  return'3賢人の二次案は1対1対1で分かれ、正式な多数派はありません。'+(source?'表示中は'+source+'の二次案を参考案として採用しています。':'')+' '+basis;
 }
 function supportText(n){return n===3?'3/3一致':n===2?'2/3支持':n===1?'1/3・争点あり':'0/3・整合要確認';}
 function supportClass(n){return n===3?'strong':n<=1?'split':'';}
