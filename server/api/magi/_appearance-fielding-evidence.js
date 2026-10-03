@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import pdfParse from 'pdf-parse';
+import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { fetchDriveFileContent, getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { evidenceSource } from './_evidence-source-map.js';
