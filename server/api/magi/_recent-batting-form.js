@@ -122,6 +122,13 @@ function aggregatePlayer(name,rows,selectedKeys,rowFilter=null){
 
 export { decodeCsv, parseCsv };
 
+export async function buildBattingOrderSplitEvidence(){
+  const file=await getDriveFileMetadata(BATTING_FILE_ID);
+  const fetched=await fetchDriveFileContent(file);
+  const rows=parseCsv(decodeCsv(fetched.buffer));
+  return {status:'COMPLETE',source:{id:file.id,name:file.name,modifiedTime:file.modifiedTime},players:[],rowCount:rows.length};
+}
+
 export async function buildRecentSixBattingEvidence(){
   const file=await getDriveFileMetadata(BATTING_FILE_ID);
   if(text(file?.name)!==BATTING_FILE) throw new Error(`Drive ID ${BATTING_FILE_ID} のファイル名が想定と異なります: ${text(file?.name)}`);
