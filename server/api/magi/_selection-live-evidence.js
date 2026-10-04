@@ -496,6 +496,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     primarySeason:'current',
     allCurrentTeamCheck:{status:'COMPLETE',players},
     recentSix,
+    battingOrderSplits,
     historicalReference,
     sampleSizeRule:sampleRule,
     pitchingEligible,
