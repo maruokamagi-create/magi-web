@@ -214,6 +214,10 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     recentSix.warning=`直近6試合の打撃詳細CSVを取得できませんでした: ${recentResult.reason?.message||'取得エラー'}。最近の好調・不調は断定しない。`;
   }
 
+  const battingOrderSplits=kind==='FULL_LINEUP'&&battingOrderResult.status==='fulfilled'&&battingOrderResult.value
+    ? battingOrderResult.value
+    : {status:kind==='FULL_LINEUP'?'UNAVAILABLE':'NOT_APPLICABLE',players:[],source:null};
+
   let historicalReference={
     status:'UNAVAILABLE',
     season:'old',
