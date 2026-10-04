@@ -57,6 +57,11 @@ jobs:
           grep -Fq '/lineup-reasons-v415.js?v=420' index.html
           ! grep -Fq '最終${r.total}人中' lineup-reasons-v415.js
           ! grep -Fq '4番は3賢人の一致度を最優先' lineup-reasons-v415.js
+      - name: Guard legacy fixed-order Evidence is not loaded
+        run: |
+          ! grep -Fq '/best-order-evidence-v268.js' index.html
+          grep -Fq 'buildBattingOrderSplitEvidence' server/api/magi/_recent-batting-form.js
+          grep -Fq 'battingOrderSplits' server/api/magi/_selection-live-evidence.js
       - name: Guard live selftest Evidence parity
         run: |
           ! grep -Fq 'function prepareBrowserEvidence' api/magi-live-deliberation-selftest.js
