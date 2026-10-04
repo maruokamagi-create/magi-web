@@ -128,7 +128,17 @@ export async function buildBattingOrderSplitEvidence(){
   const rows=parseCsv(decodeCsv(fetched.buffer));
   const usable=rows.filter(row=>parseDate(row['開催日'])&&text(row['選手名'])&&battingOrder(row)!==null);
   const keys=new Set(usable.map(gameKey));
-  const players=CURRENT_ROSTER.map(name=>({name,slots:[]}));
+  const players=[];
+  for(const name of CURRENT_ROSTER){
+    const slots=[];
+    for(let slot=1;slot<=9;slot++){
+      const slotFilter=row=>battingOrder(row)===slot;
+      const all=aggregatePlayer(name,usable,keys,slotFilter);
+      if(Number(all.batting.PA)===0)continue;
+      slots.push({slot,all});
+    }
+    players.push({name,slots});
+  }
   return {status:'COMPLETE',source:{id:file.id,name:file.name,modifiedTime:file.modifiedTime},players,rowCount:usable.length,gameKeys:[...keys]};
 }
 
