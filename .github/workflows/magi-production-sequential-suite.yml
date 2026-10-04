@@ -7,6 +7,7 @@ on:
     branches: [main]
     paths:
       - 'api/magi-gateway.js'
+      - 'api/magi-live-deliberation-selftest.js'
       - 'server/api/magi/**'
       - '.github/workflows/magi-production-selection-smoke.yml'
       - '.github/workflows/magi-production-full-lineup-smoke.yml'
