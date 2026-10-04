@@ -141,7 +141,7 @@ export async function buildBattingOrderSplitEvidence(){
     }
     players.push({name,slots});
   }
-  return {status:'COMPLETE',source:{id:file.id,name:file.name,modifiedTime:file.modifiedTime},players,rowCount:usable.length,gameKeys:[...keys]};
+  return {status:'COMPLETE',source:{id:file.id,name:file.name,path:file.path,mimeType:file.mimeType,modifiedTime:file.modifiedTime},players,rowCount:usable.length,gameCount:keys.size};
 }
 
 export async function buildRecentSixBattingEvidence(){
