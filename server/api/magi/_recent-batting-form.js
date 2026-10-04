@@ -28,6 +28,12 @@ function gameOrder(value){
 function gameKey(row){
   return `${text(row['開催日'])}|${text(row['試合順'])}|${text(row['相手校'])}`;
 }
+function battingOrder(row){const x=Number(text(row['打順']));return Number.isInteger(x)&&x>=1&&x<=9?x:null;}
+function isOfficial(row){return /公式戦/.test(text(row['大会名']));}
+function practiceNumber(row){const m=text(row['試合順']).match(/第\s*(\d+)\s*試合/);return m?Number(m[1]):null;}
+function isPractice(row){return /練習試合/.test(text(row['大会名']));}
+function isStandardGame(row){const x=practiceNumber(row);return isOfficial(row)||(isPractice(row)&&x!==null&&x%2===1);}
+function isChallengeGame(row){const x=practiceNumber(row);return isPractice(row)&&x!==null&&x%2===0;}
 
 function decodeCsv(buffer){
   const utf8 = Buffer.from(buffer).toString('utf8');
