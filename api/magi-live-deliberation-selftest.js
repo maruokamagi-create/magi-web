@@ -175,6 +175,10 @@ export default async function handler(req,res){
       };
       throw err;
     }
+    const orderPlayers=Array.isArray(packet?.battingOrderSplits?.players)?packet.battingOrderSplits.players:[];
+    const orderSlotCount=orderPlayers.reduce((sum,p)=>sum+(Array.isArray(p?.slots)?p.slots.length:0),0);
+    const battingOrderReady=packet?.battingOrderSplits?.status==='COMPLETE'&&orderPlayers.length===14&&orderSlotCount>0;
+    if(mode==='lineup'&&!battingOrderReady)throw new Error('BATTING_ORDER_SPLIT_EVIDENCE_NOT_READY');
     if(mode==='lineup'&&!appearanceReady){
       const err=new Error('APPEARANCE_EVIDENCE_NOT_READY');
       err.diagnostic={
@@ -207,6 +211,9 @@ export default async function handler(req,res){
       selectionKind:packet.selectionKind,
       recentSixStatus:packet?.recentSix?.status||'',
       historicalStatus:packet?.historicalReference?.status||'',
+      battingOrderSplitStatus:packet?.battingOrderSplits?.status||'',
+      battingOrderPlayerCount:orderPlayers.length,
+      battingOrderSlotCount:orderSlotCount,
       appearanceFieldingStatus:packet?.appearanceFielding?.status||'',
       appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',
       fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',

@@ -24,6 +24,9 @@ jobs:
             .evidence.appearanceFieldingStatus=="COMPLETE" and
             .evidence.appearanceStatus=="COMPLETE" and
             .evidence.fieldingStatus=="COMPLETE" and
+            .evidence.battingOrderSplitStatus=="COMPLETE" and
+            .evidence.battingOrderPlayerCount==14 and
+            .evidence.battingOrderSlotCount>0 and
             (
               (.evidence.sourceIntegrityStatus=="COMPLETE" and .evidence.appearanceSourceMode=="CURRENT_CSV" and .evidence.duplicateSourceContent==false) or
               (.evidence.sourceIntegrityStatus=="RECOVERED_FROM_SCORE_SHEETS" and .evidence.appearanceSourceMode=="SCORE_SHEET_RECOVERY" and .evidence.recoveryStatus=="COMPLETE" and .evidence.recoveryCompleteGameCount==11 and .evidence.duplicateSourceContent==true)
