@@ -29,12 +29,12 @@ jobs:
             .evidence.battingOrderSlotCount>0 and
             (
               (.evidence.sourceIntegrityStatus=="COMPLETE" and .evidence.appearanceSourceMode=="CURRENT_CSV" and .evidence.duplicateSourceContent==false) or
-              (.evidence.sourceIntegrityStatus=="RECOVERED_FROM_SCORE_SHEETS" and .evidence.appearanceSourceMode=="SCORE_SHEET_RECOVERY" and .evidence.recoveryStatus=="COMPLETE" and .evidence.recoveryCompleteGameCount==11 and .evidence.duplicateSourceContent==true)
+              (.evidence.sourceIntegrityStatus=="RECOVERED_FROM_SCORE_SHEETS" and .evidence.appearanceSourceMode=="SCORE_SHEET_RECOVERY" and .evidence.recoveryStatus=="COMPLETE" and .evidence.recoveryCompleteGameCount==13 and .evidence.duplicateSourceContent==true)
             ) and
-            .evidence.scoreSheetOriginalCount==11 and
-            .evidence.scoreSheetAppearanceGameCount==11 and
+            .evidence.scoreSheetOriginalCount==13 and
+            .evidence.scoreSheetAppearanceGameCount==13 and
             .evidence.scoreSheetUnverifiedCount==0 and
-            ((.evidence.scoreSheetVerifiedCount + .evidence.scoreSheetSourceMismatchCount)==11) and
+            ((.evidence.scoreSheetVerifiedCount + .evidence.scoreSheetSourceMismatchCount)==13) and
             .evidence.normalizedObservationStatus=="COMPLETE" and
             .evidence.normalizedObservationDatedCount>0 and
             .evidence.normalizedObservationStructuredCount>=.evidence.normalizedObservationDatedCount and
