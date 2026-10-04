@@ -79,7 +79,7 @@ export default async function handler(req,res){
       && packet?.appearanceFielding?.appearanceStatus==='COMPLETE'
       && (
         (appearanceSourceMode==='CURRENT_CSV' && packet?.appearanceFielding?.sourceIntegrity?.status==='COMPLETE')
-        || (appearanceSourceMode==='SCORE_SHEET_RECOVERY' && packet?.appearanceFielding?.sourceIntegrity?.status==='RECOVERED_FROM_SCORE_SHEETS' && packet?.appearanceFielding?.recovery?.status==='COMPLETE' && Number(packet?.appearanceFielding?.recovery?.completeGameCount)===11)
+        || (appearanceSourceMode==='SCORE_SHEET_RECOVERY' && packet?.appearanceFielding?.sourceIntegrity?.status==='RECOVERED_FROM_SCORE_SHEETS' && packet?.appearanceFielding?.recovery?.status==='COMPLETE' && Number(packet?.appearanceFielding?.recovery?.completeGameCount)===13)
       );
     const adminObservationText=String(adminFullPacket?.text||'');
     const memberObservationText=String(memberFullPacket?.text||'');
