@@ -178,7 +178,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null),
     wantsCoachPitchingEvidence ? coachObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
     wantsNormalizedObservations ? normalizedObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
-    staffAccessContext ? coachStrategyProvider({accessContext:staffAccessContext}) : Promise.resolve(null)
+    staffAccessContext ? coachStrategyProvider({accessContext:staffAccessContext}) : Promise.resolve(null),
+    kind==='FULL_LINEUP' ? battingOrderProvider() : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
