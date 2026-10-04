@@ -83,8 +83,8 @@ function discoverGames(rows){
   return [...byKey.values()].sort((a,b)=>a.time-b.time || a.order-b.order || a.firstIndex-b.firstIndex);
 }
 
-function aggregatePlayer(name,rows,selectedKeys){
-  const mine=rows.filter(row=>text(row['選手名'])===name && selectedKeys.has(gameKey(row)));
+function aggregatePlayer(name,rows,selectedKeys,rowFilter=null){
+  const mine=rows.filter(row=>text(row['選手名'])===name && selectedKeys.has(gameKey(row)) && (!rowFilter || rowFilter(row)));
   const sums={
     PA:0,AB:0,H:0,SINGLE:0,DOUBLE:0,TRIPLE:0,HR:0,BB:0,HBP:0,SF:0,
     RBI:0,R:0,SO:0,SB:0,SAC:0
