@@ -135,7 +135,9 @@ export async function buildBattingOrderSplitEvidence(){
       const slotFilter=row=>battingOrder(row)===slot;
       const all=aggregatePlayer(name,usable,keys,slotFilter);
       if(Number(all.batting.PA)===0)continue;
-      slots.push({slot,all});
+      const standard=aggregatePlayer(name,usable,keys,row=>slotFilter(row)&&isStandardGame(row));
+      const challenge=aggregatePlayer(name,usable,keys,row=>slotFilter(row)&&isChallengeGame(row));
+      slots.push({slot,all,standard,challenge});
     }
     players.push({name,slots});
   }
