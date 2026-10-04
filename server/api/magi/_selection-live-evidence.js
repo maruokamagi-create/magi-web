@@ -1,6 +1,6 @@
 import { CURRENT_ROSTER } from './_roster.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
-import { buildRecentSixBattingEvidence } from './_recent-batting-form.js';
+import { buildRecentSixBattingEvidence, buildBattingOrderSplitEvidence } from './_recent-batting-form.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
 import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
