@@ -50,16 +50,7 @@ function reinforceEvidence(evidence){
   if(recentComplete&&Array.isArray(e?.recentSix?.players))e.recentSixBattingAnchors=compactBatting(e.recentSix.players);
   return e;
 }
-function prepareBrowserEvidence(evidence){
-  const e=clone(evidence);if(!e)return e;
-  const policy='現場の起用案や打順案は回答の正解指定ではなく、審議材料の一つとして扱う。MELCHIORは再現性と母数、BALTHASARは得点へのつながりと試合運用、CASPERは役割・育成・負担から全14名を独立に比較する。3人とも、まずデータから自分の案を作り、その後で現場案と照合する。他人格の案や多数派に合わせない。違いを作るためだけの変更もしない。';
-  if(typeof e.text==='string'){
-    e.text=e.text.replace(/【標準オーダーの基準線】[^\n]*/g,'【現場案の扱い】通常は相手投手の左右が事前に不明なため、右投手対応を標準条件とする。現場では大野 竜暉、坂田 暉馬、嶋田 栄志、大久保 陽翔、中嶋 玲月を上位候補として重く見ている。ただし、この5人の順番を含めて審議結果の指定ではない。3賢人は全14名の過去実績・今季通算・直近状態・守備運用から、自分の専門領域で順番を組み直してよい。').replace(/【大野竜暉の上位評価】[^\n]*/g,'【大野竜暉の確認点】出塁率と母数、過去実績を上位適性の重要材料として見る。ただし「1番固定」という正解指定ではなく、他の上位候補と比較して各賢人が打順を決める。').replace(/【2〜3番の扱い】[^\n]*/g,'【坂田・嶋田の確認点】現在の好成績は評価するが、少ない母数の高率を過大評価しない。過去実績・今季母数・直近状態を必ず併記し、2番・3番を自動固定しない。');
-    e.text+=`\n【3賢人独立性ルール】${policy}`;
-  }
-  e.deliberationPolicy=policy;if(typeof e.summary==='string')e.summary+=' 現場案は回答指定ではなく、3賢人が全14名から独立検証する。';return e;
-}
-function browserCase(packet,question=QUESTION){return {id:`MAGI-${Date.now()}`,question,mode:'selection',objective:'',options:[],urgency:'normal',evidence:prepareBrowserEvidence(reinforceEvidence(packet)),createdAt:new Date().toISOString()};}
+function browserCase(packet,question=QUESTION){return {id:`MAGI-${Date.now()}`,question,mode:'selection',objective:'',options:[],urgency:'normal',evidence:reinforceEvidence(packet),createdAt:new Date().toISOString()};}
 
 function crossFor(persona,cross,independenceReview=''){return {...(cross||{}),challengeToSelf:Array.isArray(cross?.challenges?.[persona])?cross.challenges[persona]:[],challengeTarget:TARGETS[persona],challengeSemantics:`challengeToSelf と challenges.${persona} は ${TARGETS[persona]} に向けられた質問。自分宛ての指摘に答えた後、自分の専門領域だけで二次判断する。`,independenceRule:'他の2人格に合わせない。違いを作るためだけにも変えない。Evidenceと一次案を自分の専門領域で再検証する。',...(independenceReview?{independenceReview}:{})};}
 function candidateSeq(v){return (Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]).map(norm);}
