@@ -23,12 +23,26 @@ function competitionType(row){
   const value=pick(row,['大会名','試合種別','区分']);
   if(/公式戦/.test(value))return'OFFICIAL';
   if(/練習試合/.test(value))return'PRACTICE';
-  return'UNKNOWN';
+  const def=scoreDefForAppearanceRow(row);
+  return text(def?.category)||'UNKNOWN';
 }
 function opponentName(row){return pick(row,['相手校','相手','対戦相手']);}
 function gameLabel(row){return pick(row,['試合順','試合','試合番号']);}
+function appearanceGameNumber(row){
+  const m=gameLabel(row).normalize('NFKC').match(/(\d+)\s*試合目/);
+  return m?Number(m[1]):null;
+}
+function scoreDefForAppearanceRow(row){
+  const number=appearanceGameNumber(row);
+  if(!Number.isInteger(number)||number<1||number>SCORE_FILE_DEFS.length)return null;
+  const def=SCORE_FILE_DEFS[number-1]||null;
+  const rowDate=dateKey(pick(row,['開催日','対戦日','日付']));
+  return def&&rowDate===text(def.date)?def:null;
+}
 function practiceGameNumber(row){
   if(competitionType(row)!=='PRACTICE')return null;
+  const def=scoreDefForAppearanceRow(row);
+  if(Number.isInteger(def?.gameNo))return def.gameNo;
   const m=gameLabel(row).normalize('NFKC').match(/第\s*(\d+)\s*試合/);
   return m?Number(m[1]):null;
 }
@@ -40,6 +54,7 @@ function scoreKeyFromDef(def){
   return {
     date:text(def?.date),
     opponent:text(def?.opponent),
+    appearanceOpponent:text(def?.appearanceOpponent||def?.opponent),
     gameNo:Number.isInteger(def?.gameNo)?def.gameNo:null,
     stage:text(def?.stage),
     label:text(def?.label),
@@ -60,7 +75,7 @@ function scoreSourcePath(meta,def){
   return 'CANONICAL_SCORE_SHEETS/'+category+'/'+text(meta?.name);
 }
 async function loadCanonicalScoreSheetOriginals(){
-  if(SCORE_FILE_DEFS.length!==11)throw new Error('canonical_score_sheet_count_mismatch:'+SCORE_FILE_DEFS.length);
+  if(SCORE_FILE_DEFS.length!==13)throw new Error('canonical_score_sheet_count_mismatch:'+SCORE_FILE_DEFS.length);
   if(SCORE_ORIGINALS_PROMISE)return SCORE_ORIGINALS_PROMISE;
   SCORE_ORIGINALS_PROMISE=Promise.all(SCORE_FILE_DEFS.map(async def=>{
     const meta=await getDriveFileMetadata(def.id);
@@ -185,14 +200,14 @@ async function recoverAppearanceFromScoreSheets(originals,fieldingRows){
     };
   }));
   const rows=games.flatMap(game=>game.rows);
-  const complete=games.length===11&&games.every(game=>game.battingComplete&&game.startersSupported&&game.participantCoverage);
+  const complete=games.length===SCORE_FILE_DEFS.length&&games.every(game=>game.battingComplete&&game.startersSupported&&game.participantCoverage);
   return {
     status:complete?'COMPLETE':'PARTIAL',
     rows,
     games:games.map(({rows:ignored,...game})=>game),
     gameCount:games.length,
     completeGameCount:games.filter(game=>game.battingComplete&&game.startersSupported&&game.participantCoverage).length,
-    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み11試合のスコア原本PDFから先発打順・先発守備を復旧する。途中出場は、守備詳細CSVでその試合に実出場した全選手からスコア原本で確定した先発選手を除いた差集合として確定する。先発全員が守備詳細CSVの実出場集合に存在し、復旧後の全参加選手数が一致した試合だけCOMPLETE扱いする。PDFとCSVを独立票として二重加点しない。'
+    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み13試合のスコア原本PDFから先発打順・先発守備を復旧する。途中出場は、守備詳細CSVでその試合に実出場した全選手からスコア原本で確定した先発選手を除いた差集合として確定する。先発全員が守備詳細CSVの実出場集合に存在し、復旧後の全参加選手数が一致した試合だけCOMPLETE扱いする。PDFとCSVを独立票として二重加点しない。'
   };
 }
 
@@ -231,8 +246,9 @@ function appearanceGameKeys(rows){
     const date=dateKey(pick(row,['開催日','対戦日','日付']));
     const opponent=opponentName(row),label=gameLabel(row),category=competitionType(row);
     if(!date||!opponent)continue;
-    const gameNo=practiceGameNumber(row);
-    const stage=category==='OFFICIAL'?label:'';
+    const def=scoreDefForAppearanceRow(row);
+    const gameNo=category==='PRACTICE'?(Number.isInteger(def?.gameNo)?def.gameNo:practiceGameNumber(row)):null;
+    const stage=category==='OFFICIAL'?text(def?.stage||label):'';
     const key=`${date}|${category}|${opponent}|${gameNo??''}|${stage}`;
     if(seen.has(key))continue;
     seen.add(key);out.push({date,opponent,gameNo,label,stage,category});
@@ -250,7 +266,7 @@ async function verifyScoreSheetOriginals(appearanceRows,originals){
   const verified=[],sourceMismatches=[],unverified=[];
   for(const game of games){
     const sameGame=originals.filter(x=>sameIdentity(game,x.key));
-    const exact=sameGame.find(x=>text(x.key.opponent)===text(game.opponent));
+    const exact=sameGame.find(x=>text(x.key.appearanceOpponent||x.key.opponent)===text(game.opponent));
     if(exact){
       verified.push({game,source:exact.file});
       continue;
@@ -403,7 +419,7 @@ export async function buildAppearanceFieldingEvidence(){
   const warnings=[];
   if(duplicateSourceContent)warnings.push('現在の出場詳細CSVは守備詳細CSVと内容SHA-256が一致しており、出場詳細の正本としては利用していない。');
   if(canonicalIntegrity.status!=='COMPLETE')warnings.push('現在の出場詳細CSVの打順1〜9が揃う試合は '+canonicalIntegrity.completeGameCount+'/'+canonicalIntegrity.gameCount+'。');
-  if(appearanceSourceMode==='SCORE_SHEET_RECOVERY')warnings.push('登録済み11試合のスコア原本PDFから先発打順・先発守備・途中出場を読み取り、守備詳細CSVの参加選手集合と照合して代替Evidenceを構成した。');
+  if(appearanceSourceMode==='SCORE_SHEET_RECOVERY')warnings.push('登録済み13試合のスコア原本PDFから先発打順・先発守備・途中出場を読み取り、守備詳細CSVの参加選手集合と照合して代替Evidenceを構成した。');
   if(!appearanceUsable)issues.push('出場詳細CSVが利用不能で、スコア原本からの復旧も完全成立しなかったため、スタメン/途中出場・実打順は未確認扱い。');
 
   return {
@@ -431,7 +447,7 @@ export async function buildAppearanceFieldingEvidence(){
     scoreSheets,
     players,
     rule:appearanceSourceMode==='SCORE_SHEET_RECOVERY'
-      ? '現在の出場詳細CSVは構造破損を検出したため判断に使用せず、登録済み11試合のスコア原本PDFを代替正本としてスタメン・途中出場・実打順・先発守備位置を復旧した。復旧結果は守備詳細CSVの各試合参加選手集合と一致した場合だけCOMPLETEとし、PDFとCSVを独立票として二重加点しない。'
+      ? '現在の出場詳細CSVは構造破損を検出したため判断に使用せず、登録済み13試合のスコア原本PDFを代替正本としてスタメン・途中出場・実打順・先発守備位置を復旧した。復旧結果は守備詳細CSVの各試合参加選手集合と一致した場合だけCOMPLETEとし、PDFとCSVを独立票として二重加点しない。'
       : '出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。守備詳細CSVの実守備位置は別系統の実績として利用し、スコア原本は一次照合資料として用いる。'
   };
 }
