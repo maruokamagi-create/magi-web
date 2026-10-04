@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v22-observation-reasons';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v23-batting-order-splits';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -457,6 +457,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
   if(recentSix?.source) sources.push({...recentSix.source,season:'current',priority:'RECENT_FORM'});
+  if(battingOrderSplits?.source) sources.push({...battingOrderSplits.source,season:'current',priority:'ACTUAL_BATTING_ORDER_RESULT'});
   if(historicalReference.source) sources.push({...historicalReference.source,season:'old',priority:'HISTORICAL'});
 
   const pitchingEligible=isPitchingKind(kind)?(currentPitching?.experiencedPlayers||[]):[];  const summary=kind==='FULL_LINEUP'
