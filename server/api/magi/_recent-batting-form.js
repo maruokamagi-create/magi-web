@@ -126,7 +126,10 @@ export async function buildBattingOrderSplitEvidence(){
   const file=await getDriveFileMetadata(BATTING_FILE_ID);
   const fetched=await fetchDriveFileContent(file);
   const rows=parseCsv(decodeCsv(fetched.buffer));
-  return {status:'COMPLETE',source:{id:file.id,name:file.name,modifiedTime:file.modifiedTime},players:[],rowCount:rows.length};
+  const usable=rows.filter(row=>parseDate(row['開催日'])&&text(row['選手名'])&&battingOrder(row)!==null);
+  const keys=new Set(usable.map(gameKey));
+  const players=CURRENT_ROSTER.map(name=>({name,slots:[]}));
+  return {status:'COMPLETE',source:{id:file.id,name:file.name,modifiedTime:file.modifiedTime},players,rowCount:usable.length,gameKeys:[...keys]};
 }
 
 export async function buildRecentSixBattingEvidence(){
