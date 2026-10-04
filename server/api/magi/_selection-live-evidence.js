@@ -169,7 +169,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const wantsUsageEvidence=!isPitchingKind(kind);
   const wantsCoachPitchingEvidence=isPitchingKind(kind) && Boolean(staffAccessContext);
   const wantsNormalizedObservations=Boolean(staffAccessContext);
-  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult,strategyResult]=await Promise.allSettled([
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult,strategyResult,battingOrderResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
