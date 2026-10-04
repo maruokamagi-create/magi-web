@@ -28,6 +28,12 @@ function gameOrder(value){
 function gameKey(row){
   return `${text(row['開催日'])}|${text(row['試合順'])}|${text(row['相手校'])}`;
 }
+function battingOrder(row){const x=Number(text(row['打順']));return Number.isInteger(x)&&x>=1&&x<=9?x:null;}
+function isOfficial(row){return /公式戦/.test(text(row['大会名']));}
+function practiceNumber(row){const m=text(row['試合順']).match(/第\s*(\d+)\s*試合/);return m?Number(m[1]):null;}
+function isPractice(row){return /練習試合/.test(text(row['大会名']));}
+function isStandardGame(row){const x=practiceNumber(row);return isOfficial(row)||(isPractice(row)&&x!==null&&x%2===1);}
+function isChallengeGame(row){const x=practiceNumber(row);return isPractice(row)&&x!==null&&x%2===0;}
 
 function decodeCsv(buffer){
   const utf8 = Buffer.from(buffer).toString('utf8');
@@ -83,8 +89,8 @@ function discoverGames(rows){
   return [...byKey.values()].sort((a,b)=>a.time-b.time || a.order-b.order || a.firstIndex-b.firstIndex);
 }
 
-function aggregatePlayer(name,rows,selectedKeys){
-  const mine=rows.filter(row=>text(row['選手名'])===name && selectedKeys.has(gameKey(row)));
+function aggregatePlayer(name,rows,selectedKeys,rowFilter=null){
+  const mine=rows.filter(row=>text(row['選手名'])===name && selectedKeys.has(gameKey(row)) && (!rowFilter || rowFilter(row)));
   const sums={
     PA:0,AB:0,H:0,SINGLE:0,DOUBLE:0,TRIPLE:0,HR:0,BB:0,HBP:0,SF:0,
     RBI:0,R:0,SO:0,SB:0,SAC:0
@@ -115,6 +121,28 @@ function aggregatePlayer(name,rows,selectedKeys){
 }
 
 export { decodeCsv, parseCsv };
+
+export async function buildBattingOrderSplitEvidence(){
+  const file=await getDriveFileMetadata(BATTING_FILE_ID);
+  const fetched=await fetchDriveFileContent(file);
+  const rows=parseCsv(decodeCsv(fetched.buffer));
+  const usable=rows.filter(row=>parseDate(row['開催日'])&&text(row['選手名'])&&battingOrder(row)!==null);
+  const keys=new Set(usable.map(gameKey));
+  const players=[];
+  for(const name of CURRENT_ROSTER){
+    const slots=[];
+    for(let slot=1;slot<=9;slot++){
+      const slotFilter=row=>battingOrder(row)===slot;
+      const all=aggregatePlayer(name,usable,keys,slotFilter);
+      if(Number(all.batting.PA)===0)continue;
+      const standard=aggregatePlayer(name,usable,keys,row=>slotFilter(row)&&isStandardGame(row));
+      const challenge=aggregatePlayer(name,usable,keys,row=>slotFilter(row)&&isChallengeGame(row));
+      slots.push({slot,all,standard,challenge});
+    }
+    players.push({name,slots});
+  }
+  return {status:'COMPLETE',source:{id:file.id,name:file.name,path:file.path,mimeType:file.mimeType,modifiedTime:file.modifiedTime},players,rowCount:usable.length,gameCount:keys.size};
+}
 
 export async function buildRecentSixBattingEvidence(){
   const file=await getDriveFileMetadata(BATTING_FILE_ID);

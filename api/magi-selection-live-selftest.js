@@ -65,7 +65,7 @@ export default async function handler(req,res){
     );
     const currentMaster=packet?.sources?.find(x=>x?.season==='current'&&x?.priority==='PRIMARY');
     const fullLineupReady=Boolean(packet)&&packet?.selectionKind==='FULL_LINEUP'&&exact&&withCoreBatting===14&&textHasCurrentNumbers&&/2026-2027.*\.xlsm$/i.test(String(currentMaster?.name||''));
-    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v22-observation-reasons'
+    const dynamicLineupRulesReady=packet?.resolverVersion==='selection-live-evidence-v23-batting-order-splits'
       && body.includes('標準オーダーをコード内の固定打順から決めない')
       && body.includes('公式戦と練習試合の起用を混同しない')
       && body.includes('コード内の固定ポジション案で実記録を上書きしない')

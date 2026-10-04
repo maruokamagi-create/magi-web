@@ -1,6 +1,6 @@
 import { CURRENT_ROSTER } from './_roster.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
-import { buildRecentSixBattingEvidence } from './_recent-batting-form.js';
+import { buildRecentSixBattingEvidence, buildBattingOrderSplitEvidence } from './_recent-batting-form.js';
 import { isFullLineupQuestion } from './_full-lineup.js';
 import { isPitchingPlanQuestion } from './_pitching-plan.js';
 import { buildPitchingDetailEvidence } from './_pitching-detail-evidence.js';
@@ -11,7 +11,7 @@ import { getDriveFileMetadata } from '../drive/_service.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { assertStaffEvidenceAccess } from './_staff-evidence-access.js';
 
-export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v22-observation-reasons';
+export const SELECTION_LIVE_EVIDENCE_VERSION = 'selection-live-evidence-v23-batting-order-splits';
 
 const COACH_STRATEGY_SOURCE=evidenceSource('COACH_STRATEGY_SNAPSHOT_20260802');
 async function buildCoachStrategySnapshotEvidence({accessContext=null}={}){
@@ -136,6 +136,11 @@ function recentPlayerLine(entry){
   return `${entry?.name||'選手'}：${parts.join(' / ')}`;
 }
 
+function battingOrderLine(entry){
+  const slots=(entry?.slots||[]).map(s=>{const b=s?.standard?.batting||{};return s.slot+'番 '+(b.PA||0)+'打席 '+(b.AB||0)+'打数 '+(b.H||0)+'安打 AVG '+(b.AVG||'-')+' OBP '+(b.OBP||'-')+' OPS '+(b.OPS||'-')+' / 第2試合 '+(s?.challenge?.batting?.PA||0)+'打席';});
+  return (entry?.name||'選手')+'：'+(slots.length?slots.join(' / '):'打順別記録なし');
+}
+
 function historicalPlayer(name,byName){
   const entry=byName?.[name]||{};
   return {
@@ -160,7 +165,7 @@ function pitchingPlanGameInnings(question,routed){
   return 7;
 }
 
-export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,normalizedObservationProvider=buildNormalizedObservationEvidence,coachStrategyProvider=buildCoachStrategySnapshotEvidence,staffAccessContext=null}={}){
+export async function buildCurrentSelectionEvidence({question,routed={},auditProvider=runDriveLiveAudit,pitchingProvider=buildPitchingDetailEvidence,appearanceFieldingProvider=buildAppearanceFieldingEvidence,coachObservationProvider=buildCoachObservationEvidence,normalizedObservationProvider=buildNormalizedObservationEvidence,coachStrategyProvider=buildCoachStrategySnapshotEvidence,battingOrderProvider=buildBattingOrderSplitEvidence,staffAccessContext=null}={}){
   const kind=selectionEvidenceKind(question,routed);
   if(!kind) return null;
   const gameInnings=kind==='PITCHING_PLAN'?pitchingPlanGameInnings(question,routed):null;
@@ -169,7 +174,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   const wantsUsageEvidence=!isPitchingKind(kind);
   const wantsCoachPitchingEvidence=isPitchingKind(kind) && Boolean(staffAccessContext);
   const wantsNormalizedObservations=Boolean(staffAccessContext);
-  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult,strategyResult]=await Promise.allSettled([
+  const [currentResult,oldResult,recentResult,currentPitchingResult,oldPitchingResult,usageResult,coachResult,normalizedObservationResult,strategyResult,battingOrderResult]=await Promise.allSettled([
     auditProvider({season:'current'}),
     auditProvider({season:'old'}),
     wantsRecentBatting ? buildRecentSixBattingEvidence() : Promise.resolve(null),
@@ -178,7 +183,8 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     wantsUsageEvidence ? appearanceFieldingProvider() : Promise.resolve(null),
     wantsCoachPitchingEvidence ? coachObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
     wantsNormalizedObservations ? normalizedObservationProvider({players:CURRENT_ROSTER,accessContext:staffAccessContext}) : Promise.resolve(null),
-    staffAccessContext ? coachStrategyProvider({accessContext:staffAccessContext}) : Promise.resolve(null)
+    staffAccessContext ? coachStrategyProvider({accessContext:staffAccessContext}) : Promise.resolve(null),
+    kind==='FULL_LINEUP' ? battingOrderProvider() : Promise.resolve(null)
   ]);
   if(currentResult.status!=='fulfilled') throw currentResult.reason;
   if(isPitchingKind(kind) && currentPitchingResult.status!=='fulfilled') throw new Error(`現チームの投手詳細CSVを取得できないため、投手選考を停止します: ${currentPitchingResult.reason?.message||'取得エラー'}`);
@@ -212,6 +218,10 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   }else if(wantsRecentBatting && recentResult.status==='rejected'){
     recentSix.warning=`直近6試合の打撃詳細CSVを取得できませんでした: ${recentResult.reason?.message||'取得エラー'}。最近の好調・不調は断定しない。`;
   }
+
+  const battingOrderSplits=kind==='FULL_LINEUP'&&battingOrderResult.status==='fulfilled'&&battingOrderResult.value
+    ? battingOrderResult.value
+    : {status:kind==='FULL_LINEUP'?'UNAVAILABLE':'NOT_APPLICABLE',players:[],source:null};
 
   let historicalReference={
     status:'UNAVAILABLE',
@@ -264,6 +274,11 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     }else{
       lines.push(`【直近6試合・打撃】取得不可。${recentSix.warning}`);
     }
+  }
+
+  if(kind==='FULL_LINEUP'){
+    if(battingOrderSplits.status==='COMPLETE')lines.push('【実打順別の打撃結果】公式戦＋練習第1試合を標準Evidenceとして集計。練習第2試合はチャレンジ枠として分離。打順別の小標本だけで固定しない。',...battingOrderSplits.players.map(battingOrderLine));
+    else lines.push('【実打順別の打撃結果】取得不可。打順別成績を推測で補わない。');
   }
 
   const usageEvidence=usageResult?.status==='fulfilled'?usageResult.value:null;
@@ -442,6 +457,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   if(isPitchingKind(kind)&&oldPitchingResult?.status==='fulfilled'&&oldPitchingResult.value?.source) sources.push({...oldPitchingResult.value.source,season:'old',priority:'HISTORICAL_PITCHING_DETAIL'});
   if(audit?.source) sources.push({...audit.source,season:'current',priority:'PRIMARY'});
   if(recentSix?.source) sources.push({...recentSix.source,season:'current',priority:'RECENT_FORM'});
+  if(battingOrderSplits?.source) sources.push({...battingOrderSplits.source,season:'current',priority:'ACTUAL_BATTING_ORDER_RESULT'});
   if(historicalReference.source) sources.push({...historicalReference.source,season:'old',priority:'HISTORICAL'});
 
   const pitchingEligible=isPitchingKind(kind)?(currentPitching?.experiencedPlayers||[]):[];  const summary=kind==='FULL_LINEUP'
@@ -480,6 +496,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     primarySeason:'current',
     allCurrentTeamCheck:{status:'COMPLETE',players},
     recentSix,
+    battingOrderSplits,
     historicalReference,
     sampleSizeRule:sampleRule,
     pitchingEligible,
