@@ -136,6 +136,11 @@ function recentPlayerLine(entry){
   return `${entry?.name||'選手'}：${parts.join(' / ')}`;
 }
 
+function battingOrderLine(entry){
+  const slots=(entry?.slots||[]).map(s=>{const b=s?.standard?.batting||{};return s.slot+'番 '+(b.PA||0)+'打席 '+(b.AB||0)+'打数 '+(b.H||0)+'安打 AVG '+(b.AVG||'-')+' OBP '+(b.OBP||'-')+' OPS '+(b.OPS||'-')+' / 第2試合 '+(s?.challenge?.batting?.PA||0)+'打席';});
+  return (entry?.name||'選手')+'：'+(slots.length?slots.join(' / '):'打順別記録なし');
+}
+
 function historicalPlayer(name,byName){
   const entry=byName?.[name]||{};
   return {
