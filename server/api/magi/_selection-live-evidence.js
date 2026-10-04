@@ -276,6 +276,11 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
     }
   }
 
+  if(kind==='FULL_LINEUP'){
+    if(battingOrderSplits.status==='COMPLETE')lines.push('【実打順別の打撃結果】公式戦＋練習第1試合を標準Evidenceとして集計。練習第2試合はチャレンジ枠として分離。打順別の小標本だけで固定しない。',...battingOrderSplits.players.map(battingOrderLine));
+    else lines.push('【実打順別の打撃結果】取得不可。打順別成績を推測で補わない。');
+  }
+
   const usageEvidence=usageResult?.status==='fulfilled'?usageResult.value:null;
   if(wantsUsageEvidence){
     if(usageEvidence?.status==='COMPLETE'){
