@@ -287,7 +287,7 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
       const recoveredUsage=usageEvidence.appearanceSourceMode==='SCORE_SHEET_RECOVERY';
       lines.push(
         recoveredUsage
-          ? '【実起用・守備Evidence】現在の出場詳細CSVは構造破損を検出したため判断には使用しない。登録済み11試合のスコア原本PDFからスタメン/途中出場/実打順/先発守備位置を復旧し、守備詳細CSVの各試合参加選手集合と一致した場合だけ利用する。'
+          ? '【実起用・守備Evidence】現在の出場詳細CSVは構造破損を検出したため判断には使用しない。登録済み13試合のスコア原本PDFからスタメン/途中出場/実打順/先発守備位置を復旧し、守備詳細CSVの各試合参加選手集合と一致した場合だけ利用する。'
           : '【実起用・守備Evidence】出場詳細CSVをスタメン/途中出場/実打順/スタメン守備位置の最優先記録として扱い、守備詳細CSVを実守備位置の補助記録として重ねる。',
         recoveredUsage
           ? `【スコア原本復旧】RECOVERED：公式戦 ${usageEvidence.scoreSheets?.officialOriginalCount||0} 件＋練習試合 ${usageEvidence.scoreSheets?.practiceOriginalCount||0} 件＝原本 ${usageEvidence.scoreSheets?.originalCount||0} 件から ${usageEvidence.scoreSheets?.verifiedCount||0}/${usageEvidence.scoreSheets?.appearanceGameCount||0} 試合を復旧。壊れた出場詳細CSVは別票として評価しない。`
