@@ -129,7 +129,19 @@ function safeTransient(res, error) {
     retryExhausted: !transient,
     retryFreshRequest: transient,
     retryScope: transient ? 'PERSONA_BATCH_REQUEST' : '',
-    diagnostic: { failureClass: safeFailureClass }
+    diagnostic: {
+      failureClass: safeFailureClass,
+      ...(safeFailureClass === 'provider_rate_limit' && error?.providerDiagnostic ? { providerQuota: {
+        providerStatus: String(error.providerDiagnostic.providerStatus || ''),
+        quotaMetric: String(error.providerDiagnostic.quotaMetric || ''),
+        quotaId: String(error.providerDiagnostic.quotaId || ''),
+        model: String(error.providerDiagnostic.model || ''),
+        location: String(error.providerDiagnostic.location || ''),
+        retryDelay: String(error.providerDiagnostic.retryDelay || ''),
+        quotaWindow: String(error.providerDiagnostic.quotaWindow || ''),
+        quotaScope: String(error.providerDiagnostic.quotaScope || '')
+      }} : {})
+    }
   });
 }
 

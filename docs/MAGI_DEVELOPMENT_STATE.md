@@ -195,6 +195,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Live E2E is now the first provider acceptance gate for MAGI deliberation-path changes. The provider-heavy sequential smoke/reproducibility suite no longer runs on the same push; it is triggered only after the Live E2E workflow completes successfully (or manually).
 - Live E2E push coverage is broadened to the common MAGI server path, gateway, engine and both relevant workflow files so evidence/routing/persona changes cannot bypass the user-path gate.
 
+## Provider quota-scope diagnostic
+
+- With Live E2E fully gated ahead of the sequential suite, the very first PRIMARY batch still receives provider 429. This proves concurrent MAGI smoke tests are no longer required to reproduce the failure.
+- The provider response is now parsed only for non-secret quota metadata: provider status, quota metric/id, model/location dimensions, retry delay, and derived quota window/scope. API keys, project secrets, request content and raw provider messages are not exposed.
+- Use this diagnostic to decide whether the free path is a timed retry, a model-scoped fallback, or a quota reset issue; do not guess.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
