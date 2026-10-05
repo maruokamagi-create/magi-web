@@ -169,6 +169,11 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The batch endpoint was making optional extra model correction calls inside the same serverless request after the initial batch generation. That can exceed the request execution window.
 - Batch phases are therefore constrained to one model generation. Deterministic soft-prose recovery remains allowed only when hard roster, candidate, numeric, and lineup guards are valid; hard inconsistencies still fail closed.
 
+## Batch forecast-only validation finding
+
+- After removing inline correction generations, production candidate-selection PRIMARY failed only because BALTHASAR used an unhedged future prediction.
+- This is a soft prose guard, not a roster, candidate, numeric, evidence-source, or lineup integrity failure. When every reported issue is forecast-certainty-only, batch processing now removes prediction/analysis prose deterministically. Hard structural and evidence inconsistencies remain fail-closed.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
