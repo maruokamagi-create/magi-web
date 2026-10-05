@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: d0612ba88bfd563e65957eac8d3a290152275b50
+- State base main SHA: 9d50c247371c4be8755da3001d32f9709cfdc619
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -150,6 +150,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - `engine/magi-engine-v1.js` confirms the browser performs PRIMARY personas -> CROSS orchestrator -> SECOND personas -> FINAL orchestrator.
 - The previous exact TEAM_REVIEW production selftest stopped after PRIMARY, so it could never validate the user's 72% failure. This was a test-path gap, not proof that the UI path was healthy.
 - Current work extends the TEAM_REVIEW production probe through all four formal phases. Do not call the 72% issue solved until that full-path probe and the real UI path complete.
+
+## Latest production finding after full-path validation
+
+- Production sequential run 37301330326 failed at exact live best-order before TEAM_REVIEW: SECOND_MELCHIOR returned HTTP 503 on all five request-level attempts.
+- Therefore the 72% class of failure is not specific to the weakness question. SECOND persona generation is a shared deliberation reliability fault.
+- The persona endpoint already returns a safe provider failure class, but the live selftest discarded it. The live test now preserves that safe class so the common SECOND fault can be diagnosed without guessing.
 
 ## Next concrete work
 
