@@ -179,6 +179,11 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Main `6968b56c...` passed selection, full-lineup, pitching-plan and deliberation smoke tests, then the first live best-order E2E failed at PRIMARY with `provider_rate_limit` even after the suite cooldown plus the live job wait.
 - Therefore fixed sleeps inside one provider-heavy chain are not a reliable capacity boundary. Synthetic smoke/reproducibility remains one sequential suite; real-question live E2E is a separate push-triggered workflow for deliberation-path changes, so smoke tests no longer gate or directly precede the user-path acceptance run.
 
+## Provider 429 retry-storm finding
+
+- The first independently triggered live best-order E2E still encountered provider 429/`provider_rate_limit`. Its selftest helper then retried the same PRIMARY batch up to five times, while curl could also retry the whole request. That behavior amplifies shared-project saturation and does not represent a safe user-path recovery.
+- Provider-rate-limit is now fail-fast in the live E2E helper and curl no longer retries the whole expensive deliberation request. Other retryable HTTP/timeout failures keep bounded request-level recovery. This change does not alter semantic/evidence decisions or weaken persona guards.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.

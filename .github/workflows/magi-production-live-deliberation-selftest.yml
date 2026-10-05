@@ -26,7 +26,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup" -o /tmp/lineup.json
+          curl -L --fail --max-time 125 -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup" -o /tmp/lineup.json
           cat /tmp/lineup.json; echo
           jq -e '
             .ok==true and .mode=="lineup" and
