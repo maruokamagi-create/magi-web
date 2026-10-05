@@ -28,7 +28,10 @@ async function post(base,path,body,label=path){
       const raw=await response.text();let parsed={};
       try{parsed=raw?JSON.parse(raw):{};}catch(_){parsed={raw:raw.slice(0,300)};}
       if(response.ok)return parsed;
-      const failureClass=String(parsed?.diagnostic?.failureClass||'').trim();const detail=(parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`)+(failureClass?` [failureClass=${failureClass}]`:'');
+      const failureClass=String(parsed?.diagnostic?.failureClass||'').trim();
+      const pq=parsed?.diagnostic?.providerQuota||{};
+      const quotaBits=[pq.quotaWindow,pq.quotaScope,pq.quotaId,pq.quotaMetric,pq.model,pq.retryDelay].filter(Boolean).join('|');
+      const detail=(parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`)+(failureClass?` [failureClass=${failureClass}]`:'')+(quotaBits?` [quota=${quotaBits}]`:'');
       const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);error.status=response.status;error.failureClass=failureClass;lastError=error;
       // Provider 429 is shared project quota/capacity, not a request-local transient.
       // Retrying the same expensive deliberation in a tight loop only amplifies saturation.
