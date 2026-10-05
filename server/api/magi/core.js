@@ -5,7 +5,7 @@ import { buildStrictPitchingAnswer } from './_strict-pitching-answer.js';
 import { buildVerifiedDetailAnswer } from './_detail-live-answer.js';
 import { shouldUseVerifiedOldDetailAnswer } from './_verified-detail-route.js';
 import { resolveQuestionEvidence } from './_evidence-resolver.js';
-import { buildCurrentSelectionEvidence } from './_selection-live-evidence.js';
+import { buildCurrentSelectionEvidence, buildCurrentTeamReviewEvidence } from './_selection-live-evidence.js';
 import { buildAppearanceDetailEvidence } from './_appearance-detail-evidence.js';
 import { understandRequestGeminiFirst } from './_semantic-authority.js';
 import { CURRENT_ROSTER } from './_roster.js';
@@ -144,12 +144,12 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
       ? needsCrossEvidenceAnalysis(question,semantic)
       : false;
     if(naturalTeamReview){
-      const teamRouted={...routed,players:[],domains:['LINEUP']};
-      const teamEvidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:teamRouted,staffAccessContext});
+      const teamRouted={...routed,players:[],domains:['TEAM','BATTING','PITCHING','FIELDING'],selectionKind:'TEAM_REVIEW'};
+      const teamEvidence=await buildCurrentTeamReviewEvidence({question,routed:teamRouted,staffAccessContext});
       if(teamEvidence){
         await attachAppearanceEvidence(teamEvidence,{reviewKind:'TEAM_REVIEW'});
         teamEvidence.summary='現チーム14名の今季打撃・投手データ、過去実績、直近状態、出場・守備起用実績を横断し、チームの強み・弱点・変化・課題を分析するための正本Evidence。';
-        teamEvidence.dataRule=`${text(teamEvidence.dataRule)} TEAM_REVIEWでは候補選手を選ぶのではなく、確認できるチーム全体の記録から質問された強み・弱点・変化・課題を分析する。Evidenceにない事実は作らない。`.trim();
+        teamEvidence.dataRule=`${text(teamEvidence.dataRule)} 質問「${text(question)}」の評価軸から外れて候補選定へ変換しない。`.trim();
         effectiveResolution={version:teamEvidence.resolverVersion,status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_NATURAL_TEAM_REVIEW',evidence:teamEvidence};
       }
     }
