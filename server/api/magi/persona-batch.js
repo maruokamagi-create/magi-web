@@ -133,6 +133,14 @@ function safeTransient(res, error) {
     retryScope: transient ? 'PERSONA_BATCH_REQUEST' : '',
     diagnostic: {
       failureClass: safeFailureClass,
+      ...(Array.isArray(error?.failureTrail) && error.failureTrail.length ? { providerTrail: error.failureTrail.slice(0, 8).map(row => ({
+        slot: String(row?.slot || ''),
+        model: String(row?.model || ''),
+        failureClass: String(row?.failureClass || ''),
+        quotaWindow: String(row?.quotaWindow || ''),
+        quotaScope: String(row?.quotaScope || ''),
+        quotaId: String(row?.quotaId || '')
+      })) } : {}),
       ...(safeFailureClass === 'provider_rate_limit' && error?.providerDiagnostic ? { providerQuota: {
         providerStatus: String(error.providerDiagnostic.providerStatus || ''),
         quotaMetric: String(error.providerDiagnostic.quotaMetric || ''),
