@@ -6,6 +6,7 @@ const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
 const DEFAULT_FALLBACK_MODEL = 'gemini-3.5-flash';
 const DEFAULT_LAST_RESORT_MODEL = 'gemini-3.6-flash';
+const FREE_TIER_RESERVE_MODELS = ['gemini-3.5-flash-lite','gemini-3.8-flash','gemini-3.1-flash-lite'];
 // FULL_LINEUP SECOND requests contain the validated CASE evidence plus the
 // persona's primary judgment and cross-examination context. The same evidence
 // already fits the PRIMARY request, so allow bounded headroom for those extra
@@ -288,9 +289,11 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
   if (!apiKey) throw new Error('GEMINI_API_KEY is not configured');
 
   const strict = getConsistencyMode() === 'strict';
+  const configuredModels = [getGeminiModel(), getGeminiFallbackModel(), getGeminiLastResortModel()]
+    .filter((model, index, arr) => model && arr.indexOf(model) === index);
   const models = strict
     ? [getGeminiModel()]
-    : [getGeminiModel(), getGeminiFallbackModel(), getGeminiLastResortModel()]
+    : [...configuredModels, ...FREE_TIER_RESERVE_MODELS]
         .filter((model, index, arr) => model && arr.indexOf(model) === index);
 
   let lastError;
@@ -308,8 +311,12 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
     } catch (error) {
       lastError = error;
       failureTrail.push({
-        slot: index === 0 ? 'primary' : (index === 1 ? 'fallback' : 'last_resort'),
-        failureClass: String(error?.failureClass || (error?.timedOut ? 'timeout' : 'other'))
+        slot: index === 0 ? 'primary' : (index < configuredModels.length ? 'fallback' : 'free_tier_reserve'),
+        model,
+        failureClass: String(error?.failureClass || (error?.timedOut ? 'timeout' : 'other')),
+        quotaWindow: String(error?.providerDiagnostic?.quotaWindow || ''),
+        quotaScope: String(error?.providerDiagnostic?.quotaScope || ''),
+        quotaId: String(error?.providerDiagnostic?.quotaId || '')
       });
       const providerRateLimited = Number(error?.status) === 429 || error?.failureClass === 'provider_rate_limit';
       if (providerRateLimited) {
