@@ -184,6 +184,11 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The first independently triggered live best-order E2E still encountered provider 429/`provider_rate_limit`. Its selftest helper then retried the same PRIMARY batch up to five times, while curl could also retry the whole request. That behavior amplifies shared-project saturation and does not represent a safe user-path recovery.
 - Provider-rate-limit is now fail-fast in the live E2E helper and curl no longer retries the whole expensive deliberation request. Other retryable HTTP/timeout failures keep bounded request-level recovery. This change does not alter semantic/evidence decisions or weaken persona guards.
 
+## Real UI provider-rate-limit retry behavior
+
+- Independent live E2E still receives provider 429 on the first PRIMARY batch, so test chaining is not the sole cause; the shared Gemini project is presently capacity/quota constrained.
+- The browser engine also retried every 503/429 without reading `diagnostic.failureClass`. It now fails fast specifically for `provider_rate_limit`, preventing an iPhone/user deliberation from immediately replaying the same expensive provider request. Other retryable transport/server failures retain bounded retries.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
