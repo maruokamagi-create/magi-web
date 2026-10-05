@@ -5,6 +5,9 @@ import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
   finalizePersonaDraft,
+  personaCorrectionDirective,
+  recoverSoftFullLineupLanguage,
+  recoverSoftPitchingPlanLanguage,
   validPersonaCase
 } from './persona.js';
 
@@ -282,12 +285,13 @@ export default async function handler(req, res) {
       const correctionLimit = finalized.fullLineupCase ? 1 : 3;
       for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
         const basePayload = personaRequests[persona]?.payload || {};
+        const issueDirective = personaCorrectionDirective(guardIssues);
         const correctionPayload = {
           ...basePayload,
           invalidDraft: result,
           correctionIssues: guardIssues,
           correctionAttempt: attempt + 1,
-          instruction: `${basePayload.instruction || ''} CORRECTION PASS ${attempt + 1}: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Remove unsupported claims completely rather than disguising or rephrasing them. Do not import generic historical role knowledge. Do not relabel a supplied metric. Do not add another player. Return the complete schema again using only CASE/evidence-supported facts.`
+          instruction: `${basePayload.instruction || ''} CORRECTION PASS ${attempt + 1}: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Remove unsupported claims completely rather than disguising or rephrasing them. Do not import generic historical role knowledge. Do not relabel a supplied metric. Do not add another player. ${issueDirective} Return the complete schema again using only CASE/evidence-supported facts.`
         };
         try {
           personaRaw = await callGemini({
@@ -306,7 +310,9 @@ export default async function handler(req, res) {
 
       // Still fail closed after correction attempts. Deterministic evidence
       // validation remains authoritative; this does not weaken any guard.
-      if (guardIssues.length) {
+      if (guardIssues.length
+        && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
+        && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
         return sendJson(res, 503, {
           error: phase + ' batch response failed persona validation',
           code: 'PERSONA_BATCH_VALIDATION_FAILED',
