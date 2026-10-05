@@ -133,6 +133,15 @@ function safeTransient(res, error) {
   });
 }
 
+function recoverSoftForecastLanguage(result, issues) {
+  const list = Array.isArray(issues) ? issues.map(v => String(v || '')) : [];
+  if (!list.length || !list.every(v => /(?:将来|不確実性|保証できない結果)/.test(v))) return false;
+  result.prediction = [];
+  result.analysis = [];
+  result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), '将来結果を断定する表現は判断根拠から除外しました。'])];
+  return true;
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -280,6 +289,7 @@ export default async function handler(req, res) {
       // One model generation per batch phase. Extra correction generations can exceed the serverless request window.\n      // Soft prose issues may still be sanitized deterministically below; hard evidence guards remain fail-closed.\n\n      // Still fail closed after correction attempts. Deterministic evidence
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
+        && !recoverSoftForecastLanguage(result, guardIssues)
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
         return sendJson(res, 503, {
