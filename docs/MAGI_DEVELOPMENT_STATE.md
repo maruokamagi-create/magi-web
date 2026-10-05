@@ -201,6 +201,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The provider response is now parsed only for non-secret quota metadata: provider status, quota metric/id, model/location dimensions, retry delay, and derived quota window/scope. API keys, project secrets, request content and raw provider messages are not exposed.
 - Use this diagnostic to decide whether the free path is a timed retry, a model-scoped fallback, or a quota reset issue; do not guess.
 
+## Confirmed FreeTier quota root cause and fallback rule
+
+- Fully isolated Live E2E exposed the provider quota metadata: quota ID `GenerateRequestsPerDayPerProjectPerModel-FreeTier`, quota metric `generate_content_free_tier_requests`, window `DAY`, scope `MODEL`, exhausted model `gemini-3.5-flash`, provider retry delay about 28811 seconds at the observed failure.
+- Therefore the previous assumption that every provider 429 is project-wide was wrong. For a MODEL-scoped quota only, canonical mode may continue to the next distinct configured Gemini fallback model under the same FreeTier project. PROJECT-scoped limits still fail fast. Strict consistency mode still suppresses fallback.
+- The separate closer-evidence-trace workflow duplicated provider-heavy work already covered by the Live E2E closer case and could compete for fallback quota when selftest code changed. It is now manual-only; Live E2E remains the automatic user-path gate.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
