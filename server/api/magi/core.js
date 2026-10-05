@@ -115,8 +115,10 @@ async function buildSpecialSampleEvidence({question,routed,semantic,staffAccessC
   const teamReview=isTeamReviewSample(question);
   const starter=starterSamplePlayer(question);
   if(!teamReview&&!starter)return null;
-  const forcedRouted={...routed,players:[],domains:['LINEUP']};
-  const evidence=await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:forcedRouted,staffAccessContext});
+  const forcedRouted={...routed,players:[],domains:teamReview?['TEAM','BATTING','PITCHING','FIELDING']:['LINEUP'],selectionKind:teamReview?'TEAM_REVIEW':routed?.selectionKind};
+  const evidence=teamReview
+    ? await buildCurrentTeamReviewEvidence({question,routed:forcedRouted,staffAccessContext})
+    : await buildCurrentSelectionEvidence({question:'現チーム14名からスタメン候補を選ぶ',routed:forcedRouted,staffAccessContext});
   if(!evidence)return null;
   await attachAppearanceEvidence(evidence,{reviewKind:teamReview?'TEAM_REVIEW':'STARTER_EVALUATION',focusPlayer:starter});
   if(teamReview){
