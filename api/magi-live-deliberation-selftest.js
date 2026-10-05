@@ -32,13 +32,17 @@ async function post(base,path,body,label=path){
       const failureClass=String(parsed?.diagnostic?.failureClass||'').trim();
       const pq=parsed?.diagnostic?.providerQuota||{};
       const quotaBits=[pq.quotaWindow,pq.quotaScope,pq.quotaId,pq.quotaMetric,pq.model,pq.retryDelay].filter(Boolean).join('|');
-      const detail=(parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`)+(failureClass?` [failureClass=${failureClass}]`:'')+(quotaBits?` [quota=${quotaBits}]`:'');
-      const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);error.status=response.status;error.failureClass=failureClass;lastError=error;
-      // Provider 429 is shared project quota/capacity, not a request-local transient.
-      // Retrying the same expensive deliberation in a tight loop only amplifies saturation.
+      const guardBits=Array.isArray(parsed?.diagnostic?.guardIssueCodes)?parsed.diagnostic.guardIssueCodes.filter(Boolean).join('|'):'';
+      const metaBits=[parsed?.code,parsed?.persona,guardBits].filter(Boolean).join('|');
+      const detail=(parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`)+(failureClass?` [failureClass=${failureClass}]`:'')+(quotaBits?` [quota=${quotaBits}]`:'')+(metaBits?` [meta=${metaBits}]`:'');
+      const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);
+      error.status=response.status;error.failureClass=failureClass;error.code=String(parsed?.code||'');error.retryFreshRequest=parsed?.retryFreshRequest;error.retryExhausted=parsed?.retryExhausted===true;lastError=error;
+      // Deterministic validation failures explicitly reject a fresh retry.
+      if(error.retryFreshRequest===false||error.retryExhausted===true)throw error;
+      // Provider 429 is shared quota/capacity, not a request-local transient.
       if(failureClass==='provider_rate_limit')throw error;
       if(!(response.status===408||response.status===429||response.status>=500))throw error;
-    }catch(error){lastError=error;if(error?.failureClass==='provider_rate_limit')throw error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error;}
+    }catch(error){lastError=error;if(error?.retryFreshRequest===false||error?.retryExhausted===true)throw error;if(error?.failureClass==='provider_rate_limit')throw error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error;}
   }
   throw lastError||new Error(`${label}: request failed`);
 }

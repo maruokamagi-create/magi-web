@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: c493cd62638491795e90c54827a01b40a56d00da
+- State base main SHA: 18baaa8ac068791525236ea93dc720eee9728bef
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -239,6 +239,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - TEAM_REVIEW then failed in PRIMARY with `TEAM_REVIEW_PRIMARY_MELCHIOR_BECAME_SELECTION`: MELCHIOR returned candidatePlayers/candidateBasis even though TEAM_REVIEW is non-selection.
 - Root cause: the single-persona handler cleared candidate fields after finalization, but persona-batch used the shared `finalizePersonaDraft()` result directly. The shared finalizer now clears candidatePlayers/candidateBasis for every non-selection case before change tracking and validation, so single and batch paths share the same structural contract.
 - A regression test verifies TEAM_REVIEW cannot leak selection candidates through the shared finalizer.
+
+## Deterministic persona failure retry contract
+
+- After non-selection candidate normalization, Live E2E again passed lineup, closer and natural-third. TEAM_REVIEW PRIMARY now fails with `PERSONA_BATCH_VALIDATION_FAILED`, not candidate leakage.
+- The batch response already marks deterministic validation failures with `retryFreshRequest:false` and `retryExhausted:true`, but both the live E2E helper and browser engine were retrying generic HTTP 503 anyway.
+- Both callers now honor the server retry contract. Live diagnostics also preserve safe `code`, `persona`, and `guardIssueCodes`, so the next TEAM_REVIEW failure identifies the exact Evidence-language guard without repeating the same invalid generation.
+- Browser errors now carry the server code and endpoint into the formal runner diagnostic instead of collapsing every deterministic 503 into a generic retry.
 
 ## Next concrete work
 
