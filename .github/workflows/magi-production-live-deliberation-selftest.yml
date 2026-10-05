@@ -35,7 +35,7 @@ jobs:
             jq -e --arg stage "$(echo "$stage" | tr '[:lower:]' '[:upper:]')" '.ok==true and .mode=="lineup" and .stage==$stage' "$out" >/dev/null
           }
 
-          run_stage primary
+          run_stage prepare
           jq -e '
             .evidence.count==14 and
             .evidence.selectionKind=="FULL_LINEUP" and
@@ -43,9 +43,11 @@ jobs:
             .evidence.appearanceFieldingStatus=="COMPLETE" and
             .evidence.appearanceStatus=="COMPLETE" and
             .evidence.fieldingStatus=="COMPLETE" and
-            .evidence.normalizedObservationStatus=="COMPLETE" and
-            ([.primary[].candidatePlayers|length] | all(.==9))
-          ' /tmp/lineup-primary.json >/dev/null
+            .evidence.normalizedObservationStatus=="COMPLETE"
+          ' /tmp/lineup-prepare.json >/dev/null
+
+          run_stage primary
+          jq -e '([.primary[].candidatePlayers|length] | all(.==9))' /tmp/lineup-primary.json >/dev/null
 
           run_stage cross
           jq -e '([.cross.challengeCounts[]] | all(.>0))' /tmp/lineup-cross.json >/dev/null
