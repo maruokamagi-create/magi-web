@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { getCache } from '@vercel/functions';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 import { buildCurrentSelectionEvidence, buildCurrentTeamReviewEvidence } from '../server/api/magi/_selection-live-evidence.js';
 
@@ -151,6 +152,53 @@ async function runCloser(base,packet){
   return {primary:Object.fromEntries(PERSONAS.map(p=>[p,primary[p]?.candidatePlayers||[]])),second:Object.fromEntries(PERSONAS.map(p=>[p,second[p]?.candidatePlayers||[]])),centerCandidates:final?.centerCandidates||[],recommendedCandidates:final?.recommendedCandidates||[],sakataSaveCount:String(sakata.pitching.SV),saveEvidenceUsed:mentionsSave,coachObservationStatus:packet?.coachObservationStatus||'',packetConcernPresent,currentConcernUsed:mentionsCurrentConcern,packetConcernLines,rationale};
 }
 
+
+const STAGED_LIVE_TTL_SECONDS=30*60;
+function stagedSessionKey(mode,session){return `magi-live-e2e:v1:${String(mode||'lineup')}:${String(session||'')}`;}
+function validateStagedSession(session){return /^[A-Za-z0-9_-]{3,100}$/.test(String(session||''));}
+async function readStagedState(mode,session){return (await getCache().get(stagedSessionKey(mode,session)))||null;}
+async function writeStagedState(mode,session,state){await getCache().set(stagedSessionKey(mode,session),state,{ttl:STAGED_LIVE_TTL_SECONDS,tags:['magi-live-e2e']});}
+function summarizePersonaSet(set){return Object.fromEntries(PERSONAS.map(p=>[p,{judgment:set?.[p]?.judgment||'',confidence:set?.[p]?.confidence||'',candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],reviewRequested:Boolean(set?.[p]?.reviewRequested),dataConflict:Boolean(set?.[p]?.dataConflict)}]));}
+function assertLineupPersonaSet(set,phase){for(const p of PERSONAS){if(set?.[p]?.reviewRequested===true||set?.[p]?.dataConflict===true||!validNine(set?.[p]))throw new Error(`${phase}_${p.toUpperCase()}_INVALID`);}}
+async function runStagedLineup(base,packet,stage,session){
+  if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
+  const normalized=String(stage||'').toLowerCase();
+  if(normalized==='primary'){
+    const caseData=browserCase(packet,QUESTION);
+    const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
+    assertLineupPersonaSet(primary,'PRIMARY');
+    await writeStagedState('lineup',session,{caseData,primary});
+    return {ok:true,mode:'lineup',stage:'PRIMARY',session,primary:summarizePersonaSet(primary)};
+  }
+  const state=await readStagedState('lineup',session);
+  if(!state?.caseData||!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='cross'){
+    const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:state.caseData,primary:state.primary},'CROSS');
+    for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);}
+    await writeStagedState('lineup',session,{...state,cross});
+    return {ok:true,mode:'lineup',stage:'CROSS',session,cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],informationGaps:cross?.informationGaps||[],challengeCounts:Object.fromEntries(PERSONAS.map(p=>[p,Array.isArray(cross?.challenges?.[p])?cross.challenges[p].length:0]))}};
+  }
+  if(normalized==='second'){
+    if(!state?.cross)throw new Error('LIVE_STAGE_CROSS_NOT_FOUND');
+    const second=await serialPersonaSet(base,'SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}));
+    assertLineupPersonaSet(second,'SECOND');
+    await writeStagedState('lineup',session,{...state,second});
+    return {ok:true,mode:'lineup',stage:'SECOND',session,second:summarizePersonaSet(second)};
+  }
+  if(normalized==='final'){
+    if(!state?.cross||!state?.second)throw new Error('LIVE_STAGE_SECOND_NOT_FOUND');
+    const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:state.caseData,primary:state.primary,crossExamination:state.cross,second:state.second},'FINAL');
+    const rows=Array.isArray(final?.lineup)?final.lineup:[];
+    const names=rows.map(x=>x?.name).filter(Boolean);
+    const positions=rows.map(x=>text(x?.position)).filter(Boolean);
+    const standardStartSupported=rows.every(x=>{const e=x?.positionEvidence||{};return Number(e.officialStarts)>0||Number(e.practiceFirstStarts)>0;});
+    const legal=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&final?.fieldingStatus==='COMPLETE'&&names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)))&&positions.length===9&&new Set(positions).size===9&&positions.every(p=>standardPositionKeys.has(p))&&standardStartSupported;
+    if(!legal)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}_FIELDING_${String(final?.fieldingStatus||'NO_STATUS')}`);
+    return {ok:true,mode:'lineup',stage:'FINAL',session,finalStatus:final.status,lineup:rows.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence})),digest:stableDigest({primary:state.primary,cross:state.cross,second:state.second,final})};
+  }
+  throw new Error('LIVE_STAGE_UNSUPPORTED');
+}
+
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
@@ -251,6 +299,11 @@ export default async function handler(req,res){
         issues:packet?.appearanceFielding?.issues||[]
       };
       throw err;
+    }
+    const stagedStage=String(req.query?.stage||'').toLowerCase();
+    if(mode==='lineup'&&stagedStage){
+      const staged=await runStagedLineup(base,packet,stagedStage,String(req.query?.session||''));
+      return res.status(200).json(staged);
     }
     const result=mode==='lineup'?await runOnce(base,packet):null;
     const digest=result?stableDigest(result):'';
