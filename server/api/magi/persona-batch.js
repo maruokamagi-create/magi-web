@@ -5,7 +5,6 @@ import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
   finalizePersonaDraft,
-  personaCorrectionDirective,
   recoverSoftFullLineupLanguage,
   recoverSoftPitchingPlanLanguage,
   validPersonaCase
@@ -278,37 +277,7 @@ export default async function handler(req, res) {
       let finalized = finalizePersonaDraft(validationBody, persona, phase, personaRaw);
       let { result, guardIssues } = finalized;
 
-      // The serial persona endpoint gives a guard-failing draft a correction
-      // pass before failing closed. The production UI uses this batch endpoint,
-      // so apply the same evidence-preserving recovery here instead of turning
-      // one correctable draft into an immediate 503 for the whole deliberation.
-      const correctionLimit = finalized.fullLineupCase ? 1 : 3;
-      for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
-        const basePayload = personaRequests[persona]?.payload || {};
-        const issueDirective = personaCorrectionDirective(guardIssues);
-        const correctionPayload = {
-          ...basePayload,
-          invalidDraft: result,
-          correctionIssues: guardIssues,
-          correctionAttempt: attempt + 1,
-          instruction: `${basePayload.instruction || ''} CORRECTION PASS ${attempt + 1}: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Remove unsupported claims completely rather than disguising or rephrasing them. Do not import generic historical role knowledge. Do not relabel a supplied metric. Do not add another player. ${issueDirective} Return the complete schema again using only CASE/evidence-supported facts.`
-        };
-        try {
-          personaRaw = await callGemini({
-            systemInstruction: PERSONA_PROMPTS[persona],
-            userPayload: correctionPayload,
-            responseSchema: PERSONA_RESPONSE_SCHEMA
-          });
-        } catch (correctionError) {
-          console.warn(`[MAGI persona-batch correction] ${persona} ${phase}: ${correctionError?.message || correctionError}`);
-          break;
-        }
-        finalized = finalizePersonaDraft(validationBody, persona, phase, personaRaw);
-        result = finalized.result;
-        guardIssues = finalized.guardIssues;
-      }
-
-      // Still fail closed after correction attempts. Deterministic evidence
+      // One model generation per batch phase. Extra correction generations can exceed the serverless request window.\n      // Soft prose issues may still be sanitized deterministically below; hard evidence guards remain fail-closed.\n\n      // Still fail closed after correction attempts. Deterministic evidence
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
