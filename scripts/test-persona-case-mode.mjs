@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import {
+  finalizePersonaDraft,
   isCandidateCase,
   normalizeConditionalJudgment,
   normalizeChangeTracking
@@ -109,6 +110,18 @@ test('M20 model-provided changeReason survives when a plan really changed',()=>{
   normalizeChangeTracking(r,'SECOND',primary);
   assert.equal(r.changedFromPrimary,true);
   assert.equal(r.changeReason,'クロス審議で母数の指摘を受け、クローザーだけ見直した。');
+});
+
+
+test('M21 TEAM_REVIEW cannot leak selection candidates through shared finalizer',()=>{
+  const body={case:{mode:'proposal',selectionKind:'TEAM_REVIEW',question:'今の丸岡中の弱点は何？',evidence:{selectionKind:'TEAM_REVIEW',reviewKind:'TEAM_REVIEW'}}};
+  const raw={
+    persona:'MELCHIOR',phase:'PRIMARY',checkedPlayers:[],candidatePlayers:['大野 竜暉'],candidateBasis:'候補として選ぶ',
+    facts:[],analysis:[],prediction:[],confidence:'MEDIUM',judgment:'BLUE',primaryReason:'現在の記録を確認する。',publicStatement:'現在の記録からチーム全体を確認します。',warnings:[],dataConflict:false,reviewRequested:false,reviewReason:'',changedFromPrimary:false,changeReason:''
+  };
+  const {result}=finalizePersonaDraft(body,'melchior','PRIMARY',raw);
+  assert.deepEqual(result.candidatePlayers,[]);
+  assert.equal(result.candidateBasis,'');
 });
 
 let passed=0;

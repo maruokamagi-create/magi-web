@@ -403,8 +403,16 @@ export function finalizePersonaDraft(body, persona, phase, rawResult) {
   const teamReviewCase = isTeamReviewCase(body);
   const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
   const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
+  const canonical = canonicalizePlayerData(rawResult);
+  // Candidate fields are structural output for selection cases only. Normalize
+  // them before change tracking/validation so every caller (single or batch)
+  // sees the same non-selection contract.
+  if (!candidateCase) {
+    canonical.candidatePlayers = [];
+    canonical.candidateBasis = '';
+  }
   let result = normalizeStandardFullLineupDecision(normalizeChangeTracking(
-    normalizeConditionalJudgment(canonicalizePlayerData(rawResult), candidateCase),
+    normalizeConditionalJudgment(canonical, candidateCase),
     phase,
     body.primarySelf
   ), body.case);
