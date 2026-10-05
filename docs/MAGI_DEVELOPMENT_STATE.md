@@ -189,6 +189,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Independent live E2E still receives provider 429 on the first PRIMARY batch, so test chaining is not the sole cause; the shared Gemini project is presently capacity/quota constrained.
 - The browser engine also retried every 503/429 without reading `diagnostic.failureClass`. It now fails fast specifically for `provider_rate_limit`, preventing an iPhone/user deliberation from immediately replaying the same expensive provider request. Other retryable transport/server failures retain bounded retries.
 
+## Provider acceptance ordering fix
+
+- The supposedly separate Live E2E and sequential smoke suite were still both triggered by the same main push, so they competed for the same Gemini project at the same time. This invalidated the intended provider-budget isolation.
+- Live E2E is now the first provider acceptance gate for MAGI deliberation-path changes. The provider-heavy sequential smoke/reproducibility suite no longer runs on the same push; it is triggered only after the Live E2E workflow completes successfully (or manually).
+- Live E2E push coverage is broadened to the common MAGI server path, gateway, engine and both relevant workflow files so evidence/routing/persona changes cannot bypass the user-path gate.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
