@@ -504,3 +504,38 @@ export async function buildCurrentSelectionEvidence({question,routed={},auditPro
   };
 }
 
+
+
+export async function buildCurrentTeamReviewEvidence({question='',routed={},staffAccessContext=null,...providers}={}){
+  const base=await buildCurrentSelectionEvidence({
+    question:'現チーム14名からスタメン候補を選ぶ',
+    routed:{...routed,players:[],domains:['LINEUP'],selectionKind:'GENERIC_SELECTION'},
+    staffAccessContext,
+    ...providers
+  });
+  if(!base)return null;
+  const players=Array.isArray(base?.allCurrentTeamCheck?.players)?base.allCurrentTeamCheck.players:[];
+  const teamLines=players.map(player=>{
+    const batting=battingParts(player?.batting);
+    const pitching=pitchingParts(player?.pitching);
+    return `${player?.name||'選手'}：打撃 ${batting.length?batting.join(' / '):'記録なし'} ｜ 投手 ${pitching.length?pitching.join(' / '):'記録なし'}`;
+  });
+  const sharedText=String(base.text||'');
+  const firstSection=sharedText.indexOf('【現チーム全14選手・');
+  const nextSection=firstSection>=0?sharedText.indexOf('\n【',firstSection+1):-1;
+  const tail=nextSection>=0?sharedText.slice(nextSection):'';
+  base.text=[
+    '【MAGI チーム分析Evidence】',
+    '【主評価】2026-2027 現チーム',
+    `対象：${base.scope||'2026-2027現チーム'}`,
+    `【現チーム全14選手・打撃＋投手】`,
+    ...teamLines,
+    tail
+  ].filter(Boolean).join('\n');
+  base.summary='現チーム14名の今季打撃・投手記録、直近状態、出場・守備起用実績、利用可能な観察情報と過去実績を横断し、質問されたチームの強み・弱点・変化・課題を分析するための正本Evidence。';
+  base.dataRule='TEAM_REVIEW専用Evidence。候補選手やスタメンを選ぶ処理ではない。現チーム14名全体の確認済み記録を横断して質問された強み・弱点・変化・課題を分析し、過去実績は参考として現在を上書きしない。Evidenceにない数値・役割・性格・因果関係・将来結果は作らない。';
+  base.reviewKind='TEAM_REVIEW';
+  base.selectionKind='TEAM_REVIEW';
+  base.teamReviewInstruction='候補選定へ変換せず、ユーザーが質問した評価軸に直接答える。各賢人はEvidenceから確認できる根拠と不足情報を分ける。';
+  return base;
+}
