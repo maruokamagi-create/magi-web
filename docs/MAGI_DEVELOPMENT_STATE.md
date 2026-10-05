@@ -157,6 +157,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Therefore the 72% class of failure is not specific to the weakness question. SECOND persona generation is a shared deliberation reliability fault.
 - The persona endpoint already returns a safe provider failure class, but the live selftest discarded it. The live test now preserves that safe class so the common SECOND fault can be diagnosed without guessing.
 
+## Provider-rate-limit root cause and common fix
+
+- Full-path diagnostics identified `provider_rate_limit` as the shared failure class, first in SECOND and later in PRIMARY when the provider-heavy production smoke suite immediately preceded the live E2E.
+- PR #57 changed the browser engine to use the existing persona-batch endpoint for PRIMARY and SECOND, reducing a normal deliberation from six persona provider generations to two phase generations while keeping deterministic CROSS between them and persona-isolated SECOND compartments.
+- The sequential production suite itself can consume the same Gemini project immediately before real-question E2E. A provider cooldown is therefore inserted between synthetic smoke tests and live E2E so the regression test measures a normal user run rather than self-induced test saturation.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
