@@ -36,13 +36,17 @@ function validCase(body) {
 }
 
 export function isSelectionCase(caseData) {
+  const semanticKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  if(semanticKind==='TEAM_REVIEW'||String(caseData?.evidence?.reviewKind||'').toUpperCase()==='TEAM_REVIEW') return false;
+  if(['FULL_LINEUP','PITCHING_PLAN','GENERIC_SELECTION','PITCHING_ROLE'].includes(semanticKind)) return true;
   if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
   if (isFullLineupQuestion(caseData) || isPitchingPlanQuestion(caseData)) return true;
+  // Legacy fallback only when no semantic selection classification reached the orchestrator.
   const q = String(caseData?.question || '');
   const battingSlot = /(?:[1-9１-９一二三四五六七八九](?:番|ばん)(?:打者)?)/;
   const domain = /クリーンナップ|中軸|主軸|打線|打順|オーダー|紅白戦|スタメン|レギュラー|先発|起用|守備位置|ポジション|クローザー|抑え|捕手|投手|一塁|二塁|三塁|遊撃|左翼|中堅|右翼|レフト|センター|ライト/;
   const cue = /誰|だれ|どの|どれ|どちら|どう組|どうする|組んで|組む|組み合わせ|候補|選ぶ|選定|何番|一番いい|最適|ベスト|考えて|決めて/;
-  return (domain.test(q) || battingSlot.test(q)) && cue.test(q);
+  return !semanticKind && (domain.test(q) || battingSlot.test(q)) && cue.test(q);
 }
 
 function jstContext() {
