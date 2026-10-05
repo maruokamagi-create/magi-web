@@ -167,7 +167,9 @@ export default async function handler(req,res){
       for(const p of PERSONAS){
         const row=primary?.[p];
         if(!row||row.reviewRequested===true||row.dataConflict===true)throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_INVALID`);
-        if((row.candidatePlayers||[]).length||(row.checkedPlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_BECAME_SELECTION`);
+        if((row.candidatePlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_BECAME_SELECTION`);
+        const checked=Array.isArray(row.checkedPlayers)?row.checkedPlayers:[];
+        if(checked.length && checked.length!==14)throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_PARTIAL_ROSTER_CHECK`);
         summary[p]={judgment:row.judgment,confidence:row.confidence,publicStatement:row.publicStatement,facts:row.facts,analysis:row.analysis,warnings:row.warnings};
       }
       return res.status(200).json({ok:true,mode,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind},primary:summary});
