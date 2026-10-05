@@ -214,6 +214,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The normal persona-batch request was duplicating the same large CASE/Evidence inside all three persona payloads. PRIMARY now sends one sharedContext (CASE, Evidence, roster, temporal/history context) plus only persona-specific role/instruction. SECOND also shares CASE/Evidence once and keeps only ownPrimaryJudgment/crossExamination in each isolated persona compartment.
 - This reduces provider input-token pressure without dropping Evidence, changing semantic routing, sharing persona judgments across compartments, or weakening validation.
 
+## FreeTier reserve-model fallback
+
+- After shared-Evidence batching reduced duplicated input, the current run still reached a DAY+MODEL FreeTier limit on `gemini-3.6-flash`. Existing configured models have therefore consumed their daily free request budgets during this debugging session.
+- Official Gemini documentation currently lists Standard Free Tier availability for `gemini-3.5-flash-lite`, `gemini-3.8-flash`, and `gemini-3.1-flash-lite`. Canonical mode now appends these as distinct FreeTier reserve models after the configured primary/fallback/last-resort chain. Strict mode still uses only the primary model.
+- Reserve fallback does not enable billing or a paid API path. Hard validation, Evidence rules and persona isolation are unchanged. Safe failure diagnostics now include the attempted model trail so future quota failures can be attributed without exposing keys or raw prompts.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
