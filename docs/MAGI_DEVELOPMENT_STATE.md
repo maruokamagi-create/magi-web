@@ -163,6 +163,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - PR #57 changed the browser engine to use the existing persona-batch endpoint for PRIMARY and SECOND, reducing a normal deliberation from six persona provider generations to two phase generations while keeping deterministic CROSS between them and persona-isolated SECOND compartments.
 - The sequential production suite itself can consume the same Gemini project immediately before real-question E2E. A provider cooldown is therefore inserted between synthetic smoke tests and live E2E so the regression test measures a normal user run rather than self-induced test saturation.
 
+## Live E2E timeout finding
+
+- On main `1f98d4c6...`, the four smoke stages passed, then exact-live-best-order repeatedly returned HTTP 504.
+- The batch endpoint was making optional extra model correction calls inside the same serverless request after the initial batch generation. That can exceed the request execution window.
+- Batch phases are therefore constrained to one model generation. Deterministic soft-prose recovery remains allowed only when hard roster, candidate, numeric, and lineup guards are valid; hard inconsistencies still fail closed.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
