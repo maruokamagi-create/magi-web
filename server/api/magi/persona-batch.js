@@ -90,7 +90,8 @@ function batchSystemInstruction(phase) {
     return [
       'MAGI SECOND BATCH PROTOCOL.',
       'Generate three separately reasoned SECOND judgments in one structured response.',
-      'Each persona may use only its own PRIMARY judgment and its own cross-examination compartment.',
+      'sharedContext is authoritative and applies identically to all three personas; it is supplied once to avoid duplicating the same CASE/Evidence.',
+      'Each persona may use sharedContext plus only its own PRIMARY judgment and its own cross-examination compartment.',
       'Never expose or use another persona PRIMARY, challenge, reasoning, or generated SECOND output.',
       'MELCHIOR uses only MELCHIOR system role; BALTHASAR uses only BALTHASAR system role; CASPER uses only CASPER system role.',
       'Reconsideration is allowed only from evidence plus that persona own challenge. Do not seek consensus or majority agreement.',
@@ -100,7 +101,8 @@ function batchSystemInstruction(phase) {
   return [
     'MAGI PRIMARY BATCH PROTOCOL.',
     'Generate three separately reasoned PRIMARY judgments in one structured response.',
-    'Each persona must evaluate the supplied CASE independently.',
+    'sharedContext contains the authoritative CASE/Evidence once and applies identically to all three personas.',
+    'Each persona must evaluate that shared CASE independently.',
     'MELCHIOR uses only MELCHIOR system role; BALTHASAR uses only BALTHASAR system role; CASPER uses only CASPER system role.',
     'Do not make one persona react to, quote, imitate, compromise with, or infer the output of another persona.',
     'There is no majority, consensus, cross-examination, or SECOND judgment in this call.',
@@ -265,14 +267,28 @@ export default async function handler(req, res) {
       });
     }
 
-    const personaRequests = Object.fromEntries(PERSONAS.map(persona => {
+    const builtRequests = Object.fromEntries(PERSONAS.map(persona => {
       const isolatedBody = phase === 'SECOND'
         ? { case: body.case, primarySelf: body.primary?.[persona] || null, crossExamination: body.crossExamination?.[persona] || null }
         : body;
-      const { payload } = buildPersonaRequest(isolatedBody, persona, phase);
+      return [persona, buildPersonaRequest(isolatedBody, persona, phase).payload];
+    }));
+    const shared = builtRequests.melchior || {};
+    const sharedContext = {
+      temporalContext: shared.temporalContext,
+      authoritativeCurrentRoster: shared.authoritativeCurrentRoster,
+      historicalWeightingRule: shared.historicalWeightingRule,
+      case: shared.case
+    };
+    const personaRequests = Object.fromEntries(PERSONAS.map(persona => {
+      const payload = builtRequests[persona] || {};
       return [persona, {
         personaRole: PERSONA_PROMPTS[persona],
-        payload
+        instruction: payload.instruction,
+        ...(phase === 'SECOND' ? {
+          ownPrimaryJudgment: payload.ownPrimaryJudgment || null,
+          crossExamination: payload.crossExamination || null
+        } : {})
       }];
     }));
 
@@ -280,9 +296,10 @@ export default async function handler(req, res) {
       systemInstruction: batchSystemInstruction(phase),
       userPayload: {
         phase,
+        sharedContext,
         isolationRule: phase === 'SECOND'
-          ? 'Each persona receives only its own PRIMARY and its own cross-examination compartment. Never cross-read persona compartments.'
-          : 'Each persona sees the same CASE evidence but must produce its own judgment without using another persona output.',
+          ? 'Each persona receives the same sharedContext plus only its own PRIMARY and its own cross-examination compartment. Never cross-read persona compartments.'
+          : 'Each persona receives the same sharedContext but must produce its own judgment without using another persona output.',
         personas: personaRequests
       },
       responseSchema: BATCH_SCHEMA

@@ -207,6 +207,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Therefore the previous assumption that every provider 429 is project-wide was wrong. For a MODEL-scoped quota only, canonical mode may continue to the next distinct configured Gemini fallback model under the same FreeTier project. PROJECT-scoped limits still fail fast. Strict consistency mode still suppresses fallback.
 - The separate closer-evidence-trace workflow duplicated provider-heavy work already covered by the Live E2E closer case and could compete for fallback quota when selftest code changed. It is now manual-only; Live E2E remains the automatic user-path gate.
 
+## Batched input-token quota finding
+
+- After model-scoped daily fallback was enabled, Live E2E progressed past the exhausted `gemini-3.5-flash` daily quota and reached `gemini-3.6-flash`.
+- It then hit `GenerateContentInputTokensPerModelPerMinute-FreeTier` (MINUTE + MODEL) with a provider retry delay of about 43 seconds.
+- The normal persona-batch request was duplicating the same large CASE/Evidence inside all three persona payloads. PRIMARY now sends one sharedContext (CASE, Evidence, roster, temporal/history context) plus only persona-specific role/instruction. SECOND also shares CASE/Evidence once and keeps only ownPrimaryJudgment/crossExamination in each isolated persona compartment.
+- This reduces provider input-token pressure without dropping Evidence, changing semantic routing, sharing persona judgments across compartments, or weakening validation.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
