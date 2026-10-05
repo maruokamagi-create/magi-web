@@ -28,7 +28,7 @@ async function post(base,path,body,label=path){
       const raw=await response.text();let parsed={};
       try{parsed=raw?JSON.parse(raw):{};}catch(_){parsed={raw:raw.slice(0,300)};}
       if(response.ok)return parsed;
-      const detail=parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`;
+      const diagnostic=parsed?.diagnostic?.failureClass?` [${parsed.diagnostic.failureClass}${Array.isArray(parsed?.diagnostic?.trail)&&parsed.diagnostic.trail.length?`: ${parsed.diagnostic.trail.map(x=>`${x.slot}=${x.failureClass}`).join(',')}`:''}]`:'';const detail=(parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`)+diagnostic;
       const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);error.status=response.status;lastError=error;
       if(!(response.status===408||response.status===429||response.status>=500))throw error;
     }catch(error){lastError=error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error;}
