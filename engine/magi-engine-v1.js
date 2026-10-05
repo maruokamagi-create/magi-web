@@ -5,7 +5,7 @@
 (function (global) {
   'use strict';
 
-  const ENGINE_VERSION = '1.0.4';
+  const ENGINE_VERSION = '1.0.5';
   const PERSONAS = ['melchior', 'balthasar', 'casper'];
   const REQUEST_TIMEOUT_MS = 50_000;
   const MAX_REQUEST_ATTEMPTS = 3;
@@ -112,9 +112,9 @@
   }
 
   async function runPrimary(caseData, options) {
-    return runPersonaSet((persona) => ({
-      phase: 'PRIMARY', persona, case: caseData
-    }), options);
+    return postJSON('/api/magi/persona-batch', {
+      phase: 'PRIMARY', case: caseData
+    }, options);
   }
 
   async function runCrossExamination(caseData, primaryLocked, options) {
@@ -125,10 +125,17 @@
 
   async function runSecond(caseData, primaryLocked, cross, options) {
     const revealed = reveal(primaryLocked);
-    return runPersonaSet((persona) => ({
-      phase: 'SECOND', persona, case: caseData,
-      primarySelf: revealed[persona], crossExamination: cross
-    }), options);
+    const isolatedCross = Object.fromEntries(PERSONAS.map(persona => [persona, {
+      agreement: clone(cross?.agreement || []),
+      disagreement: clone(cross?.disagreement || []),
+      domainConflicts: clone(cross?.domainConflicts || []),
+      informationGaps: clone(cross?.informationGaps || []),
+      challenges: { [persona]: clone(cross?.challenges?.[persona] || []) }
+    }]));
+    return postJSON('/api/magi/persona-batch', {
+      phase: 'SECOND', case: caseData,
+      primary: revealed, crossExamination: isolatedCross
+    }, options);
   }
 
   async function finalize(caseData, primaryLocked, cross, second, options) {

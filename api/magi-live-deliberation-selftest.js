@@ -75,7 +75,15 @@ function recoverSoftLineup(v,persona){
 }
 function allSame(set){const seqs=PERSONAS.map(p=>candidateSeq(set?.[p]));if(seqs.some(s=>s.length!==9))return false;return seqs.slice(1).every(s=>s.every((v,i)=>v===seqs[0][i]));}
 function stableDigest(value){return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);}
-async function serialPersonaSet(base,phase,buildBody){const out={};for(const p of PERSONAS){const raw=await post(base,'/api/magi/persona',buildBody(p),`${phase}_${p.toUpperCase()}`);out[p]=recoverSoftLineup(raw,p);await sleep(350);}return out;}
+async function serialPersonaSet(base,phase,buildBody){
+  const sample=buildBody(PERSONAS[0]);
+  const phaseName=String(sample?.phase||'PRIMARY').toUpperCase();
+  const batchBody=phaseName==='SECOND'
+    ? {phase:'SECOND',case:sample.case,primary:Object.fromEntries(PERSONAS.map(p=>[p,buildBody(p)?.primarySelf||null])),crossExamination:Object.fromEntries(PERSONAS.map(p=>[p,buildBody(p)?.crossExamination||null]))}
+    : {phase:'PRIMARY',case:sample.case};
+  const raw=await post(base,'/api/magi/persona-batch',batchBody,`${phase}_BATCH`);
+  return Object.fromEntries(PERSONAS.map(p=>[p,recoverSoftLineup(raw?.[p]||{},p)]));
+}
 
 async function runOnce(base,packet,question=QUESTION){
   const caseData=browserCase(packet,question);
