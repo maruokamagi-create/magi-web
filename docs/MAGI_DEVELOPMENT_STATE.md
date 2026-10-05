@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: fb3ae5d973721b72859e50aaecdf9c290aeb6d89
+- State base main SHA: c493cd62638491795e90c54827a01b40a56d00da
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -232,6 +232,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The first staged lineup run still 504'd during PRIMARY because that outer selftest invocation was doing two things the browser does separately: rebuilding live Evidence and then calling persona-batch.
 - The production UI obtains its Evidence packet before entering the formal three-sage engine. The acceptance harness now mirrors that boundary: PREPARE builds/validates/stores the live CASE/Evidence only; PRIMARY, CROSS, SECOND and FINAL load the short-lived staged state and do not rebuild Evidence.
 - This means a future PRIMARY timeout now measures the provider/persona request itself instead of evidence-resolution time plus provider time combined.
+
+## TEAM_REVIEW selection-leak root cause
+
+- On main `c493cd62...`, production Live E2E passed full lineup, closer and natural third-batter.
+- TEAM_REVIEW then failed in PRIMARY with `TEAM_REVIEW_PRIMARY_MELCHIOR_BECAME_SELECTION`: MELCHIOR returned candidatePlayers/candidateBasis even though TEAM_REVIEW is non-selection.
+- Root cause: the single-persona handler cleared candidate fields after finalization, but persona-batch used the shared `finalizePersonaDraft()` result directly. The shared finalizer now clears candidatePlayers/candidateBasis for every non-selection case before change tracking and validation, so single and batch paths share the same structural contract.
+- A regression test verifies TEAM_REVIEW cannot leak selection candidates through the shared finalizer.
 
 ## Next concrete work
 
