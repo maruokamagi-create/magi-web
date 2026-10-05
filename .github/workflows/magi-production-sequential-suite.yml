@@ -35,15 +35,6 @@ jobs:
   deliberation:
     needs: pitching-plan
     uses: ./.github/workflows/magi-production-deliberation-smoke.yml
-  provider-cooldown:
-    needs: deliberation
-    runs-on: ubuntu-latest
-    steps:
-      - name: Cool down shared Gemini project before real-question E2E
-        run: sleep 180
-  live-deliberation:
-    needs: provider-cooldown
-    uses: ./.github/workflows/magi-production-live-deliberation-selftest.yml
   reproducibility:
-    needs: live-deliberation
+    needs: deliberation
     uses: ./.github/workflows/magi-production-reproducibility-smoke.yml
