@@ -4,10 +4,6 @@ name: MAGI Production Closer Evidence Trace
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - 'api/magi-live-deliberation-selftest.js'
-      - '.github/workflows/magi-production-closer-evidence-trace.yml'
 
 jobs:
   closer-evidence-trace:
