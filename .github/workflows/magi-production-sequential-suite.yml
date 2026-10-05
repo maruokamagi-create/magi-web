@@ -3,20 +3,10 @@ name: MAGI Production Sequential Deliberation Suite
 # suite refresh after live selftest syntax repair
 
 on:
-  push:
+  workflow_run:
+    workflows: ["MAGI Production Live Deliberation Selftest"]
+    types: [completed]
     branches: [main]
-    paths:
-      - 'api/magi-gateway.js'
-      - 'api/magi-live-deliberation-selftest.js'
-      - 'engine/magi-engine-v1.js'
-      - 'server/api/magi/**'
-      - '.github/workflows/magi-production-selection-smoke.yml'
-      - '.github/workflows/magi-production-full-lineup-smoke.yml'
-      - '.github/workflows/magi-production-pitching-plan-smoke.yml'
-      - '.github/workflows/magi-production-deliberation-smoke.yml'
-      - '.github/workflows/magi-production-live-deliberation-selftest.yml'
-      - '.github/workflows/magi-production-reproducibility-smoke.yml'
-      - '.github/workflows/magi-production-sequential-suite.yml'
   workflow_dispatch:
 
 concurrency:
@@ -25,6 +15,7 @@ concurrency:
 
 jobs:
   selection:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     uses: ./.github/workflows/magi-production-selection-smoke.yml
   full-lineup:
     needs: selection

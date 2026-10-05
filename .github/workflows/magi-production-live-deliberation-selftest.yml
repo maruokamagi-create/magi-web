@@ -4,13 +4,12 @@ on:
   push:
     branches: [main]
     paths:
+      - 'api/magi-gateway.js'
       - 'api/magi-live-deliberation-selftest.js'
       - 'engine/magi-engine-v1.js'
-      - 'server/api/magi/persona.js'
-      - 'server/api/magi/persona-batch.js'
-      - 'server/api/magi/orchestrate.js'
-      - 'server/api/magi/_persona-output-guard.js'
+      - 'server/api/magi/**'
       - '.github/workflows/magi-production-live-deliberation-selftest.yml'
+      - '.github/workflows/magi-production-sequential-suite.yml'
   workflow_call:
   workflow_dispatch:
 
