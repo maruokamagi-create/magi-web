@@ -1,6 +1,16 @@
 name: MAGI Production Live Deliberation Selftest
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'api/magi-live-deliberation-selftest.js'
+      - 'engine/magi-engine-v1.js'
+      - 'server/api/magi/persona.js'
+      - 'server/api/magi/persona-batch.js'
+      - 'server/api/magi/orchestrate.js'
+      - 'server/api/magi/_persona-output-guard.js'
+      - '.github/workflows/magi-production-live-deliberation-selftest.yml'
   workflow_call:
   workflow_dispatch:
 
