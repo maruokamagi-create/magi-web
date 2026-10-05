@@ -174,6 +174,11 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - After removing inline correction generations, production candidate-selection PRIMARY failed only because BALTHASAR used an unhedged future prediction.
 - This is a soft prose guard, not a roster, candidate, numeric, evidence-source, or lineup integrity failure. When every reported issue is forecast-certainty-only, batch processing now removes prediction/analysis prose deterministically. Hard structural and evidence inconsistencies remain fail-closed.
 
+## Provider-budget test isolation
+
+- Main `6968b56c...` passed selection, full-lineup, pitching-plan and deliberation smoke tests, then the first live best-order E2E failed at PRIMARY with `provider_rate_limit` even after the suite cooldown plus the live job wait.
+- Therefore fixed sleeps inside one provider-heavy chain are not a reliable capacity boundary. Synthetic smoke/reproducibility remains one sequential suite; real-question live E2E is a separate push-triggered workflow for deliberation-path changes, so smoke tests no longer gate or directly precede the user-path acceptance run.
+
 ## Next concrete work
 
 1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
