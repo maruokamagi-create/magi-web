@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: 9d50c247371c4be8755da3001d32f9709cfdc619
+- State base main SHA: 5581866d583ac27d6c63b465c182c14b45ad374d
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -219,6 +219,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - After shared-Evidence batching reduced duplicated input, the current run still reached a DAY+MODEL FreeTier limit on `gemini-3.6-flash`. Existing configured models have therefore consumed their daily free request budgets during this debugging session.
 - Official Gemini documentation currently lists Standard Free Tier availability for `gemini-3.5-flash-lite`, `gemini-3.8-flash`, and `gemini-3.1-flash-lite`. Canonical mode now appends these as distinct FreeTier reserve models after the configured primary/fallback/last-resort chain. Strict mode still uses only the primary model.
 - Reserve fallback does not enable billing or a paid API path. Hard validation, Evidence rules and persona isolation are unchanged. Safe failure diagnostics now include the attempted model trail so future quota failures can be attributed without exposing keys or raw prompts.
+
+## Live E2E serverless-boundary correction
+
+- After FreeTier reserve-model fallback was added, the exact-live-best-order acceptance request ended as HTTP 504 at roughly the serverless request window.
+- The old Live E2E endpoint performed PRIMARY, CROSS, SECOND and FINAL inside one outer Vercel function call, while the real browser performs those phases as separate HTTP requests. Therefore the old acceptance harness could time out cumulatively even when each real UI phase request is individually viable.
+- The lineup Live E2E is now staged across four separate outer requests (PRIMARY -> CROSS -> SECOND -> FINAL). State is kept in short-lived Vercel cache under a per-run session key; the endpoint returns only safe summaries, not the stored CASE/Evidence payload.
+- The staged SECOND intentionally matches the browser engine and does not run the selftest-only "all three identical -> extra SECOND recheck" provider call.
 
 ## Next concrete work
 

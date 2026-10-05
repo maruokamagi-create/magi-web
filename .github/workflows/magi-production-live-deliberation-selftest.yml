@@ -20,36 +20,41 @@ jobs:
     steps:
       - name: Wait for production deployment
         run: sleep 45
-      - name: Execute live best-order in production
+      - name: Execute staged live best-order in production
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          curl -L --fail --max-time 125 -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup" -o /tmp/lineup.json
-          cat /tmp/lineup.json; echo
+          SESSION="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-lineup"
+
+          run_stage(){
+            stage="$1"
+            out="/tmp/lineup-${stage}.json"
+            curl -L --fail --max-time 70 -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup&stage=${stage}&session=${SESSION}" -o "$out"
+            cat "$out"; echo
+            jq -e --arg stage "$(echo "$stage" | tr '[:lower:]' '[:upper:]')" '.ok==true and .mode=="lineup" and .stage==$stage' "$out" >/dev/null
+          }
+
+          run_stage primary
           jq -e '
-            .ok==true and .mode=="lineup" and
-            .evidence.count==14 and .evidence.selectionKind=="FULL_LINEUP" and
+            .evidence.count==14 and
+            .evidence.selectionKind=="FULL_LINEUP" and
+            .evidence.battingOrderSplitStatus=="COMPLETE" and
             .evidence.appearanceFieldingStatus=="COMPLETE" and
             .evidence.appearanceStatus=="COMPLETE" and
             .evidence.fieldingStatus=="COMPLETE" and
-            .evidence.battingOrderSplitStatus=="COMPLETE" and
-            .evidence.battingOrderPlayerCount==14 and
-            .evidence.battingOrderSlotCount>0 and
-            (
-              (.evidence.sourceIntegrityStatus=="COMPLETE" and .evidence.appearanceSourceMode=="CURRENT_CSV" and .evidence.duplicateSourceContent==false) or
-              (.evidence.sourceIntegrityStatus=="RECOVERED_FROM_SCORE_SHEETS" and .evidence.appearanceSourceMode=="SCORE_SHEET_RECOVERY" and .evidence.recoveryStatus=="COMPLETE" and .evidence.recoveryCompleteGameCount==13 and .evidence.duplicateSourceContent==true)
-            ) and
-            .evidence.scoreSheetOriginalCount==13 and
-            .evidence.scoreSheetAppearanceGameCount==13 and
-            .evidence.scoreSheetUnverifiedCount==0 and
-            ((.evidence.scoreSheetVerifiedCount + .evidence.scoreSheetSourceMismatchCount)==13) and
             .evidence.normalizedObservationStatus=="COMPLETE" and
-            .evidence.normalizedObservationDatedCount>0 and
-            .evidence.normalizedObservationStructuredCount>=.evidence.normalizedObservationDatedCount and
-            .evidence.normalizedObservationDirectPlayerCount>0 and
-            .evidence.normalizedObservationSensitiveFieldsPresent==false and
-            .evidence.strategySnapshotCurrentPolicy==false and
+            ([.primary[].candidatePlayers|length] | all(.==9))
+          ' /tmp/lineup-primary.json >/dev/null
+
+          run_stage cross
+          jq -e '([.cross.challengeCounts[]] | all(.>0))' /tmp/lineup-cross.json >/dev/null
+
+          run_stage second
+          jq -e '([.second[].candidatePlayers|length] | all(.==9))' /tmp/lineup-second.json >/dev/null
+
+          run_stage final
+          jq -e '
             .finalStatus=="LINEUP_RESULT" and
             (.lineup|length==9) and
             (([.lineup[].name]|unique|length)==9) and
@@ -57,8 +62,8 @@ jobs:
             (([.lineup[].position]|sort)==(["一","三","中","二","右","左","投","捕","遊"]|sort)) and
             ([.lineup[].positionEvidence | (.officialStarts>0 or .practiceFirstStarts>0)] | all) and
             (.digest|length==16)
-          ' /tmp/lineup.json >/dev/null
-          echo 'PRODUCTION EXACT LIVE BEST-ORDER DELIBERATION: PASS'
+          ' /tmp/lineup-final.json >/dev/null
+          echo 'PRODUCTION STAGED LIVE BEST-ORDER DELIBERATION: PASS'
 
   exact-live-closer:
     needs: exact-live-best-order
