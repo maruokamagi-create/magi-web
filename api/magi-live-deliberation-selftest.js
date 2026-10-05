@@ -168,7 +168,7 @@ async function runStagedLineup(base,packet,stage,session){
     const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
     assertLineupPersonaSet(primary,'PRIMARY');
     await writeStagedState('lineup',session,{caseData,primary});
-    return {ok:true,mode:'lineup',stage:'PRIMARY',session,primary:summarizePersonaSet(primary)};
+    return {ok:true,mode:'lineup',stage:'PRIMARY',session,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',battingOrderSplitStatus:packet?.battingOrderSplits?.status||'',appearanceFieldingStatus:packet?.appearanceFielding?.status||'',appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',normalizedObservationStatus:packet?.normalizedObservationStatus||''},primary:summarizePersonaSet(primary)};
   }
   const state=await readStagedState('lineup',session);
   if(!state?.caseData||!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
