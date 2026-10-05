@@ -73,7 +73,13 @@
         const err = new Error(body?.error || `MAGI API error ${res.status}`);
         err.status = res.status;
         err.failureClass = String(body?.diagnostic?.failureClass || '').trim();
+        err.code = String(body?.code || '').trim();
+        err.retryFreshRequest = body?.retryFreshRequest;
+        err.retryExhausted = body?.retryExhausted === true;
+        err.apiEndpoint = url;
         lastError = err;
+        // Deterministic evidence/schema validation explicitly rejects a fresh retry.
+        if (err.retryFreshRequest === false || err.retryExhausted === true) throw err;
         // Shared provider quota/capacity cannot be repaired by immediately
         // replaying the same expensive deliberation from the browser.
         if (err.failureClass === 'provider_rate_limit') throw err;
@@ -87,6 +93,7 @@
         } else {
           lastError = error;
         }
+        if (lastError?.retryFreshRequest === false || lastError?.retryExhausted === true) throw lastError;
         if (lastError?.failureClass === 'provider_rate_limit') throw lastError;
         if (lastError?.status && !(lastError.status === 408 || lastError.status === 429 || lastError.status >= 500)) throw lastError;
       }
