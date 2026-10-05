@@ -123,6 +123,28 @@ function isRetryableStatus(status) {
   return status === 408 || status === 429 || status === 500 || status === 502 || status === 503 || status === 504;
 }
 
+function safeProviderQuotaDiagnostic(data) {
+  const details = Array.isArray(data?.error?.details) ? data.error.details : [];
+  const quotaFailure = details.find(row => String(row?.['@type'] || '').includes('QuotaFailure'));
+  const violation = Array.isArray(quotaFailure?.violations) ? quotaFailure.violations[0] : null;
+  const retryInfo = details.find(row => String(row?.['@type'] || '').includes('RetryInfo'));
+  const quotaMetricRaw = String(violation?.quotaMetric || '');
+  const quotaId = String(violation?.quotaId || '');
+  const dimensions = violation?.quotaDimensions && typeof violation.quotaDimensions === 'object' ? violation.quotaDimensions : {};
+  const model = String(dimensions.model || '');
+  const location = String(dimensions.location || '');
+  const retryDelay = String(retryInfo?.retryDelay || '');
+  const providerStatus = String(data?.error?.status || '');
+  const quotaMetric = quotaMetricRaw ? quotaMetricRaw.split('/').pop() : '';
+  const joined = `${quotaId} ${quotaMetric}`.toLowerCase();
+  const quotaWindow = /perday|requestsperday|tokensperday|daily/.test(joined) ? 'DAY'
+    : /perminute|requestsperminute|tokensperminute|minute/.test(joined) ? 'MINUTE'
+    : /persecond|second/.test(joined) ? 'SECOND' : 'UNKNOWN';
+  const quotaScope = /permodel|model/.test(joined) || Boolean(model) ? 'MODEL' : 'PROJECT';
+  return { providerStatus, quotaMetric, quotaId, model, location, retryDelay, quotaWindow, quotaScope };
+}
+
+
 function isModelUnavailableMessage(message) {
   const text = String(message || '').toLowerCase();
   return text.includes('no longer available') || text.includes('not found') || text.includes('unsupported') || text.includes('not available to new users');
@@ -209,6 +231,7 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
         : isModelUnavailableMessage(message) ? 'model_unavailable'
         : isRetryableStatus(response.status) ? 'provider_retryable_http'
         : 'provider_http';
+      if (response.status === 429) err.providerDiagnostic = safeProviderQuotaDiagnostic(data);
       throw err;
     }
 
