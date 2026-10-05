@@ -271,10 +271,41 @@ export default async function handler(req, res) {
         return sendJson(res, 503, { error: phase + ' batch response is incomplete', code: 'PERSONA_BATCH_INCOMPLETE', retryExhausted: false });
       }
       const validationBody = phase === 'SECOND' ? { ...body, primarySelf: body.primary?.[persona] || null } : body;
-      const { result, guardIssues } = finalizePersonaDraft(validationBody, persona, phase, raw[persona]);
-      // Batch PRIMARY is fail-closed: unlike the serial endpoint, it must not
-      // publish a degraded persona merely because the draft can be represented
-      // as YELLOW. Any deterministic guard issue invalidates the whole batch.
+      let personaRaw = raw[persona];
+      let finalized = finalizePersonaDraft(validationBody, persona, phase, personaRaw);
+      let { result, guardIssues } = finalized;
+
+      // The serial persona endpoint gives a guard-failing draft a correction
+      // pass before failing closed. The production UI uses this batch endpoint,
+      // so apply the same evidence-preserving recovery here instead of turning
+      // one correctable draft into an immediate 503 for the whole deliberation.
+      const correctionLimit = finalized.fullLineupCase ? 1 : 3;
+      for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
+        const basePayload = personaRequests[persona]?.payload || {};
+        const correctionPayload = {
+          ...basePayload,
+          invalidDraft: result,
+          correctionIssues: guardIssues,
+          correctionAttempt: attempt + 1,
+          instruction: `${basePayload.instruction || ''} CORRECTION PASS ${attempt + 1}: The previous structured draft failed deterministic evidence-language validation. Correct every item in correctionIssues. Remove unsupported claims completely rather than disguising or rephrasing them. Do not import generic historical role knowledge. Do not relabel a supplied metric. Do not add another player. Return the complete schema again using only CASE/evidence-supported facts.`
+        };
+        try {
+          personaRaw = await callGemini({
+            systemInstruction: PERSONA_PROMPTS[persona],
+            userPayload: correctionPayload,
+            responseSchema: PERSONA_RESPONSE_SCHEMA
+          });
+        } catch (correctionError) {
+          console.warn(`[MAGI persona-batch correction] ${persona} ${phase}: ${correctionError?.message || correctionError}`);
+          break;
+        }
+        finalized = finalizePersonaDraft(validationBody, persona, phase, personaRaw);
+        result = finalized.result;
+        guardIssues = finalized.guardIssues;
+      }
+
+      // Still fail closed after correction attempts. Deterministic evidence
+      // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length) {
         return sendJson(res, 503, {
           error: phase + ' batch response failed persona validation',
