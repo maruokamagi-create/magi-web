@@ -29,9 +29,12 @@ async function post(base,path,body,label=path){
       try{parsed=raw?JSON.parse(raw):{};}catch(_){parsed={raw:raw.slice(0,300)};}
       if(response.ok)return parsed;
       const failureClass=String(parsed?.diagnostic?.failureClass||'').trim();const detail=(parsed?.error||parsed?.message||parsed?.raw||`HTTP ${response.status}`)+(failureClass?` [failureClass=${failureClass}]`:'');
-      const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);error.status=response.status;lastError=error;
+      const error=new Error(`${label} attempt ${attempt} ${response.status}: ${detail}`);error.status=response.status;error.failureClass=failureClass;lastError=error;
+      // Provider 429 is shared project quota/capacity, not a request-local transient.
+      // Retrying the same expensive deliberation in a tight loop only amplifies saturation.
+      if(failureClass==='provider_rate_limit')throw error;
       if(!(response.status===408||response.status===429||response.status>=500))throw error;
-    }catch(error){lastError=error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error;}
+    }catch(error){lastError=error;if(error?.failureClass==='provider_rate_limit')throw error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error;}
   }
   throw lastError||new Error(`${label}: request failed`);
 }
