@@ -8,6 +8,7 @@ on:
     paths:
       - 'api/magi-gateway.js'
       - 'api/magi-live-deliberation-selftest.js'
+      - 'engine/magi-engine-v1.js'
       - 'server/api/magi/**'
       - '.github/workflows/magi-production-selection-smoke.yml'
       - '.github/workflows/magi-production-full-lineup-smoke.yml'
