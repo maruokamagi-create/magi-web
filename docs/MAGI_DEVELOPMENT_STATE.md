@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: 5581866d583ac27d6c63b465c182c14b45ad374d
+- State base main SHA: fb3ae5d973721b72859e50aaecdf9c290aeb6d89
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -226,6 +226,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The old Live E2E endpoint performed PRIMARY, CROSS, SECOND and FINAL inside one outer Vercel function call, while the real browser performs those phases as separate HTTP requests. Therefore the old acceptance harness could time out cumulatively even when each real UI phase request is individually viable.
 - The lineup Live E2E is now staged across four separate outer requests (PRIMARY -> CROSS -> SECOND -> FINAL). State is kept in short-lived Vercel cache under a per-run session key; the endpoint returns only safe summaries, not the stored CASE/Evidence payload.
 - The staged SECOND intentionally matches the browser engine and does not run the selftest-only "all three identical -> extra SECOND recheck" provider call.
+
+## Live Evidence preparation boundary correction
+
+- The first staged lineup run still 504'd during PRIMARY because that outer selftest invocation was doing two things the browser does separately: rebuilding live Evidence and then calling persona-batch.
+- The production UI obtains its Evidence packet before entering the formal three-sage engine. The acceptance harness now mirrors that boundary: PREPARE builds/validates/stores the live CASE/Evidence only; PRIMARY, CROSS, SECOND and FINAL load the short-lived staged state and do not rebuild Evidence.
+- This means a future PRIMARY timeout now measures the provider/persona request itself instead of evidence-resolution time plus provider time combined.
 
 ## Next concrete work
 
