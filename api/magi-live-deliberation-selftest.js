@@ -1,12 +1,13 @@
 import { createHash } from 'node:crypto';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
-import { buildCurrentSelectionEvidence } from '../server/api/magi/_selection-live-evidence.js';
+import { buildCurrentSelectionEvidence, buildCurrentTeamReviewEvidence } from '../server/api/magi/_selection-live-evidence.js';
 
 export const config = { maxDuration: 120 };
 
 const QUESTION='今の丸岡中のベストオーダーを、守備位置込みで審議して';
 const NATURAL_THIRD_QUESTION='3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？';
 const CLOSER_QUESTION='クローザーは誰がいい？';
+const TEAM_REVIEW_QUESTION='今の丸岡中の弱点は何？';
 const PERSONAS=['melchior','balthasar','casper'];
 const TARGETS={melchior:'MELCHIOR-1',balthasar:'BALTHASAR-2',casper:'CASPER-3'};
 const FIRST={melchior:'私',balthasar:'俺',casper:'僕'};
@@ -141,6 +142,36 @@ export default async function handler(req,res){
   try{
     const host=String(req.headers?.['x-forwarded-host']||req.headers?.host||'magi-web.vercel.app').split(',')[0].trim();const proto=String(req.headers?.['x-forwarded-proto']||'https').split(',')[0].trim();const base=`${proto}://${host}`;
     const mode=String(req.query?.mode||'lineup');
+    if(mode==='teamReview'){
+      const teamEvidence=await buildCurrentTeamReviewEvidence({
+        question:TEAM_REVIEW_QUESTION,
+        routed:{players:[],domains:['TEAM','BATTING','PITCHING','FIELDING'],selectionKind:'TEAM_REVIEW'},
+        staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+      });
+      if(!teamEvidence||String(teamEvidence?.reviewKind||'').toUpperCase()!=='TEAM_REVIEW'||Number(teamEvidence?.count)!==14){
+        throw new Error('TEAM_REVIEW_EVIDENCE_NOT_READY');
+      }
+      const caseData={
+        id:`MAGI-TEAM-REVIEW-${Date.now()}`,
+        question:TEAM_REVIEW_QUESTION,
+        mode:'proposal',
+        objective:'',
+        options:[],
+        urgency:'normal',
+        selectionKind:'TEAM_REVIEW',
+        evidence:teamEvidence,
+        createdAt:new Date().toISOString()
+      };
+      const primary=await post(base,'/api/magi/persona-batch',{phase:'PRIMARY',case:caseData},'TEAM_REVIEW_PRIMARY_BATCH');
+      const summary={};
+      for(const p of PERSONAS){
+        const row=primary?.[p];
+        if(!row||row.reviewRequested===true||row.dataConflict===true)throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_INVALID`);
+        if((row.candidatePlayers||[]).length||(row.checkedPlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_BECAME_SELECTION`);
+        summary[p]={judgment:row.judgment,confidence:row.confidence,publicStatement:row.publicStatement,facts:row.facts,analysis:row.analysis,warnings:row.warnings};
+      }
+      return res.status(200).json({ok:true,mode,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind},primary:summary});
+    }
     const packet=await buildCurrentSelectionEvidence({
       question:QUESTION,
       routed:{players:[],domains:['LINEUP'],selectionKind:'FULL_LINEUP'},

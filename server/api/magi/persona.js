@@ -36,6 +36,11 @@ export function validPersonaCase(body) {
   return q.length >= 2 && q.length <= 12000;
 }
 
+export function isTeamReviewCase(body) {
+  const caseData = body?.case || {};
+  return String(caseData?.selectionKind || caseData?.evidence?.selectionKind || caseData?.evidence?.reviewKind || '').toUpperCase() === 'TEAM_REVIEW';
+}
+
 export function isCandidateCase(body) {
   const caseData = body?.case || {};
   if (String(caseData?.mode || '').toLowerCase() === 'selection') return true;
@@ -310,6 +315,7 @@ export function normalizeStandardFullLineupDecision(result, caseData) {
 
 export function buildPersonaRequest(body, persona, phase) {
   const candidateCase = isCandidateCase(body);
+  const teamReviewCase = isTeamReviewCase(body);
   const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
   const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
   const pitchingRoleCase = candidateCase && !pitchingPlanCase && String(body?.case?.selectionKind||body?.case?.evidence?.selectionKind||'').toUpperCase()==='PITCHING_ROLE';
@@ -318,7 +324,7 @@ export function buildPersonaRequest(body, persona, phase) {
   const temporalContext = personaJstContext();
   const historyRule = '2026-2027の現チームEvidenceを主評価とする。ただし2025-2026など過年度の記録がCASE.evidenceに明示されている場合、それは単なる軽い参考ではなく、現在選手の実績・経験・再現性を測る重要な基準線として扱う。過去の大きな母数や継続した出場実績は、その記録が実際に示す範囲で明示的に評価へ入れる。その上で2026-2027通算と直近6試合の状態を重ね、過去だけで現在を上書きせず、少ない現在母数だけで過去の積み上げも消さない。CASE.evidenceにない過年度の選手役割、打順、起用歴、成績、経験は知識や推測で追加しない。旧チームで非レギュラーだった選手の小さい母数だけを現在評価の不利材料にしない。';
   const focusedHistoryRule = 'FOCUSED PROPOSAL HISTORY RULE: Historical facts may be used only when they are explicitly present in CASE.evidence. Generic roster history or role-continuity knowledge must not be imported. Historical innings, ERA, strikeouts, walks, or appearances support only the pitching facts those fields actually state. They do NOT prove prior closer usage, save situations, high-leverage success, pressure handling, end-game experience, or any other role unless CASE.evidence explicitly states that role. Do not turn a raw rate/count into a qualitative claim such as good, bad, high, low, many, few, strong, weak, effective, or reliable without an explicit comparison baseline in CASE.evidence.';
-  const effectiveHistoryRule = candidateCase ? historyRule : focusedHistoryRule;
+  const effectiveHistoryRule = candidateCase || teamReviewCase ? historyRule : focusedHistoryRule;
   const focusedProposalRule = candidateCase ? '' : 'This is a focused proposal/evaluation, not a candidate-selection task. Answer only about the player, role, or proposal actually named in the CASE. Do not introduce another roster player. Do not manufacture an alternative candidate unless the user explicitly asked for one. Keep checkedPlayers, candidatePlayers and candidateBasis empty. Use only facts explicitly supplied in CASE/evidence. A strikeout count alone does NOT prove runs were prevented, a save situation was handled, pressure was handled, or closer suitability was established. If CASE/evidence does not contain a claimed role or comparison baseline, omit that claim rather than rephrasing it. If Evidence says only 「兼任負担を考慮する必要がある」, use that exact level in facts/analysis/reasons/statements; do not upgrade it to a large burden, fatigue, accumulated workload, growth harm, performance harm or team-balance harm. Any future effect on growth, conditioning, performance, wins, team strength, role stability or burden must use explicit uncertainty wording such as 「可能性がある」「おそれがある」「考えられる」; a conditional phrase by itself is not enough. ';
   const selectionEvidenceRule = 'SELECTION EVIDENCE RULE: Candidate attributes must come from CASE.evidence only. Persona identity does not authorize invented attributes. If development, mental, leadership, practice-attitude, future-growth or role-suitability evidence is absent, CASPER must not infer growth potential, future team strengthening, human traits, leadership, mental strength, development trajectory or role suitability from AVG/OPS or positions alone; it must say those development factors are unverified and rank only from supported evidence. If tactical expected-runs, clutch, pressure, opponent, lineup-combination or game-state evidence is absent, BALTHASAR must not state those as facts or certainty; any tactical forecast must be explicitly probabilistic. ALL personas may compare supplied peer metrics, but none may decompose OPS into long-hit power, slugging quality, on-base ability, OBP or SLG qualities unless the corresponding SLG/extra-base-hit/OBP evidence is explicitly supplied. State the supplied OPS value itself instead. candidateBasis, primaryReason and publicStatement are assertive fields and must not contain unsupported future outcomes. For ALL personas and ALL selection phases, do not make any future-effect claim unless it is necessary to answer the question. Prefer present-tense evidence comparisons and current-role reasoning. If a future effect is necessary, every sentence that contains it must include explicit uncertainty wording such as 「可能性がある」「考えられる」「おそれがある」. This applies equally to facts, analysis, prediction, candidateBasis, primaryReason, publicStatement and warnings.';
   const currentBattingSlotRule = 'CURRENT BATTING SLOT RULE: This is a present-time comparison, not a forecast. In candidateBasis, facts, analysis, prediction, primaryReason, publicStatement and warnings, do not state or imply that selecting a candidate will create runs, scoring chances, wins, lineup success, momentum, growth or future team strength. Compare only supplied current/historical/recent evidence and current slot fit. Do not use generic baseball convention such as 「定石」「3番は長打力」 as evidence unless CASE.evidence explicitly supplies that team policy. Do not infer OBP, SLG, long-hit power, on-base ability, clutch ability or scoring ability from AVG or OPS alone. State only the exact supplied metrics and the direct comparison among real candidates. If a future effect is not explicitly requested, omit it entirely rather than adding uncertainty wording.';
@@ -328,7 +334,12 @@ export function buildPersonaRequest(body, persona, phase) {
   const pitchingPlanPrimaryRule = `This is a PITCHING PLAN task for a ${pitchingPlanGameInnings}-inning game. After checking all 14 current players, candidatePlayers must contain exactly four distinct current-team players in this exact role order: candidatePlayers[0]=先発, candidatePlayers[1]=第2投手, candidatePlayers[2]=終盤, candidatePlayers[3]=クローザー. This is a role assignment, not a generic pitcher ranking. Use only supplied pitching evidence and its sample size. Raw totals and rates such as appearances, innings, ERA, strikeouts and walks do not by themselves prove stability, reliability, reproducibility, effectiveness, superiority, role suitability, pressure handling or readiness. Do not label a pitcher stable, reliable, proven, effective, strong, weak, suitable, or experienced unless CASE.evidence supplies an explicit comparison baseline or role evidence supporting that exact qualitative claim. Prefer stating the supplied numbers directly. Do not invent exact inning limits, consecutive-use tolerance, saves, closer history, high-leverage success, pressure handling, or fatigue status unless CASE.evidence explicitly supplies them. Historical innings and rates may show past pitching volume only; they do not prove a past role.`;
   const pitchingPlanSecondRule = `This remains a ${pitchingPlanGameInnings}-inning four-role PITCHING PLAN task after cross-examination. Reconsider the exact role sequence 先発→第2投手→終盤→クローザー. candidatePlayers must still contain exactly four distinct current-team players in that role order. Answer the concrete role-player challenges, then keep or revise your plan independently. Do not converge merely to create consensus, and never invent unsupported closer history, pressure ability, fatigue, or exact inning ceilings.`;
 
-  const primaryInstruction = candidateCase
+  const teamReviewPrimaryRule = 'This is a TEAM_REVIEW task about the current team as a whole, not a focused player proposal and not a candidate-selection task. Analyze the exact team-level question directly from CASE.evidence across batting, pitching, fielding and actual usage where supplied. You may name current players only as evidence examples when CASE.evidence supports them, but do not turn the answer into a lineup, ranking or candidate selection. Keep checkedPlayers, candidatePlayers and candidateBasis empty. Separate confirmed records from interpretation. Do not invent causes, personality, leadership, mental traits, development effects or future outcomes. For a weakness question, identify the most important evidence-grounded weaknesses or constraints and explain why they matter now; if an area cannot be judged from the supplied evidence, say that explicitly. Use current-season evidence as primary and historical evidence only as a dated baseline. Unless the core team datasets actually conflict or are missing, set reviewRequested=false. Keep the answer natural and concise Japanese for a baseball meeting.';
+  const teamReviewSecondRule = 'This remains a TEAM_REVIEW task after cross-examination. Reassess the team-level question from CASE.evidence, answer the concrete challenge addressed to your persona, and keep facts separate from interpretation. Do not convert the review into player selection, lineup construction, or a focused proposal. Keep checkedPlayers, candidatePlayers and candidateBasis empty. Do not adopt unsupported causal, personality, development or future claims introduced by another persona. State what changed or stayed in your assessment and why.';
+
+  const primaryInstruction = teamReviewCase
+    ? teamReviewPrimaryRule
+    : candidateCase
     ? fullLineupCase
       ? `${fullLineupPrimaryRule} Do not phrase the user-facing answer as 賛成・反対・可決・否決. FIRST inspect exactly the authoritativeCurrentRoster 14 players using ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. ${selectionEvidenceRule} candidateBasis must explain the evidence-grounded idea behind your 1〜9 order, and for the main hitters must visibly compare historical baseline → current aggregate → recent-six form when those layers exist. Put exact supplied numbers in facts rather than vague claims. In publicStatement, state your batting order clearly enough that the user can see the sequence and the key reason for it. The key reason must name a specific slot/player comparison and include at least one exact supplied number or explicit current-role/fielding fact; generic phrases alone are not sufficient. Unless a true data conflict or missing current-team core dataset prevents a legal lineup, set reviewRequested=false. For a valid but provisional standard lineup, use BLUE rather than YELLOW. Missing opponent handedness or a small sample belongs in warnings, not reviewRequested. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.`
       : pitchingPlanCase
@@ -337,7 +348,9 @@ export function buildPersonaRequest(body, persona, phase) {
           ? `${pitchingRoleRule} FIRST inspect exactly the authoritativeCurrentRoster 14 players and put exactly those 14 names into checkedPlayers. Then rank only pitchingEligible players for the exact requested pitching role. ${selectionEvidenceRule} In publicStatement and primaryReason, explain the choice in terms of the requested role and explicitly name any important role-specific evidence that is still missing. Compare your first candidate with at least one real alternative from pitchingEligible and cite at least one exact supplied pitching statistic, SV value, or explicit coach observation. A candidate name plus a generic role statement is not sufficient. Keep it concise Japanese for a baseball meeting.`
           : `This is a SELECTION question, not a yes/no proposal. Do not phrase the user-facing answer as 賛成・反対・可決・否決. The judgment enum is only an internal protocol field and must not be treated as the answer. FIRST inspect exactly the authoritativeCurrentRoster 14 players using the ALL CURRENT TEAM CHECK evidence and put exactly those 14 names into checkedPlayers. Do not add any fifteenth player or omit anyone. SECOND, independently choose candidatePlayers using only your persona domain and only supplied evidence. Rank candidatePlayers in your preferred order. candidateBasis must explain your own evidence-grounded selection standard. Apply historicalWeightingRule only to historical facts actually supplied. ${selectionEvidenceRule} ${currentBattingSlotRule} For every SELECTION response, especially CASPER, any statement about future growth, development, future team strength, future performance, scoring, wins, role stability, conditioning or burden MUST use explicit uncertainty wording such as 「可能性がある」「考えられる」「おそれがある」 unless CASE.evidence explicitly proves that future outcome. Do not write a future effect as a certain result in analysis, prediction, candidateBasis, primaryReason, publicStatement, or warnings. If the future claim is unnecessary, omit it. For a current batting-slot question such as who should bat third, use present evidence and current role fit only. Do not claim that the choice will produce runs, wins, scoring opportunities, lineup success, growth, development or future team strength. Those future effects are outside this current-slot decision unless the user explicitly asks for a forecast. In publicStatement, directly answer who you select and why, using the exact official player names from authoritativeCurrentRoster. For a single batting-slot question, compare your first candidate with at least one real alternative and cite at least one exact supplied batting statistic or explicit current-role fact; do not give only the selected name plus a generic phrase. Resolve relative time expressions from temporalContext. Keep it natural, concise Japanese for a baseball meeting. Do not expose hidden chain-of-thought.`
     : focusedProposalRule + 'Give the independent judgment on the exact proposal. Separate supplied fact from analysis and prediction. Historical evidence is governed strictly by historicalWeightingRule. Do not infer prior role, leverage situation, success condition, or qualitative statistical strength from raw counts alone. If the evidence is incomplete, say exactly what remains uncertain while still answering the current choice boundary. Write primaryReason and publicStatement in natural spoken Japanese, usually 1–3 short sentences. Do not expose hidden chain-of-thought.';
-  const secondInstruction = candidateCase
+  const secondInstruction = teamReviewCase
+    ? teamReviewSecondRule
+    : candidateCase
     ? fullLineupCase
       ? `${fullLineupSecondRule} Keep checkedPlayers exactly equal to the authoritative 14-player roster. Continue historicalWeightingRule, selectionEvidenceRule and temporalContext. ${selectionEvidenceRule} If crossExamination introduces an unsupported premise, identify it as unverified instead of adopting it. In candidateBasis/facts/primaryReason, compare historical baseline → current aggregate → recent-six form for the key slots when those layers exist. Unless a true data conflict or missing current-team core dataset prevents a legal lineup, set reviewRequested=false. A valid but provisional standard lineup is BLUE rather than YELLOW; missing opponent-specific data or small samples are warnings/adjustment conditions. In publicStatement, state what changed or stayed in your 1〜9 order and why. Do not expose hidden chain-of-thought.`
       : pitchingPlanCase
@@ -367,7 +380,7 @@ export function buildPersonaRequest(body, persona, phase) {
     ? {
         phase,
         temporalContext,
-        authoritativeCurrentRoster: candidateCase ? CURRENT_ROSTER : [],
+        authoritativeCurrentRoster: candidateCase || teamReviewCase ? CURRENT_ROSTER : [],
         historicalWeightingRule: effectiveHistoryRule,
         case: body.case,
         instruction: primaryInstruction
@@ -375,18 +388,19 @@ export function buildPersonaRequest(body, persona, phase) {
     : {
         phase,
         temporalContext,
-        authoritativeCurrentRoster: candidateCase ? CURRENT_ROSTER : [],
+        authoritativeCurrentRoster: candidateCase || teamReviewCase ? CURRENT_ROSTER : [],
         historicalWeightingRule: effectiveHistoryRule,
         case: body.case,
         ownPrimaryJudgment: body.primarySelf || null,
         crossExamination: compactCrossExamination,
         instruction: secondInstruction
       };
-  return { payload, candidateCase, fullLineupCase, pitchingPlanCase, pitchingRoleCase, pitchingPlanGameInnings };
+  return { payload, candidateCase, teamReviewCase, fullLineupCase, pitchingPlanCase, pitchingRoleCase, pitchingPlanGameInnings };
 }
 
 export function finalizePersonaDraft(body, persona, phase, rawResult) {
   const candidateCase = isCandidateCase(body);
+  const teamReviewCase = isTeamReviewCase(body);
   const fullLineupCase = candidateCase && isFullLineupQuestion(body.case);
   const pitchingPlanCase = candidateCase && isPitchingPlanQuestion(body.case);
   let result = normalizeStandardFullLineupDecision(normalizeChangeTracking(
@@ -395,13 +409,13 @@ export function finalizePersonaDraft(body, persona, phase, rawResult) {
     body.primarySelf
   ), body.case);
   let guardIssues = [
-    ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
+    ...validatePersonaOutput(body.case, result, { focused: !candidateCase && !teamReviewCase }),
     ...personaFullLineupIssues(rawResult, fullLineupCase, body.case),
     ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
   ];
   result.persona = persona.toUpperCase();
   result.phase = phase;
-  return { result, guardIssues, candidateCase, fullLineupCase, pitchingPlanCase };
+  return { result, guardIssues, candidateCase, teamReviewCase, fullLineupCase, pitchingPlanCase };
 }
 
 export default async function handler(req, res) {
@@ -454,7 +468,7 @@ export default async function handler(req, res) {
         body.primarySelf
       ), body.case);
       guardIssues = [
-        ...validatePersonaOutput(body.case, result, { focused: !candidateCase }),
+        ...validatePersonaOutput(body.case, result, { focused: !candidateCase && !isTeamReviewCase(body) }),
         ...personaFullLineupIssues(rawResult, fullLineupCase, body.case),
         ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
       ];
