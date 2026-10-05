@@ -72,7 +72,11 @@
         if (res.ok) return body;
         const err = new Error(body?.error || `MAGI API error ${res.status}`);
         err.status = res.status;
+        err.failureClass = String(body?.diagnostic?.failureClass || '').trim();
         lastError = err;
+        // Shared provider quota/capacity cannot be repaired by immediately
+        // replaying the same expensive deliberation from the browser.
+        if (err.failureClass === 'provider_rate_limit') throw err;
         if (!(res.status === 408 || res.status === 429 || res.status >= 500)) throw err;
       } catch (error) {
         const timedOut = error?.name === 'AbortError';
@@ -83,6 +87,7 @@
         } else {
           lastError = error;
         }
+        if (lastError?.failureClass === 'provider_rate_limit') throw lastError;
         if (lastError?.status && !(lastError.status === 408 || lastError.status === 429 || lastError.status >= 500)) throw lastError;
       }
     }
