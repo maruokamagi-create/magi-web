@@ -163,14 +163,20 @@ function assertLineupPersonaSet(set,phase){for(const p of PERSONAS){if(set?.[p]?
 async function runStagedLineup(base,packet,stage,session){
   if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
   const normalized=String(stage||'').toLowerCase();
-  if(normalized==='primary'){
+  if(normalized==='prepare'){
+    if(!packet||typeof packet!=='object')throw new Error('LIVE_STAGE_EVIDENCE_NOT_READY');
     const caseData=browserCase(packet,QUESTION);
-    const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
-    assertLineupPersonaSet(primary,'PRIMARY');
-    await writeStagedState('lineup',session,{caseData,primary});
-    return {ok:true,mode:'lineup',stage:'PRIMARY',session,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',battingOrderSplitStatus:packet?.battingOrderSplits?.status||'',appearanceFieldingStatus:packet?.appearanceFielding?.status||'',appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',normalizedObservationStatus:packet?.normalizedObservationStatus||''},primary:summarizePersonaSet(primary)};
+    await writeStagedState('lineup',session,{caseData});
+    return {ok:true,mode:'lineup',stage:'PREPARE',session,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',battingOrderSplitStatus:packet?.battingOrderSplits?.status||'',appearanceFieldingStatus:packet?.appearanceFielding?.status||'',appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',normalizedObservationStatus:packet?.normalizedObservationStatus||''}};
   }
   const state=await readStagedState('lineup',session);
+  if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='primary'){
+    const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}));
+    assertLineupPersonaSet(primary,'PRIMARY');
+    await writeStagedState('lineup',session,{...state,primary});
+    return {ok:true,mode:'lineup',stage:'PRIMARY',session,primary:summarizePersonaSet(primary)};
+  }
   if(!state?.caseData||!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
   if(normalized==='cross'){
     const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:state.caseData,primary:state.primary},'CROSS');
@@ -204,6 +210,12 @@ export default async function handler(req,res){
   try{
     const host=String(req.headers?.['x-forwarded-host']||req.headers?.host||'magi-web.vercel.app').split(',')[0].trim();const proto=String(req.headers?.['x-forwarded-proto']||'https').split(',')[0].trim();const base=`${proto}://${host}`;
     const mode=String(req.query?.mode||'lineup');
+    const stagedStage=String(req.query?.stage||'').toLowerCase();
+    const stagedSession=String(req.query?.session||'');
+    if(mode==='lineup'&&['primary','cross','second','final'].includes(stagedStage)){
+      const staged=await runStagedLineup(base,null,stagedStage,stagedSession);
+      return res.status(200).json(staged);
+    }
     if(mode==='teamReview'){
       const teamEvidence=await buildCurrentTeamReviewEvidence({
         question:TEAM_REVIEW_QUESTION,
@@ -300,9 +312,8 @@ export default async function handler(req,res){
       };
       throw err;
     }
-    const stagedStage=String(req.query?.stage||'').toLowerCase();
-    if(mode==='lineup'&&stagedStage){
-      const staged=await runStagedLineup(base,packet,stagedStage,String(req.query?.session||''));
+    if(mode==='lineup'&&stagedStage==='prepare'){
+      const staged=await runStagedLineup(base,packet,'prepare',stagedSession);
       return res.status(200).json(staged);
     }
     const result=mode==='lineup'?await runOnce(base,packet):null;
