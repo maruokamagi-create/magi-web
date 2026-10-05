@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: ddd1e29dc06348d6b61e606e245646c9691644cb
+- State base main SHA: d0612ba88bfd563e65957eac8d3a290152275b50
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -144,15 +144,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 5. Record what changed, why, what was actually verified, what remains unresolved, and the pre-merge main SHA used as the state base.
 6. Never mark an issue solved solely from a narrower test than the user's failing path.
 
+## Latest investigation (2026-10-05)
+
+- Real UI progress mapping is now confirmed from `magi-formal-runner-v373.js`: 28%=PRIMARY, 54%=CROSS, 72%=SECOND, 88%=FINAL.
+- `engine/magi-engine-v1.js` confirms the browser performs PRIMARY personas -> CROSS orchestrator -> SECOND personas -> FINAL orchestrator.
+- The previous exact TEAM_REVIEW production selftest stopped after PRIMARY, so it could never validate the user's 72% failure. This was a test-path gap, not proof that the UI path was healthy.
+- Current work extends the TEAM_REVIEW production probe through all four formal phases. Do not call the 72% issue solved until that full-path probe and the real UI path complete.
+
 ## Next concrete work
 
-1. Trace the real UI formal-deliberation runner from the user's submit action through the 72% stage.
-2. Map UI progress percentages to server/client phases.
-3. Compare the UI's case/payload with the successful exact TEAM_REVIEW selftest payload.
-4. Find the first divergence after successful PRIMARY.
-5. Fix the common deliberation pipeline, not the literal question.
-6. Add cross-class UI-path regression coverage.
-7. Only after actual UI completion, evaluate answer quality.
+1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
+2. Compare the full probe's payload and failure with the browser path, especially SECOND.
+3. Fix the common deliberation pipeline, not the literal question.
+4. Add cross-class UI-path regression coverage.
+5. Only after actual UI completion, evaluate answer quality.
 
 ## Handoff instruction for a new ChatGPT chat
 

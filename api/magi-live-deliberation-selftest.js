@@ -162,17 +162,27 @@ export default async function handler(req,res){
         evidence:teamEvidence,
         createdAt:new Date().toISOString()
       };
-      const primary=await post(base,'/api/magi/persona-batch',{phase:'PRIMARY',case:caseData},'TEAM_REVIEW_PRIMARY_BATCH');
-      const summary={};
-      for(const p of PERSONAS){
-        const row=primary?.[p];
-        if(!row||row.reviewRequested===true||row.dataConflict===true)throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_INVALID`);
-        if((row.candidatePlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_BECAME_SELECTION`);
+      // Exercise the same formal phases as the browser: PRIMARY -> CROSS -> SECOND -> FINAL.
+      // The old TEAM_REVIEW probe stopped after PRIMARY and therefore could not reproduce
+      // the user's 72% failure (72% is the browser's SECOND stage).
+      const primary=await serialPersonaSet(base,'TEAM_REVIEW_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
+      const assertReviewRow=(row,p,phase)=>{
+        if(!row||row.reviewRequested===true||row.dataConflict===true)throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_INVALID:${text(row?.reviewReason||row?.publicStatement||'').slice(0,500)}`);
+        if((row.candidatePlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_BECAME_SELECTION`);
         const checked=Array.isArray(row.checkedPlayers)?row.checkedPlayers:[];
-        if(checked.length && checked.length!==14)throw new Error(`TEAM_REVIEW_${p.toUpperCase()}_PARTIAL_ROSTER_CHECK`);
-        summary[p]={judgment:row.judgment,confidence:row.confidence,publicStatement:row.publicStatement,facts:row.facts,analysis:row.analysis,warnings:row.warnings};
+        if(checked.length&&checked.length!==14)throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_PARTIAL_ROSTER_CHECK`);
+      };
+      for(const p of PERSONAS)assertReviewRow(primary[p],p,'PRIMARY');
+      const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'TEAM_REVIEW_CROSS');
+      for(const p of PERSONAS){
+        if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`TEAM_REVIEW_CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);
       }
-      return res.status(200).json({ok:true,mode,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind},primary:summary});
+      const second=await serialPersonaSet(base,'TEAM_REVIEW_SECOND',p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross)}));
+      for(const p of PERSONAS)assertReviewRow(second[p],p,'SECOND');
+      const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second},'TEAM_REVIEW_FINAL');
+      if(!final||typeof final!=='object'||!text(final.status))throw new Error('TEAM_REVIEW_FINAL_INVALID');
+      const summarize=set=>Object.fromEntries(PERSONAS.map(p=>[p,{judgment:set[p]?.judgment,confidence:set[p]?.confidence,publicStatement:set[p]?.publicStatement,facts:set[p]?.facts,analysis:set[p]?.analysis,warnings:set[p]?.warnings,changedFromPrimary:set[p]?.changedFromPrimary,changeReason:set[p]?.changeReason}]));
+      return res.status(200).json({ok:true,mode,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind},primary:summarize(primary),cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],challenges:cross?.challenges||{}},second:summarize(second),final});
     }
     const packet=await buildCurrentSelectionEvidence({
       question:QUESTION,
