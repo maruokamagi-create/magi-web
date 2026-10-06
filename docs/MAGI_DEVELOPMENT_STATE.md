@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: 96d298bf665feaf8c412eebdb0eef9c20bcc944b
+- State base main SHA: e6b5bf4665e54eb2552ee16420ae0f71f12f6436
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -296,6 +296,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Main `96d298bf...` passed the staged full best-order path and the live closer path.
 - The natural-third live E2E then failed deterministically in PRIMARY/CASPER because the generated prose strengthened the supplied Evidence level from 「兼任負担を考慮する必要がある」 into a claim about burden magnitude or concrete harm.
 - Candidate structure itself was not the failure. Persona-batch now treats this exact burden-escalation-only guard as a soft prose issue: unsupported burden/harm sentences are removed, the candidate sequence is preserved, and any emptied explanatory field falls back to the exact supported Evidence level. Structural, roster, numeric, candidate and Evidence-source guards remain fail-closed.
+
+
+## TEAM_REVIEW mixed soft-guard recovery follow-up
+
+- Main `e6b5bf46...` passed the staged full best-order path, closer path, and natural-third path in production Live Deliberation run 37460085756.
+- TEAM_REVIEW then failed in SECOND/CASPER with two simultaneous deterministic soft prose issues: unsupported burden concentration from usage spread, plus an unhedged future-outcome statement.
+- The persona-batch recovery chain previously required every guard issue to belong to one single soft family. A mixed set of otherwise recoverable TEAM_REVIEW/burden/forecast prose therefore bypassed all soft sanitizers and returned a deterministic 503.
+- Persona-batch now accepts a mixed set only when every issue belongs to one of those already-approved soft prose families, partitions the issues by family, and applies each existing sanitizer to its own subset. Any structural, roster, numeric, evidence-source, candidate, or unknown guard issue still fails closed.
+- Deterministic unit coverage now exercises mixed TEAM_REVIEW + forecast and burden + forecast recovery, and the deliberation unit workflow is triggered by persona-batch changes so this path is no longer live-E2E-only coverage.
 
 ## Next concrete work
 

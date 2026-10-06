@@ -6,6 +6,7 @@ on:
     paths:
       - 'api/magi-gateway.js'
       - 'server/api/magi/persona.js'
+      - 'server/api/magi/persona-batch.js'
       - 'server/api/magi/persona-resilient.js'
       - 'server/api/magi/dialogue.js'
       - 'server/api/magi/dialogue-resilient.js'
@@ -31,6 +32,7 @@ on:
       - 'magi-user-language-v382.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
+      - 'scripts/test-persona-batch-soft-recovery.mjs'
       - 'scripts/test-persona-second-fallback.mjs'
       - 'scripts/test-lineup-persona-grounding.mjs'
       - 'scripts/test-dialogue-resilient-fallback.mjs'
@@ -52,6 +54,8 @@ on:
       - '.github/workflows/magi-deliberation-unit.yml'
   pull_request:
     paths:
+      - 'server/api/magi/persona-batch.js'
+      - 'scripts/test-persona-batch-soft-recovery.mjs'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_appearance-fielding-evidence.js'
@@ -83,6 +87,9 @@ jobs:
 
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
+
+      - name: Run persona-batch mixed soft-recovery cases
+        run: node --experimental-default-type=module scripts/test-persona-batch-soft-recovery.mjs
 
       - name: Run SECOND transient fallback cases
         run: node --experimental-default-type=module scripts/test-persona-second-fallback.mjs

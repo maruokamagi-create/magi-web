@@ -212,6 +212,26 @@ function recoverSoftForecastLanguage(result, issues) {
   return true;
 }
 
+export function recoverSoftPersonaBatchValidation(result, issues) {
+  const list = Array.isArray(issues) ? issues.map(v => String(v || '')) : [];
+  const isTeamReviewSoft = v => v.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定')
+    || v.includes('TEAM_REVIEWで起用差から負担集中を断定')
+    || v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提');
+  const isBurdenSoft = v => v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
+  const isForecastSoft = v => /(?:将来|不確実性|保証できない結果)/.test(v);
+
+  if (!list.length || !list.every(v => isTeamReviewSoft(v) || isBurdenSoft(v) || isForecastSoft(v))) return false;
+
+  const teamReviewIssues = list.filter(isTeamReviewSoft);
+  const burdenIssues = list.filter(isBurdenSoft);
+  const forecastIssues = list.filter(isForecastSoft);
+
+  if (teamReviewIssues.length && !recoverSoftTeamReviewDependency(result, teamReviewIssues)) return false;
+  if (burdenIssues.length && !recoverSoftBurdenEscalation(result, burdenIssues)) return false;
+  if (forecastIssues.length && !recoverSoftForecastLanguage(result, forecastIssues)) return false;
+  return true;
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -375,9 +395,7 @@ export default async function handler(req, res) {
       // One model generation per batch phase. Extra correction generations can exceed the serverless request window.\n      // Soft prose issues may still be sanitized deterministically below; hard evidence guards remain fail-closed.\n\n      // Still fail closed after correction attempts. Deterministic evidence
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
-        && !recoverSoftTeamReviewDependency(result, guardIssues)
-        && !recoverSoftBurdenEscalation(result, guardIssues)
-        && !recoverSoftForecastLanguage(result, guardIssues)
+        && !recoverSoftPersonaBatchValidation(result, guardIssues)
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
         return sendJson(res, 503, {
