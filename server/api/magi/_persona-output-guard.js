@@ -253,7 +253,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // proof of a team-wide weakness, scoring dependency, tactical failure or
     // development impact. Keep those inference boundaries visible in PRIMARY and
     // SECOND too, not only in the synthesized FINAL.
-    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手)/;
+    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
     const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|直結|チーム力)/;
     const groundingHedge=/(?:断定(?:しない|できない)|とは言えない|追加(?:の)?Evidence|追加情報|確認できない|根拠がない|課題候補|可能性|おそれ|考えられ)/;
     const unsupportedSpreadOverclaim=parts.find(sentence=>
