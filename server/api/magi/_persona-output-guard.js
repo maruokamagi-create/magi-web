@@ -218,7 +218,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
   if(reviewKind==='TEAM_REVIEW'){
-    const dependencyLike=/(?:依存|頼っている|頼る|頼り切|上位偏重|主力偏重|特定選手偏重)/;
+    const dependencyLike=/(?:依存|頼っている|頼る|頼り切|頼り(?:っ|つ)?きり|上位偏重|主力偏重|特定選手偏重)/;
     const dependencyHedge=/(?:可能性|見方|考えられ|とみられ|傾向|断定でき|確認できない|Evidenceにない|根拠がない)/;
     const unsupportedDependency=parts.find(sentence=>
       dependencyLike.test(sentence)
