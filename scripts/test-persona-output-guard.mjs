@@ -236,6 +236,38 @@ test('G39 missing pressure-experience disclaimer remains allowed',()=>{
   assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);
 });
 
+
+test('G40 team review cannot assert hitter dependency from batting spread alone',()=>{
+  const teamCase={
+    question:'今の丸岡中の弱点は何？',
+    selectionKind:'TEAM_REVIEW',
+    evidence:{
+      reviewKind:'TEAM_REVIEW',
+      selectionKind:'TEAM_REVIEW',
+      allCurrentTeamCheck:{status:'COMPLETE',players:[]},
+      summary:'現チームの確認済み記録を横断する。'
+    }
+  };
+  const r=result({analysis:['中嶋 玲月、大野 竜暉、大久保 陽翔への得点生産の依存度が高い。']});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('依存関係')));
+});
+
+test('G41 team review may describe measured concentration without dependency claim',()=>{
+  const teamCase={
+    question:'今の丸岡中の弱点は何？',
+    selectionKind:'TEAM_REVIEW',
+    evidence:{
+      reviewKind:'TEAM_REVIEW',
+      selectionKind:'TEAM_REVIEW',
+      allCurrentTeamCheck:{status:'COMPLETE',players:[]},
+      summary:'現チームの確認済み記録を横断する。'
+    }
+  };
+  const r=result({analysis:['確認できた打撃成績は一部の選手に集中している。']});
+  assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

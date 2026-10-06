@@ -483,6 +483,59 @@ export function buildFinalResult(second, cross) {
   });
 }
 
+
+export function isReviewCase(caseData) {
+  const kind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  return kind==='TEAM_REVIEW'||kind==='PLAYER_REVIEW';
+}
+
+export function buildReviewResult(second, cross, caseData={}) {
+  const normalizedSecond=canonicalizePlayerData(second);
+  const normalizedCross=canonicalizePlayerData(cross||{});
+  const list=normalizeSecond(normalizedSecond);
+  const enforced=deterministicFinal(normalizedSecond);
+  if(!enforced.status)return null;
+
+  const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'REVIEW').toUpperCase();
+  const majorReasons=compactUnique(list.map(x=>x?.primaryReason));
+  const warnings=compactUnique([...(normalizedCross?.warnings||[]),...list.flatMap(x=>Array.isArray(x?.warnings)?x.warnings:[])]);
+  const prediction=compactUnique(list.flatMap(x=>Array.isArray(x?.prediction)?x.prediction:[]));
+  const informationGaps=compactUnique(normalizedCross?.informationGaps||[]);
+  const crossReviewReason=normalizedCross?.reviewRequired===true?String(normalizedCross?.reviewReason||'クロス審議の再確認が必要です。'):'';
+  const effectiveStatus=crossReviewReason?'MAGI_REVIEW_REQUIRED':enforced.status;
+  const judgments=list.map(x=>String(x?.judgment||'').toUpperCase());
+  const counts=judgments.reduce((m,x)=>(m[x]=(m[x]||0)+1,m),{});
+  const majorityJudgment=Object.entries(counts).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+  const minority=effectiveStatus==='MAGI_MAJORITY'?list.find(x=>String(x?.judgment||'').toUpperCase()!==majorityJudgment):null;
+
+  let recommendation='';
+  if(effectiveStatus==='MAGI_REVIEW_REQUIRED')recommendation='重大な未確認事項を解消してから、現状評価をやり直す。';
+  else if(effectiveStatus==='MAGI_DEADLOCK')recommendation='評価を一本化せず、3賢人の相違点を残して追加情報を確認する。';
+  else if(effectiveStatus==='INSUFFICIENT_EVIDENCE')recommendation='現時点では評価材料不足。必要情報を追加して再評価する。';
+  else {
+    const lead=majorReasons[0]||list.find(x=>String(x?.publicStatement||'').trim())?.publicStatement||'3賢人の二次評価を確認する。';
+    recommendation=reviewKind==='TEAM_REVIEW'
+      ? `現時点の重点課題：${lead}`
+      : `現時点の評価：${lead}`;
+  }
+
+  return canonicalizePlayerData({
+    mode:'REVIEW',
+    reviewKind,
+    status:effectiveStatus,
+    vote:enforced.vote,
+    recommendation,
+    confidence:crossReviewReason?'LOW':lowestConfidence(list),
+    majorReasons,
+    minorityOpinion:minority?`${minority.persona||'MINORITY'}: ${minority.primaryReason||minority.changeReason||'少数意見あり'}`:'',
+    warnings,
+    prediction,
+    reviewReason:crossReviewReason||enforced.reviewReason||'',
+    reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),
+    crossDiscussion:crossDiscussion(normalizedCross)
+  });
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req,res) || !rateLimit(req,res))return;
   try {
@@ -582,7 +635,9 @@ export default async function handler(req, res) {
           ? buildPitchingPlanResult(body.second, body.crossExamination || null)
           : isSelectionCase(body.case)
             ? buildSelectionResult(body.second, body.crossExamination || null)
-            : buildFinalResult(body.second, body.crossExamination || null);
+            : isReviewCase(body.case)
+              ? buildReviewResult(body.second, body.crossExamination || null, body.case || {})
+              : buildFinalResult(body.second, body.crossExamination || null);
       if (!result) return sendJson(res, 400, { error: 'Second judgments are incomplete or invalid' });
       return sendJson(res, 200, canonicalizePlayerData(result));
     }

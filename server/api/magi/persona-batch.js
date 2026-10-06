@@ -155,6 +155,21 @@ function safeTransient(res, error) {
   });
 }
 
+function recoverSoftTeamReviewDependency(result, issues) {
+  const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
+  if(!list.length||!list.every(v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存関係を断定')))return false;
+  const rewrite=value=>String(value||'')
+    .replace(/(?:得点生産の)?依存度が高い/g,'打撃成績が一部に集中している')
+    .replace(/特定の(?:選手|打者)(?:だけ)?に依存している/g,'一部の選手に打撃成績が集中している')
+    .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の集中');
+  result.analysis=Array.isArray(result.analysis)?result.analysis.map(rewrite):[];
+  result.prediction=Array.isArray(result.prediction)?result.prediction.map(rewrite):[];
+  result.primaryReason=rewrite(result.primaryReason);
+  result.publicStatement=rewrite(result.publicStatement);
+  result.warnings=Array.isArray(result.warnings)?result.warnings.map(rewrite):[];
+  return true;
+}
+
 function recoverSoftForecastLanguage(result, issues) {
   const list = Array.isArray(issues) ? issues.map(v => String(v || '')) : [];
   if (!list.length || !list.every(v => /(?:将来|不確実性|保証できない結果)/.test(v))) return false;
@@ -326,6 +341,7 @@ export default async function handler(req, res) {
       // One model generation per batch phase. Extra correction generations can exceed the serverless request window.\n      // Soft prose issues may still be sanitized deterministically below; hard evidence guards remain fail-closed.\n\n      // Still fail closed after correction attempts. Deterministic evidence
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
+        && !recoverSoftTeamReviewDependency(result, guardIssues)
         && !recoverSoftForecastLanguage(result, guardIssues)
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
