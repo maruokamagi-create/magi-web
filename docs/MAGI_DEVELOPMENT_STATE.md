@@ -368,12 +368,22 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The exact natural-third Live E2E is now staged with the same short-lived server-side session architecture already used by full lineup and TEAM_REVIEW: PREPARE -> PRIMARY -> CROSS -> SECOND -> FINAL are separate outer requests. PRIMARY and SECOND use one inner persona-batch attempt per outer request, while bounded transport retries are fresh outer requests from the workflow.
 - The natural-third workflow fails fast on deterministic persona validation and daily provider quota instead of hot-looping, while retaining bounded recovery for genuinely retryable request failures.
 
+## Production Live #115 TEAM_REVIEW content inspection
+
+- Main `7a97c002...` completed Production Live Deliberation #115 successfully across all four current real-data classes: staged full best-order, closer, staged natural third-batter, and staged TEAM_REVIEW.
+- The staged natural-third path therefore resolved both failures seen in #114: it no longer depends on one long Vercel request, and the batting-order 「1回」 regression no longer trips the ambiguous-innings guard.
+- Actual TEAM_REVIEW output inspection confirmed that the earlier colloquial 「頼りっきり」 wording was gone and FINAL `prediction` was empty as intended.
+- One residual contradiction remained in FINAL: the recommendation correctly stated that numeric spread alone does not prove dependency or a team-wide weakness, while `majorReasons` still contained BALTHASAR's sentence that 「記録に見える偏りがチームの弱点である」. A second reason also retained meta-language that numeric spread did not justify changing the persona's judgment.
+- The follow-up grounding therefore treats generic record/numeric spread plus weakness/strategy/judgment-overclaim language the same way as batting/usage-specific spread: it is reduced to the directly supported fact that verified records contain numeric differences.
+- TEAM_REVIEW FINAL also drops future-causal warnings such as 「目先の効率だけに囚われると、組織全体の持続的な成長が損なわれる」 when the outcome is not directly established by Evidence. Directly observed non-inference findings remain preserved.
+- Regression case R10 uses the exact production-style sentences from #115 so this contradiction cannot silently re-enter FINAL.
+
 ## Next concrete work
 
-1. Complete CI for the staged natural-third branch and merge only if the persona guard, deliberation and continuity checks remain green.
-2. Run the merged main through Production Live Deliberation again and require all four current real-data classes to complete: staged full best-order, closer, staged natural third-batter, and staged TEAM_REVIEW.
-3. Inspect the actual TEAM_REVIEW PRIMARY, SECOND and FINAL output after that production run, not only pass/fail. Confirm the visible persona text no longer says 「頼りっきり」 and the FINAL does not promote batting/usage spread into proven dependency, tactical weakness, development harm, or future outcome.
-4. Confirm directly observed findings still survive the TEAM_REVIEW final grounding layer unchanged.
+1. Complete CI for the TEAM_REVIEW final-contradiction fix and merge only if final semantics, persona guard and continuity checks remain green.
+2. Run Production Live Deliberation again on the merged main. Require all four current real-data classes to remain green.
+3. Inspect the actual staged TEAM_REVIEW FINAL again and confirm that recommendation and majorReasons no longer contradict one another: numeric/usage spread may be reported as a verified difference, but not as a proven dependency or team-wide weakness without additional Evidence.
+4. Confirm direct observed findings still survive final grounding unchanged and that PRIMARY -> CROSS -> SECOND -> FINAL remains visible.
 5. Expand acceptance coverage to the remaining Definition-of-Done classes: individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup, and CLARIFY.
 6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation so correctness and response speed improve together.
 7. Only declare the current stabilization complete after those classes are routed, rendered and timing-checked through their real production paths.
