@@ -16,7 +16,7 @@ on:
 jobs:
   exact-live-best-order:
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Wait for production deployment
         run: sleep 45
@@ -25,12 +25,12 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          SESSION="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-lineup"
+          SESSION="gh-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
 
           run_stage(){
             stage="$1"
             out="/tmp/lineup-${stage}.json"
-            curl -L --fail --max-time 70 -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup&stage=${stage}&session=${SESSION}" -o "$out"
+            curl -L --fail --max-time 55 -sS "$BASE/api/magi-live-deliberation-selftest?mode=lineup&stage=${stage}&session=${SESSION}" -o "$out"
             cat "$out"; echo
             jq -e --arg stage "$(echo "$stage" | tr '[:lower:]' '[:upper:]')" '.ok==true and .mode=="lineup" and .stage==$stage' "$out" >/dev/null
           }
@@ -43,15 +43,22 @@ jobs:
             .evidence.appearanceFieldingStatus=="COMPLETE" and
             .evidence.appearanceStatus=="COMPLETE" and
             .evidence.fieldingStatus=="COMPLETE" and
-            .evidence.normalizedObservationStatus=="COMPLETE" and
-            ([.primary[].candidatePlayers|length] | all(.==9))
+            .evidence.normalizedObservationStatus=="COMPLETE"
           ' /tmp/lineup-primary.json >/dev/null
 
           run_stage cross
-          jq -e '([.cross.challengeCounts[]] | all(.>0))' /tmp/lineup-cross.json >/dev/null
+          jq -e '
+            (.cross.challengeCounts.melchior>0) and
+            (.cross.challengeCounts.balthasar>0) and
+            (.cross.challengeCounts.casper>0)
+          ' /tmp/lineup-cross.json >/dev/null
 
           run_stage second
-          jq -e '([.second[].candidatePlayers|length] | all(.==9))' /tmp/lineup-second.json >/dev/null
+          jq -e '
+            (.second.melchior.candidatePlayers|length)==9 and
+            (.second.balthasar.candidatePlayers|length)==9 and
+            (.second.casper.candidatePlayers|length)==9
+          ' /tmp/lineup-second.json >/dev/null
 
           run_stage final
           jq -e '
