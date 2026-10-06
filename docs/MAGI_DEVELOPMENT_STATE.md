@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: 07b3cc2dcef129c4837b0de236a712f2d87e4295
+- State base main SHA: 96d298bf665feaf8c412eebdb0eef9c20bcc944b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -290,6 +290,12 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - PREPARE completed in about 8 seconds. The PRIMARY outer request then consumed the full platform window. The staged harness was still retrying an inner `/api/magi/persona-batch` request up to five times inside one outer Vercel function invocation whenever the batch returned a retryable 5xx/timeout.
 - That retry topology does not match the browser: in the real UI, retries occur from the browser as separate HTTP requests, so they do not share one serverless deadline.
 - Staged PRIMARY and SECOND now perform exactly one inner persona-batch attempt per outer selftest invocation. Bounded retries are moved to the GitHub caller as fresh outer requests using the same short-lived session state. Daily model quota failures fail fast instead of hot-looping.
+
+## Natural-third burden-language follow-up
+
+- Main `96d298bf...` passed the staged full best-order path and the live closer path.
+- The natural-third live E2E then failed deterministically in PRIMARY/CASPER because the generated prose strengthened the supplied Evidence level from 「兼任負担を考慮する必要がある」 into a claim about burden magnitude or concrete harm.
+- Candidate structure itself was not the failure. Persona-batch now treats this exact burden-escalation-only guard as a soft prose issue: unsupported burden/harm sentences are removed, the candidate sequence is preserved, and any emptied explanatory field falls back to the exact supported Evidence level. Structural, roster, numeric, candidate and Evidence-source guards remain fail-closed.
 
 ## Next concrete work
 
