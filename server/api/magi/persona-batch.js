@@ -185,23 +185,64 @@ function recoverSoftTeamReviewDependency(result, issues) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
   const softIssue=v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定')
     ||v.includes('TEAM_REVIEWで起用差から負担集中を断定')
-    ||v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提');
+    ||v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提')
+    ||v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
+    ||v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
+    ||v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   if(!list.length||!list.every(softIssue))return false;
-  const rewrite=value=>String(value||'')
-    .replace(/(?:得点生産の)?依存度が高い/g,'選手間の打撃成績に数値差がある')
-    .replace(/特定の(?:高打率|好調な)?(?:選手|打者)(?:だけ)?に(?:頼っている|頼る|依存している)/g,'選手間の打撃成績に数値差がある')
-    .replace(/(?:上位|主力|特定の(?:選手|打者)|特定選手)(?:だけ)?に頼り(?:っ|つ)?きり[^。！？!?]*(?:[。！？!?]|$)/g,'選手間の打撃成績に数値差がある。')
-    .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の数値差')
-    .replace(/(?:上位|主力|特定選手)偏重/g,'打撃成績の数値差')
-    .replace(/一部の選手に経験や負担が偏りがち/g,'選手間で出場機会や記録量に差がある')
-    .replace(/特定(?:の)?選手への負担集中/g,'選手間の出場機会の差')
-    .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
-  result.facts=Array.isArray(result.facts)?result.facts.map(rewrite):[];
-  result.analysis=Array.isArray(result.analysis)?result.analysis.map(rewrite):[];
-  result.prediction=Array.isArray(result.prediction)?result.prediction.map(rewrite):[];
+
+  const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
+  const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|直結|チーム力)/;
+  const individualBattingCue=/(?:無安打|安打0|打率\s*\.?0(?:00)?|低打率|打てていない|当たっていない)/;
+  const teamOutcomeCue=/(?:得点源|得点力|得点ルート|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|戦術(?:上)?(?:の)?課題|直結)/;
+  const developmentAdvice=/(?:半年後|1年後|将来|チーム全体で.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/;
+
+  const rewriteOne=value=>{
+    let raw=String(value||'').trim();
+    if(!raw)return '';
+
+    raw=raw
+      .replace(/(?:得点生産の)?依存度が高い/g,'選手間の打撃成績に数値差がある')
+      .replace(/特定の(?:高打率|好調な)?(?:選手|打者)(?:だけ)?に(?:頼っている|頼る|依存している)/g,'選手間の打撃成績に数値差がある')
+      .replace(/(?:上位|主力|特定の(?:選手|打者)|特定選手)(?:だけ)?に頼り(?:っ|つ)?きり[^。！？!?]*(?:[。！？!?]|$)/g,'選手間の打撃成績に数値差がある。')
+      .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の数値差')
+      .replace(/(?:上位|主力|特定選手)偏重/g,'打撃成績の数値差')
+      .replace(/一部の選手に経験や負担が偏りがち/g,'選手間で出場機会や記録量に差がある')
+      .replace(/特定(?:の)?選手への負担集中/g,'選手間の出場機会の差')
+      .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
+
+    if(developmentAdvice.test(raw))return '';
+
+    if(individualBattingCue.test(raw)&&teamOutcomeCue.test(raw)){
+      const exactCount=raw.match(/直近\s*6\s*試合[^。！？!?]*?([0-9]+)選手が(?:安打0|無安打)/);
+      if(exactCount)return `直近6試合で${exactCount[1]}選手が安打0であることは確認できる。`;
+      if(/直近\s*6\s*試合/.test(raw)&&/(?:複数|一部の選手)/.test(raw))return '直近6試合で複数の選手が無安打または打率.000であることは確認できる。';
+      return '確認済みの個別打撃記録には選手間の差がある。';
+    }
+
+    if(spreadLike.test(raw)&&spreadOverclaim.test(raw)){
+      const usage=/(?:出場機会|打数|起用)/.test(raw);
+      const batting=/(?:打撃|打線|打率|OPS|安打|上位|下位)/.test(raw);
+      const recent=/直近\s*6\s*試合/.test(raw)&&/(?:無安打|安打が出ていない|安打0)/.test(raw);
+      if(batting&&recent)return '確認済みの打撃成績には選手間の数値差があり、直近6試合で無安打の選手が複数確認されている。';
+      if(usage)return '確認済みの出場機会や打数には選手間の差がある。';
+      if(batting)return '確認済みの打撃成績には選手間の数値差がある。';
+      return '確認済み記録には選手間の数値差がある。';
+    }
+    return raw;
+  };
+
+  const rewrite=value=>String(value||'').split(/(?<=[。！？!?])/).map(rewriteOne).filter(Boolean).join('');
+  const cleanArray=value=>(Array.isArray(value)?value:[]).map(rewrite).filter(Boolean);
+  result.facts=cleanArray(result.facts);
+  result.analysis=cleanArray(result.analysis);
+  result.prediction=[];
   result.primaryReason=rewrite(result.primaryReason);
   result.publicStatement=rewrite(result.publicStatement);
-  result.warnings=Array.isArray(result.warnings)?result.warnings.map(rewrite):[];
+  result.warnings=cleanArray(result.warnings);
+  if(!String(result.primaryReason||'').trim())result.primaryReason='確認済み記録と解釈を分け、現在確認できる事実だけを評価する。';
+  if(!String(result.publicStatement||'').trim())result.publicStatement='確認済み記録には選手間の差があります。ただし、その差だけでチーム全体の弱点や因果関係までは断定しません。';
+  result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),'TEAM_REVIEWでは、確認済み記録と解釈を分け、数値差だけから弱点・因果・将来影響を断定しません。'])];
   return true;
 }
 
@@ -214,11 +255,15 @@ function recoverSoftForecastLanguage(result, issues) {
   return true;
 }
 
-export function recoverSoftPersonaBatchValidation(result, issues) {
+export function recoverSoftPersonaBatchValidation(result, issues, caseData=null, {focused=false}={}) {
+  const snapshot=JSON.parse(JSON.stringify(result||{}));
   const list = Array.isArray(issues) ? issues.map(v => String(v || '')) : [];
   const isTeamReviewSoft = v => v.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定')
     || v.includes('TEAM_REVIEWで起用差から負担集中を断定')
-    || v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提');
+    || v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提')
+    || v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
+    || v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
+    || v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   const isBurdenSoft = v => v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
   const isForecastSoft = v => /(?:将来|不確実性|保証できない結果)/.test(v);
 
@@ -231,6 +276,14 @@ export function recoverSoftPersonaBatchValidation(result, issues) {
   if (teamReviewIssues.length && !recoverSoftTeamReviewDependency(result, teamReviewIssues)) return false;
   if (burdenIssues.length && !recoverSoftBurdenEscalation(result, burdenIssues)) return false;
   if (forecastIssues.length && !recoverSoftForecastLanguage(result, forecastIssues)) return false;
+  if(caseData){
+    const remaining=validatePersonaOutput(caseData,result,{focused});
+    if(remaining.length){
+      for(const key of Object.keys(result))delete result[key];
+      Object.assign(result,snapshot);
+      return false;
+    }
+  }
   return true;
 }
 
@@ -446,7 +499,7 @@ export default async function handler(req, res) {
       // One model generation per batch phase. Extra correction generations can exceed the serverless request window.\n      // Soft prose issues may still be sanitized deterministically below; hard evidence guards remain fail-closed.\n\n      // Still fail closed after correction attempts. Deterministic evidence
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
-        && !recoverSoftPersonaBatchValidation(result, guardIssues)
+        && !recoverSoftPersonaBatchValidation(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverUnsupportedComponentMetricLabels(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
