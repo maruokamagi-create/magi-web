@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { recoverSoftPersonaBatchValidation } from '../server/api/magi/persona-batch.js';
+import { recoverSoftPersonaBatchValidation, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
 
 function baseResult(overrides={}) {
   return {
@@ -54,4 +54,60 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH MIXED SOFT RECOVERY RESULT: 3/3 PASS');
+
+{
+  const caseData={
+    mode:'selection',
+    question:'3番は誰がいい？',
+    evidence:{
+      allCurrentTeamCheck:{
+        status:'COMPLETE',
+        players:[
+          {name:'中嶋 玲月',batting:{AVG:'.320',OPS:'.860'}},
+          {name:'大久保 陽翔',batting:{AVG:'.333',OPS:'.812'}}
+        ]
+      }
+    }
+  };
+  const result=baseResult({
+    candidatePlayers:['中嶋 玲月'],
+    analysis:['出塁率と長打率の高さを評価する。'],
+    publicStatement:'中嶋 玲月は出塁率と長打率が良いので第一候補です。'
+  });
+  const ok=recoverUnsupportedComponentMetricLabels(result,[
+    'Evidenceにない長打率を、存在する指標として述べている',
+    'Evidenceにない出塁率を、存在する指標として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!JSON.stringify(result).includes('出塁率'));
+  assert.ok(!JSON.stringify(result).includes('長打率'));
+  assert.ok(result.publicStatement.includes('中嶋 玲月'));
+}
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',evidence:{allCurrentTeamCheck:{status:'COMPLETE',players:[]}}};
+  const result=baseResult({
+    candidatePlayers:['中嶋 玲月'],
+    publicStatement:'中嶋 玲月の出塁率.400を評価します。'
+  });
+  const before=JSON.stringify(result);
+  const ok=recoverUnsupportedComponentMetricLabels(result,[
+    'Evidenceにない出塁率を、存在する指標として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,false);
+  assert.equal(JSON.stringify(result),before);
+}
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',evidence:{allCurrentTeamCheck:{status:'COMPLETE',players:[]}}};
+  const result=baseResult({analysis:['出塁率が高い。']});
+  const before=JSON.stringify(result);
+  const ok=recoverUnsupportedComponentMetricLabels(result,[
+    'Evidenceにない出塁率を、存在する指標として述べている',
+    'FULL_LINEUP_STANDARD_DEFENSE / NO_COMPLETE_STANDARD_STARTING_MATCHING'
+  ],caseData,{focused:false});
+  assert.equal(ok,false);
+  assert.equal(JSON.stringify(result),before);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 6/6 PASS');
