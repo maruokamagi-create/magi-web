@@ -56,6 +56,8 @@ on:
     paths:
       - 'server/api/magi/persona-batch.js'
       - 'scripts/test-persona-batch-soft-recovery.mjs'
+      - 'server/api/magi/_persona-output-guard.js'
+      - 'scripts/test-persona-output-guard.mjs'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_appearance-fielding-evidence.js'
