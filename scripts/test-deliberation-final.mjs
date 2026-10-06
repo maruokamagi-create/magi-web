@@ -3,7 +3,9 @@ import {
   isSelectionCase,
   deterministicFinal,
   buildSelectionResult,
-  buildFinalResult
+  buildFinalResult,
+  isReviewCase,
+  buildReviewResult
 } from '../server/api/magi/orchestrate.js';
 
 const tests=[];
@@ -122,6 +124,38 @@ test('R04 cross evidence failure forces final review required',()=>{
   assert.equal(r.minorityOpinion,'');
   assert.match(r.reviewReason,/クロス審議/);
   assert.match(r.recommendation,/再審議/);
+});
+
+
+test('R05 TEAM_REVIEW final uses review semantics, not proposal adoption language',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{primaryReason:'打撃成績が一部の選手に集中している'}),
+    balthasar:persona('BALTHASAR','BLUE',{primaryReason:'下位打線の出塁実績が少ない'}),
+    casper:persona('CASPER','BLUE',{primaryReason:'出場機会には選手間の差がある'})
+  };
+  const caseData={selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW'}};
+  assert.equal(isReviewCase(caseData),true);
+  const r=buildReviewResult(second,{informationGaps:['守備の継続観察']},caseData);
+  assert.equal(r.mode,'REVIEW');
+  assert.equal(r.reviewKind,'TEAM_REVIEW');
+  assert.equal(r.status,'MAGI_CONSENSUS');
+  assert.match(r.recommendation,/現時点の重点課題/);
+  assert.doesNotMatch(r.recommendation,/採用|運用/);
+  assert.ok(r.majorReasons.includes('打撃成績が一部の選手に集中している'));
+});
+
+test('R06 PLAYER_REVIEW final uses assessment language',()=>{
+  const second={
+    melchior:persona('MELCHIOR','GREEN',{primaryReason:'今季の確認済み記録を基準に評価できる'}),
+    balthasar:persona('BALTHASAR','BLUE',{primaryReason:'実起用を含めて条件付きで評価する'}),
+    casper:persona('CASPER','YELLOW',{primaryReason:'追加の観察情報も確認したい'})
+  };
+  const caseData={evidence:{reviewKind:'PLAYER_REVIEW'}};
+  assert.equal(isReviewCase(caseData),true);
+  const r=buildReviewResult(second,{},caseData);
+  assert.equal(r.reviewKind,'PLAYER_REVIEW');
+  assert.match(r.recommendation,/現時点の評価/);
+  assert.doesNotMatch(r.recommendation,/賛成判断を採用|条件付きで採用/);
 });
 
 // Selection aggregation: no hard-coded clean-up wording, preserve split/review states.
