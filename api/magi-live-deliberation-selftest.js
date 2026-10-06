@@ -177,7 +177,7 @@ async function runStagedLineup(base,packet,stage,session){
   const state=await readStagedState('lineup',session);
   if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
   if(normalized==='primary'){
-    const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}));
+    const primary=await serialPersonaSet(base,'PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}),{maxAttempts:1});
     assertLineupPersonaSet(primary,'PRIMARY');
     await writeStagedState('lineup',session,{...state,primary});
     return {ok:true,mode:'lineup',stage:'PRIMARY',session,primary:summarizePersonaSet(primary)};
@@ -210,6 +210,76 @@ async function runStagedLineup(base,packet,stage,session){
   throw new Error('LIVE_STAGE_UNSUPPORTED');
 }
 
+function assertTeamReviewRow(row,p,phase){
+  if(!row||row.reviewRequested===true||row.dataConflict===true)throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_INVALID:${text(row?.reviewReason||row?.publicStatement||'').slice(0,500)}`);
+  if((row.candidatePlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_BECAME_SELECTION`);
+  const checked=Array.isArray(row.checkedPlayers)?row.checkedPlayers:[];
+  if(checked.length&&checked.length!==14)throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_PARTIAL_ROSTER_CHECK`);
+}
+function summarizeTeamReviewSet(set){
+  return Object.fromEntries(PERSONAS.map(p=>[p,{
+    judgment:set?.[p]?.judgment||'',
+    confidence:set?.[p]?.confidence||'',
+    publicStatement:set?.[p]?.publicStatement||'',
+    facts:Array.isArray(set?.[p]?.facts)?set[p].facts:[],
+    analysis:Array.isArray(set?.[p]?.analysis)?set[p].analysis:[],
+    warnings:Array.isArray(set?.[p]?.warnings)?set[p].warnings:[],
+    changedFromPrimary:Boolean(set?.[p]?.changedFromPrimary),
+    changeReason:set?.[p]?.changeReason||''
+  }]));
+}
+async function runStagedTeamReview(base,teamEvidence,stage,session){
+  if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
+  const normalized=String(stage||'').toLowerCase();
+  if(normalized==='prepare'){
+    if(!teamEvidence||String(teamEvidence?.reviewKind||'').toUpperCase()!=='TEAM_REVIEW'||Number(teamEvidence?.count)!==14)throw new Error('TEAM_REVIEW_EVIDENCE_NOT_READY');
+    const caseData={
+      id:`MAGI-TEAM-REVIEW-${Date.now()}`,
+      question:TEAM_REVIEW_QUESTION,
+      mode:'proposal',
+      objective:'',
+      options:[],
+      urgency:'normal',
+      selectionKind:'TEAM_REVIEW',
+      evidence:teamEvidence,
+      createdAt:new Date().toISOString()
+    };
+    await writeStagedState('teamReview',session,{caseData});
+    return {ok:true,mode:'teamReview',stage:'PREPARE',session,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind}};
+  }
+  const state=await readStagedState('teamReview',session);
+  if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='primary'){
+    const primary=await serialPersonaSet(base,'TEAM_REVIEW_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}),{maxAttempts:1});
+    for(const p of PERSONAS)assertTeamReviewRow(primary[p],p,'PRIMARY');
+    await writeStagedState('teamReview',session,{...state,primary});
+    return {ok:true,mode:'teamReview',stage:'PRIMARY',session,question:TEAM_REVIEW_QUESTION,primary:summarizeTeamReviewSet(primary)};
+  }
+  if(!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='cross'){
+    const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:state.caseData,primary:state.primary},'TEAM_REVIEW_CROSS',{maxAttempts:1});
+    for(const p of PERSONAS){
+      if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`TEAM_REVIEW_CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);
+    }
+    await writeStagedState('teamReview',session,{...state,cross});
+    return {ok:true,mode:'teamReview',stage:'CROSS',session,cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],informationGaps:cross?.informationGaps||[],challengeCounts:Object.fromEntries(PERSONAS.map(p=>[p,Array.isArray(cross?.challenges?.[p])?cross.challenges[p].length:0]))}};
+  }
+  if(normalized==='second'){
+    if(!state?.cross)throw new Error('LIVE_STAGE_CROSS_NOT_FOUND');
+    const second=await serialPersonaSet(base,'TEAM_REVIEW_SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}),{maxAttempts:1});
+    for(const p of PERSONAS)assertTeamReviewRow(second[p],p,'SECOND');
+    await writeStagedState('teamReview',session,{...state,second});
+    return {ok:true,mode:'teamReview',stage:'SECOND',session,second:summarizeTeamReviewSet(second)};
+  }
+  if(normalized==='final'){
+    if(!state?.cross||!state?.second)throw new Error('LIVE_STAGE_SECOND_NOT_FOUND');
+    const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:state.caseData,primary:state.primary,crossExamination:state.cross,second:state.second},'TEAM_REVIEW_FINAL',{maxAttempts:1});
+    if(final?.mode!=='REVIEW'||String(final?.reviewKind||'').toUpperCase()!=='TEAM_REVIEW'||!text(final?.status)||!text(final?.recommendation))throw new Error('TEAM_REVIEW_FINAL_INVALID');
+    return {ok:true,mode:'teamReview',stage:'FINAL',session,question:TEAM_REVIEW_QUESTION,final,digest:stableDigest({primary:state.primary,cross:state.cross,second:state.second,final})};
+  }
+  throw new Error('LIVE_STAGE_UNSUPPORTED');
+}
+
 export default async function handler(req,res){
   res.setHeader('Cache-Control','no-store');res.setHeader('X-Robots-Tag','noindex, nofollow');
   try{
@@ -221,6 +291,10 @@ export default async function handler(req,res){
       const staged=await runStagedLineup(base,null,stagedStage,stagedSession);
       return res.status(200).json(staged);
     }
+    if(mode==='teamReview'&&['primary','cross','second','final'].includes(stagedStage)){
+      const staged=await runStagedTeamReview(base,null,stagedStage,stagedSession);
+      return res.status(200).json(staged);
+    }
     if(mode==='teamReview'){
       const teamEvidence=await buildCurrentTeamReviewEvidence({
         question:TEAM_REVIEW_QUESTION,
@@ -229,6 +303,10 @@ export default async function handler(req,res){
       });
       if(!teamEvidence||String(teamEvidence?.reviewKind||'').toUpperCase()!=='TEAM_REVIEW'||Number(teamEvidence?.count)!==14){
         throw new Error('TEAM_REVIEW_EVIDENCE_NOT_READY');
+      }
+      if(stagedStage==='prepare'){
+        const staged=await runStagedTeamReview(base,teamEvidence,'prepare',stagedSession);
+        return res.status(200).json(staged);
       }
       const caseData={
         id:`MAGI-TEAM-REVIEW-${Date.now()}`,
@@ -245,23 +323,16 @@ export default async function handler(req,res){
       // The old TEAM_REVIEW probe stopped after PRIMARY and therefore could not reproduce
       // the user's 72% failure (72% is the browser's SECOND stage).
       const primary=await serialPersonaSet(base,'TEAM_REVIEW_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:caseData}));
-      const assertReviewRow=(row,p,phase)=>{
-        if(!row||row.reviewRequested===true||row.dataConflict===true)throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_INVALID:${text(row?.reviewReason||row?.publicStatement||'').slice(0,500)}`);
-        if((row.candidatePlayers||[]).length||text(row.candidateBasis))throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_BECAME_SELECTION`);
-        const checked=Array.isArray(row.checkedPlayers)?row.checkedPlayers:[];
-        if(checked.length&&checked.length!==14)throw new Error(`TEAM_REVIEW_${phase}_${p.toUpperCase()}_PARTIAL_ROSTER_CHECK`);
-      };
-      for(const p of PERSONAS)assertReviewRow(primary[p],p,'PRIMARY');
+      for(const p of PERSONAS)assertTeamReviewRow(primary[p],p,'PRIMARY');
       const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:caseData,primary},'TEAM_REVIEW_CROSS');
       for(const p of PERSONAS){
         if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`TEAM_REVIEW_CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);
       }
       const second=await serialPersonaSet(base,'TEAM_REVIEW_SECOND',p=>({persona:p,phase:'SECOND',case:caseData,primarySelf:primary[p],crossExamination:crossFor(p,cross)}));
-      for(const p of PERSONAS)assertReviewRow(second[p],p,'SECOND');
+      for(const p of PERSONAS)assertTeamReviewRow(second[p],p,'SECOND');
       const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:caseData,primary,crossExamination:cross,second},'TEAM_REVIEW_FINAL');
       if(!final||typeof final!=='object'||!text(final.status))throw new Error('TEAM_REVIEW_FINAL_INVALID');
-      const summarize=set=>Object.fromEntries(PERSONAS.map(p=>[p,{judgment:set[p]?.judgment,confidence:set[p]?.confidence,publicStatement:set[p]?.publicStatement,facts:set[p]?.facts,analysis:set[p]?.analysis,warnings:set[p]?.warnings,changedFromPrimary:set[p]?.changedFromPrimary,changeReason:set[p]?.changeReason}]));
-      return res.status(200).json({ok:true,mode,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind},primary:summarize(primary),cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],challenges:cross?.challenges||{}},second:summarize(second),final});
+      return res.status(200).json({ok:true,mode,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind},primary:summarizeTeamReviewSet(primary),cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],challenges:cross?.challenges||{}},second:summarizeTeamReviewSet(second),final});
     }
     const packet=await buildCurrentSelectionEvidence({
       question:QUESTION,

@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: 2429b4f4c234295e55076dabe03918db0d892828
+- State base main SHA: 60dc85ffe6e75d379ac28fd35819264b88ab98d3
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -312,6 +312,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - PR #84 merged as main `2429b4f4...`; the Vercel production deployment for that SHA completed successfully.
 - The connector-driven squash merge did not produce the expected push-triggered Live Deliberation Actions run. To avoid leaving production acceptance unverified, a no-behavior-change comment in the Live E2E workflow plus this ledger update is pushed as one atomic main commit solely to trigger the production acceptance gate.
 - Production behavior is unchanged by this trigger commit. The verification target remains the PR #84 mixed-soft persona-batch recovery.
+
+
+## Staged TEAM_REVIEW E2E follow-up
+
+- Production recheck of Live Deliberation run 37460085756 attempt 2 confirmed that the mixed-soft persona recovery no longer fails at SECOND/CASPER.
+- The remaining failure moved outward: the legacy monolithic `mode=teamReview` selftest hit HTTP 504 on its first full request, then a retry failed at `TEAM_REVIEW_CROSS`. TEAM_REVIEW was still executing Evidence preparation, PRIMARY, CROSS, SECOND and FINAL inside one outer Vercel invocation.
+- TEAM_REVIEW Live E2E now uses the same short-lived session-state architecture as full lineup: PREPARE -> PRIMARY -> CROSS -> SECOND -> FINAL are separate outer requests sharing one cached CASE and phase results.
+- PRIMARY, CROSS, SECOND and FINAL each make only one inner phase request per outer selftest call; bounded retries are owned by the GitHub caller as fresh HTTP requests using the same session. This matches the browser retry boundary and prevents cumulative serverless-deadline consumption.
+- Full-lineup staged PRIMARY is also explicitly limited to one inner persona-batch attempt, matching the existing ledger contract.
 
 ## Next concrete work
 

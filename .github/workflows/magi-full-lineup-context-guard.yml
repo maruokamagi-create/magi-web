@@ -8,6 +8,7 @@ on:
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_evidence-source-map.js'
       - 'api/magi-live-deliberation-selftest.js'
+      - '.github/workflows/magi-production-live-deliberation-selftest.yml'
       - 'lineup-reasons-v415.js'
       - 'server/api/magi/_full-lineup.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
@@ -67,5 +68,9 @@ jobs:
           ! grep -Fq 'function prepareBrowserEvidence' api/magi-live-deliberation-selftest.js
           ! grep -Fq '現場では大野 竜暉、坂田 暉馬、嶋田 栄志、大久保 陽翔、中嶋 玲月を上位候補' api/magi-live-deliberation-selftest.js
           grep -Fq 'evidence:reinforceEvidence(packet)' api/magi-live-deliberation-selftest.js
+          grep -Fq 'async function runStagedTeamReview' api/magi-live-deliberation-selftest.js
+          grep -Fq "mode==='teamReview'&&['primary','cross','second','final'].includes(stagedStage)" api/magi-live-deliberation-selftest.js
+          grep -Fq "if(stagedStage==='prepare')" api/magi-live-deliberation-selftest.js
+          grep -Fq "TEAM_REVIEW_FINAL',{maxAttempts:1}" api/magi-live-deliberation-selftest.js
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
