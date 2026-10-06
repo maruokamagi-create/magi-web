@@ -309,6 +309,7 @@ export default async function handler(req, res) {
       temporalContext: shared.temporalContext,
       authoritativeCurrentRoster: shared.authoritativeCurrentRoster,
       historicalWeightingRule: shared.historicalWeightingRule,
+      ...(shared.standardDefenseEligibility ? { standardDefenseEligibility: shared.standardDefenseEligibility } : {}),
       case: shared.case
     };
     const personaRequests = Object.fromEntries(PERSONAS.map(persona => {

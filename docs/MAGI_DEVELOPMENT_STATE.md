@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: c05334b24637929647139a7a97fabb69e67c6ad2
+- State base main SHA: f96aeb20347efa0e26b0d88e0abfefada415dcf2
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -276,6 +276,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The production Live E2E triggered by the guard change still hit an outer HTTP 504 during staged lineup PRIMARY. PREPARE completed, so Evidence preparation was not the timeout source.
 - The common Gemini helper's 46-second provider budget left too little margin inside the roughly 60-second serverless window for cache reads, request construction, validation and response serialization. The total provider-attempt budget is tightened to 34 seconds; individual model attempts remain bounded and known quota cooldowns are still skipped.
 - The intended failure mode when no model can respond in time is now an explicit bounded 503/diagnostic before the outer platform deadline, not an opaque 504.
+
+## Full-lineup standard-defense constraint follow-up
+
+- On main `f96aeb20...`, staged PREPARE completed but fresh PRIMARY failed deterministically for CASPER with `FULL_LINEUP_STANDARD_DEFENSE / NO_COMPLETE_STANDARD_STARTING_MATCHING`: CASPER chose nine players that could not form all nine standard defensive positions using official-game or practice-game-one starts.
+- The hard guard was correct and remains fail-closed. The reliability gap was that the model had to reconstruct the one-to-one defensive matching from the much larger appearance/fielding packet.
+- A compact deterministic `standardDefenseEligibility` summary is now built from the same appearance Evidence and supplied to every FULL_LINEUP persona. It contains only legal standard-start positions by player and players by position. PRIMARY and SECOND instructions explicitly require a one-to-one matching across the same selected nine before returning candidatePlayers.
+- This does not invent positions, use practice-game-two experiments, use substitute-only positions, force a fixed lineup, or override persona judgment; it makes the existing structural constraint explicit before generation.
 
 ## Next concrete work
 
