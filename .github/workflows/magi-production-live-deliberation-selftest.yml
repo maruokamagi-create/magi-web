@@ -1,4 +1,4 @@
-# Production acceptance gate. Verification trigger after PR #84; no behavior change.
+# Production acceptance gate. Verification trigger after staged TEAM_REVIEW merge; no behavior change.
 name: MAGI Production Live Deliberation Selftest
 
 on:
