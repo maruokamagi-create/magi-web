@@ -218,12 +218,32 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
   if(reviewKind==='TEAM_REVIEW'){
+    const dependencyLike=/(?:依存|頼っている|頼る|頼り切|上位偏重|主力偏重|特定選手偏重)/;
+    const dependencyHedge=/(?:可能性|見方|考えられ|とみられ|傾向|断定でき|確認できない|Evidenceにない|根拠がない)/;
     const unsupportedDependency=parts.find(sentence=>
-      /依存/.test(sentence)
+      dependencyLike.test(sentence)
       && !isEvidenceGapStatement(sentence)
-      && !/(?:可能性|見方|考えられ|とみられ|傾向|断定でき)/.test(sentence)
+      && !dependencyHedge.test(sentence)
     );
-    if(unsupportedDependency)issues.push('TEAM_REVIEWで打撃成績の偏りから依存関係を断定している');
+    if(unsupportedDependency)issues.push('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している');
+
+    const hasBurdenConcentrationEvidence=/(?:負担.{0,12}(?:集中|偏)|(?:一部|特定).{0,24}負担.{0,12}(?:集中|偏))/.test(evidenceText);
+    if(!hasBurdenConcentrationEvidence){
+      const unsupportedBurdenConcentration=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:負担.{0,12}(?:集中|偏)|経験や負担.{0,12}(?:集中|偏)|(?:一部|特定).{0,24}負担.{0,12}(?:集中|偏))/.test(sentence)
+      );
+      if(unsupportedBurdenConcentration)issues.push('TEAM_REVIEWで起用差から負担集中を断定している');
+    }
+
+    const hasNonAppearanceEvidence=/(?:出場していない|試合に出ていない|出場0|出場なし|出場機会なし)/.test(evidenceText);
+    if(!hasNonAppearanceEvidence){
+      const unsupportedNonAppearance=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:試合に出ていない|試合に出場していない|出場していない)選手/.test(sentence)
+      );
+      if(unsupportedNonAppearance)issues.push('TEAM_REVIEWでEvidenceにない未出場選手を前提にしている');
+    }
   }
 
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);

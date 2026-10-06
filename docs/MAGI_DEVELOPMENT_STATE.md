@@ -9,8 +9,8 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-05
-- State base main SHA: 91c3d2bca4eb01c363a9face7834f615de5c8dfc
+- State updated: 2026-10-06
+- State base main SHA: 2a12c55977361348111c95730f95b4f4b26a9329
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -262,6 +262,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Provider quota cooldowns are now persisted in Vercel cache. MODEL-scoped 429 responses store a per-model cooldown using the provider retry delay/window; PROJECT-scoped 429 stores a project cooldown. Later serverless requests skip known cooling-down models instead of spending another provider call on them.
 - The common Gemini helper also has a 46-second total provider budget inside a request, with a minimum remaining-attempt threshold. This makes failure explicit before the outer Vercel deadline rather than returning an opaque 504, while still leaving room to reach a healthy reserve model.
 - Canonical result caching, Evidence rules, persona isolation, strict-mode behavior and the free-only provider policy are unchanged.
+
+## TEAM_REVIEW synonym-grounding follow-up
+
+- Current main `2a12c559...` is green for all four production Live Deliberation classes (best order, closer, natural third, TEAM_REVIEW) and the downstream sequential suite.
+- Inspection of the successful TEAM_REVIEW final output still found unsupported inference expressed without the literal word 依存: `特定の高打率選手に頼っている`, `上位偏重`, `一部の選手に経験や負担が偏りがち`, and `試合に出場していない選手`.
+- These phrases are now guarded as the same soft evidence-language class. Batch recovery rewrites only those soft TEAM_REVIEW phrases to measured batting/usage differences; hard evidence, numeric, roster and structural failures remain fail-closed.
+- Regression cases G42-G44 cover reliance synonyms, inferred burden concentration, and invented non-appearance.
 
 ## Next concrete work
 
