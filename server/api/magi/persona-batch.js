@@ -157,11 +157,19 @@ function safeTransient(res, error) {
 
 function recoverSoftTeamReviewDependency(result, issues) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
-  if(!list.length||!list.every(v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存関係を断定')))return false;
+  const softIssue=v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定')
+    ||v.includes('TEAM_REVIEWで起用差から負担集中を断定')
+    ||v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提');
+  if(!list.length||!list.every(softIssue))return false;
   const rewrite=value=>String(value||'')
-    .replace(/(?:得点生産の)?依存度が高い/g,'打撃成績が一部に集中している')
-    .replace(/特定の(?:選手|打者)(?:だけ)?に依存している/g,'一部の選手に打撃成績が集中している')
-    .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の集中');
+    .replace(/(?:得点生産の)?依存度が高い/g,'選手間の打撃成績に数値差がある')
+    .replace(/特定の(?:高打率|好調な)?(?:選手|打者)(?:だけ)?に(?:頼っている|頼る|依存している)/g,'選手間の打撃成績に数値差がある')
+    .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の数値差')
+    .replace(/(?:上位|主力|特定選手)偏重/g,'打撃成績の数値差')
+    .replace(/一部の選手に経験や負担が偏りがち/g,'選手間で出場機会や記録量に差がある')
+    .replace(/特定(?:の)?選手への負担集中/g,'選手間の出場機会の差')
+    .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
+  result.facts=Array.isArray(result.facts)?result.facts.map(rewrite):[];
   result.analysis=Array.isArray(result.analysis)?result.analysis.map(rewrite):[];
   result.prediction=Array.isArray(result.prediction)?result.prediction.map(rewrite):[];
   result.primaryReason=rewrite(result.primaryReason);
