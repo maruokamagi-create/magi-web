@@ -216,6 +216,16 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(unsupportedSentence)issues.push('旧チームのクローザー・終盤・高圧場面の実績がEvidenceにないのに、その役割経験を前提にしている');
   }
 
+  const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  if(reviewKind==='TEAM_REVIEW'){
+    const unsupportedDependency=parts.find(sentence=>
+      /依存/.test(sentence)
+      && !isEvidenceGapStatement(sentence)
+      && !/(?:可能性|見方|考えられ|とみられ|傾向|断定でき)/.test(sentence)
+    );
+    if(unsupportedDependency)issues.push('TEAM_REVIEWで打撃成績の偏りから依存関係を断定している');
+  }
+
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
   if(!hasStrongBurdenEvidence){
     const unsupportedBurden=[
