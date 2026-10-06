@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: 2a12c55977361348111c95730f95b4f4b26a9329
+- State base main SHA: c05334b24637929647139a7a97fabb69e67c6ad2
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -269,6 +269,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Inspection of the successful TEAM_REVIEW final output still found unsupported inference expressed without the literal word 依存: `特定の高打率選手に頼っている`, `上位偏重`, `一部の選手に経験や負担が偏りがち`, and `試合に出場していない選手`.
 - These phrases are now guarded as the same soft evidence-language class. Batch recovery rewrites only those soft TEAM_REVIEW phrases to measured batting/usage differences; hard evidence, numeric, roster and structural failures remain fail-closed.
 - Regression cases G42-G44 cover reliance synonyms, inferred burden concentration, and invented non-appearance.
+
+## Provider deadline headroom follow-up
+
+- The TEAM_REVIEW synonym guard unit suite is green on main `c05334b...`.
+- The production Live E2E triggered by the guard change still hit an outer HTTP 504 during staged lineup PRIMARY. PREPARE completed, so Evidence preparation was not the timeout source.
+- The common Gemini helper's 46-second provider budget left too little margin inside the roughly 60-second serverless window for cache reads, request construction, validation and response serialization. The total provider-attempt budget is tightened to 34 seconds; individual model attempts remain bounded and known quota cooldowns are still skipped.
+- The intended failure mode when no model can respond in time is now an explicit bounded 503/diagnostic before the outer platform deadline, not an opaque 504.
 
 ## Next concrete work
 
