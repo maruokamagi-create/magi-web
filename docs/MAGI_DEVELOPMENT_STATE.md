@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: f96aeb20347efa0e26b0d88e0abfefada415dcf2
+- State base main SHA: 07b3cc2dcef129c4837b0de236a712f2d87e4295
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -283,6 +283,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The hard guard was correct and remains fail-closed. The reliability gap was that the model had to reconstruct the one-to-one defensive matching from the much larger appearance/fielding packet.
 - A compact deterministic `standardDefenseEligibility` summary is now built from the same appearance Evidence and supplied to every FULL_LINEUP persona. It contains only legal standard-start positions by player and players by position. PRIMARY and SECOND instructions explicitly require a one-to-one matching across the same selected nine before returning candidatePlayers.
 - This does not invent positions, use practice-game-two experiments, use substitute-only positions, force a fixed lineup, or override persona judgment; it makes the existing structural constraint explicit before generation.
+
+## Staged E2E retry-boundary correction
+
+- Main `07b3cc2d...` made the standard-defense constraint explicit, but the next staged lineup PRIMARY still ended as an outer HTTP 504.
+- PREPARE completed in about 8 seconds. The PRIMARY outer request then consumed the full platform window. The staged harness was still retrying an inner `/api/magi/persona-batch` request up to five times inside one outer Vercel function invocation whenever the batch returned a retryable 5xx/timeout.
+- That retry topology does not match the browser: in the real UI, retries occur from the browser as separate HTTP requests, so they do not share one serverless deadline.
+- Staged PRIMARY and SECOND now perform exactly one inner persona-batch attempt per outer selftest invocation. Bounded retries are moved to the GitHub caller as fresh outer requests using the same short-lived session state. Daily model quota failures fail fast instead of hot-looping.
 
 ## Next concrete work
 
