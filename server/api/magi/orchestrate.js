@@ -550,6 +550,22 @@ function groundTeamReviewWarning(value){
   return {text:raw,changed:false};
 }
 
+function teamReviewDirectRecentBattingFinding(caseData){
+  const recent=caseData?.evidence?.recentSix;
+  if(String(recent?.status||'').toUpperCase()!=='COMPLETE')return '';
+  const gameCount=Number(recent?.gameCount);
+  const players=Array.isArray(recent?.players)?recent.players:[];
+  if(!Number.isFinite(gameCount)||gameCount<=0||!players.length)return '';
+  const hitless=players.filter(player=>{
+    const batting=player?.batting||{};
+    const ab=Number(String(batting?.AB??'').replace(/,/g,''));
+    const hits=Number(String(batting?.H??'').replace(/,/g,''));
+    return Number.isFinite(ab)&&ab>0&&Number.isFinite(hits)&&hits===0;
+  }).map(player=>String(player?.name||'').trim()).filter(Boolean);
+  if(!hitless.length)return '';
+  return `直近${gameCount}試合で、打数が記録された選手のうち${hitless.join('、')}の${hitless.length}選手が安打0である。`;
+}
+
 export function buildReviewResult(second, cross, caseData={}) {
   const normalizedSecond=canonicalizePlayerData(second);
   const normalizedCross=canonicalizePlayerData(cross||{});
@@ -562,12 +578,16 @@ export function buildReviewResult(second, cross, caseData={}) {
   const rawWarnings=compactUnique([...(normalizedCross?.warnings||[]),...list.flatMap(x=>Array.isArray(x?.warnings)?x.warnings:[])]);
   const rawPrediction=compactUnique(list.flatMap(x=>Array.isArray(x?.prediction)?x.prediction:[]));
   let teamReviewGroundingAdjusted=false;
+  const directTeamReviewFinding=reviewKind==='TEAM_REVIEW'?teamReviewDirectRecentBattingFinding(caseData):'';
   const majorReasons=reviewKind==='TEAM_REVIEW'
-    ? compactUnique(rawMajorReasons.map(value=>{
-        const grounded=groundTeamReviewReason(value);
-        if(grounded.changed)teamReviewGroundingAdjusted=true;
-        return grounded.text;
-      }))
+    ? compactUnique([
+        directTeamReviewFinding,
+        ...rawMajorReasons.map(value=>{
+          const grounded=groundTeamReviewReason(value);
+          if(grounded.changed)teamReviewGroundingAdjusted=true;
+          return grounded.text;
+        })
+      ])
     : rawMajorReasons;
   const warnings=reviewKind==='TEAM_REVIEW'
     ? compactUnique([
@@ -576,7 +596,7 @@ export function buildReviewResult(second, cross, caseData={}) {
           if(grounded.changed)teamReviewGroundingAdjusted=true;
           return grounded.text;
         }),
-        ...(teamReviewGroundingAdjusted?['TEAM_REVIEWでは、数値差だけから特定選手への依存・因果・将来結果を断定しない。']:[])
+        ...((teamReviewGroundingAdjusted||directTeamReviewFinding)?['TEAM_REVIEWでは、確認済みの個別記録や数値差だけから特定選手への依存・チーム全体の恒常的な弱点・得点への因果・将来結果を断定しない。']:[])
       ])
     : rawWarnings;
   const prediction=reviewKind==='TEAM_REVIEW'?[]:rawPrediction;
@@ -595,7 +615,7 @@ export function buildReviewResult(second, cross, caseData={}) {
   else {
     const lead=majorReasons[0]||list.find(x=>String(x?.publicStatement||'').trim())?.publicStatement||'3賢人の二次評価を確認する。';
     recommendation=reviewKind==='TEAM_REVIEW'
-      ? `現時点で確認できる課題候補：${lead}${teamReviewGroundingAdjusted?' 数値差だけから特定選手への依存やチーム全体の弱点とは断定しない。':''}`
+      ? `現時点で確認できる課題候補：${lead}${(teamReviewGroundingAdjusted||directTeamReviewFinding)?' この記録や数値差だけから特定選手への依存、チーム全体の恒常的な弱点、得点への因果までは断定しない。':''}`
       : `現時点の評価：${lead}`;
   }
 

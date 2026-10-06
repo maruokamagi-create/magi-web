@@ -220,7 +220,9 @@ jobs:
           jq -e '
             (.primary.melchior.publicStatement|length>0) and
             (.primary.balthasar.publicStatement|length>0) and
-            (.primary.casper.publicStatement|length>0)
+            (.primary.casper.publicStatement|length>0) and
+            (([.primary[]|tostring]|join("\n")) as $text |
+              ($text|test("半年後|1年後|勝負の分かれ道|得点源が限定|得点力.{0,24}直結|数値の偏りこそ.{0,24}弱点|打線の偏り.{0,24}弱点|育成を疎か|チーム全体を.{0,24}育て")|not))
           ' /tmp/team-review-primary.json >/dev/null
 
           run_stage cross 3
@@ -230,7 +232,9 @@ jobs:
           jq -e '
             (.second.melchior.publicStatement|length>0) and
             (.second.balthasar.publicStatement|length>0) and
-            (.second.casper.publicStatement|length>0)
+            (.second.casper.publicStatement|length>0) and
+            (([.second[]|tostring]|join("\n")) as $text |
+              ($text|test("半年後|1年後|勝負の分かれ道|得点源が限定|得点力.{0,24}直結|数値の偏りこそ.{0,24}弱点|打線の偏り.{0,24}弱点|育成を疎か|チーム全体を.{0,24}育て")|not))
           ' /tmp/team-review-second.json >/dev/null
 
           run_stage final 3
@@ -240,6 +244,9 @@ jobs:
             .final.reviewKind=="TEAM_REVIEW" and
             (.final.status|length>0) and
             (.final.recommendation|length>0) and
+            ([.final.majorReasons[]?|select(test("直近6試合.*安打0"))]|length>0) and
+            ((.final.majorReasons|join("\n")|test("チームの弱点である|戦術的弱点|総合力と育成面での課題|得点力.{0,24}直結"))|not) and
+            (.final.recommendation|test("恒常的な弱点、得点への因果までは断定しない")) and
             (.digest|length==16)
           ' /tmp/team-review-final.json >/dev/null
           echo 'PRODUCTION STAGED LIVE TEAM-REVIEW DELIBERATION: PASS'

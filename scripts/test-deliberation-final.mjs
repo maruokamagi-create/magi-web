@@ -197,8 +197,8 @@ test('R08 TEAM_REVIEW final does not elevate spread into proven dependency or we
   const reasons=r.majorReasons.join('\n');
   assert.doesNotMatch(reasons,/弱点としてデータ上明確|戦術的弱点|総合力と育成面での課題|依存|頼り/);
   assert.equal(r.prediction.length,0);
-  assert.match(r.recommendation,/数値差だけから特定選手への依存やチーム全体の弱点とは断定しない/);
-  assert.ok(r.warnings.some(x=>x.includes('数値差だけから特定選手への依存')));
+  assert.match(r.recommendation,/記録や数値差だけから特定選手への依存、チーム全体の恒常的な弱点、得点への因果までは断定しない/);
+  assert.ok(r.warnings.some(x=>x.includes('個別記録や数値差だけから特定選手への依存')));
   assert.ok(!r.warnings.some(x=>x.includes('対策不足')));
 });
 
@@ -233,8 +233,44 @@ test('R10 TEAM_REVIEW removes the production spread-to-weakness contradiction',(
   const reasons=r.majorReasons.join('\n');
   assert.doesNotMatch(reasons,/判断を変える理由|チームの弱点である|戦術的な視点|総合力と育成面での課題/);
   assert.ok(r.majorReasons.includes('確認済み記録には選手間の数値差がある。'));
-  assert.match(r.recommendation,/数値差だけから特定選手への依存やチーム全体の弱点とは断定しない/);
+  assert.match(r.recommendation,/記録や数値差だけから特定選手への依存、チーム全体の恒常的な弱点、得点への因果までは断定しない/);
   assert.ok(!r.warnings.some(x=>x.includes('持続的な成長が損なわれる')));
+});
+
+
+test('R11 TEAM_REVIEW final surfaces direct recent hitless fact from structured Evidence',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{primaryReason:'確認済みの打撃成績には選手間の数値差がある。'}),
+    balthasar:persona('BALTHASAR','BLUE',{primaryReason:'確認済み記録を継続して見る。'}),
+    casper:persona('CASPER','BLUE',{primaryReason:'追加の観察情報が必要だ。'})
+  };
+  const caseData={
+    selectionKind:'TEAM_REVIEW',
+    evidence:{
+      reviewKind:'TEAM_REVIEW',
+      selectionKind:'TEAM_REVIEW',
+      recentSix:{
+        status:'COMPLETE',
+        gameCount:6,
+        players:[
+          {name:'井坂 悠聖',batting:{AB:'9',H:'0'}},
+          {name:'大久保 夢翔',batting:{AB:'4',H:'0'}},
+          {name:'長侶 穹',batting:{AB:'6',H:'0'}},
+          {name:'吉田 真翔',batting:{AB:'5',H:'0'}},
+          {name:'鰐渕 将太',batting:{AB:'3',H:'0'}},
+          {name:'武田 晴琉翔',batting:{AB:'5',H:'0'}},
+          {name:'大野 竜暉',batting:{AB:'14',H:'5'}},
+          {name:'上村 蓮',batting:{AB:'0',H:'0'}}
+        ]
+      }
+    }
+  };
+  const r=buildReviewResult(second,{},caseData);
+  assert.match(r.majorReasons[0],/直近6試合/);
+  assert.match(r.majorReasons[0],/6選手が安打0/);
+  assert.doesNotMatch(r.majorReasons[0],/得点源|得点力|依存|戦術|弱点/);
+  assert.match(r.recommendation,/直近6試合/);
+  assert.match(r.recommendation,/恒常的な弱点、得点への因果までは断定しない/);
 });
 
 // Selection aggregation: no hard-coded clean-up wording, preserve split/review states.
