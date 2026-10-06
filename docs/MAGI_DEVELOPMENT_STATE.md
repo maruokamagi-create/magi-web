@@ -359,14 +359,24 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - TEAM_REVIEW final prediction text is not published from spread-only review synthesis, so a current-state review cannot turn measured spread into unsupported future outcomes. A grounding warning records that dependency/causation/future effects are not established by numeric spread alone.
 - Regression coverage now includes the exact production-style 「頼りっきり」 wording, safe soft recovery of that sentence, prevention of spread-to-proven-weakness elevation in FINAL, and preservation of directly observed findings.
 
+## Natural-third staged Live E2E and inning-unit false-positive follow-up
+
+- Main `5def482f...` (the TEAM_REVIEW final-grounding merge) passed the ordinary main unit/continuity/UI checks, but Production Live Deliberation run #114 failed before TEAM_REVIEW because the natural third-batter job remained monolithic.
+- Run #114 attempt 1 first hit the Vercel outer-request timeout (HTTP 504). A fresh curl retry then failed deterministically in PRIMARY/MELCHIOR with `PERSONA_BATCH_VALIDATION_FAILED`: Evidence contained an IP value of 1 and the generic ambiguous-inning guard interpreted an unlabeled 「1回」 in non-pitching prose as that innings value.
+- Run #114 attempt 2 reproduced the same deterministic guard issue immediately, so this was not treated as a transient provider failure and the guard was not weakened.
+- The ambiguous-inning rule still blocks pitching prose such as 「現チームのサンプルはまだ5回」 when Evidence says IP=5.0, but it now excludes explicitly batting-order/batting sentences such as 「3番起用が1回」 from being reinterpreted as innings merely because the number overlaps an IP value. Regression coverage preserves both sides of that boundary.
+- The exact natural-third Live E2E is now staged with the same short-lived server-side session architecture already used by full lineup and TEAM_REVIEW: PREPARE -> PRIMARY -> CROSS -> SECOND -> FINAL are separate outer requests. PRIMARY and SECOND use one inner persona-batch attempt per outer request, while bounded transport retries are fresh outer requests from the workflow.
+- The natural-third workflow fails fast on deterministic persona validation and daily provider quota instead of hot-looping, while retaining bounded recovery for genuinely retryable request failures.
+
 ## Next concrete work
 
-1. Complete PR #89 checks, merge only if the semantic/fail-closed tests remain green, then run the production Live Deliberation gate on the merged main.
-2. Inspect the actual TEAM_REVIEW PRIMARY, SECOND and FINAL output after merge, not only pass/fail. Confirm the visible persona text no longer says 「頼りっきり」 and the FINAL does not promote batting/usage spread into proven dependency, tactical weakness, development harm, or future outcome.
-3. Confirm directly observed findings still survive the TEAM_REVIEW final grounding layer unchanged.
-4. Expand acceptance coverage from the current four live classes to the remaining Definition-of-Done classes: individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup, and CLARIFY.
-5. After routing correctness is covered, measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation so correctness and response speed improve together.
-6. Only declare the current stabilization complete after those classes are routed, rendered and timing-checked through their real production paths.
+1. Complete CI for the staged natural-third branch and merge only if the persona guard, deliberation and continuity checks remain green.
+2. Run the merged main through Production Live Deliberation again and require all four current real-data classes to complete: staged full best-order, closer, staged natural third-batter, and staged TEAM_REVIEW.
+3. Inspect the actual TEAM_REVIEW PRIMARY, SECOND and FINAL output after that production run, not only pass/fail. Confirm the visible persona text no longer says 「頼りっきり」 and the FINAL does not promote batting/usage spread into proven dependency, tactical weakness, development harm, or future outcome.
+4. Confirm directly observed findings still survive the TEAM_REVIEW final grounding layer unchanged.
+5. Expand acceptance coverage to the remaining Definition-of-Done classes: individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup, and CLARIFY.
+6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation so correctness and response speed improve together.
+7. Only declare the current stabilization complete after those classes are routed, rendered and timing-checked through their real production paths.
 
 ## Handoff instruction for a new ChatGPT chat
 

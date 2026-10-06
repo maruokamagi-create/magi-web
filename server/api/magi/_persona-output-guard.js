@@ -114,6 +114,10 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
   if(!innings.length)return;
   for(const sentence of parts){
     if(/投球回|イニング/.test(sentence))continue;
+    // A bare "N回" can also be an appearance/count in a non-pitching domain.
+    // Do not reinterpret an explicitly batting-order sentence (e.g. "3番起用が1回")
+    // as innings merely because the same numeric value exists in IP evidence.
+    if(/(?:[1-9]番(?:打者|起用|で|を|に|経験)|打順|打者|打席|打撃|打率|OPS|出塁率|長打率)/.test(sentence))continue;
     const candidates=[];
     const explicitBare=sentence.match(/(?:サンプル|現チーム).{0,24}?([0-9]+(?:\.[0-9]+)?)\s*回/);
     if(explicitBare&&!explicitBare[1].includes('.'))candidates.push({value:explicitBare[1],label:`${explicitBare[1]}回`});

@@ -128,6 +128,24 @@ test('G20 bare inning count used as sample is blocked',()=>{
   assert.ok(issues.some(x=>x.includes('投球回5')));
 });
 
+
+test('G20b batting-order count is not mistaken for innings when the number overlaps IP',()=>{
+  const battingOrderCase={
+    ...CASE,
+    question:'3番を誰にする？',
+    evidence:{
+      ...CASE.evidence,
+      currentTeam:{
+        ...CASE.evidence.currentTeam,
+        pitching:{...CASE.evidence.currentTeam.pitching,innings:'1.0'}
+      }
+    }
+  };
+  const r=result({publicStatement:'現チームでは3番起用が1回と少ないです。'});
+  const issues=validatePersonaOutput(battingOrderCase,r,{focused:false});
+  assert.ok(!issues.some(x=>x.includes('投球回1')));
+});
+
 test('G21 explicit inning unit is accepted',()=>{
   const r=result({publicStatement:'現チームの投球回は5.0回です。'});
   assert.deepEqual(validatePersonaOutput(CASE,r,{focused:true}),[]);

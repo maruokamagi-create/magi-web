@@ -165,6 +165,56 @@ async function readStagedState(mode,session){return (await getCache().get(staged
 async function writeStagedState(mode,session,state){await getCache().set(stagedSessionKey(mode,session),state,{ttl:STAGED_LIVE_TTL_SECONDS,tags:['magi-live-e2e']});}
 function summarizePersonaSet(set){return Object.fromEntries(PERSONAS.map(p=>[p,{judgment:set?.[p]?.judgment||'',confidence:set?.[p]?.confidence||'',candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],reviewRequested:Boolean(set?.[p]?.reviewRequested),dataConflict:Boolean(set?.[p]?.dataConflict)}]));}
 function assertLineupPersonaSet(set,phase){for(const p of PERSONAS){if(set?.[p]?.reviewRequested===true||set?.[p]?.dataConflict===true||!validNine(set?.[p]))throw new Error(`${phase}_${p.toUpperCase()}_INVALID`);}}
+function assertNaturalThirdPersonaSet(set,phase){
+  for(const p of PERSONAS){
+    const row=set?.[p]||{};
+    if(row?.reviewRequested===true||row?.dataConflict===true||!Array.isArray(row?.candidatePlayers)||row.candidatePlayers.length<1){
+      throw new Error(`NATURAL_THIRD_${phase}_${p.toUpperCase()}_INVALID:${JSON.stringify({candidatePlayers:row?.candidatePlayers||[],reviewRequested:row?.reviewRequested,dataConflict:row?.dataConflict,reviewReason:row?.reviewReason||'',warnings:row?.warnings||[],publicStatement:row?.publicStatement||''}).slice(0,1800)}`);
+    }
+  }
+}
+async function runStagedNaturalThird(base,packet,stage,session){
+  if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
+  const normalized=String(stage||'').toLowerCase();
+  if(normalized==='prepare'){
+    const players=packet?.allCurrentTeamCheck?.players||[];
+    const ready=packet?.selectionKind==='BATTING_ORDER'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));
+    if(!ready)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
+    const caseData=browserCase(packet,NATURAL_THIRD_QUESTION);
+    await writeStagedState('naturalThird',session,{caseData});
+    return {ok:true,mode:'naturalThird',stage:'PREPARE',session,question:NATURAL_THIRD_QUESTION,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||''}};
+  }
+  const state=await readStagedState('naturalThird',session);
+  if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='primary'){
+    const primary=await serialPersonaSet(base,'NATURAL_THIRD_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}),{maxAttempts:1});
+    assertNaturalThirdPersonaSet(primary,'PRIMARY');
+    await writeStagedState('naturalThird',session,{...state,primary});
+    return {ok:true,mode:'naturalThird',stage:'PRIMARY',session,question:NATURAL_THIRD_QUESTION,primary:summarizePersonaSet(primary)};
+  }
+  if(!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='cross'){
+    const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:state.caseData,primary:state.primary},'NATURAL_THIRD_CROSS',{maxAttempts:1});
+    for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`NATURAL_THIRD_CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);}
+    await writeStagedState('naturalThird',session,{...state,cross});
+    return {ok:true,mode:'naturalThird',stage:'CROSS',session,cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],informationGaps:cross?.informationGaps||[],challengeCounts:Object.fromEntries(PERSONAS.map(p=>[p,Array.isArray(cross?.challenges?.[p])?cross.challenges[p].length:0]))}};
+  }
+  if(normalized==='second'){
+    if(!state?.cross)throw new Error('LIVE_STAGE_CROSS_NOT_FOUND');
+    const second=await serialPersonaSet(base,'NATURAL_THIRD_SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}),{maxAttempts:1});
+    assertNaturalThirdPersonaSet(second,'SECOND');
+    await writeStagedState('naturalThird',session,{...state,second});
+    return {ok:true,mode:'naturalThird',stage:'SECOND',session,second:summarizePersonaSet(second)};
+  }
+  if(normalized==='final'){
+    if(!state?.cross||!state?.second)throw new Error('LIVE_STAGE_SECOND_NOT_FOUND');
+    const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:state.caseData,primary:state.primary,crossExamination:state.cross,second:state.second},'NATURAL_THIRD_FINAL',{maxAttempts:1});
+    const legal=final?.mode==='SELECTION'&&['SELECTION_RESULT','SELECTION_SPLIT'].includes(final?.status)&&Array.isArray(final?.recommendedCandidates)&&final.recommendedCandidates.length>0&&final.recommendedCandidates.every(n=>rosterKeys.has(norm(n)));
+    if(!legal)throw new Error('NATURAL_THIRD_FINAL_INVALID_'+String(final?.status||'NO_STATUS'));
+    return {ok:true,mode:'naturalThird',stage:'FINAL',session,question:NATURAL_THIRD_QUESTION,final:{mode:final.mode,status:final.status,centerCandidates:final.centerCandidates||[],recommendedCandidates:final.recommendedCandidates||[],personaSelections:final.personaSelections||{},recommendation:final.recommendation||'',majorReasons:final.majorReasons||[],warnings:final.warnings||[]},digest:stableDigest({primary:state.primary,cross:state.cross,second:state.second,final})};
+  }
+  throw new Error('LIVE_STAGE_UNSUPPORTED');
+}
 async function runStagedLineup(base,packet,stage,session){
   if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
   const normalized=String(stage||'').toLowerCase();
@@ -289,6 +339,15 @@ export default async function handler(req,res){
     const stagedSession=String(req.query?.session||'');
     if(mode==='lineup'&&['primary','cross','second','final'].includes(stagedStage)){
       const staged=await runStagedLineup(base,null,stagedStage,stagedSession);
+      return res.status(200).json(staged);
+    }
+    if(mode==='naturalThird'&&['primary','cross','second','final'].includes(stagedStage)){
+      const staged=await runStagedNaturalThird(base,null,stagedStage,stagedSession);
+      return res.status(200).json(staged);
+    }
+    if(mode==='naturalThird'&&stagedStage==='prepare'){
+      const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
+      const staged=await runStagedNaturalThird(base,naturalPacket,'prepare',stagedSession);
       return res.status(200).json(staged);
     }
     if(mode==='teamReview'&&['primary','cross','second','final'].includes(stagedStage)){
