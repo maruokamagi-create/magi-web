@@ -17,7 +17,7 @@ const MAX_BODY_BYTES = 512_000;
 // latency beyond the serverless execution window. One model attempt per pass is
 // intentional; canonical mode may still move to a fallback model when allowed.
 const GEMINI_TIMEOUT_MS = 20_000;
-const GEMINI_TOTAL_BUDGET_MS = 46_000;
+const GEMINI_TOTAL_BUDGET_MS = 34_000;
 const GEMINI_MIN_ATTEMPT_MS = 2_500;
 const RATE_WINDOW_MS = 60_000;
 // A complete MAGI deliberation uses multiple persona/cross/final requests and
