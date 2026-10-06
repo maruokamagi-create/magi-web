@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: 0d82344728f3b3be174f794125d31508b9b70a52
+- State base main SHA: 91c3d2bca4eb01c363a9face7834f615de5c8dfc
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -254,6 +254,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Quality review of the successful TEAM_REVIEW output exposed a separate semantic problem: generic proposal finalization rendered the weakness question as `条件付きで採用し、条件を確認しながら運用する。`, which is proposal language and does not directly answer a review/evaluation question.
 - The same output also contained an unhedged `得点生産の依存度が高い` claim even though TEAM_REVIEW prompting explicitly says batting-rate concentration alone does not establish dependency.
 - TEAM_REVIEW and PLAYER_REVIEW now use review-specific final semantics instead of adopt/reject proposal wording. A deterministic guard blocks unhedged dependency claims in TEAM_REVIEW unless framed as uncertainty; the batch path can sanitize the dependency-only soft-prose failure without weakening structural/numeric/evidence guards.
+
+## Provider fallback serverless-deadline finding
+
+- After the review-answer quality fix on main `91c3d2bc...`, the production Live E2E PREPARE stage passed but the first fresh PRIMARY request ended as HTTP 504 at about the Vercel function deadline.
+- This run changed the TEAM_REVIEW/persona instruction text, so the canonical result cache legitimately missed. The common Gemini helper could then try several configured/reserve models sequentially; known daily/minute quota failures plus per-model timeouts can cumulatively exceed one serverless request even though each individual attempt is bounded.
+- Provider quota cooldowns are now persisted in Vercel cache. MODEL-scoped 429 responses store a per-model cooldown using the provider retry delay/window; PROJECT-scoped 429 stores a project cooldown. Later serverless requests skip known cooling-down models instead of spending another provider call on them.
+- The common Gemini helper also has a 46-second total provider budget inside a request, with a minimum remaining-attempt threshold. This makes failure explicit before the outer Vercel deadline rather than returning an opaque 504, while still leaving room to reach a healthy reserve model.
+- Canonical result caching, Evidence rules, persona isolation, strict-mode behavior and the free-only provider policy are unchanged.
 
 ## Next concrete work
 

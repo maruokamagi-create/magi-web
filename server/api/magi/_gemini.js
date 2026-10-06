@@ -1,6 +1,6 @@
 // MAGI v1 server-only Gemini REST helper.
 // GEMINI_API_KEY is required. GEMINI_MODEL is optional; a vetted default is used.
-import { buildCanonicalKey, canonicalFingerprint, readCanonicalResult, writeCanonicalResult } from './_canonical-cache.js';
+import { buildCanonicalKey, canonicalFingerprint, readCanonicalResult, writeCanonicalResult, readProviderQuotaCooldown, writeProviderQuotaCooldown } from './_canonical-cache.js';
 
 const GEMINI_ENDPOINT = 'https://generativelanguage.googleapis.com/v1beta/models';
 const DEFAULT_MODEL = 'gemini-3.5-flash-lite';
@@ -17,6 +17,8 @@ const MAX_BODY_BYTES = 512_000;
 // latency beyond the serverless execution window. One model attempt per pass is
 // intentional; canonical mode may still move to a fallback model when allowed.
 const GEMINI_TIMEOUT_MS = 20_000;
+const GEMINI_TOTAL_BUDGET_MS = 46_000;
+const GEMINI_MIN_ATTEMPT_MS = 2_500;
 const RATE_WINDOW_MS = 60_000;
 // A complete MAGI deliberation uses multiple persona/cross/final requests and
 // the browser may retry the whole run once after a transient failure. 60 keeps
@@ -193,9 +195,10 @@ export async function checkGeminiConfiguration() {
   }
 }
 
-async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
+async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema, timeoutMs=GEMINI_TIMEOUT_MS }) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), GEMINI_TIMEOUT_MS);
+  const boundedTimeout=Math.max(1_000,Math.min(GEMINI_TIMEOUT_MS,Number(timeoutMs)||GEMINI_TIMEOUT_MS));
+  const timer = setTimeout(() => controller.abort(), boundedTimeout);
   try {
     const url = `${GEMINI_ENDPOINT}/${encodeURIComponent(model)}:generateContent`;
     const response = await fetch(url, {
@@ -264,11 +267,11 @@ async function callGeminiModel({ model, apiKey, systemInstruction, userPayload, 
   }
 }
 
-async function tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
-  return callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
+async function tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, timeoutMs }) {
+  return callGeminiModel({ model, apiKey, systemInstruction, userPayload, responseSchema, timeoutMs });
 }
 
-async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema }) {
+async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, userPayload, responseSchema, timeoutMs }) {
   const key = buildCanonicalKey({ model, systemInstruction, userPayload, responseSchema });
   const fingerprint = canonicalFingerprint(key);
   const cached = await readCanonicalResult(key);
@@ -278,7 +281,7 @@ async function getOrCreateCanonicalResult({ model, apiKey, systemInstruction, us
   }
 
   console.info(`[MAGI CANONICAL CACHE] MISS ${fingerprint} model=${model}`);
-  const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema });
+  const result = await tryModel({ model, apiKey, systemInstruction, userPayload, responseSchema, timeoutMs });
   const stored = await writeCanonicalResult(key, result);
   console.info(`[MAGI CANONICAL CACHE] ${stored ? 'STORED' : 'STORE-SKIPPED'} ${fingerprint} model=${model}`);
   return result;
@@ -296,22 +299,68 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
     : [...configuredModels, ...FREE_TIER_RESERVE_MODELS]
         .filter((model, index, arr) => model && arr.indexOf(model) === index);
 
+  const startedAt=Date.now();
   let lastError;
   const failureTrail = [];
+
+  const projectCooldown=await readProviderQuotaCooldown('__PROJECT__');
+  if(projectCooldown){
+    const err=new Error('Gemini provider project quota is cooling down');
+    err.status=429;
+    err.retryable=true;
+    err.failureClass='provider_rate_limit';
+    err.providerDiagnostic=projectCooldown;
+    err.failureTrail=[{slot:'project_cooldown',model:'',failureClass:'provider_rate_limit_cached',quotaWindow:String(projectCooldown?.quotaWindow||''),quotaScope:'PROJECT',quotaId:String(projectCooldown?.quotaId||'')}];
+    throw err;
+  }
+
   for (let index = 0; index < models.length; index++) {
     const model = models[index];
+    const slot=index===0?'primary':(index<configuredModels.length?'fallback':'free_tier_reserve');
+    const cooldown=await readProviderQuotaCooldown(model);
+    if(cooldown){
+      lastError=new Error(`${model} quota is cooling down`);
+      lastError.status=429;
+      lastError.retryable=true;
+      lastError.failureClass='provider_rate_limit';
+      lastError.providerDiagnostic=cooldown;
+      failureTrail.push({
+        slot,
+        model,
+        failureClass:'provider_rate_limit_cached',
+        quotaWindow:String(cooldown?.quotaWindow||''),
+        quotaScope:String(cooldown?.quotaScope||'MODEL'),
+        quotaId:String(cooldown?.quotaId||'')
+      });
+      if(strict)break;
+      continue;
+    }
+
+    const elapsed=Date.now()-startedAt;
+    const remaining=GEMINI_TOTAL_BUDGET_MS-elapsed;
+    if(remaining<GEMINI_MIN_ATTEMPT_MS){
+      const err=new Error('Gemini fallback budget exhausted before serverless deadline');
+      err.timedOut=true;
+      err.retryable=true;
+      err.failureClass='timeout';
+      lastError=err;
+      failureTrail.push({slot,model,failureClass:'budget_exhausted',quotaWindow:'',quotaScope:'',quotaId:''});
+      break;
+    }
+
     try {
       return await getOrCreateCanonicalResult({
         model,
         apiKey,
         systemInstruction,
         userPayload,
-        responseSchema
+        responseSchema,
+        timeoutMs:Math.min(GEMINI_TIMEOUT_MS,remaining)
       });
     } catch (error) {
       lastError = error;
       failureTrail.push({
-        slot: index === 0 ? 'primary' : (index < configuredModels.length ? 'fallback' : 'free_tier_reserve'),
+        slot,
         model,
         failureClass: String(error?.failureClass || (error?.timedOut ? 'timeout' : 'other')),
         quotaWindow: String(error?.providerDiagnostic?.quotaWindow || ''),
@@ -320,11 +369,13 @@ export async function callGemini({ systemInstruction, userPayload, responseSchem
       });
       const providerRateLimited = Number(error?.status) === 429 || error?.failureClass === 'provider_rate_limit';
       if (providerRateLimited) {
-        // Gemini quota metadata can distinguish a project-wide limit from a
-        // per-model FreeTier limit. Only a MODEL-scoped limit is safe to route
-        // to the next distinct configured model; PROJECT-scoped limits still
-        // fail fast so we do not multiply requests against the same quota.
-        const modelScoped = String(error?.providerDiagnostic?.quotaScope || '') === 'MODEL';
+        const quotaScope=String(error?.providerDiagnostic?.quotaScope||'');
+        if(quotaScope==='PROJECT'){
+          await writeProviderQuotaCooldown('__PROJECT__',error.providerDiagnostic||{});
+        }else if(quotaScope==='MODEL'){
+          await writeProviderQuotaCooldown(model,error.providerDiagnostic||{});
+        }
+        const modelScoped = quotaScope === 'MODEL';
         if (strict || !modelScoped || index === models.length - 1) break;
         console.warn(`[MAGI Gemini] ${model} model-scoped quota exhausted; trying configured fallback ${models[index + 1]}`);
         continue;

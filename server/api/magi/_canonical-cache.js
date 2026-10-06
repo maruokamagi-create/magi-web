@@ -84,4 +84,73 @@ export async function writeCanonicalResult(key, value) {
   }
 }
 
+
+const PROVIDER_QUOTA_CACHE_VERSION='magi-provider-quota-v1';
+
+function providerQuotaKey(scope){
+  return `magi:${PROVIDER_QUOTA_CACHE_VERSION}:${String(scope||'').trim()}`;
+}
+
+export function parseProviderRetryDelaySeconds(value,{quotaWindow='UNKNOWN'}={}){
+  const raw=String(value||'').trim().toLowerCase();
+  const m=raw.match(/^([0-9]+(?:\.[0-9]+)?)(ms|s|m|h)?$/);
+  let seconds=0;
+  if(m){
+    const n=Number(m[1]);
+    const unit=m[2]||'s';
+    seconds=unit==='ms'?Math.ceil(n/1000):unit==='m'?Math.ceil(n*60):unit==='h'?Math.ceil(n*3600):Math.ceil(n);
+  }
+  if(!Number.isFinite(seconds)||seconds<=0){
+    const w=String(quotaWindow||'').toUpperCase();
+    seconds=w==='DAY'?3600:w==='MINUTE'?60:w==='SECOND'?5:30;
+  }
+  return Math.max(1,Math.min(86400,seconds));
+}
+
+export async function readProviderQuotaCooldown(scope){
+  const key=providerQuotaKey(scope);
+  try{
+    const cache=getCache();
+    const value=await cache.get(key);
+    if(!value||typeof value!=='object')return null;
+    const until=Number(value.until||0);
+    if(!Number.isFinite(until)||until<=Date.now())return null;
+    return value;
+  }catch(error){
+    console.warn(`[MAGI PROVIDER QUOTA] read unavailable: ${error?.message||error}`);
+    return null;
+  }
+}
+
+export async function writeProviderQuotaCooldown(scope,diagnostic={}){
+  const key=providerQuotaKey(scope);
+  const seconds=parseProviderRetryDelaySeconds(diagnostic?.retryDelay,{quotaWindow:diagnostic?.quotaWindow});
+  const value={
+    providerStatus:String(diagnostic?.providerStatus||''),
+    quotaMetric:String(diagnostic?.quotaMetric||''),
+    quotaId:String(diagnostic?.quotaId||''),
+    model:String(diagnostic?.model||''),
+    location:String(diagnostic?.location||''),
+    retryDelay:String(diagnostic?.retryDelay||''),
+    quotaWindow:String(diagnostic?.quotaWindow||''),
+    quotaScope:String(diagnostic?.quotaScope||''),
+    until:Date.now()+seconds*1000
+  };
+  try{
+    const cache=getCache();
+    await cache.set(key,value,{ttl:seconds,tags:['magi-provider-quota',PROVIDER_QUOTA_CACHE_VERSION]});
+    return value;
+  }catch(error){
+    console.warn(`[MAGI PROVIDER QUOTA] write unavailable: ${error?.message||error}`);
+    return null;
+  }
+}
+
+export async function clearProviderQuotaCooldown(scope){
+  try{
+    const cache=getCache();
+    if(typeof cache.delete==='function')await cache.delete(providerQuotaKey(scope));
+  }catch{}
+}
+
 export const CANONICAL_CACHE_VERSION = CACHE_VERSION;
