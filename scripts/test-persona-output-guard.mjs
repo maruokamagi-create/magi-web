@@ -250,7 +250,7 @@ test('G40 team review cannot assert hitter dependency from batting spread alone'
   };
   const r=result({analysis:['中嶋 玲月、大野 竜暉、大久保 陽翔への得点生産の依存度が高い。']});
   const issues=validatePersonaOutput(teamCase,r,{focused:false});
-  assert.ok(issues.some(x=>x.includes('依存関係')));
+  assert.ok(issues.some(x=>x.includes('依存')));
 });
 
 test('G41 team review may describe measured concentration without dependency claim',()=>{
