@@ -9,8 +9,8 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-06
-- State base main SHA: a8fc3ae14b9d1d88b724345f371bcb4bbe7f057b
+- State updated: 2026-10-07
+- State base main SHA: 40bec6873539dec0ce09d89323da8276a4204af0
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`ddd1e29dc06348d6b61e606e245646c9691644cb`
+`40bec6873539dec0ce09d89323da8276a4204af0`
 
 Recent architectural fixes already merged:
 
@@ -378,15 +378,28 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - TEAM_REVIEW FINAL also drops future-causal warnings such as 「目先の効率だけに囚われると、組織全体の持続的な成長が損なわれる」 when the outcome is not directly established by Evidence. Directly observed non-inference findings remain preserved.
 - Regression case R10 uses the exact production-style sentences from #115 so this contradiction cannot silently re-enter FINAL.
 
+
+## Production Live #116 visible-persona semantic inspection
+
+- Main `40bec687...` completed Production Live Deliberation #116 successfully across staged full best-order, closer, staged natural third-batter and staged TEAM_REVIEW. The downstream Production Sequential Deliberation Suite #184 also completed successfully.
+- The #115 FINAL contradiction is resolved in #116: TEAM_REVIEW FINAL no longer says both 「数値差だけでは弱点と断定しない」 and 「偏りがチームの弱点である」 in its major reasons.
+- Full log inspection still found a product-quality gap before FINAL. Visible PRIMARY/SECOND persona prose could convert measured batting spread or individual hitless results into stronger claims such as 「今の弱点は打線の偏り」, 「得点源が限定」, 「得点力や戦術的な課題に直結」, or generic future/development advice such as 「半年後や1年後」.
+- A green workflow is therefore not sufficient unless visible PRIMARY/SECOND text is also grounded. Current branch `fix/team-review-visible-grounding-20261007` adds deterministic guards for spread-to-weakness/tactics/development escalation, individual batting result-to-scoring causality, and unsupported future/development advice.
+- Soft recovery for those narrowly defined TEAM_REVIEW prose issues now preserves the directly observed record, removes the stronger inference, clears forecast content, and re-runs the authoritative persona guard before any sanitized result can be published. Unknown, structural, roster, numeric and evidence-source issues remain fail-closed.
+- TEAM_REVIEW prompts are tightened to state explicitly that numeric spread, hitless counts and usage differences are reportable facts but do not by themselves prove a team-wide weakness, scoring dependency, tactical failure, development impact or wins.
+- FINAL synthesis now derives a useful recent batting finding directly from structured `CASE.evidence.recentSix`, not from model prose: when present, players with AB>0 and H=0 are reported as a current observed fact. This keeps FINAL informative while preserving the inference boundary.
+- Production Live TEAM_REVIEW acceptance is strengthened so PRIMARY and SECOND must reject the exact unsupported semantic classes observed in #116, and FINAL must contain the direct recent hitless fact without the old contradiction.
+
+
 ## Next concrete work
 
-1. Complete CI for the TEAM_REVIEW final-contradiction fix and merge only if final semantics, persona guard and continuity checks remain green.
-2. Run Production Live Deliberation again on the merged main. Require all four current real-data classes to remain green.
-3. Inspect the actual staged TEAM_REVIEW FINAL again and confirm that recommendation and majorReasons no longer contradict one another: numeric/usage spread may be reported as a verified difference, but not as a proven dependency or team-wide weakness without additional Evidence.
-4. Confirm direct observed findings still survive final grounding unchanged and that PRIMARY -> CROSS -> SECOND -> FINAL remains visible.
-5. Expand acceptance coverage to the remaining Definition-of-Done classes: individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup, and CLARIFY.
-6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation so correctness and response speed improve together.
-7. Only declare the current stabilization complete after those classes are routed, rendered and timing-checked through their real production paths.
+1. Complete CI for `fix/team-review-visible-grounding-20261007`; merge only if persona guard, soft-recovery, FINAL, continuity and preview checks are green.
+2. Run Production Live Deliberation on the merged main. Require all four current real-data classes to remain green.
+3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
+4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
+5. After TEAM_REVIEW is production-verified, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup and CLARIFY.
+6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
+7. Do not declare stabilization complete until those remaining classes are verified through the real production path and the user-visible response quality is acceptable.
 
 ## Handoff instruction for a new ChatGPT chat
 
