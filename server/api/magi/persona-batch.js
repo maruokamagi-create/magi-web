@@ -157,11 +157,13 @@ function safeTransient(res, error) {
 
 function recoverSoftTeamReviewDependency(result, issues) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
-  if(!list.length||!list.every(v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存関係を断定')))return false;
+  if(!list.length||!list.every(v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り切りを事実として断定')))return false;
   const rewrite=value=>String(value||'')
     .replace(/(?:得点生産の)?依存度が高い/g,'打撃成績が一部に集中している')
     .replace(/特定の(?:選手|打者)(?:だけ)?に依存している/g,'一部の選手に打撃成績が集中している')
-    .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の集中');
+    .replace(/(?:特定の(?:高打率)?(?:選手|打者)(?:だけ)?に)?頼っている/g,'打撃成績が一部の選手に集中している')
+    .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の集中')
+    .replace(/(?:特定の(?:選手|打者)(?:だけ)?に)?頼り(?:きり|切り)/g,'打撃成績の集中');
   result.analysis=Array.isArray(result.analysis)?result.analysis.map(rewrite):[];
   result.prediction=Array.isArray(result.prediction)?result.prediction.map(rewrite):[];
   result.primaryReason=rewrite(result.primaryReason);
