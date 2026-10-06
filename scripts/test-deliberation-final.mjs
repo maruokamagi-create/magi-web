@@ -214,6 +214,29 @@ test('R09 TEAM_REVIEW preserves directly observed non-inference findings',()=>{
   assert.doesNotMatch(r.recommendation,/数値差だけから特定選手への依存/);
 });
 
+
+test('R10 TEAM_REVIEW removes the production spread-to-weakness contradiction',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{
+      primaryReason:'記録に基づいた数値の偏りは確認できる事実であり、私の判断を変える理由は見当たりません。'
+    }),
+    balthasar:persona('BALTHASAR','BLUE',{
+      primaryReason:'戦術的な視点から、記録に見える偏りがチームの弱点であるという結論に変わりはない。'
+    }),
+    casper:persona('CASPER','BLUE',{
+      primaryReason:'確認された出場機会や打数の偏りが、チームの総合力と育成面での課題となっているからだ。',
+      warnings:['目先の効率だけに囚われると、組織全体の持続的な成長が損なわれるおそれがある。']
+    })
+  };
+  const caseData={selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW'}};
+  const r=buildReviewResult(second,{},caseData);
+  const reasons=r.majorReasons.join('\n');
+  assert.doesNotMatch(reasons,/判断を変える理由|チームの弱点である|戦術的な視点|総合力と育成面での課題/);
+  assert.ok(r.majorReasons.includes('確認済み記録には選手間の数値差がある。'));
+  assert.match(r.recommendation,/数値差だけから特定選手への依存やチーム全体の弱点とは断定しない/);
+  assert.ok(!r.warnings.some(x=>x.includes('持続的な成長が損なわれる')));
+});
+
 // Selection aggregation: no hard-coded clean-up wording, preserve split/review states.
 test('C01 shared top candidate produces selection result',()=>{
   const second={
