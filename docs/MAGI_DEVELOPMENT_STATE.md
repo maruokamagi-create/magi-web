@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-05
-- State base main SHA: 18baaa8ac068791525236ea93dc720eee9728bef
+- State base main SHA: 0d82344728f3b3be174f794125d31508b9b70a52
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -247,13 +247,21 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Both callers now honor the server retry contract. Live diagnostics also preserve safe `code`, `persona`, and `guardIssueCodes`, so the next TEAM_REVIEW failure identifies the exact Evidence-language guard without repeating the same invalid generation.
 - Browser errors now carry the server code and endpoint into the formal runner diagnostic instead of collapsing every deterministic 503 into a generic retry.
 
+## Live deliberation milestone and review-answer quality finding
+
+- Main `0d823447...` has a fully green production Live Deliberation run across four materially different real-data classes: full best order, closer selection, natural third-batter selection, and TEAM_REVIEW. The downstream sequential production suite is also green.
+- The original 72% failure is therefore no longer reproduced in the current automatic production acceptance path; PRIMARY -> CROSS -> SECOND -> FINAL completes for TEAM_REVIEW.
+- Quality review of the successful TEAM_REVIEW output exposed a separate semantic problem: generic proposal finalization rendered the weakness question as `条件付きで採用し、条件を確認しながら運用する。`, which is proposal language and does not directly answer a review/evaluation question.
+- The same output also contained an unhedged `得点生産の依存度が高い` claim even though TEAM_REVIEW prompting explicitly says batting-rate concentration alone does not establish dependency.
+- TEAM_REVIEW and PLAYER_REVIEW now use review-specific final semantics instead of adopt/reject proposal wording. A deterministic guard blocks unhedged dependency claims in TEAM_REVIEW unless framed as uncertainty; the batch path can sanitize the dependency-only soft-prose failure without weakening structural/numeric/evidence guards.
+
 ## Next concrete work
 
-1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
-2. Compare the full probe's payload and failure with the browser path, especially SECOND.
-3. Fix the common deliberation pipeline, not the literal question.
-4. Add cross-class UI-path regression coverage.
-5. Only after actual UI completion, evaluate answer quality.
+1. Re-run production Live Deliberation after the review-semantics/TEAM_REVIEW language correction and inspect the actual TEAM_REVIEW final output, not only pass/fail.
+2. Confirm the final recommendation directly answers the review question and does not use proposal adoption wording.
+3. Confirm batting concentration is not converted into an unsupported dependency claim.
+4. Expand acceptance coverage from the current four live classes to the remaining Definition-of-Done classes: individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup, and CLARIFY.
+5. Only declare the current stabilization complete after those classes are routed and rendered through their real production paths.
 
 ## Handoff instruction for a new ChatGPT chat
 
