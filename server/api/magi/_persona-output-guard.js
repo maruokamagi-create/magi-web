@@ -248,6 +248,43 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       );
       if(unsupportedNonAppearance)issues.push('TEAM_REVIEWでEvidenceにない未出場選手を前提にしている');
     }
+
+    // A measured spread is a fact about the supplied sample. It is not, by itself,
+    // proof of a team-wide weakness, scoring dependency, tactical failure or
+    // development impact. Keep those inference boundaries visible in PRIMARY and
+    // SECOND too, not only in the synthesized FINAL.
+    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手)/;
+    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|直結|チーム力)/;
+    const groundingHedge=/(?:断定(?:しない|できない)|とは言えない|追加(?:の)?Evidence|追加情報|確認できない|根拠がない|課題候補|可能性|おそれ|考えられ)/;
+    const unsupportedSpreadOverclaim=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && spreadLike.test(sentence)
+      && spreadOverclaim.test(sentence)
+      && !groundingHedge.test(sentence)
+    );
+    if(unsupportedSpreadOverclaim)issues.push('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している');
+
+    // Individual batting outcomes may be reported directly, but they do not prove
+    // a team scoring route, game result or tactical consequence without explicit
+    // team-level outcome evidence.
+    const individualBattingCue=/(?:無安打|安打0|打率\s*\.?0(?:00)?|低打率|打てていない|当たっていない)/;
+    const teamOutcomeCue=/(?:得点源|得点力|得点ルート|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|戦術(?:上)?(?:の)?課題|直結)/;
+    const unsupportedBattingCausality=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && individualBattingCue.test(sentence)
+      && teamOutcomeCue.test(sentence)
+      && !groundingHedge.test(sentence)
+    );
+    if(unsupportedBattingCausality)issues.push('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定している');
+
+    // Current-state TEAM_REVIEW warnings must describe evidence limits or observed
+    // facts. Generic future/development coaching advice is not evidence.
+    const unsupportedDevelopmentAdvice=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:半年後|1年後|将来|チーム全体で.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
+      && !groundingHedge.test(sentence)
+    );
+    if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
   }
 
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
