@@ -1,6 +1,7 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
 import { deterministicFullLineupCross, deterministicSelectionCross, isSelectionCase } from './orchestrate.js';
+import { validatePersonaOutput } from './_persona-output-guard.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
@@ -232,6 +233,55 @@ export function recoverSoftPersonaBatchValidation(result, issues) {
   return true;
 }
 
+export function recoverUnsupportedComponentMetricLabels(result, issues, caseData, { focused=false }={}) {
+  const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
+  const unsupportedMetricIssue=v=>v.includes('Evidenceにない長打率を、存在する指標として述べている')
+    ||v.includes('Evidenceにない出塁率を、存在する指標として述べている');
+  if(!list.length||!list.every(unsupportedMetricIssue))return false;
+
+  const forbidden=/(?:出塁率|長打率)/;
+  const numericMetric=/(?:出塁率|長打率).{0,16}[0-9０-９]|[0-9０-９].{0,16}(?:出塁率|長打率)/;
+  const outputFields=[
+    ...(Array.isArray(result?.facts)?result.facts:[]),
+    ...(Array.isArray(result?.analysis)?result.analysis:[]),
+    ...(Array.isArray(result?.prediction)?result.prediction:[]),
+    ...(Array.isArray(result?.warnings)?result.warnings:[]),
+    result?.candidateBasis,result?.primaryReason,result?.publicStatement,result?.reviewReason,result?.changeReason
+  ].map(v=>String(v||'')).filter(Boolean);
+  if(outputFields.some(v=>numericMetric.test(v)))return false;
+
+  const snapshot=JSON.parse(JSON.stringify(result||{}));
+  const cleanText=value=>{
+    const raw=String(value||'').trim();
+    if(!raw||!forbidden.test(raw))return raw;
+    return raw.split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!forbidden.test(s)).join('');
+  };
+  const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
+  result.facts=cleanArray(result.facts);
+  result.analysis=cleanArray(result.analysis);
+  result.prediction=cleanArray(result.prediction);
+  result.warnings=cleanArray(result.warnings);
+  const firstCandidate=Array.isArray(result?.candidatePlayers)?String(result.candidatePlayers[0]||'').trim():'';
+  const genericFallback=firstCandidate
+    ? `${firstCandidate}を第一候補とします。比較はCASE.evidenceに明示された指標だけを使います。`
+    : 'CASE.evidenceに明示された指標だけを判断根拠にします。';
+  for(const key of ['candidateBasis','primaryReason','publicStatement','reviewReason','changeReason']){
+    const before=String(result?.[key]||'').trim();
+    const cleaned=cleanText(before);
+    result[key]=cleaned||(before?genericFallback:'');
+  }
+  result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),'CASE.evidenceに明示された指標だけを判断根拠にします。'])];
+
+  const remaining=validatePersonaOutput(caseData,result,{focused});
+  if(remaining.length){
+    for(const key of Object.keys(result))delete result[key];
+    Object.assign(result,snapshot);
+    return false;
+  }
+  return true;
+}
+
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -396,6 +446,7 @@ export default async function handler(req, res) {
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
         && !recoverSoftPersonaBatchValidation(result, guardIssues)
+        && !recoverUnsupportedComponentMetricLabels(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
         return sendJson(res, 503, {
