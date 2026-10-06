@@ -518,9 +518,14 @@ function groundTeamReviewReason(value){
 
   const battingContext=/(?:打撃成績|打率|OPS|上位打線|上位陣|下位打線)/.test(raw);
   const usageContext=/(?:出場機会|打数|起用)/.test(raw);
+  const genericSpreadContext=/(?:記録|数値|成績|データ).{0,28}(?:偏り|差|ばらつき)|(?:偏り|差|ばらつき).{0,28}(?:記録|数値|成績|データ)/.test(raw);
   const battingOverclaim=/(?:弱点|依存|頼り|偏重|得点力|勝ち進|左右)/.test(raw);
   const usageOverclaim=/(?:弱点|課題|負担|育成|総合力|集中)/.test(raw);
+  const genericSpreadOverclaim=/(?:弱点|戦術|課題|判断を変え|結論|明白|勝ち|得点力|攻撃|育成|総合力)/.test(raw);
 
+  if(genericSpreadContext&&genericSpreadOverclaim){
+    return {text:'確認済み記録には選手間の数値差がある。',changed:true};
+  }
   if(battingContext&&battingOverclaim){
     return {text:'確認済みの打撃成績には選手間の数値差がある。',changed:true};
   }
@@ -534,6 +539,9 @@ function groundTeamReviewWarning(value){
   const raw=String(value||'').trim();
   if(!raw)return {text:'',changed:false};
   if(/(?:特定.{0,12}マーク|マーク.{0,12}厳しく|対策不足)/.test(raw)){
+    return {text:'',changed:true};
+  }
+  if(/(?:場合|囚われると|このまま|将来|半年後|1年後).{0,70}(?:損な|低下|悪化|左右|勝ち|影響|成長|チーム力)/.test(raw)){
     return {text:'',changed:true};
   }
   if(/(?:負担集中|育成機会.{0,8}不足)/.test(raw)){
