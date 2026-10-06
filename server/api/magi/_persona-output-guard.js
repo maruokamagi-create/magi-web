@@ -218,12 +218,13 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
   if(reviewKind==='TEAM_REVIEW'){
+    const hasDirectDependencyEvidence=/(?:依存|頼っている|頼る|頼りきり|頼り切り)/.test(evidenceText);
     const unsupportedDependency=parts.find(sentence=>
-      /依存/.test(sentence)
+      /(?:依存|頼っている|頼る|頼りきり|頼り切り)/.test(sentence)
       && !isEvidenceGapStatement(sentence)
-      && !/(?:可能性|見方|考えられ|とみられ|傾向|断定でき)/.test(sentence)
+      && !hasDirectDependencyEvidence
     );
-    if(unsupportedDependency)issues.push('TEAM_REVIEWで打撃成績の偏りから依存関係を断定している');
+    if(unsupportedDependency)issues.push('TEAM_REVIEWで打撃成績の偏りから依存・頼り切りを事実として断定している');
   }
 
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
