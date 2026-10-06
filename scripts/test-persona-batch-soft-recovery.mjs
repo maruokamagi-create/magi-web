@@ -68,6 +68,53 @@ function baseResult(overrides={}) {
 }
 
 
+
+{
+  const caseData={
+    question:'今の丸岡中の弱点は何？',
+    selectionKind:'TEAM_REVIEW',
+    evidence:{
+      reviewKind:'TEAM_REVIEW',
+      selectionKind:'TEAM_REVIEW',
+      recentSix:{status:'COMPLETE'},
+      summary:'現チーム14名の確認済み記録と直近6試合の個別打撃記録を横断する。'
+    }
+  };
+  const result=baseResult({
+    facts:['直近6試合の打撃成績では、一部の選手が打率.000に低迷しており、得点源が限定されやすい状況にある。'],
+    analysis:['打撃成績の数値差から、当たっている選手と当たっていない選手の差が、試合中の得点力や戦術的な課題に直結している。'],
+    primaryReason:'確認済みの打撃成績データに基づく数値の偏りこそがチームの弱点だ。',
+    publicStatement:'今の弱点は打線の偏りだね。目の前の試合だけでなく、半年後や1年後を見据えてチーム全体を育てることが大切だ。',
+    warnings:['目先の勝敗だけに囚われて選手層の育成を疎かにしないこと。']
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している',
+    'TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定している',
+    'TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(result.facts.some(x=>x.includes('直近6試合')));
+  assert.ok(!/得点源が限定|得点力や戦術的な課題に直結|半年後|1年後|育成を疎か|こそがチームの弱点/.test(rendered));
+  assert.ok(result.warnings.some(x=>x.includes('数値差だけから弱点・因果・将来影響を断定しません')));
+}
+
+{
+  const caseData={
+    question:'今の丸岡中の弱点は何？',
+    selectionKind:'TEAM_REVIEW',
+    evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',recentSix:{status:'COMPLETE'},summary:'直近6試合の個別打撃記録を含む。'}
+  };
+  const result=baseResult({
+    facts:['直近6試合では6選手が安打0（打率.000）となっている。'],
+    publicStatement:'確認できる事実として、直近6試合では6選手が安打0です。'
+  });
+  const before=JSON.stringify(result);
+  const ok=recoverSoftPersonaBatchValidation(result,[],caseData,{focused:false});
+  assert.equal(ok,false);
+  assert.equal(JSON.stringify(result),before);
+}
+
 {
   const caseData={
     mode:'selection',
