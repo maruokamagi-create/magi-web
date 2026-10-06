@@ -350,13 +350,23 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - This specifically verifies the previous sequential selection failure caused by unsupported non-numeric 出塁率/長打率 labels is resolved while the production Live acceptance path remains green.
 - Current acceptance baseline: Live Deliberation #113 = SUCCESS (attempt 2); Sequential Suite #180 = SUCCESS.
 
+## TEAM_REVIEW final semantic-grounding follow-up
+
+- The current production acceptance baseline remains Live Deliberation #113 attempt 2 = SUCCESS and Sequential Suite #180 = SUCCESS, but inspection of the actual successful TEAM_REVIEW output showed that pass/fail alone was not sufficient proof of answer quality.
+- The successful production output still contained a colloquial dependency assertion in BALTHASAR's visible persona text (「上位に頼りっきり」), while the existing TEAM_REVIEW dependency guard covered 「依存」「頼っている」「頼り切」 but not that exact colloquial spelling.
+- The TEAM_REVIEW FINAL also promoted SECOND `primaryReason` text directly into 「現時点の重点課題」. In the observed run this elevated measured batting/usage spread into stronger claims such as a proven team weakness, tactical weakness, or development impact even though the project rule says measured spread alone does not prove dependency, causation, or team-wide weakness.
+- The current fix extends the dependency guard/recovery only for the missing colloquial wording and adds a TEAM_REVIEW-only final grounding layer. Batting/usage spread is reduced to the directly supported measured difference when the source reason overreaches into dependency/weakness/causal impact. Directly observed non-inference findings remain unchanged.
+- TEAM_REVIEW final prediction text is not published from spread-only review synthesis, so a current-state review cannot turn measured spread into unsupported future outcomes. A grounding warning records that dependency/causation/future effects are not established by numeric spread alone.
+- Regression coverage now includes the exact production-style 「頼りっきり」 wording, safe soft recovery of that sentence, prevention of spread-to-proven-weakness elevation in FINAL, and preservation of directly observed findings.
+
 ## Next concrete work
 
-1. Re-run production Live Deliberation after the review-semantics/TEAM_REVIEW language correction and inspect the actual TEAM_REVIEW final output, not only pass/fail.
-2. Confirm the final recommendation directly answers the review question and does not use proposal adoption wording.
-3. Confirm batting concentration is not converted into an unsupported dependency claim.
+1. Complete PR #89 checks, merge only if the semantic/fail-closed tests remain green, then run the production Live Deliberation gate on the merged main.
+2. Inspect the actual TEAM_REVIEW PRIMARY, SECOND and FINAL output after merge, not only pass/fail. Confirm the visible persona text no longer says 「頼りっきり」 and the FINAL does not promote batting/usage spread into proven dependency, tactical weakness, development harm, or future outcome.
+3. Confirm directly observed findings still survive the TEAM_REVIEW final grounding layer unchanged.
 4. Expand acceptance coverage from the current four live classes to the remaining Definition-of-Done classes: individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup, and CLARIFY.
-5. Only declare the current stabilization complete after those classes are routed and rendered through their real production paths.
+5. After routing correctness is covered, measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation so correctness and response speed improve together.
+6. Only declare the current stabilization complete after those classes are routed, rendered and timing-checked through their real production paths.
 
 ## Handoff instruction for a new ChatGPT chat
 

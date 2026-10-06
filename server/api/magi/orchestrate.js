@@ -512,6 +512,36 @@ export function isReviewCase(caseData) {
   return kind==='TEAM_REVIEW'||kind==='PLAYER_REVIEW';
 }
 
+function groundTeamReviewReason(value){
+  const raw=String(value||'').trim();
+  if(!raw)return {text:'',changed:false};
+
+  const battingContext=/(?:打撃成績|打率|OPS|上位打線|上位陣|下位打線)/.test(raw);
+  const usageContext=/(?:出場機会|打数|起用)/.test(raw);
+  const battingOverclaim=/(?:弱点|依存|頼り|偏重|得点力|勝ち進|左右)/.test(raw);
+  const usageOverclaim=/(?:弱点|課題|負担|育成|総合力|集中)/.test(raw);
+
+  if(battingContext&&battingOverclaim){
+    return {text:'確認済みの打撃成績には選手間の数値差がある。',changed:true};
+  }
+  if(usageContext&&usageOverclaim){
+    return {text:'確認済みの出場機会や打数には選手間の差がある。',changed:true};
+  }
+  return {text:raw,changed:false};
+}
+
+function groundTeamReviewWarning(value){
+  const raw=String(value||'').trim();
+  if(!raw)return {text:'',changed:false};
+  if(/(?:特定.{0,12}マーク|マーク.{0,12}厳しく|対策不足)/.test(raw)){
+    return {text:'',changed:true};
+  }
+  if(/(?:負担集中|育成機会.{0,8}不足)/.test(raw)){
+    return {text:'出場機会や打数の差は確認できるが、その影響は追加Evidenceなしに断定しない。',changed:true};
+  }
+  return {text:raw,changed:false};
+}
+
 export function buildReviewResult(second, cross, caseData={}) {
   const normalizedSecond=canonicalizePlayerData(second);
   const normalizedCross=canonicalizePlayerData(cross||{});
@@ -520,9 +550,28 @@ export function buildReviewResult(second, cross, caseData={}) {
   if(!enforced.status)return null;
 
   const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'REVIEW').toUpperCase();
-  const majorReasons=compactUnique(list.map(x=>x?.primaryReason));
-  const warnings=compactUnique([...(normalizedCross?.warnings||[]),...list.flatMap(x=>Array.isArray(x?.warnings)?x.warnings:[])]);
-  const prediction=compactUnique(list.flatMap(x=>Array.isArray(x?.prediction)?x.prediction:[]));
+  const rawMajorReasons=compactUnique(list.map(x=>x?.primaryReason));
+  const rawWarnings=compactUnique([...(normalizedCross?.warnings||[]),...list.flatMap(x=>Array.isArray(x?.warnings)?x.warnings:[])]);
+  const rawPrediction=compactUnique(list.flatMap(x=>Array.isArray(x?.prediction)?x.prediction:[]));
+  let teamReviewGroundingAdjusted=false;
+  const majorReasons=reviewKind==='TEAM_REVIEW'
+    ? compactUnique(rawMajorReasons.map(value=>{
+        const grounded=groundTeamReviewReason(value);
+        if(grounded.changed)teamReviewGroundingAdjusted=true;
+        return grounded.text;
+      }))
+    : rawMajorReasons;
+  const warnings=reviewKind==='TEAM_REVIEW'
+    ? compactUnique([
+        ...rawWarnings.map(value=>{
+          const grounded=groundTeamReviewWarning(value);
+          if(grounded.changed)teamReviewGroundingAdjusted=true;
+          return grounded.text;
+        }),
+        ...(teamReviewGroundingAdjusted?['TEAM_REVIEWでは、数値差だけから特定選手への依存・因果・将来結果を断定しない。']:[])
+      ])
+    : rawWarnings;
+  const prediction=reviewKind==='TEAM_REVIEW'?[]:rawPrediction;
   const informationGaps=compactUnique(normalizedCross?.informationGaps||[]);
   const crossReviewReason=normalizedCross?.reviewRequired===true?String(normalizedCross?.reviewReason||'クロス審議の再確認が必要です。'):'';
   const effectiveStatus=crossReviewReason?'MAGI_REVIEW_REQUIRED':enforced.status;
@@ -538,7 +587,7 @@ export function buildReviewResult(second, cross, caseData={}) {
   else {
     const lead=majorReasons[0]||list.find(x=>String(x?.publicStatement||'').trim())?.publicStatement||'3賢人の二次評価を確認する。';
     recommendation=reviewKind==='TEAM_REVIEW'
-      ? `現時点の重点課題：${lead}`
+      ? `現時点で確認できる課題候補：${lead}${teamReviewGroundingAdjusted?' 数値差だけから特定選手への依存やチーム全体の弱点とは断定しない。':''}`
       : `現時点の評価：${lead}`;
   }
 

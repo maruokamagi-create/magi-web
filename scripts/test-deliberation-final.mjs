@@ -141,7 +141,7 @@ test('R05 TEAM_REVIEW final uses review semantics, not proposal adoption languag
   assert.equal(r.mode,'REVIEW');
   assert.equal(r.reviewKind,'TEAM_REVIEW');
   assert.equal(r.status,'MAGI_CONSENSUS');
-  assert.match(r.recommendation,/現時点の重点課題/);
+  assert.match(r.recommendation,/現時点で確認できる課題候補/);
   assert.doesNotMatch(r.recommendation,/採用|運用/);
   assert.ok(r.majorReasons.includes('打撃成績が一部の選手に集中している'));
 });
@@ -175,6 +175,43 @@ test('R07 PLAYER_REVIEW final uses assessment language',()=>{
   assert.equal(r.reviewKind,'PLAYER_REVIEW');
   assert.match(r.recommendation,/現時点の評価/);
   assert.doesNotMatch(r.recommendation,/賛成判断を採用|条件付きで採用/);
+});
+
+
+test('R08 TEAM_REVIEW final does not elevate spread into proven dependency or weakness',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{
+      primaryReason:'確認済みの打撃成績における数値の偏りが、チームの弱点としてデータ上明確に示されているため。',
+      prediction:['この打撃の偏りがそのまま続けば、得点力が特定の選手に左右される可能性がある。']
+    }),
+    balthasar:persona('BALTHASAR','BLUE',{
+      primaryReason:'確認済み記録に基づく上位打線への偏りが、勝ち進む上での戦術的弱点として明確だからだ。',
+      warnings:['特定の打者へのマークが厳しくなった場合の対策不足']
+    }),
+    casper:persona('CASPER','BLUE',{
+      primaryReason:'確認された出場機会や打数の偏りが、チームの総合力と育成面での課題となっているからだ。'
+    })
+  };
+  const caseData={selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW'}};
+  const r=buildReviewResult(second,{},caseData);
+  const reasons=r.majorReasons.join('\n');
+  assert.doesNotMatch(reasons,/弱点としてデータ上明確|戦術的弱点|総合力と育成面での課題|依存|頼り/);
+  assert.equal(r.prediction.length,0);
+  assert.match(r.recommendation,/数値差だけから特定選手への依存やチーム全体の弱点とは断定しない/);
+  assert.ok(r.warnings.some(x=>x.includes('数値差だけから特定選手への依存')));
+  assert.ok(!r.warnings.some(x=>x.includes('対策不足')));
+});
+
+test('R09 TEAM_REVIEW preserves directly observed non-inference findings',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{primaryReason:'公式戦で失策7が記録されている。'}),
+    balthasar:persona('BALTHASAR','BLUE',{primaryReason:'失策7という確認済み記録は守備面の課題として直接確認できる。'}),
+    casper:persona('CASPER','BLUE',{primaryReason:'守備記録の再確認が必要だ。'})
+  };
+  const caseData={selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW'}};
+  const r=buildReviewResult(second,{},caseData);
+  assert.ok(r.majorReasons.includes('公式戦で失策7が記録されている。'));
+  assert.doesNotMatch(r.recommendation,/数値差だけから特定選手への依存/);
 });
 
 // Selection aggregation: no hard-coded clean-up wording, preserve split/review states.

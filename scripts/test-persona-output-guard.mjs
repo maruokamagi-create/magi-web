@@ -289,6 +289,14 @@ test('G44 team review cannot invent non-appearing players',()=>{
   assert.ok(issues.some(x=>x.includes('未出場選手')));
 });
 
+
+test('G45 team review catches colloquial relying-on-top-order wording',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({publicStatement:'上位に頼りっきりじゃ、厳しい試合を勝ち抜けねえぞ。'});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('依存・頼り・偏重')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
