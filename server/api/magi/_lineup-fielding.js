@@ -53,6 +53,25 @@ function assignmentDetails(byPosition){
 export const LINEUP_STANDARD_POSITIONS=STANDARD_POSITIONS;
 export const LINEUP_POSITION_LABELS=POSITION_LABELS;
 
+export function buildStandardDefenseEligibility(appearanceFielding){
+  if(String(appearanceFielding?.status||'')!=='COMPLETE')return null;
+  const rows=playerRows(appearanceFielding);
+  const byPlayer=rows.map(player=>({
+    name:text(player?.name),
+    positions:STANDARD_POSITIONS.filter(position=>positionSupported(player,position))
+  })).filter(row=>row.name);
+  const byPosition=Object.fromEntries(STANDARD_POSITIONS.map(position=>[
+    position,
+    byPlayer.filter(row=>row.positions.includes(position)).map(row=>row.name)
+  ]));
+  return {
+    rule:'STANDARD_DEFENSE_ONE_TO_ONE_MATCHING',
+    positions:[...STANDARD_POSITIONS],
+    byPlayer,
+    byPosition
+  };
+}
+
 export function assignEvidenceGroundedFielding(lineup,appearanceFielding){
   const batting=Array.isArray(lineup)?lineup:[];
   if(batting.length!==9)return {status:'UNRESOLVED',reason:'LINEUP_NOT_NINE',lineup:batting};
