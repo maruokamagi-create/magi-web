@@ -268,6 +268,28 @@ test('G41 team review may describe measured concentration without dependency cla
   assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
 });
 
+
+test('G42 team review cannot replace dependency with ungrounded reliance wording',()=>{
+  const teamCase={
+    question:'今の丸岡中の弱点は何？',
+    selectionKind:'TEAM_REVIEW',
+    evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'打撃成績には選手間の差がある。'}
+  };
+  const r=result({primaryReason:'特定の高打率選手に頼っている部分のバランスを取る必要がある。'});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('依存・頼り切り')));
+});
+
+test('G43 explicit no-reliance disclaimer remains allowed',()=>{
+  const teamCase={
+    question:'今の丸岡中の弱点は何？',
+    selectionKind:'TEAM_REVIEW',
+    evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'打撃成績には選手間の差がある。'}
+  };
+  const r=result({analysis:['打撃成績の差だけでは、特定選手に頼っているとは言えない。']});
+  assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
