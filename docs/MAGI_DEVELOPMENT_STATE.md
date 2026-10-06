@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: 60dc85ffe6e75d379ac28fd35819264b88ab98d3
+- State base main SHA: f1a47082b1aedbdc53d11d358d510ca02ca75c9e
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -321,6 +321,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - TEAM_REVIEW Live E2E now uses the same short-lived session-state architecture as full lineup: PREPARE -> PRIMARY -> CROSS -> SECOND -> FINAL are separate outer requests sharing one cached CASE and phase results.
 - PRIMARY, CROSS, SECOND and FINAL each make only one inner phase request per outer selftest call; bounded retries are owned by the GitHub caller as fresh HTTP requests using the same session. This matches the browser retry boundary and prevents cumulative serverless-deadline consumption.
 - Full-lineup staged PRIMARY is also explicitly limited to one inner persona-batch attempt, matching the existing ledger contract.
+
+
+## Deterministic TEAM_REVIEW cross-examination follow-up
+
+- Production Live Deliberation run 37463862268 confirmed that staged PREPARE and PRIMARY complete quickly, so the Vercel cumulative-timeout problem is resolved for TEAM_REVIEW.
+- The first staged CROSS then returned the fail-closed cross shape with an empty MELCHIOR challenge on three fresh outer attempts. This is a CROSS content/guard issue, not a serverless-duration issue.
+- TEAM_REVIEW CROSS is now deterministic from the three locked PRIMARY judgments, analogous to the existing deterministic candidate/full-lineup cross paths. It does not invent new player facts or numbers.
+- The three fixed challenge streams explicitly force re-checking the exact inference boundaries that have caused recent TEAM_REVIEW failures: measured differences versus team-level weakness, measured batting differences versus unsupported causal/game-result claims, and usage differences versus unsupported extra facts.
+- The deterministic cross is still passed through the existing cross-output guard before use. Any future guard conflict fails closed rather than weakening evidence validation.
 
 ## Next concrete work
 
