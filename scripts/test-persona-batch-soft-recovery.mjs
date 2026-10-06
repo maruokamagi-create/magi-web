@@ -29,6 +29,19 @@ function baseResult(overrides={}) {
   assert.ok(result.warnings.some(x=>x.includes('将来結果を断定')));
 }
 
+
+{
+  const result=baseResult({
+    publicStatement:'上位に頼りっきりじゃ、厳しい試合を勝ち抜けねえぞ。'
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している'
+  ]);
+  assert.equal(ok,true);
+  assert.ok(!result.publicStatement.includes('頼りっきり'));
+  assert.equal(result.publicStatement,'選手間の打撃成績に数値差がある。');
+}
+
 {
   const result=baseResult({
     publicStatement:'捕手との兼任負担が大きすぎるので、今後は必ず成長に悪影響が出る。',
@@ -110,4 +123,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 6/6 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 7/7 PASS');
