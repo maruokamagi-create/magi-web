@@ -26,7 +26,7 @@ function baseResult(overrides={}) {
   assert.equal(ok,true);
   assert.deepEqual(result.analysis,[]);
   assert.deepEqual(result.prediction,[]);
-  assert.ok(result.warnings.some(x=>x.includes('将来結果を断定')));
+  assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
 }
 
 
