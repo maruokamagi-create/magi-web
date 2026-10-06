@@ -165,6 +165,29 @@ export function deterministicFullLineupCross(primary) {
   };
 }
 
+export function deterministicTeamReviewCross(primary) {
+  const specs = [
+    ['melchior','メルキオール'],
+    ['balthasar','バルタザール'],
+    ['casper','カスパー']
+  ];
+  const rows = specs.map(([key,jp]) => ({key,jp,value:primary?.[key]||null}));
+  if (rows.some(row => !row.value || typeof row.value !== 'object')) return null;
+
+  return {
+    agreement:['3賢人とも、現チームの確認済み記録と観察事実を基準に弱点を再検証します。'],
+    disagreement:['弱点の重心を、数値・勝ち筋・育成のどこに置くかは3賢人で再検証します。'],
+    domainConflicts:['記録の客観性、勝利への戦術、育成とチーム全体への影響という3つの視点を分けて確認します。'],
+    warnings:[],
+    informationGaps:[],
+    challenges:{
+      melchior:['バルタザールからメルキオールへ：記録上の数値差そのものと、チーム全体の弱点として確認できる範囲を分け、確認済み事実だけで再検証してください。'],
+      balthasar:['カスパーからバルタザールへ：打撃成績の数値差から、確認できない因果や試合結果を補わず、確認済み記録だけで戦術上の課題を再検証してください。'],
+      casper:['メルキオールからカスパーへ：出場機会や打数の差を、それ以上の事実へ広げず、確認済み起用記録と観察事実だけで育成上の課題を再検証してください。']
+    }
+  };
+}
+
 export function deterministicSelectionCross(primary) {
   const specs = [['melchior','メルキオール'],['balthasar','バルタザール'],['casper','カスパー']];
   const rows = specs.map(([key,jp]) => {
@@ -566,6 +589,15 @@ export default async function handler(req, res) {
           ? deterministicFullLineupCross(body.primary)
           : deterministicSelectionCross(body.primary);
         if (deterministicCross) return sendJson(res, 200, canonicalizePlayerData(deterministicCross));
+      }
+      const teamReviewCase = isReviewCase(body.case)
+        && String(body?.case?.evidence?.reviewKind||body?.case?.selectionKind||body?.case?.evidence?.selectionKind||'').toUpperCase()==='TEAM_REVIEW';
+      if (teamReviewCase) {
+        const deterministicCross = deterministicTeamReviewCross(body.primary);
+        if (deterministicCross) {
+          const issues = validateCrossOutput(body.case, deterministicCross, { focused:true });
+          return sendJson(res, 200, canonicalizePlayerData(issues.length ? failClosedCross(issues) : deterministicCross));
+        }
       }
 
       const basePayload = {
