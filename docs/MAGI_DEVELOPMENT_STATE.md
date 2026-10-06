@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: 354742b22e5536460837712778c60ba64841146e
+- State base main SHA: a8fc3ae14b9d1d88b724345f371bcb4bbe7f057b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -339,6 +339,16 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The existing deterministic guard correctly rejected both labels. The selection prompt already explicitly forbids decomposing OPS into OBP/SLG, so another prompt-only warning would not make the acceptance path reliable.
 - Persona-batch now performs a narrow deterministic recovery only when every guard issue is exactly an unsupported non-numeric 出塁率/長打率 label. Sentences containing those unsupplied labels are removed and the existing candidate order is preserved. If an unsupported metric sentence contains any numeric value, or if any structural/roster/standard-defense/evidence-source/other guard issue is present, recovery is refused and the batch still fails closed.
 - The sanitized result is re-run through the authoritative persona output guard before it can be returned. Deterministic unit coverage checks the recoverable label-only case, numeric fail-closed behavior, and mixed-hard-issue fail-closed behavior.
+
+
+## Unsupported-metric recovery production verification
+
+- PR #87 merged as main `a8fc3ae1...`; Vercel production deployment completed successfully.
+- The first Live Deliberation run #113 attempt failed at staged lineup PRIMARY only with transient provider classes (`provider_retryable_http`, `invalid_structured_json`, then `timeout`). No deterministic guard or unsupported-metric recovery failure was involved.
+- Re-running the failed Live workflow without any code change completed successfully across all four automatic real-data classes: staged full best-order, closer, natural third-batter, and staged TEAM_REVIEW.
+- The downstream Sequential Deliberation Suite run #180 then completed successfully across all five jobs: selection, full-lineup, pitching-plan, deliberation, and reproducibility.
+- This specifically verifies the previous sequential selection failure caused by unsupported non-numeric 出塁率/長打率 labels is resolved while the production Live acceptance path remains green.
+- Current acceptance baseline: Live Deliberation #113 = SUCCESS (attempt 2); Sequential Suite #180 = SUCCESS.
 
 ## Next concrete work
 
