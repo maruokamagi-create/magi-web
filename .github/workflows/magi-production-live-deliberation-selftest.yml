@@ -1,3 +1,4 @@
+# Production acceptance gate. Verification trigger after PR #84; no behavior change.
 name: MAGI Production Live Deliberation Selftest
 
 on:

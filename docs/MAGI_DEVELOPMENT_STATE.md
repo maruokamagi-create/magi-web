@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: e6b5bf4665e54eb2552ee16420ae0f71f12f6436
+- State base main SHA: 2429b4f4c234295e55076dabe03918db0d892828
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -305,6 +305,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The persona-batch recovery chain previously required every guard issue to belong to one single soft family. A mixed set of otherwise recoverable TEAM_REVIEW/burden/forecast prose therefore bypassed all soft sanitizers and returned a deterministic 503.
 - Persona-batch now accepts a mixed set only when every issue belongs to one of those already-approved soft prose families, partitions the issues by family, and applies each existing sanitizer to its own subset. Any structural, roster, numeric, evidence-source, candidate, or unknown guard issue still fails closed.
 - Deterministic unit coverage now exercises mixed TEAM_REVIEW + forecast and burden + forecast recovery, and the deliberation unit workflow is triggered by persona-batch changes so this path is no longer live-E2E-only coverage.
+
+
+## Post-merge Live E2E verification trigger
+
+- PR #84 merged as main `2429b4f4...`; the Vercel production deployment for that SHA completed successfully.
+- The connector-driven squash merge did not produce the expected push-triggered Live Deliberation Actions run. To avoid leaving production acceptance unverified, a no-behavior-change comment in the Live E2E workflow plus this ledger update is pushed as one atomic main commit solely to trigger the production acceptance gate.
+- Production behavior is unchanged by this trigger commit. The verification target remains the PR #84 mixed-soft persona-batch recovery.
 
 ## Next concrete work
 
