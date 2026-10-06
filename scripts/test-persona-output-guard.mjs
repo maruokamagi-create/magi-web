@@ -268,6 +268,27 @@ test('G41 team review may describe measured concentration without dependency cla
   assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
 });
 
+test('G42 team review cannot disguise dependency as relying on high-average hitters',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({analysis:['特定の高打率選手に頼っている部分がある。']});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('依存・頼り・偏重')));
+});
+
+test('G43 team review cannot infer burden concentration from usage spread alone',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({analysis:['一部の選手に経験や負担が偏りがちだ。']});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('負担集中')));
+});
+
+test('G44 team review cannot invent non-appearing players',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({analysis:['試合に出場していない選手たちの育成も課題だ。']});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('未出場選手')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
