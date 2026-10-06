@@ -1,6 +1,6 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { ORCHESTRATOR } from './_prompts.js';
-import { failClosedCross, validateCrossOutput } from './_cross-output-guard.js';
+import { failClosedCross, recoverTeamReviewCrossFacts, validateCrossOutput } from './_cross-output-guard.js';
 import { canonicalizePlayerData, playerKey } from './_roster.js';
 import { buildConsensusLineup, isFullLineupQuestion } from './_full-lineup.js';
 import { assignEvidenceGroundedFielding } from './_lineup-fielding.js';
@@ -585,7 +585,7 @@ export default async function handler(req, res) {
           userPayload: basePayload,
           responseSchema: crossSchema
         });
-        result = canonicalizePlayerData(rawResult);
+        result = recoverTeamReviewCrossFacts(body.case, canonicalizePlayerData(rawResult));
         guardIssues = validateCrossOutput(body.case, result, { focused: !selectionCase });
       } catch (crossError) {
         const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : (selectionCase && !pitchingPlanCase ? deterministicSelectionCross(body.primary) : null);
@@ -607,7 +607,7 @@ export default async function handler(req, res) {
             userPayload: correctionPayload,
             responseSchema: crossSchema
           });
-          result = canonicalizePlayerData(rawResult);
+          result = recoverTeamReviewCrossFacts(body.case, canonicalizePlayerData(rawResult));
           guardIssues = validateCrossOutput(body.case, result, { focused: !selectionCase });
         } catch (correctionError) {
           const fallback = fullLineupCase ? deterministicFullLineupCross(body.primary) : (selectionCase && !pitchingPlanCase ? deterministicSelectionCross(body.primary) : null);
