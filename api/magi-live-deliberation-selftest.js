@@ -20,9 +20,10 @@ const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const clone=v=>JSON.parse(JSON.stringify(v??null));
 const text=v=>String(v??'').trim();
 
-async function post(base,path,body,label=path){
+async function post(base,path,body,label=path,options={}){
+  const maxAttempts=Math.max(1,Math.min(5,Number(options?.maxAttempts)||5));
   let lastError=null;
-  for(let attempt=1;attempt<=5;attempt++){
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
     if(attempt>1)await sleep(Math.min(6000,1200*Math.pow(2,attempt-2)));
     try{
       const response=await fetch(`${base}${path}`,{method:'POST',headers:{'Content-Type':'application/json','Origin':base},body:JSON.stringify(body),cache:'no-store'});
@@ -86,13 +87,13 @@ function recoverSoftLineup(v,persona){
 }
 function allSame(set){const seqs=PERSONAS.map(p=>candidateSeq(set?.[p]));if(seqs.some(s=>s.length!==9))return false;return seqs.slice(1).every(s=>s.every((v,i)=>v===seqs[0][i]));}
 function stableDigest(value){return createHash('sha256').update(JSON.stringify(value)).digest('hex').slice(0,16);}
-async function serialPersonaSet(base,phase,buildBody){
+async function serialPersonaSet(base,phase,buildBody,options={}){
   const sample=buildBody(PERSONAS[0]);
   const phaseName=String(sample?.phase||'PRIMARY').toUpperCase();
   const batchBody=phaseName==='SECOND'
     ? {phase:'SECOND',case:sample.case,primary:Object.fromEntries(PERSONAS.map(p=>[p,buildBody(p)?.primarySelf||null])),crossExamination:Object.fromEntries(PERSONAS.map(p=>[p,buildBody(p)?.crossExamination||null]))}
     : {phase:'PRIMARY',case:sample.case};
-  const raw=await post(base,'/api/magi/persona-batch',batchBody,`${phase}_BATCH`);
+  const raw=await post(base,'/api/magi/persona-batch',batchBody,`${phase}_BATCH`,options);
   return Object.fromEntries(PERSONAS.map(p=>[p,recoverSoftLineup(raw?.[p]||{},p)]));
 }
 
@@ -190,7 +191,7 @@ async function runStagedLineup(base,packet,stage,session){
   }
   if(normalized==='second'){
     if(!state?.cross)throw new Error('LIVE_STAGE_CROSS_NOT_FOUND');
-    const second=await serialPersonaSet(base,'SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}));
+    const second=await serialPersonaSet(base,'SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}),{maxAttempts:1});
     assertLineupPersonaSet(second,'SECOND');
     await writeStagedState('lineup',session,{...state,second});
     return {ok:true,mode:'lineup',stage:'SECOND',session,second:summarizePersonaSet(second)};
