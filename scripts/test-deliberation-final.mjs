@@ -146,9 +146,9 @@ test('R05 TEAM_REVIEW final uses review semantics, not proposal adoption languag
 
 test('R06 PLAYER_REVIEW final uses assessment language',()=>{
   const second={
-    melchior:persona('MELCHIOR','GREEN',{primaryReason:'今季の確認済み記録を基準に評価できる'}),
+    melchior:persona('MELCHIOR','BLUE',{primaryReason:'今季の確認済み記録を基準に評価できる'}),
     balthasar:persona('BALTHASAR','BLUE',{primaryReason:'実起用を含めて条件付きで評価する'}),
-    casper:persona('CASPER','YELLOW',{primaryReason:'追加の観察情報も確認したい'})
+    casper:persona('CASPER','BLUE',{primaryReason:'追加の観察情報も確認したい'})
   };
   const caseData={evidence:{reviewKind:'PLAYER_REVIEW'}};
   assert.equal(isReviewCase(caseData),true);
