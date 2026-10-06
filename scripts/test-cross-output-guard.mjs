@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { failClosedCross, validateCrossOutput, validateDialoguePresence, validateCrossLanguage, validateFullLineupDialogueSpecificity, validatePitchingPlanDialogueSpecificity } from '../server/api/magi/_cross-output-guard.js';
+import { failClosedCross, recoverTeamReviewCrossFacts, validateCrossOutput, validateDialoguePresence, validateCrossLanguage, validateFullLineupDialogueSpecificity, validatePitchingPlanDialogueSpecificity } from '../server/api/magi/_cross-output-guard.js';
+import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 
 const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
@@ -155,6 +156,46 @@ test('X16 a merely broad full-lineup challenge does not erase MAGI CONTROL',()=>
   }});
   assert.equal(validateFullLineupDialogueSpecificity(FULL_LINEUP_CASE,r).length,3);
   assert.deepEqual(validateCrossOutput(FULL_LINEUP_CASE,r,{focused:false}),[]);
+});
+
+
+const TEAM_REVIEW_CASE={
+  question:'今の丸岡中の弱点は何？',
+  selectionKind:'TEAM_REVIEW',
+  evidence:{
+    reviewKind:'TEAM_REVIEW',
+    selectionKind:'TEAM_REVIEW',
+    appearanceFielding:{
+      players:CURRENT_ROSTER.map((name,index)=>({name,appearance:{status:'COMPLETE',starts:index===0?2:1,substitutions:index%3===0?1:0}}))
+    }
+  }
+};
+
+function teamReviewCross(overrides={}){
+  return {
+    agreement:['14名全員の記録を確認している。'],
+    disagreement:['弱点の優先順位には見方の違いがある。'],
+    domainConflicts:[],warnings:[],informationGaps:[],
+    challenges:{
+      melchior:['数値の差をチーム全体の弱点とまで言えるか確認してください。'],
+      balthasar:['攻撃面で確認できる課題を記録の範囲で説明してください。'],
+      casper:['試合に出場していない選手たちの育成をどう考えますか。']
+    },
+    ...overrides
+  };
+}
+
+test('X17 team-review cross blocks false nonappearance premise when all 14 appeared',()=>{
+  const issues=validateCrossOutput(TEAM_REVIEW_CASE,teamReviewCross(),{focused:false});
+  assert.ok(issues.some(x=>x.includes('全14名に出場実績')));
+});
+
+test('X18 team-review cross deterministically rewrites false nonappearance premise',()=>{
+  const fixed=recoverTeamReviewCrossFacts(TEAM_REVIEW_CASE,teamReviewCross());
+  const text=fixed.challenges.casper.join(' ');
+  assert.doesNotMatch(text,/出場していない|出ていない|未出場/);
+  assert.match(text,/14名全員|実戦経験/);
+  assert.deepEqual(validateCrossOutput(TEAM_REVIEW_CASE,fixed,{focused:false}),[]);
 });
 
 let passed=0;
