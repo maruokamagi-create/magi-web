@@ -363,6 +363,13 @@ test('G52 team review preserves directly observed fielding record',()=>{
   assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
 });
 
+
+test('G53 team review allows explicit polite non-assertion boundary wording',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({warnings:['TEAM_REVIEWでは、確認済み記録と解釈を分け、数値差だけから特定選手への依存や弱点を断定しません。']});
+  assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
