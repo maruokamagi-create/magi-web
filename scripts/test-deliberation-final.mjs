@@ -5,8 +5,10 @@ import {
   buildSelectionResult,
   buildFinalResult,
   isReviewCase,
-  buildReviewResult
+  buildReviewResult,
+  deterministicTeamReviewCross
 } from '../server/api/magi/orchestrate.js';
+import { validateDialoguePresence, validateCrossLanguage } from '../server/api/magi/_cross-output-guard.js';
 
 const tests=[];
 function test(name,fn){tests.push({name,fn});}
@@ -144,7 +146,24 @@ test('R05 TEAM_REVIEW final uses review semantics, not proposal adoption languag
   assert.ok(r.majorReasons.includes('打撃成績が一部の選手に集中している'));
 });
 
-test('R06 PLAYER_REVIEW final uses assessment language',()=>{
+test('R06 TEAM_REVIEW deterministic cross gives every Wise Man a safe challenge',()=>{
+  const primary={
+    melchior:persona('MELCHIOR','BLUE'),
+    balthasar:persona('BALTHASAR','BLUE'),
+    casper:persona('CASPER','BLUE')
+  };
+  const cross=deterministicTeamReviewCross(primary);
+  assert.ok(cross);
+  assert.deepEqual(validateDialoguePresence(cross),[]);
+  assert.deepEqual(validateCrossLanguage(cross),[]);
+  assert.equal(cross.challenges.melchior.length,1);
+  assert.equal(cross.challenges.balthasar.length,1);
+  assert.equal(cross.challenges.casper.length,1);
+  const rendered=JSON.stringify(cross);
+  assert.doesNotMatch(rendered,/特定選手への依存|試合に出ていない|負担集中|半年後.*差/);
+});
+
+test('R07 PLAYER_REVIEW final uses assessment language',()=>{
   const second={
     melchior:persona('MELCHIOR','BLUE',{primaryReason:'今季の確認済み記録を基準に評価できる'}),
     balthasar:persona('BALTHASAR','BLUE',{primaryReason:'実起用を含めて条件付きで評価する'}),
