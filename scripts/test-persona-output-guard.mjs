@@ -315,6 +315,54 @@ test('G45 team review catches colloquial relying-on-top-order wording',()=>{
   assert.ok(issues.some(x=>x.includes('依存・頼り・偏重')));
 });
 
+
+test('G46 production team review blocks batting-spread weakness wording',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({publicStatement:'今の弱点は打線の偏りだね。上位は打っているけど、当たっていない選手との差が大きいから、そこをどう補って点を取るかが勝負の分かれ道になる。'});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('数値差・偏り')));
+});
+
+test('G47 production team review blocks individual hitlessness to scoring-source inference',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'直近6試合の個別打撃記録を含む。'}};
+  const r=result({facts:['直近6試合の打撃成績では、一部の選手が打率.000に低迷しており、得点源が限定されやすい状況にある。']});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('チーム得点・戦術')));
+});
+
+test('G48 production team review blocks future-development coaching advice',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({publicStatement:'目の前の試合だけでなく、半年後や1年後を見据えてチーム全体をどう育てていくかが大切です。'});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('将来・育成・一般論')));
+});
+
+test('G49 production team review blocks numeric-spread-is-weakness wording',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({publicStatement:'確認済みの打撃成績データに基づく数値の偏りこそが俺たちの弱点だ。'});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('数値差・偏り')));
+});
+
+test('G50 production team review blocks spread-to-scoring-tactical causality',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',allCurrentTeamCheck:{status:'COMPLETE',players:[]},summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({analysis:['打撃成績の数値差から確認できる範囲内で、当たっている選手と当たっていない選手の差が、試合中の得点力や戦術的な課題に直結している。']});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('数値差・偏り')||x.includes('チーム得点・戦術')));
+});
+
+test('G51 team review preserves direct recent hitless fact without causal inference',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',recentSix:{status:'COMPLETE'},summary:'直近6試合の個別打撃記録を含む。'}};
+  const r=result({facts:['直近6試合では6選手が安打0（打率.000）となっている。']});
+  assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
+});
+
+test('G52 team review preserves directly observed fielding record',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'公式戦の守備記録を含む。'}};
+  const r=result({facts:['公式戦で失策7が記録されている。']});
+  assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
