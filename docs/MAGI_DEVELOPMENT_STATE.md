@@ -9,7 +9,7 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-05
+- State updated: 2026-10-06
 - State base main SHA: 5581866d583ac27d6c63b465c182c14b45ad374d
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
@@ -229,10 +229,10 @@ For any PR that changes MAGI production behavior under the protected paths defin
 
 ## Next concrete work
 
-1. Run the full TEAM_REVIEW formal path through PRIMARY, CROSS, SECOND and FINAL and capture the first failing phase.
-2. Compare the full probe's payload and failure with the browser path, especially SECOND.
-3. Fix the common deliberation pipeline, not the literal question.
-4. Add cross-class UI-path regression coverage.
+1. Verify the staged production best-order path as four separate outer requests: PRIMARY -> CROSS -> 70-second FreeTier token-window spacing -> SECOND -> FINAL.
+2. If best-order passes, stage the remaining provider-heavy Live E2E classes (closer, natural third, TEAM_REVIEW) so no single Vercel request contains the whole formal deliberation.
+3. Preserve the real browser contract: shared Evidence once per persona batch, persona-isolated SECOND compartments, hard Evidence/roster/numeric/lineup guards fail-closed, and no provider retry storms.
+4. After cross-class Live E2E passes, verify the actual production UI execution path on the same common engine and only then mark the 72% issue solved.
 5. Only after actual UI completion, evaluate answer quality.
 
 ## Handoff instruction for a new ChatGPT chat
