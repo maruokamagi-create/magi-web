@@ -53,6 +53,10 @@ jobs:
             (.cross.challengeCounts.casper>0)
           ' /tmp/lineup-cross.json >/dev/null
 
+          # PRIMARY and SECOND both carry the full live Evidence. FreeTier
+          # input-token quota is per model per minute, so do not fire SECOND
+          # immediately after PRIMARY and force unnecessary reserve fallbacks.
+          sleep 70
           run_stage second
           jq -e '
             (.second.melchior.candidatePlayers|length)==9 and
@@ -84,7 +88,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=closer" -o /tmp/closer.json
+          curl -L --fail --max-time 125 -sS "$BASE/api/magi-live-deliberation-selftest?mode=closer" -o /tmp/closer.json
           cat /tmp/closer.json; echo
           jq -e '.ok==true and .mode=="closer" and .closer.sakataSaveCount=="2" and .closer.saveEvidenceUsed==true' /tmp/closer.json >/dev/null
           echo 'PRODUCTION CLOSER DELIBERATION: PASS'
@@ -101,7 +105,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=naturalThird" -o /tmp/third.json
+          curl -L --fail --max-time 125 -sS "$BASE/api/magi-live-deliberation-selftest?mode=naturalThird" -o /tmp/third.json
           cat /tmp/third.json; echo
           jq -e '.ok==true and .mode=="naturalThird" and .naturalThird.question=="3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？" and .naturalThird.evidence.count==14 and .naturalThird.evidence.selectionKind=="BATTING_ORDER" and (.naturalThird.status=="SELECTION_RESULT" or .naturalThird.status=="SELECTION_SPLIT") and (.naturalThird.recommendedCandidates|length>0)' /tmp/third.json >/dev/null
           echo 'PRODUCTION NATURAL THIRD-BATTER DELIBERATION: PASS'
@@ -119,7 +123,7 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=teamReview" -o /tmp/team-review.json
+          curl -L --fail --max-time 125 -sS "$BASE/api/magi-live-deliberation-selftest?mode=teamReview" -o /tmp/team-review.json
           cat /tmp/team-review.json; echo
           jq -e '
             .ok==true and .mode=="teamReview" and
