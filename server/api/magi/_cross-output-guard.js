@@ -21,6 +21,43 @@ function crossTexts(cross){
   ];
 }
 
+function teamReviewAppearanceSummary(caseData){
+  const kind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  if(kind!=='TEAM_REVIEW')return{allAppeared:false,appearanceSpread:false};
+  const players=Array.isArray(caseData?.evidence?.appearanceFielding?.players)?caseData.evidence.appearanceFielding.players:[];
+  if(players.length!==CURRENT_ROSTER.length)return{allAppeared:false,appearanceSpread:false};
+  const counts=players.map(row=>Number(row?.appearance?.starts||0)+Number(row?.appearance?.substitutions||0));
+  const allAppeared=counts.length===CURRENT_ROSTER.length&&counts.every(n=>Number.isFinite(n)&&n>0);
+  return{allAppeared,appearanceSpread:allAppeared&&Math.max(...counts)>Math.min(...counts)};
+}
+
+export function recoverTeamReviewCrossFacts(caseData,cross){
+  const summary=teamReviewAppearanceSummary(caseData);
+  if(!summary.allAppeared)return cross;
+  const replacement=summary.appearanceSpread
+    ? '出場機会は14名全員にあり、その中で実戦経験が相対的に少ない選手'
+    : '出場機会がある14名の選手';
+  const rewrite=value=>String(value||'')
+    .replace(/(?:試合に)?出場していない選手(?:たち)?/g,replacement)
+    .replace(/試合に出ていない選手(?:たち)?/g,replacement)
+    .replace(/未出場の選手(?:たち)?/g,replacement);
+  const out={...cross};
+  for(const key of ['agreement','disagreement','domainConflicts','warnings','informationGaps']){
+    if(Array.isArray(cross?.[key]))out[key]=cross[key].map(rewrite);
+  }
+  const challenges=cross?.challenges||{};
+  out.challenges=Object.fromEntries(['melchior','balthasar','casper'].map(key=>[key,Array.isArray(challenges?.[key])?challenges[key].map(rewrite):[]]));
+  return out;
+}
+
+function teamReviewAppearanceContradictionIssues(caseData,cross){
+  const summary=teamReviewAppearanceSummary(caseData);
+  if(!summary.allAppeared)return[];
+  return crossTexts(cross)
+    .filter(row=>/(?:試合に)?出場していない選手|試合に出ていない選手|未出場の選手/.test(String(row||'')))
+    .map(row=>`TEAM_REVIEWで全14名に出場実績があるEvidenceと矛盾する未出場表現: ${String(row).slice(0,100)}`);
+}
+
 function falseMissingDataIssues(caseData,cross){
   if(!isFullLineupQuestion(caseData))return[];
   const contract=caseData?.evidence?.numericEvidenceContract||{};
@@ -162,6 +199,7 @@ export function validateCrossOutput(caseData,cross,{focused=false}={}){
     ...validateCrossLanguage(cross),
     ...validatePitchingPlanCrossOutput(caseData,cross),
     ...falseMissingDataIssues(caseData,cross),
+    ...teamReviewAppearanceContradictionIssues(caseData,cross),
     ...guardedPersonaIssues
   ];
 }
