@@ -155,6 +155,31 @@ function safeTransient(res, error) {
   });
 }
 
+function recoverSoftBurdenEscalation(result, issues) {
+  const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
+  const target='Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている';
+  if(!list.length||!list.every(v=>v.includes(target)))return false;
+  const unsafe=/(?:負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)|(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)|(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)|(?:兼任|負担|固定).{0,48}(?:半年後|来年|将来|今後).{0,24}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化))/;
+  const cleanText=value=>{
+    const raw=String(value||'').trim();
+    if(!raw||!unsafe.test(raw))return raw;
+    const kept=raw.split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe.test(s));
+    return kept.join('');
+  };
+  const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
+  result.facts=cleanArray(result.facts);
+  result.analysis=cleanArray(result.analysis);
+  result.prediction=cleanArray(result.prediction);
+  result.warnings=cleanArray(result.warnings);
+  for(const key of ['candidateBasis','primaryReason','publicStatement']){
+    const before=String(result?.[key]||'').trim();
+    const cleaned=cleanText(before);
+    result[key]=cleaned || (before ? '兼任負担については、Evidenceにある「考慮する必要がある」という範囲だけを判断材料にします。' : '');
+  }
+  result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),'兼任負担は、Evidenceにある「考慮する必要がある」という範囲を超えて断定しません。'])];
+  return true;
+}
+
 function recoverSoftTeamReviewDependency(result, issues) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
   const softIssue=v=>v.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定')
@@ -351,6 +376,7 @@ export default async function handler(req, res) {
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
         && !recoverSoftTeamReviewDependency(result, guardIssues)
+        && !recoverSoftBurdenEscalation(result, guardIssues)
         && !recoverSoftForecastLanguage(result, guardIssues)
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
