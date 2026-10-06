@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-06
-- State base main SHA: f1a47082b1aedbdc53d11d358d510ca02ca75c9e
+- State base main SHA: 354742b22e5536460837712778c60ba64841146e
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -330,6 +330,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - TEAM_REVIEW CROSS is now deterministic from the three locked PRIMARY judgments, analogous to the existing deterministic candidate/full-lineup cross paths. It does not invent new player facts or numbers.
 - The three fixed challenge streams explicitly force re-checking the exact inference boundaries that have caused recent TEAM_REVIEW failures: measured differences versus team-level weakness, measured batting differences versus unsupported causal/game-result claims, and usage differences versus unsupported extra facts.
 - The deterministic cross is still passed through the existing cross-output guard before use. Any future guard conflict fails closed rather than weakening evidence validation.
+
+
+## Sequential selection unsupported-metric follow-up
+
+- Main `354742b2...` completed production Live Deliberation run 37465433877 successfully across staged best-order, closer, natural-third and TEAM_REVIEW.
+- The downstream sequential suite run 37466134854 then failed in the synthetic single-slot selection smoke at PRIMARY/MELCHIOR. The model described 「長打率」「出塁率」 even though that fixed Evidence supplied AVG and OPS only.
+- The existing deterministic guard correctly rejected both labels. The selection prompt already explicitly forbids decomposing OPS into OBP/SLG, so another prompt-only warning would not make the acceptance path reliable.
+- Persona-batch now performs a narrow deterministic recovery only when every guard issue is exactly an unsupported non-numeric 出塁率/長打率 label. Sentences containing those unsupplied labels are removed and the existing candidate order is preserved. If an unsupported metric sentence contains any numeric value, or if any structural/roster/standard-defense/evidence-source/other guard issue is present, recovery is refused and the batch still fails closed.
+- The sanitized result is re-run through the authoritative persona output guard before it can be returned. Deterministic unit coverage checks the recoverable label-only case, numeric fail-closed behavior, and mixed-hard-issue fail-closed behavior.
 
 ## Next concrete work
 
