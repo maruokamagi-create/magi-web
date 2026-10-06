@@ -251,7 +251,7 @@ function recoverSoftForecastLanguage(result, issues) {
   if (!list.length || !list.every(v => /(?:将来|不確実性|保証できない結果)/.test(v))) return false;
   result.prediction = [];
   result.analysis = [];
-  result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), '将来結果を断定する表現は判断根拠から除外しました。'])];
+  result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), '将来結果はEvidenceから確認できないため、判断根拠にせず断定しません。'])];
   return true;
 }
 
@@ -270,8 +270,8 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
   if (!list.length || !list.every(v => isTeamReviewSoft(v) || isBurdenSoft(v) || isForecastSoft(v))) return false;
 
   const teamReviewIssues = list.filter(isTeamReviewSoft);
-  const burdenIssues = list.filter(isBurdenSoft);
-  const forecastIssues = list.filter(isForecastSoft);
+  const burdenIssues = list.filter(v => isBurdenSoft(v) && !isTeamReviewSoft(v));
+  const forecastIssues = list.filter(v => isForecastSoft(v) && !isTeamReviewSoft(v) && !isBurdenSoft(v));
 
   if (teamReviewIssues.length && !recoverSoftTeamReviewDependency(result, teamReviewIssues)) return false;
   if (burdenIssues.length && !recoverSoftBurdenEscalation(result, burdenIssues)) return false;
