@@ -215,6 +215,96 @@ async function runStagedNaturalThird(base,packet,stage,session){
   }
   throw new Error('LIVE_STAGE_UNSUPPORTED');
 }
+function assertCloserPersonaSet(set,phase){
+  const eligible=new Set((set?.__eligible||[]).map(norm));
+  for(const p of PERSONAS){
+    const row=set?.[p]||{};
+    const candidates=Array.isArray(row?.candidatePlayers)?row.candidatePlayers:[];
+    if(row.reviewRequested===true||row.dataConflict===true||candidates.length<1){
+      throw new Error(`CLOSER_${phase}_${p.toUpperCase()}_INVALID:${JSON.stringify({candidatePlayers:candidates,reviewRequested:row.reviewRequested,dataConflict:row.dataConflict,reviewReason:row.reviewReason||'',warnings:row.warnings||[],publicStatement:row.publicStatement||''}).slice(0,1800)}`);
+    }
+    if(eligible.size&&candidates.some(name=>!eligible.has(norm(name))))throw new Error(`CLOSER_${phase}_${p.toUpperCase()}_INELIGIBLE`);
+  }
+}
+function summarizeCloserSet(set){
+  return Object.fromEntries(PERSONAS.map(p=>[p,{
+    judgment:set?.[p]?.judgment||'',
+    confidence:set?.[p]?.confidence||'',
+    candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],
+    candidateBasis:set?.[p]?.candidateBasis||'',
+    facts:Array.isArray(set?.[p]?.facts)?set[p].facts:[],
+    analysis:Array.isArray(set?.[p]?.analysis)?set[p].analysis:[],
+    warnings:Array.isArray(set?.[p]?.warnings)?set[p].warnings:[],
+    publicStatement:set?.[p]?.publicStatement||''
+  }]));
+}
+async function runStagedCloser(base,packet,stage,session){
+  if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
+  const normalized=String(stage||'').toLowerCase();
+  if(normalized==='prepare'){
+    const players=packet?.allCurrentTeamCheck?.players||[];
+    const eligible=Array.isArray(packet?.pitchingEligible)?packet.pitchingEligible:[];
+    const sakata=players.find(p=>p?.name==='坂田 暉馬');
+    const ready=packet?.selectionKind==='PITCHING_ROLE'
+      && Number(packet?.count)===14
+      && players.length===14
+      && eligible.length>0
+      && String(sakata?.pitching?.SV??'')==='2'
+      && packet?.coachObservationStatus==='COMPLETE'
+      && String(packet?.text||'').includes('坂田 暉馬');
+    if(!ready)throw new Error('CLOSER_LIVE_EVIDENCE_NOT_READY');
+    const caseData=browserCase(packet,CLOSER_QUESTION);
+    caseData.selectionKind='PITCHING_ROLE';
+    caseData.evidence.selectionKind='PITCHING_ROLE';
+    await writeStagedState('closer',session,{caseData,eligible,sakataSaveCount:String(sakata.pitching.SV)});
+    return {ok:true,mode:'closer',stage:'PREPARE',session,question:CLOSER_QUESTION,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',pitchingEligibleCount:eligible.length,coachObservationStatus:packet?.coachObservationStatus||'',sakataSaveCount:String(sakata.pitching.SV)}};
+  }
+  const state=await readStagedState('closer',session);
+  if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='primary'){
+    const primary=await serialPersonaSet(base,'CLOSER_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}),{maxAttempts:1});
+    primary.__eligible=state.eligible||[];
+    assertCloserPersonaSet(primary,'PRIMARY');
+    delete primary.__eligible;
+    await writeStagedState('closer',session,{...state,primary});
+    return {ok:true,mode:'closer',stage:'PRIMARY',session,question:CLOSER_QUESTION,primary:summarizeCloserSet(primary)};
+  }
+  if(!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
+  if(normalized==='cross'){
+    const cross=await post(base,'/api/magi/orchestrate',{phase:'CROSS_EXAMINATION',case:state.caseData,primary:state.primary},'CLOSER_CROSS',{maxAttempts:1});
+    for(const p of PERSONAS){if(!Array.isArray(cross?.challenges?.[p])||cross.challenges[p].length<1)throw new Error(`CLOSER_CROSS_${p.toUpperCase()}_MISSING_CHALLENGE`);}
+    await writeStagedState('closer',session,{...state,cross});
+    return {ok:true,mode:'closer',stage:'CROSS',session,cross:{agreement:cross?.agreement||[],disagreement:cross?.disagreement||[],domainConflicts:cross?.domainConflicts||[],informationGaps:cross?.informationGaps||[],challengeCounts:Object.fromEntries(PERSONAS.map(p=>[p,Array.isArray(cross?.challenges?.[p])?cross.challenges[p].length:0]))}};
+  }
+  if(normalized==='second'){
+    if(!state?.cross)throw new Error('LIVE_STAGE_CROSS_NOT_FOUND');
+    const second=await serialPersonaSet(base,'CLOSER_SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}),{maxAttempts:1});
+    second.__eligible=state.eligible||[];
+    assertCloserPersonaSet(second,'SECOND');
+    delete second.__eligible;
+    await writeStagedState('closer',session,{...state,second});
+    return {ok:true,mode:'closer',stage:'SECOND',session,second:summarizeCloserSet(second)};
+  }
+  if(normalized==='final'){
+    if(!state?.cross||!state?.second)throw new Error('LIVE_STAGE_SECOND_NOT_FOUND');
+    const final=await post(base,'/api/magi/orchestrate',{phase:'FINAL',case:state.caseData,primary:state.primary,crossExamination:state.cross,second:state.second},'CLOSER_FINAL',{maxAttempts:1});
+    const eligible=new Set((state.eligible||[]).map(norm));
+    const candidates=[...PERSONAS.flatMap(p=>state.primary?.[p]?.candidatePlayers||[]),...PERSONAS.flatMap(p=>state.second?.[p]?.candidatePlayers||[]),...(final?.recommendedCandidates||[])];
+    const legal=final?.mode==='SELECTION'
+      && ['SELECTION_RESULT','SELECTION_SPLIT'].includes(final?.status)
+      && Array.isArray(final?.recommendedCandidates)
+      && final.recommendedCandidates.length>0
+      && candidates.every(name=>eligible.has(norm(name)));
+    if(!legal)throw new Error('CLOSER_FINAL_INVALID_'+String(final?.status||'NO_STATUS'));
+    const combined=JSON.stringify({primary:state.primary,second:state.second,final});
+    const saveEvidenceUsed=/セーブ/.test(combined);
+    if(!saveEvidenceUsed)throw new Error('CLOSER_SAVE_EVIDENCE_NOT_USED');
+    const concernUsed=/制球|安定しない|内野守備|専念/.test(combined);
+    return {ok:true,mode:'closer',stage:'FINAL',session,question:CLOSER_QUESTION,closer:{sakataSaveCount:String(state.sakataSaveCount||''),saveEvidenceUsed,currentConcernUsed:concernUsed,centerCandidates:final?.centerCandidates||[],recommendedCandidates:final?.recommendedCandidates||[],recommendation:final?.recommendation||'',majorReasons:final?.majorReasons||[],warnings:final?.warnings||[]},digest:stableDigest({primary:state.primary,cross:state.cross,second:state.second,final})};
+  }
+  throw new Error('LIVE_STAGE_UNSUPPORTED');
+}
+
 async function runStagedLineup(base,packet,stage,session){
   if(!validateStagedSession(session))throw new Error('LIVE_STAGE_SESSION_INVALID');
   const normalized=String(stage||'').toLowerCase();
@@ -348,6 +438,19 @@ export default async function handler(req,res){
     if(mode==='naturalThird'&&stagedStage==='prepare'){
       const naturalPacket=await buildCurrentSelectionEvidence({question:NATURAL_THIRD_QUESTION,routed:{players:['大久保 陽翔'],domains:['LINEUP','BATTING','TEAM'],selectionKind:'GENERIC_SELECTION'}});
       const staged=await runStagedNaturalThird(base,naturalPacket,'prepare',stagedSession);
+      return res.status(200).json(staged);
+    }
+    if(mode==='closer'&&['primary','cross','second','final'].includes(stagedStage)){
+      const staged=await runStagedCloser(base,null,stagedStage,stagedSession);
+      return res.status(200).json(staged);
+    }
+    if(mode==='closer'&&stagedStage==='prepare'){
+      const closerPacket=await buildCurrentSelectionEvidence({
+        question:CLOSER_QUESTION,
+        routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},
+        staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+      });
+      const staged=await runStagedCloser(base,closerPacket,'prepare',stagedSession);
       return res.status(200).json(staged);
     }
     if(mode==='teamReview'&&['primary','cross','second','final'].includes(stagedStage)){
@@ -493,5 +596,12 @@ export default async function handler(req,res){
       strategySnapshotStatus:packet?.strategySnapshotStatus||'',
       strategySnapshotCurrentPolicy:packet?.strategySnapshotCurrentPolicy
     },finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
-  }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error),diagnostic:error?.diagnostic||null});}
+  }catch(error){
+    console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);
+    const failedQuestion=String(req.query?.mode||'lineup')==='closer'?CLOSER_QUESTION
+      : String(req.query?.mode||'lineup')==='naturalThird'?NATURAL_THIRD_QUESTION
+      : String(req.query?.mode||'lineup')==='teamReview'?TEAM_REVIEW_QUESTION
+      : QUESTION;
+    return res.status(200).json({ok:false,question:failedQuestion,error:error?.message||String(error),diagnostic:error?.diagnostic||null});
+  }
 }

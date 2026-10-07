@@ -24,7 +24,7 @@ function baseResult(overrides={}) {
     '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
   ]);
   assert.equal(ok,true);
-  assert.deepEqual(result.analysis,[]);
+  assert.deepEqual(result.analysis,['選手間で出場機会や記録量に差がある。']);
   assert.deepEqual(result.prediction,[]);
   assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
 }
@@ -115,6 +115,38 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
+
+{
+  const caseData={
+    mode:'selection',
+    question:'今の丸岡中のクローザーは誰がいい？',
+    selectionKind:'PITCHING_ROLE',
+    evidence:{
+      selectionKind:'PITCHING_ROLE',
+      allCurrentTeamCheck:{status:'COMPLETE',players:[]},
+      pitchingEligible:['坂田 暉馬','大野 竜暉']
+    }
+  };
+  const result=baseResult({
+    candidatePlayers:['坂田 暉馬','大野 竜暉'],
+    candidateBasis:'坂田 暉馬を固定すれば終盤が安定して勝ちパターンを作れる。',
+    primaryReason:'確認済みの投手記録を比較する。',
+    publicStatement:'坂田 暉馬をクローザーにすれば確実に勝ちを拾える。',
+    analysis:['この起用なら終盤が安定する。'],
+    prediction:['このまま固定すれば勝利につながる。']
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'Evidenceから保証できない結果を断定している',
+    '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている',
+    '将来予測を不確実性の表現なしに確定結果として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(result.candidatePlayers.includes('坂田 暉馬'));
+  assert.ok(!/確実に勝ち|勝ちパターンを作れる|終盤が安定する|勝利につながる/.test(rendered));
+  assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
+}
+
 {
   const caseData={
     mode:'selection',
@@ -170,4 +202,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 7/7 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 8/8 PASS');
