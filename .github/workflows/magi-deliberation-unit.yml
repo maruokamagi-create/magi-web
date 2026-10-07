@@ -7,6 +7,9 @@ on:
       - 'api/magi-gateway.js'
       - 'server/api/magi/persona.js'
       - 'server/api/magi/persona-batch.js'
+      - 'deliberation-integrity-v348.js'
+      - 'api/magi-live-deliberation-selftest.js'
+      - 'scripts/test-full-lineup-persona-transport.mjs'
       - 'server/api/magi/persona-resilient.js'
       - 'server/api/magi/dialogue.js'
       - 'server/api/magi/dialogue-resilient.js'
@@ -28,6 +31,9 @@ on:
       - 'scripts/test-provider-quota-cooldown.mjs'
       - 'server/api/magi/_roster.js'
       - 'engine-ui-v187.js'
+      - 'deliberation-integrity-v348.js'
+      - 'api/magi-live-deliberation-selftest.js'
+      - 'scripts/test-full-lineup-persona-transport.mjs'
       - 'cross-dialogue-ui-v380.js'
       - 'magi-user-language-v382.js'
       - 'scripts/test-deliberation-final.mjs'
@@ -149,4 +155,7 @@ jobs:
 
       - name: Run provider quota cooldown cases
         run: node --experimental-default-type=module scripts/test-provider-quota-cooldown.mjs
+
+      - name: Run full-lineup persona transport contract
+        run: node --experimental-default-type=module scripts/test-full-lineup-persona-transport.mjs
 
