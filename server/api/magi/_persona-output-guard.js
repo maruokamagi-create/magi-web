@@ -260,8 +260,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // proof of a team-wide weakness, scoring dependency, tactical failure or
     // development impact. Keep those inference boundaries visible in PRIMARY and
     // SECOND too, not only in the synthesized FINAL.
-    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:この|その|特定の打者への)?偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
-    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|戦術(?:的)?な?.{0,12}(?:制約|問題)|実戦上.{0,12}課題|育成(?:上)?の課題|得点源|得点力|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|攻撃.{0,12}(?:硬直|硬直化)|勝負.{0,12}分かれ道|勝ちへの道|勝つため|直結|チーム力)/;
+    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き|集中|濃淡)|生産力.{0,18}濃淡|特定.{0,24}成績.{0,24}集中|打線.{0,10}偏り|(?:この|その|特定の打者への)?偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
+    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|戦術(?:的)?な?.{0,12}(?:制約|問題|リスク)|戦術上.{0,18}(?:重要|ポイント)|実戦上.{0,12}課題|育成(?:上)?の課題|得点源|得点力|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|攻撃.{0,12}(?:硬直|硬直化)|勝負.{0,12}分かれ道|勝ちへの道|勝ちに(?:つな|繋)げ|勝つため|勝負だ|直結|生産力|チーム力)/;
     const groundingHedge=/(?:断定(?:しない|しません|できない|できません)|とは言えない|追加(?:の)?Evidence|追加情報|確認できない|根拠がない|課題候補|可能性|おそれ|考えられ)/;
     const unsupportedSpreadOverclaim=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
@@ -275,7 +275,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // a team scoring route, game result or tactical consequence without explicit
     // team-level outcome evidence.
     const individualBattingCue=/(?:無安打|安打0|打率\s*\.?0(?:00)?|低打率|打てていない|当たっていない)/;
-    const teamOutcomeCue=/(?:得点源|得点力|得点ルート|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|戦術(?:上)?(?:の)?課題|戦術(?:的)?な?.{0,12}(?:制約|問題)|直結)/;
+    const teamOutcomeCue=/(?:得点源|得点力|得点ルート|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|勝ちに(?:つな|繋)げ|戦術(?:上)?(?:の)?課題|戦術(?:的)?な?.{0,12}(?:制約|問題|リスク)|戦術上.{0,18}(?:重要|ポイント)|生産力|直結)/;
     const unsupportedBattingCausality=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && individualBattingCue.test(sentence)
@@ -297,7 +297,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // facts. Generic future/development coaching advice is not evidence.
     const unsupportedDevelopmentAdvice=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:半年後|1年後|将来|チーム全体.{0,18}(?:成長|底上げ)|組織的な成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
+      && /(?:半年後|1年後|将来|これから.{0,24}チーム.{0,24}(?:成長|強く)|チーム全体.{0,24}(?:成長|底上げ|強く)|組織的な成長|組織全体.{0,24}育成|育成機会|見守りたい|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
       && !groundingHedge.test(sentence)
     );
     if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
