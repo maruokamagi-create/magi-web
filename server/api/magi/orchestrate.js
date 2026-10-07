@@ -249,7 +249,33 @@ export function buildFullLineupResult(second, cross, caseData={}) {
     });
   }
 
-  const fielding=assignEvidenceGroundedFielding(consensus.lineup,caseData?.evidence?.appearanceFielding);
+  if(consensus.decisionStatus==='DEADLOCK'){
+    return canonicalizePlayerData({
+      mode:'FULL_LINEUP',
+      status:'LINEUP_REVIEW_REQUIRED',
+      recommendation:'3賢人の二次打順案が1対1対1で一致していないため、最終オーダーを勝手に確定しない。',
+      lineup:[],
+      battingOrder:[],
+      fieldingStatus:'NOT_EVALUATED',
+      fieldingReason:'LINEUP_DEADLOCK',
+      personaLineups:consensus.personaLineups,
+      slotConflicts:consensus.slotConflicts,
+      playerSupport:consensus.playerSupport,
+      proposalGroups:consensus.proposalGroups,
+      deliberationDecision:consensus.decisionStatus,
+      finalVote:consensus.finalVote,
+      selectedFromPersona:'',
+      minorityPersonas:[],
+      confidence:'LOW',
+      majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
+      warnings:compactUnique([...warnings,'3賢人の二次打順案が1対1対1。合意度スコアで1案を恣意的に選ばずDEADLOCKとする。']),
+      reDeliberationConditions:compactUnique(['3賢人のうち少なくとも2賢人が同一の1〜9番案に到達するまで再審議する',...informationGaps,...warnings],5),
+      reviewReason:'FULL_LINEUP_DEADLOCK_1_1_1',
+      crossDiscussion:crossDiscussion(normalizedCross)
+    });
+  }
+
+    const fielding=assignEvidenceGroundedFielding(consensus.lineup,caseData?.evidence?.appearanceFielding);
   if(fielding.status!=='COMPLETE'){
     const fieldingReason=fielding.status==='AMBIGUOUS'
       ? '実績Evidence上で同順位の守備配置が複数残るため、推測で守備位置を確定しない。'
@@ -267,6 +293,11 @@ export function buildFullLineupResult(second, cross, caseData={}) {
       personaLineups:consensus.personaLineups,
       slotConflicts:consensus.slotConflicts,
       playerSupport:consensus.playerSupport,
+      proposalGroups:consensus.proposalGroups,
+      deliberationDecision:consensus.decisionStatus,
+      finalVote:consensus.finalVote,
+      selectedFromPersona:consensus.selectedFromPersona,
+      minorityPersonas:consensus.minorityPersonas,
       confidence:'LOW',
       majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
       warnings:compactUnique([...warnings,fieldingReason]),
@@ -285,6 +316,11 @@ export function buildFullLineupResult(second, cross, caseData={}) {
     personaLineups:consensus.personaLineups,
     slotConflicts:consensus.slotConflicts,
     playerSupport:consensus.playerSupport,
+    proposalGroups:consensus.proposalGroups,
+    deliberationDecision:consensus.decisionStatus,
+    finalVote:consensus.finalVote,
+    selectedFromPersona:consensus.selectedFromPersona,
+    minorityPersonas:consensus.minorityPersonas,
     confidence:lowestConfidence(entries.map(([,v])=>v)),
     majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
     warnings,
