@@ -238,9 +238,11 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
     const hasBurdenConcentrationEvidence=/(?:負担.{0,12}(?:集中|偏)|(?:一部|特定).{0,24}負担.{0,12}(?:集中|偏))/.test(evidenceText);
     if(!hasBurdenConcentrationEvidence){
+      const burdenNonAssertion=/(?:断定(?:しない|しません|できない|できません)|確認できない|Evidenceにない|根拠がない)/;
       const unsupportedBurdenConcentration=parts.find(sentence=>
         !isEvidenceGapStatement(sentence)
         && /(?:負担.{0,12}(?:集中|偏)|経験や負担.{0,12}(?:集中|偏)|(?:一部|特定).{0,24}負担.{0,12}(?:集中|偏))/.test(sentence)
+        && !burdenNonAssertion.test(sentence)
       );
       if(unsupportedBurdenConcentration)issues.push('TEAM_REVIEWで起用差から負担集中を断定している');
     }
@@ -328,17 +330,20 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   if(isBattingOrder){
     const unsupportedSlotTactics=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定))|(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+      && (
+        /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
+        || /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+      )
     );
     if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
   }
 
   if(isSelectionLike&&persona.startsWith('CASPER')){
-    const hasDevelopmentEvidence=/(?:育成|成長|経験を積|選手層|投手層|半年後|将来)/.test(evidenceText);
+    const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(String(caseData?.question||''));
     const unsupportedDevelopment=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促)/.test(sentence)
-      && !hasDevelopmentEvidence
+      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
+      && !developmentRequested
     );
     if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
 
