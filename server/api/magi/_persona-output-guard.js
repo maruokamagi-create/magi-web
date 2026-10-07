@@ -133,7 +133,7 @@ function validateAmbiguousInningLanguage(parts,metrics,issues){
   }
 }
 
-function hasUnhedgedOutcomePrediction(sentence){
+export function hasUnhedgedOutcomePrediction(sentence){
   const s=String(sentence||'');
   const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|チーム力|コンディション|パフォーマンス|故障|低下|改善|回復|好機|機会|攻撃力|得点力)/.test(s);
   const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着|高ま|高め|向上|強く|育つ|育て)/.test(s);
@@ -143,6 +143,11 @@ function hasUnhedgedOutcomePrediction(sentence){
   if(hard)return true;
   const causalGuarantee=/(?:ことで|すれば|なら|場合|なければ|れば|と|ば|たら|ため).{0,80}(?:成長する|成長し|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる|狂う|崩れる|悪化する|高まる|高める|向上する|強くなる|育つ|育てる|育てていく|できます|できる)/.test(s);
   return (causalGuarantee||directFuture)&&!hedge;
+}
+
+export function isHardOutcomeGuarantee(sentence){
+  const s=String(sentence||'');
+  return /(?:絶対|必ず|確実に).{0,40}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事|拾|安定|定着|戦力|悪化|低下|故障|損な)/.test(s);
 }
 
 export function validatePersonaOutput(caseData,result,{focused=false}={}){
@@ -287,6 +292,40 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
   }
 
+  const selectionKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  const isPitchingRole=selectionKind==='PITCHING_ROLE';
+  const isBattingOrder=selectionKind==='BATTING_ORDER';
+  const isSelectionLike=Boolean(selectionKind&&selectionKind!=='NONE'&&selectionKind!=='TEAM_REVIEW')||String(caseData?.mode||'').toLowerCase()==='selection';
+  const persona=String(result?.persona||'').toUpperCase();
+
+  if(isPitchingRole){
+    const unsupportedPitchingStability=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
+        || /(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
+        || /(?:長い|多くの?)イニング.{0,18}(?:任せ|投げら|投げ切)/.test(sentence)
+      )
+    );
+    if(unsupportedPitchingStability)issues.push('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している');
+  }
+
+  if(isBattingOrder){
+    const unsupportedSlotTactics=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定))|(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+    );
+    if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
+  }
+
+  if(isSelectionLike&&persona.startsWith('CASPER')){
+    const unsupportedDevelopment=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響))/.test(sentence)
+    );
+    if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
+  }
+
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
   if(!hasStrongBurdenEvidence){
     const unsupportedBurden=[
@@ -300,7 +339,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(unsupportedSentence)issues.push('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
   }
 
-  if(parts.some(sentence=>/(?:絶対|必ず|確実に).{0,24}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事|拾)/.test(sentence))){
+  if(parts.some(isHardOutcomeGuarantee)){
     issues.push('Evidenceから保証できない結果を断定している');
   }
   if(assertiveParts.some(hasUnhedgedOutcomePrediction)){
