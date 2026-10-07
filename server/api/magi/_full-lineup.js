@@ -84,20 +84,58 @@ export function buildConsensusLineup(second){
     a.persona.localeCompare(b.persona,'ja')
   );
 
-  // Important MAGI rule: the final order must come from an actual second-round Wise Man proposal.
-  // Do not invent a fourth compromise lineup by averaging slots across the three proposals.
-  const selectedProposal=proposalScores[0];
-  const lineup=selectedProposal.order.map((name,index)=>{
+  // Final-lineup decision follows the MAGI vote rule at proposal level.
+  // 3 identical second-round orders = 3-0 consensus.
+  // 2 identical orders = 2-1 majority, preserving the minority proposal.
+  // 3 different orders = 1-1-1 DEADLOCK. Never pick the "closest" proposal by agreement score.
+  // This also avoids inventing a fourth compromise lineup by averaging slots.
+  const groups=new Map();
+  for(const [key] of entries){
+    const order=personaLineups[key];
+    const signature=order.map(playerKey).join('>');
+    const group=groups.get(signature)||{signature,order,personas:[]};
+    group.personas.push(key);
+    groups.set(signature,group);
+  }
+  const proposalGroups=[...groups.values()].map(group=>({
+    signature:group.signature,
+    order:group.order,
+    personas:group.personas,
+    support:group.personas.length
+  })).sort((a,b)=>b.support-a.support||a.signature.localeCompare(b.signature,'ja'));
+  const winningGroup=proposalGroups[0];
+  const support=winningGroup?.support||0;
+  const decisionStatus=support===3?'CONSENSUS':support===2?'MAJORITY':'DEADLOCK';
+  const finalVote=support===3?'3-0':support===2?'2-1':'1-1-1';
+  const selectedProposal=support>=2
+    ? proposalScores.find(proposal=>winningGroup.personas.includes(proposal.persona))||null
+    : null;
+  const lineup=selectedProposal?selectedProposal.order.map((name,index)=>{
     const row=table.get(playerKey(name));
     return {slot:index+1,name,support:row?.support||0,averageRank:row?Number((row.rankTotal/row.support).toFixed(2)):null,ranks:row?.ranks||[]};
-  });
+  }):[];
 
   const slotConflicts=[];
   for(let i=0;i<9;i++){
     const choices=entries.map(([key])=>({persona:key,name:personaLineups[key][i]}));
     if(new Set(choices.map(x=>x.name)).size>1) slotConflicts.push({slot:i+1,choices});
   }
-  return {lineup,personaLineups,slotConflicts,playerSupport:ranked,selectedFromPersona:selectedProposal.persona,proposalScores};
+  const minorityPersonas=support===2
+    ? entries.map(([key])=>key).filter(key=>!winningGroup.personas.includes(key))
+    : [];
+  return {
+    lineup,
+    personaLineups,
+    slotConflicts,
+    playerSupport:ranked,
+    selectedFromPersona:selectedProposal?.persona||'',
+    proposalScores,
+    proposalGroups,
+    decisionStatus,
+    finalVote,
+    majorityPersonas:support>=2?[...winningGroup.personas]:[],
+    minorityPersonas
+  };
 }
 
 export const FULL_LINEUP_ROSTER=Object.freeze(CURRENT_ROSTER.slice());
