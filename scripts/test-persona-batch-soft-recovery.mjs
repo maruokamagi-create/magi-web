@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
+import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
 
 function baseResult(overrides={}) {
   return {
@@ -180,6 +181,55 @@ function baseResult(overrides={}) {
   assert.ok(!/最も安定|長いイニング|安定感|信頼できる/.test(JSON.stringify(result)));
 }
 
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2を記録している。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔'],
+    candidateBasis:'勝利の方程式と試合を締める役割の確率的優位性を考慮し、坂田 暉馬を一番手に据える。',
+    analysis:['坂田 暉馬のセーブ数2は、終盤の競った場面を実際に切り抜けた直接的な実績である。'],
+    publicStatement:'坂田 暉馬くんを軸に勝ちに行くべきだ。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'PITCHING_ROLEでセーブ実績から高圧・競った場面の経験を推定している',
+    'PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(canonicalizePlayerData(result));
+  assert.ok(!/確率的優位|競った場面/.test(rendered));
+  assert.ok(!rendered.includes('坂田 暉馬くん'));
+  assert.ok(rendered.includes('坂田 暉馬'));
+}
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投手成績とセーブ実績を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔','中嶋 玲月'],
+    candidateBasis:'将来的なチームの投手層の厚みを考慮して選定する。',
+    analysis:['特定の選手への過度な依存を避ける視点も必要である。'],
+    publicStatement:'半年後のチーム全体の成長も見据え、他の投手たちの成長も促したいです。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
+    'SELECTIONでEvidenceにない依存・役割集中を追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!/将来的|投手層|過度な依存|半年後|成長も促/.test(rendered));
+  assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔','中嶋 玲月']);
+}
+
+{
+  const normalized=canonicalizePlayerData({
+    maruoka:'坂田 暉馬くんを候補にする。大野 竜暉君も比較する。',
+    opponent:'宮永 陽生くんの記録を確認する。'
+  });
+  assert.equal(normalized.maruoka,'坂田 暉馬を候補にする。大野 竜暉も比較する。');
+  assert.equal(normalized.opponent,'宮永 陽生くんの記録を確認する。');
+}
+
 {
   const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番7試合、打率.282、OPS.748。'}};
   const result=baseResult({
@@ -338,4 +388,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 15/15 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 18/18 PASS');
