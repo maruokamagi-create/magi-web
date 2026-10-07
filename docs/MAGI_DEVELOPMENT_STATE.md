@@ -579,6 +579,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage is extended so 3-0, 2-1 and 1-1-1 behaviors are explicit and fielding tests continue only from a valid majority/consensus batting proposal.
 - No Google Drive/CSV data is changed. Vercel Hobby/free remains mandatory.
 
+
+## Production Live current-main full-lineup follow-up (run 37645927583)
+
+- Main `21aed6f45eae69cb8efd31de1b5fc81dc2df085d` was successfully deployed to Vercel production on the Hobby/free plan. The shared `production-revision-ready` gate observed the exact production SHA and passed.
+- The first valid current-main staged best-order run reached PREPARE, PRIMARY, CROSS and SECOND. PREPARE confirmed all 14 players plus COMPLETE batting-order, appearance/fielding and normalized-observation Evidence.
+- The new proposal-level vote rule worked: all three SECOND full-lineup proposals were different, so FINAL correctly returned `LINEUP_REVIEW_REQUIRED / DEADLOCK / 1-1-1` instead of selecting the proposal closest to average ranks.
+- The live selftest contract was stale and treated every non-`LINEUP_RESULT` FINAL as invalid. Branch `fix/live132-full-lineup-deadlock-and-grounding-20261008` changes the live contract to accept only the exact fail-closed deadlock shape: `LINEUP_REVIEW_REQUIRED`, `NOT_EVALUATED`, `FULL_LINEUP_DEADLOCK_1_1_1`, `DEADLOCK`, `1-1-1`, empty lineup. Other review-required results remain failures.
+- Manual semantic inspection of the same SECOND output found additional unsupported wording that the green structural gates did not catch: raw OPS/AVG described as 「安定」, batting placement described as creating/increasing scoring chances, legal fielding eligibility converted into defensive stability, lineup choice converted into improved team coordination, an unsupported current-slot 「固定」 claim, and a `recentSix` Evidence window of 6 games rewritten as 「直近5試合」.
+- The FULL_LINEUP persona guard now blocks those exact inference classes even when hedged with 「可能性」, verifies any stated recent-game window against `evidence.recentSix.gameCount`, and blocks slot fixation unless Evidence contains an explicit current fixed policy.
+- FULL_LINEUP PRIMARY/SECOND instructions now state the same boundaries before generation. The correction directive removes these claims instead of rephrasing them.
+- Production Live PRIMARY/SECOND acceptance now rejects the Live output phrases for scoring-chance, metric stability, defensive stability, coordination effects and unsupported fixation.
+- Regression tests reproduce the exact Live phrases and distinguish an incorrect 5-game window from the supplied 6-game window.
+- No Google Drive/CSV data, roster data, coach Evidence, Vercel billing setting or paid service is changed.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.

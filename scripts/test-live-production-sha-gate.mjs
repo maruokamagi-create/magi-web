@@ -26,4 +26,16 @@ assert.equal((workflow.match(/needs\.production-revision-ready\.result == 'succe
 assert.equal((workflow.match(/run_stage prepare$/gm)||[]).length,4);
 assert.equal((workflow.match(/run_stage prepare 5/g)||[]).length,0);
 
+// A legitimate 1-1-1 full-lineup split is a semantic outcome, not a broken FINAL.
+// The live contract must accept only the exact fail-closed deadlock shape.
+assert.match(live,/FULL_LINEUP_DEADLOCK_1_1_1/);
+assert.match(live,/deliberationDecision==='DEADLOCK'/);
+assert.match(live,/final\?\.finalVote==='1-1-1'/);
+assert.match(workflow,/\.reviewReason=="FULL_LINEUP_DEADLOCK_1_1_1"/);
+assert.match(workflow,/\.deliberationDecision=="DEADLOCK"/);
+assert.match(workflow,/\.finalVote=="1-1-1"/);
+assert.match(workflow,/\.fieldingStatus=="NOT_EVALUATED"/);
+assert.match(workflow,/得点機会\.\{0,24\}/);
+assert.match(workflow,/守備\.\{0,24\}安定/);
+
 console.log('LIVE PRODUCTION SHA GATE RESULT: PASS');
