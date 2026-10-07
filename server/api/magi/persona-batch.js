@@ -271,7 +271,7 @@ function recoverSoftForecastLanguage(result, issues) {
     result[key]=cleanText(result?.[key]);
   }
   if(!String(result.primaryReason||'').trim())result.primaryReason='確認済みEvidenceの範囲だけで現在の判断を行います。';
-  if(!String(result.publicStatement||'').trim())result.publicStatement='将来結果は断定せず、確認済みEvidenceの比較だけで判断します。';
+  if(!String(result.publicStatement||'').trim())result.publicStatement='将来結果は断定しません。確認済みEvidenceの比較だけで判断します。';
   result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),'将来結果はEvidenceから確認できないため、判断根拠にせず断定しません。'])];
   return true;
 }
