@@ -284,6 +284,15 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedBattingCausality)issues.push('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定している');
 
+    const hasScoringDependencyEvidence=/(?:特定.{0,24}(?:選手|打者).{0,32}(?:調子|打撃).{0,32}(?:得点|勝敗).{0,20}左右|得点.{0,24}左右される|得点依存)/.test(evidenceText);
+    if(!hasScoringDependencyEvidence){
+      const unsupportedScoringDependencyRisk=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:特定.{0,24}(?:選手|打者).{0,32}(?:調子|打撃).{0,32}(?:得点|勝敗).{0,20}左右|得点.{0,24}左右されるリスク)/.test(sentence)
+      );
+      if(unsupportedScoringDependencyRisk)issues.push('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定している');
+    }
+
     // Current-state TEAM_REVIEW warnings must describe evidence limits or observed
     // facts. Generic future/development coaching advice is not evidence.
     const unsupportedDevelopmentAdvice=parts.find(sentence=>
