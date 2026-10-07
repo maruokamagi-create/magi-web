@@ -1,7 +1,7 @@
 import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJson } from './_gemini.js';
 import { PERSONA_PROMPTS } from './_prompts.js';
 import { deterministicFullLineupCross, deterministicSelectionCross, isSelectionCase } from './orchestrate.js';
-import { validatePersonaOutput } from './_persona-output-guard.js';
+import { validatePersonaOutput, hasUnhedgedOutcomePrediction, isHardOutcomeGuarantee } from './_persona-output-guard.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
@@ -252,12 +252,7 @@ function recoverSoftForecastLanguage(result, issues) {
 
   const unsupportedFuture = value => {
     const s=String(value||'');
-    const hard=/(?:絶対|必ず|確実に).{0,40}(?:勝|成功|抑え|防げ|改善|成長|維持|回避|無事|拾|安定|定着|戦力|悪化|低下|故障|損な)/.test(s);
-    const outcome=/(?:勝利|勝率|勝ち|成功|成長|定着|戦力|チーム力|コンディション|パフォーマンス|故障|低下|改善|回復|安定|好機|機会|攻撃力|得点力)/.test(s);
-    const directFuture=/(?:半年後|来年|将来|今後).{0,48}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化|安定|広が|定着|高ま|高め|向上|強く|育つ|育て)/.test(s);
-    const hedge=/(?:可能性|かもしれ|おそれ|恐れ|リスク|見込み|予想|考えられ|だろう|でしょう|し得る|あり得る)/.test(s);
-    const causalGuarantee=/(?:ことで|すれば|なら|場合|なければ|れば|と|ば|たら|ため).{0,80}(?:成長する|成長し|定着する|勝てる|勝利できる|維持できる|改善する|回復する|作れる|築ける|安定する|広がる|失う|損なう|響く|響き|影響が出る|影響を与える|抑えられる|守れる|つながる|狂う|崩れる|悪化する|高まる|高める|向上する|強くなる|育つ|育てる|育てていく|できます|できる)/.test(s);
-    return hard || ((directFuture || (outcome && causalGuarantee)) && !hedge);
+    return isHardOutcomeGuarantee(s)||hasUnhedgedOutcomePrediction(s);
   };
   const cleanText=value=>{
     const raw=String(value||'').trim();
@@ -276,6 +271,38 @@ function recoverSoftForecastLanguage(result, issues) {
   if(!String(result.primaryReason||'').trim())result.primaryReason='確認済みEvidenceの範囲だけで現在の判断を行います。';
   if(!String(result.publicStatement||'').trim())result.publicStatement='将来結果は断定せず、確認済みEvidenceの比較だけで判断します。';
   result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),'将来結果はEvidenceから確認できないため、判断根拠にせず断定しません。'])];
+  return true;
+}
+
+export function recoverSoftSelectionInference(result, issues, caseData, {focused=false}={}) {
+  const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
+  const supported=v=>v.includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定')
+    ||v.includes('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定')
+    ||v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加');
+  if(!list.length||!list.every(supported))return false;
+  const snapshot=JSON.parse(JSON.stringify(result||{}));
+  const unsafe=sentence=>
+    /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
+    ||/(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
+    ||/(?:長い|多くの?)イニング.{0,18}(?:任せ|投げら|投げ切)/.test(sentence)
+    ||/(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定))/.test(sentence)
+    ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+    ||/(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響))/.test(sentence);
+  const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
+  const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
+  result.facts=cleanArray(result.facts);
+  result.analysis=cleanArray(result.analysis);
+  result.prediction=cleanArray(result.prediction);
+  result.warnings=cleanArray(result.warnings);
+  for(const key of ['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'])result[key]=cleanText(result?.[key]);
+  if(!String(result.primaryReason||'').trim())result.primaryReason='確認済みの数値・実起用・役割実績の範囲だけで候補を比較する。';
+  if(!String(result.publicStatement||'').trim())result.publicStatement='確認済みEvidenceの範囲だけで候補を比較します。';
+  const remaining=validatePersonaOutput(caseData,result,{focused});
+  if(remaining.length){
+    for(const key of Object.keys(result))delete result[key];
+    Object.assign(result,snapshot);
+    return false;
+  }
   return true;
 }
 
@@ -524,6 +551,7 @@ export default async function handler(req, res) {
       // validation remains authoritative; this does not weaken any guard.
       if (guardIssues.length
         && !recoverSoftPersonaBatchValidation(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
+        && !recoverSoftSelectionInference(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverUnsupportedComponentMetricLabels(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
