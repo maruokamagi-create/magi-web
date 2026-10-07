@@ -386,6 +386,16 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedLineupOutcome)issues.push('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している');
 
+    // Live production can phrase the same unsupported causal jump without the
+    // older exact tokens: "得点力を最大化", "得点力を発揮できる可能性",
+    // or "勝利へ近づく". In a generic best-order task those are still game-
+    // outcome claims, not facts established by raw batting/usage evidence.
+    const unsupportedLineupOptimization=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:得点力.{0,10}(?:最大化|発揮)|勝利(?:へ|に).{0,12}近づ)/.test(sentence)
+    );
+    if(unsupportedLineupOptimization)issues.push('BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している');
+
     // Hedging does not make unsupported lineup causality acceptable. Raw rates,
     // slot placement and legal fielding starts establish present facts only.
     const unsupportedLineupStabilityOrChance=parts.find(sentence=>
@@ -416,7 +426,32 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       if(unsupportedFixedSlot)issues.push('BEST_ORDERでEvidenceにない打順固定を断定している');
     }
 
-    const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
+    // candidatePlayers is the authoritative proposed batting order. When the
+    // user-facing proposal fields spell out multiple numbered slots, those slot
+    // claims must describe the same order. Otherwise the UI can show one lineup
+    // while the rationale describes another.
+    const proposedOrder=Array.isArray(result?.candidatePlayers)
+      ? result.candidatePlayers.map(text).filter(Boolean)
+      : [];
+    if(proposedOrder.length===9){
+      const proposalText=[result?.candidateBasis,result?.publicStatement].map(text).filter(Boolean).join('。');
+      const slotClaims=[];
+      const escapeRegExp=value=>String(value).replace(/[.*+?^$()|[\]\\]/g,'\\    const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);');
+      for(let slot=1;slot<=9;slot++){
+        for(const player of CURRENT_ROSTER){
+          const p=escapeRegExp(player);
+          const slotFirst=new RegExp(String(slot)+'番(?:打者)?(?:投手|捕手|一塁手|二塁手|三塁手|遊撃手|左翼手|中堅手|右翼手)?(?:は|に|を|へ|と|：|:|\\s){0,3}'+p);
+          const playerFirst=new RegExp(p+'.{0,10}(?:を|は)?'+String(slot)+'番(?:に|へ|で|と)(?:置|据|配置|起用)?');
+          if(slotFirst.test(proposalText)||playerFirst.test(proposalText))slotClaims.push({slot,player});
+        }
+      }
+      if(slotClaims.length>=2){
+        const mismatch=slotClaims.find(({slot,player})=>text(proposedOrder[slot-1])!==player);
+        if(mismatch)issues.push('BEST_ORDERのcandidatePlayersと打順説明が矛盾している');
+      }
+    }
+
+        const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
     if(Number.isFinite(recentGameCount)&&recentGameCount>0){
       const outputNfkc=String(all||'').normalize('NFKC');
       const statedRecent=[...outputNfkc.matchAll(/直近\s*(\d+)\s*試合/g)].map(match=>Number(match[1])).filter(Number.isFinite);
