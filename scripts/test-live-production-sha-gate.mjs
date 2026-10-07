@@ -1,0 +1,17 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+
+const live=fs.readFileSync(new URL('../api/magi-live-deliberation-selftest.js', import.meta.url),'utf8');
+const workflow=fs.readFileSync(new URL('../.github/workflows/magi-production-live-deliberation-selftest.yml', import.meta.url),'utf8');
+
+assert.match(live,/VERCEL_GIT_COMMIT_SHA/);
+assert.match(live,/VERCEL_ENV/);
+assert.equal((live.match(/deployment:deploymentIdentity\(\)/g)||[]).length,4);
+
+for (const file of ['lineup','closer','natural-third','team-review']) {
+  const pattern=new RegExp('deployment\\.sha==\\$expected_sha and \\.deployment\\.env=="production"[^\\n]*\\/tmp\\/'+file+'-prepare\\.json');
+  assert.match(workflow,pattern);
+}
+assert.equal((workflow.match(/run_stage prepare 5/g)||[]).length,4);
+
+console.log('LIVE PRODUCTION SHA GATE RESULT: PASS');

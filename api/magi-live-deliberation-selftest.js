@@ -19,6 +19,7 @@ const standardPositionKeys=new Set(STANDARD_POSITIONS);
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const clone=v=>JSON.parse(JSON.stringify(v??null));
 const text=v=>String(v??'').trim();
+const deploymentIdentity=()=>({sha:String(process.env.VERCEL_GIT_COMMIT_SHA||''),env:String(process.env.VERCEL_ENV||''),ref:String(process.env.VERCEL_GIT_COMMIT_REF||'')});
 
 async function post(base,path,body,label=path,options={}){
   const maxAttempts=Math.max(1,Math.min(5,Number(options?.maxAttempts)||5));
@@ -224,7 +225,7 @@ async function runStagedNaturalThird(base,packet,stage,session){
     if(!ready)throw new Error('NATURAL_THIRD_LIVE_EVIDENCE_NOT_READY');
     const caseData=browserCase(packet,NATURAL_THIRD_QUESTION);
     await writeStagedState('naturalThird',session,{caseData});
-    return {ok:true,mode:'naturalThird',stage:'PREPARE',session,question:NATURAL_THIRD_QUESTION,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||''}};
+    return {ok:true,mode:'naturalThird',stage:'PREPARE',session,deployment:deploymentIdentity(),question:NATURAL_THIRD_QUESTION,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||''}};
   }
   const state=await readStagedState('naturalThird',session);
   if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
@@ -299,7 +300,7 @@ async function runStagedCloser(base,packet,stage,session){
     caseData.selectionKind='PITCHING_ROLE';
     caseData.evidence.selectionKind='PITCHING_ROLE';
     await writeStagedState('closer',session,{caseData,eligible,sakataSaveCount:String(sakata.pitching.SV)});
-    return {ok:true,mode:'closer',stage:'PREPARE',session,question:CLOSER_QUESTION,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',pitchingEligibleCount:eligible.length,coachObservationStatus:packet?.coachObservationStatus||'',sakataSaveCount:String(sakata.pitching.SV)}};
+    return {ok:true,mode:'closer',stage:'PREPARE',session,deployment:deploymentIdentity(),question:CLOSER_QUESTION,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',pitchingEligibleCount:eligible.length,coachObservationStatus:packet?.coachObservationStatus||'',sakataSaveCount:String(sakata.pitching.SV)}};
   }
   const state=await readStagedState('closer',session);
   if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
@@ -354,7 +355,7 @@ async function runStagedLineup(base,packet,stage,session){
     if(!packet||typeof packet!=='object')throw new Error('LIVE_STAGE_EVIDENCE_NOT_READY');
     const caseData=browserCase(packet,QUESTION);
     await writeStagedState('lineup',session,{caseData});
-    return {ok:true,mode:'lineup',stage:'PREPARE',session,evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',battingOrderSplitStatus:packet?.battingOrderSplits?.status||'',appearanceFieldingStatus:packet?.appearanceFielding?.status||'',appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',normalizedObservationStatus:packet?.normalizedObservationStatus||''}};
+    return {ok:true,mode:'lineup',stage:'PREPARE',session,deployment:deploymentIdentity(),evidence:{count:Number(packet?.count)||0,selectionKind:packet?.selectionKind||'',battingOrderSplitStatus:packet?.battingOrderSplits?.status||'',appearanceFieldingStatus:packet?.appearanceFielding?.status||'',appearanceStatus:packet?.appearanceFielding?.appearanceStatus||'',fieldingStatus:packet?.appearanceFielding?.fieldingStatus||'',normalizedObservationStatus:packet?.normalizedObservationStatus||''}};
   }
   const state=await readStagedState('lineup',session);
   if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
@@ -427,7 +428,7 @@ async function runStagedTeamReview(base,teamEvidence,stage,session){
       createdAt:new Date().toISOString()
     };
     await writeStagedState('teamReview',session,{caseData});
-    return {ok:true,mode:'teamReview',stage:'PREPARE',session,question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind}};
+    return {ok:true,mode:'teamReview',stage:'PREPARE',session,deployment:deploymentIdentity(),question:TEAM_REVIEW_QUESTION,evidence:{count:teamEvidence.count,reviewKind:teamEvidence.reviewKind,selectionKind:teamEvidence.selectionKind}};
   }
   const state=await readStagedState('teamReview',session);
   if(!state?.caseData)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
