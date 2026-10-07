@@ -391,10 +391,22 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Production Live TEAM_REVIEW acceptance is strengthened so PRIMARY and SECOND must reject the exact unsupported semantic classes observed in #116, and FINAL must contain the direct recent hitless fact without the old contradiction.
 
 
+
+## Production Live #117 closer reliability follow-up
+
+- Main `3cae4007...` merged the visible TEAM_REVIEW grounding fix. Production Live #117 then exposed two independent runtime reliability issues before TEAM_REVIEW could be rechecked.
+- The best-order stage initially failed with only transient provider classes (`provider_retryable_http`, `timeout`, `invalid_structured_json`) and then succeeded on a fresh workflow attempt without any code change. This confirms the lineup logic itself was not the deterministic failure.
+- The closer path remained monolithic. One closer request first hit HTTP 504, and the next request failed deterministically in PRIMARY/BALTHASAR because unsupported future-result language survived in assertive fields even though the existing soft forecast recovery only cleared `analysis` and `prediction`.
+- Soft forecast recovery now removes only sentences that match the same unsupported hard-guarantee/unhedged-outcome class from all user-visible and assertive persona fields, preserves candidate structure, adds an explicit Evidence-boundary warning, and re-runs the authoritative persona guard. Numeric/roster/structural/evidence-source failures remain fail-closed.
+- Closer production E2E is now staged as PREPARE -> PRIMARY -> CROSS -> SECOND -> FINAL using the same short-lived server-side session model as full lineup, natural third and TEAM_REVIEW. This removes the remaining long single-request closer path and avoids cumulative Vercel deadline consumption.
+- Staged closer PREPARE verifies 14-player current Evidence, PITCHING_ROLE routing, pitcher eligibility, coach-observation availability and 坂田 暉馬's verified SV=2 before any persona generation. FINAL verifies every returned candidate is pitching-eligible and that save Evidence is actually used.
+- Error responses now report the actual question for closer/natural-third/TEAM_REVIEW instead of always showing the best-order question, improving diagnosis without changing product behavior.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/team-review-visible-grounding-20261007`; merge only if persona guard, soft-recovery, FINAL, continuity and preview checks are green.
-2. Run Production Live Deliberation on the merged main. Require all four current real-data classes to remain green.
+1. Complete CI for `fix/staged-closer-forecast-recovery-20261007`; merge only if persona recovery, staged closer, continuity and preview checks are green.
+2. Run Production Live Deliberation on the merged main. Require all four current real-data classes to remain green with the closer path staged rather than monolithic.
 3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
 4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
 5. After TEAM_REVIEW is production-verified, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup and CLARIFY.
