@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 8efe88c39b34ea215dc3377e196317167ac0e2bb
+- State base main SHA: 2bfdd67dfc83689681225687886d5ef87a2ed562
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`8efe88c39b34ea215dc3377e196317167ac0e2bb`
+`2bfdd67dfc83689681225687886d5ef87a2ed562`
 
 Recent architectural fixes already merged:
 
@@ -513,12 +513,26 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The staged FULL_LINEUP PRIMARY/SECOND response summary now includes the already-published rationale fields so semantic inspection can read `candidateBasis`, facts/analysis/prediction, reasons, warnings and public statement instead of seeing only the candidate list and judgment.
 - No MAGI decision policy, Evidence source, Google Drive file, provider model configuration, or Vercel plan/configuration is changed by this observability patch.
 
+## Production Live #125 semantic-output follow-up
+
+- Current pre-merge main `2bfdd67d...` contains the FULL_LINEUP individual-persona transport change and the live-observability change that keeps closer, natural-third and TEAM_REVIEW runnable after an upstream failure.
+- Production Live #125 attempt 4 completed staged best-order structurally, but semantic inspection of the published SECOND output found unsupported BALTHASAR claims that batting numbers/order placement made the lineup `最も得点効率に結びつく`, built a `確実な勝利の道`, and `一番勝てる確率を高める`. Structural green therefore did not qualify as success.
+- Root cause: the common persona evidence guard had PITCHING_ROLE and BATTING_ORDER-specific semantic checks but no corresponding FULL_LINEUP guard for batting-number/order -> scoring-efficiency or win-probability causality.
+- FULL_LINEUP now has a deterministic BEST_ORDER semantic guard for that class. The individual persona prompt/correction path explicitly keeps raw AVG/OPS/OBP/SLG and batting-order placement as present comparison evidence only; they do not by themselves establish scoring efficiency, runner conversion, win probability, a certain win path, or the lineup most likely to win.
+- Production Live best-order PRIMARY/SECOND acceptance now rejects the exact leaked semantic class, so a structurally valid nine-player order cannot pass merely because candidate/defense checks are green.
+- In the same #125 attempt, closer PRIMARY first hit a transient timeout and then failed deterministically on CASPER with two simultaneous soft prose issues: unsupported SELECTION growth/development framing plus escalation of the supplied `兼任負担を考慮する必要がある` into stronger burden/consequence wording.
+- The failure was not a reason to weaken either guard. The batch recovery dispatcher previously allowed selection-soft + forecast-soft combinations, while burden-soft recovery was handled by a separate path; a response containing selection-soft + burden-soft therefore fell between both recovery contracts and failed closed.
+- Selection recovery now accepts that exact mixed soft class only, applies the existing selection scrub plus burden scrub, and re-runs the authoritative persona guard. Unknown, numeric, roster, structural and Evidence-source failures remain excluded and fail closed.
+- Burden sentence cleanup is aligned with the existing burden guard so phrases such as `負担集中`, `特定の選手への負担`, excessive burden and accumulated fatigue cannot survive merely because the cleanup regex was narrower than validation.
+- Regression coverage reproduces both #125 failures. No Google Drive/CSV data, provider billing setting, or Vercel plan is changed; Hobby/free remains required.
+- Stale PR #106 was closed without merge because it was branched from `0239d9d5...` after main had already advanced. The authoritative fix is PR #107 from `2bfdd67d...`.
+
 ## Next concrete work
 
-1. Complete CI for `fix/live125-verification-observability-20261007`; merge only if continuity and the existing MAGI guards are green. Vercel Preview Hobby build-rate-limit is not a reason to upgrade the plan.
-2. Run Production Live Deliberation on the merged main. FULL_LINEUP PRIMARY/SECOND must exercise the #103 individual-persona path; closer, natural-third and TEAM_REVIEW must run sequentially even if an earlier class fails, so semantic inspection is never hidden by `needs` skips.
-3. Inspect actual closer, natural-third and TEAM_REVIEW PRIMARY/SECOND/FINAL output after the workflow is green. Do not declare the class solved from status alone.
-4. After those three classes are semantically clean, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, player comparison, direct statistics lookup and CLARIFY.
+1. Complete CI for PR #107 / `fix/live125-semantic-grounding-20261007`; merge only when continuity plus all MAGI semantic/unit guards are green. Vercel Preview Hobby build-rate-limit is not a reason to upgrade the plan.
+2. After merge, run the next Production Live Deliberation on the new main. Require best-order, closer, natural-third and TEAM_REVIEW to execute sequentially through PRIMARY -> CROSS -> SECOND -> FINAL.
+3. Inspect every published rationale field, not only job status. Specifically reject batting-number/order -> scoring/win causality, save -> certain victory, metric -> stability/reliability, unsupported growth/development, unsupported burden concentration, TEAM_REVIEW spread -> weakness/causal/future claims, and FINAL debate-meta.
+4. Only after all four classes are structurally and semantically clean, expand real-path acceptance to individual-player evaluation, player comparison, team tactics/next-game strategy, direct statistics lookup and CLARIFY.
 5. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
 6. Do not declare stabilization complete until the remaining classes are verified through their real production paths and user-visible answer quality is acceptable.
 
