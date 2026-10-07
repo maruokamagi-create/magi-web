@@ -459,6 +459,33 @@ test('C12 natural-third final removes role-settlement, experience-value and line
   assert.doesNotMatch(rendered,/経験値|打順の軸を安定|実戦経験が最も豊富|役割が定着/);
 });
 
+
+test('C13 closer final removes Live132 win-pattern, win-path and win-directness prose',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['坂田 暉馬','大久保 陽翔'],primaryReason:'坂田 暉馬は現チームで2セーブを記録している。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['坂田 暉馬','大久保 陽翔'],primaryReason:'セーブ2の実績を重視し、終盤の勝ちパターンを構築するために坂田 暉馬を選ぶ。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['坂田 暉馬','大久保 陽翔'],primaryReason:'坂田 暉馬を終盤に置くことが一番の勝ち筋で、現時点で最も勝ちに直結する。'})
+  };
+  const caseData={selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',allCurrentTeamCheck:{players:[{name:'坂田 暉馬',pitching:{SV:'2'}},{name:'大久保 陽翔',pitching:{SV:'0'}}]}}};
+  const r=buildSelectionResult(second,{},caseData);
+  const rendered=JSON.stringify(r);
+  assert.ok(r.majorReasons.includes('坂田 暉馬は現チームで2セーブを記録している。'));
+  assert.doesNotMatch(rendered,/勝ちパターン|一番の勝ち筋|勝ちに直結/);
+});
+
+test('C14 natural-third final removes Live132 incumbency, tactical-fit and qualitative-form prose',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'嶋田 栄志は3番で7試合スタメン起用されている。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'これまでの戦術的運用に最も合致し、7試合の起用実績を崩す理由にはならない。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'現チームの戦術の中で3番に固定されてきた経過があり、これまでのチームの形に最も馴染む。',warnings:['直近6試合で打撃の勢いが少し落ち、状態の波があるため注意する。']})
+  };
+  const caseData={selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン。直近6試合は打率.238、OPS .638。'}};
+  const r=buildSelectionResult(second,{},caseData);
+  const rendered=JSON.stringify(r);
+  assert.match(rendered,/3番で7試合スタメン起用/);
+  assert.doesNotMatch(rendered,/戦術的運用に最も合致|崩す理由にはなら|固定されて|チームの形に最も馴染|勢いが少し落ち|状態の波/);
+});
+
 test('R12 TEAM_REVIEW final removes unsupported scoring-dependency and growth warnings',()=>{
   const second=[
     persona('MELCHIOR','BLUE',{primaryReason:'確認済みの打撃成績には選手間の数値差がある。',warnings:[]}),
