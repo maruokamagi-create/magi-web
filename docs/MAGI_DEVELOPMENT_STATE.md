@@ -439,6 +439,18 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - This repair does not substitute a corrected number and does not weaken numeric validation: the unsupported sentence is removed, and only Evidence-matching remaining text is publishable after re-validation.
 
 
+
+## Production Live #120 mixed selection/forecast recovery follow-up
+
+- Main `fd4f3e91...` added the narrow selection metric-mismatch sentence recovery intended to redact the repeated invalid `登板数4` phrase while preserving candidate structure and verified facts.
+- Production Live #120 completed staged best-order and reached closer PRIMARY. The earlier numeric mismatch no longer surfaced as the blocking issue, confirming the metric-sentence recovery path was now being reached after the regex-escape repair work.
+- Closer PRIMARY then failed closed in BALTHASAR with a mixed soft-issue set: `PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している` plus the existing hard/unhedged future-result warnings.
+- The existing selection-inference recovery accepted only a pure selection-inference issue set, while forecast recovery accepted only a pure forecast issue set. A response containing both safe-to-sanitize classes therefore failed even though neither issue required altering candidate structure or inventing Evidence.
+- Branch `fix/mixed-selection-forecast-recovery-20261007` allows selection-inference recovery only when there is at least one recognized selection-soft issue and every remaining issue is either the same recognized selection-soft class or an existing recognized forecast-soft class. It first removes unsupported stability/trust/tactical/growth sentences, then applies the existing forecast sanitizer, preserves candidate order, and re-runs the authoritative persona guard.
+- Numeric mismatches, roster/structure/source failures and any unknown guard class are still excluded from this mixed recovery and remain fail-closed.
+- Regression coverage uses the exact #120 closer issue combination and verifies that unsupported stability/trust/guaranteed-win wording is removed while the two closer candidates are preserved.
+
+
 ## Next concrete work
 
 1. Complete CI for `fix/selection-metric-redaction-20261007`; merge only if metric redaction, persona guard/recovery, continuity and preview checks are green.
