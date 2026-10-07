@@ -403,10 +403,23 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Error responses now report the actual question for closer/natural-third/TEAM_REVIEW instead of always showing the best-order question, improving diagnosis without changing product behavior.
 
 
+
+## Production Live #118 selection-grounding follow-up
+
+- Main `36cb7fc3...` includes the staged closer path and broader unsupported-future soft recovery. Production Live #118 attempt 1 failed only on transient lineup provider output (`timeout`, `invalid_structured_json`) and was re-run without a code change.
+- Attempt 2 completed staged best-order, staged closer and staged natural-third. The closer path now completes without the former monolithic 504 and uses the verified 坂田 暉馬 SV=2 Evidence.
+- Semantic inspection of the successful closer output found residual inference overreach: verified ERA/WHIP/appearance numbers were described as 「安定している」「信頼できる」「長いイニングを任せられる」, and FINAL included a win-probability claim. Those qualities are not directly established by the supplied metrics alone.
+- Semantic inspection of the successful natural-third output found the same pattern in batting-order form: verified 3番起用回数, AVG and OPS were elevated into 「戦術的に最も安定」 and 「チームの戦術で裏付け」; CASPER also added unsupported role-concentration/growth-impact warnings.
+- New selection guards therefore distinguish directly observed numeric/usage facts from unsupported stability, trust, tactical-optimality and growth-impact claims. Narrow deterministic recovery removes only those unsupported sentences while preserving candidate structure and verified facts, then re-runs the authoritative guard.
+- PITCHING_ROLE and BATTING_ORDER FINAL synthesis now grounds `majorReasons` and warnings with the same boundary so unsupported inference cannot re-enter at FINAL even when candidate aggregation itself is valid.
+- The TEAM_REVIEW job in #118 still failed at PRIMARY/CASPER with the same pair of soft issues seen previously: unsupported burden concentration plus an unhedged future effect in the same response. TEAM_REVIEW recovery now performs one additional exact-class sentence cleanup after dependency/future recovery before authoritative re-validation. Hard numeric, roster, structural and evidence-source failures remain fail-closed.
+- Regression coverage includes the exact #118 closer, natural-third and TEAM_REVIEW semantic classes.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/staged-closer-forecast-recovery-20261007`; merge only if persona recovery, staged closer, continuity and preview checks are green.
-2. Run Production Live Deliberation on the merged main. Require all four current real-data classes to remain green with the closer path staged rather than monolithic.
+1. Complete CI for `fix/selection-final-grounding-20261007`; merge only if persona guard/recovery, selection FINAL grounding, continuity and preview checks are green.
+2. Run Production Live Deliberation on the merged main. Require staged best-order, closer, natural-third and TEAM_REVIEW to complete, then inspect the actual semantic output rather than workflow status alone.
 3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
 4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
 5. After TEAM_REVIEW is production-verified, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup and CLARIFY.
