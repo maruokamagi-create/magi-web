@@ -205,5 +205,12 @@
     "api/magi-live-deliberation-selftest.js": {
       "maxDuration": 60
     }
+  },
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "git": {
+    "deploymentEnabled": {
+      "*": false,
+      "main": true
+    }
   }
 }
