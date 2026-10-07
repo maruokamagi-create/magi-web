@@ -15,12 +15,40 @@ on:
   workflow_dispatch:
 
 jobs:
+  production-revision-ready:
+    runs-on: ubuntu-latest
+    timeout-minutes: 4
+    steps:
+      - name: Verify production revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          SESSION="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-revision-ready"
+          out='/tmp/production-revision-ready.json'
+          for attempt in 1 2 3 4 5; do
+            code="$(curl -L --max-time 58 -sS -w '%{http_code}' "$BASE/api/magi-live-deliberation-selftest?mode=lineup&stage=prepare&session=${SESSION}" -o "$out" || true)"
+            cat "$out" 2>/dev/null || true; echo
+            if [ "$code" = "200" ] && jq -e --arg expected_sha "$GITHUB_SHA" '
+              .ok==true and
+              .mode=="lineup" and
+              .stage=="PREPARE" and
+              .deployment.sha==$expected_sha and
+              .deployment.env=="production"
+            ' "$out" >/dev/null 2>&1; then
+              echo 'PRODUCTION REVISION READY: PASS'
+              exit 0
+            fi
+            if [ "$attempt" -lt 5 ]; then sleep 12; fi
+          done
+          echo "Production is not serving GITHUB_SHA=${GITHUB_SHA}; skip provider-heavy acceptance." >&2
+          exit 1
+
   exact-live-best-order:
+    needs: production-revision-ready
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
-      - name: Wait for production deployment
-        run: sleep 45
       - name: Execute staged live best-order in production
         shell: bash
         run: |
@@ -52,7 +80,7 @@ jobs:
             done
           }
 
-          run_stage prepare 5
+          run_stage prepare
           jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/lineup-prepare.json >/dev/null
           jq -e '
             .evidence.count==14 and
@@ -94,8 +122,8 @@ jobs:
           echo 'PRODUCTION STAGED LIVE BEST-ORDER DELIBERATION: PASS'
 
   exact-live-closer:
-    needs: exact-live-best-order
-    if: ${{ !cancelled() }}
+    needs: [production-revision-ready, exact-live-best-order]
+    if: ${{ always() && !cancelled() && needs.production-revision-ready.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -136,7 +164,7 @@ jobs:
             done
           }
 
-          run_stage prepare 5
+          run_stage prepare
           jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/closer-prepare.json >/dev/null
           jq -e '
             .question=="クローザーは誰がいい？" and
@@ -178,8 +206,8 @@ jobs:
           echo 'PRODUCTION STAGED CLOSER DELIBERATION: PASS'
 
   exact-natural-third:
-    needs: exact-live-closer
-    if: ${{ !cancelled() }}
+    needs: [production-revision-ready, exact-live-closer]
+    if: ${{ always() && !cancelled() && needs.production-revision-ready.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -220,7 +248,7 @@ jobs:
             done
           }
 
-          run_stage prepare 5
+          run_stage prepare
           jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/natural-third-prepare.json >/dev/null
           jq -e '
             .question=="3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？" and
@@ -258,8 +286,8 @@ jobs:
 
 
   exact-live-team-review:
-    needs: exact-natural-third
-    if: ${{ !cancelled() }}
+    needs: [production-revision-ready, exact-natural-third]
+    if: ${{ always() && !cancelled() && needs.production-revision-ready.result == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -296,7 +324,7 @@ jobs:
             done
           }
 
-          run_stage prepare 5
+          run_stage prepare
           jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/team-review-prepare.json >/dev/null
           jq -e '
             .question=="今の丸岡中の弱点は何？" and
