@@ -342,7 +342,30 @@ export function buildPitchingPlanResult(second, cross) {
   });
 }
 
-export function buildSelectionResult(second, cross) {
+function selectionKindOf(caseData){
+  return String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+}
+
+function groundSelectionFinalText(value,caseData,{warning=false}={}){
+  const raw=String(value||'').trim();
+  if(!raw)return '';
+  const kind=selectionKindOf(caseData);
+  if(!['PITCHING_ROLE','BATTING_ORDER'].includes(kind))return raw;
+
+  const unsafePitching=sentence=>
+    /(?:安定した投球|安定した実績|安定感|信頼でき|信頼性|長いイニング|イニングを任せられ|勝利の確率|勝ち筋)/.test(sentence);
+  const unsafeBatting=sentence=>
+    /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|チームの戦術.{0,24}裏付け|役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響)/.test(sentence);
+  const unsafe=kind==='PITCHING_ROLE'?unsafePitching:unsafeBatting;
+  const kept=raw.split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s));
+  if(kept.length)return kept.join('');
+  if(warning)return '';
+  return kind==='PITCHING_ROLE'
+    ? '確認済みの投手成績・セーブ実績・指導者観察を比較した。'
+    : '確認済みの打撃成績と実際の打順起用記録を比較した。';
+}
+
+export function buildSelectionResult(second, cross, caseData={}) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
   const entries = Array.isArray(normalizedSecond) ? normalizedSecond.map((v,i)=>[String(i),v]) : Object.entries(normalizedSecond || {});
@@ -356,8 +379,8 @@ export function buildSelectionResult(second, cross) {
       mode: 'SELECTION', status: 'SELECTION_REVIEW_REQUIRED', recommendation: '候補を確定せず、未解決の確認事項を解消して再審議する。',
       centerCandidates: [], recommendedCandidates: [], alternateCandidates: [], candidateSupport: [],
       personaSelections: Object.fromEntries(entries.map(([k,v])=>[k, Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),
-      confidence: 'LOW', majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
-      warnings: compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]),
+      confidence: 'LOW', majorReasons: compactUnique(entries.map(([,v])=>groundSelectionFinalText(v?.primaryReason,caseData)).filter(Boolean)),
+      warnings: compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])].map(v=>groundSelectionFinalText(v,caseData,{warning:true})).filter(Boolean)),
       reDeliberationConditions: compactUnique([...(normalizedCross?.informationGaps||[]), ...(normalizedCross?.warnings||[])],5),
       reviewReason: crossReviewReason || String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.'),
       crossDiscussion:crossDiscussion(normalizedCross)
@@ -436,7 +459,8 @@ export function buildSelectionResult(second, cross) {
       ? `有力候補：${recommendedCandidates.join('・')}。`
       : `各賢人の上位候補：${recommendedCandidates.join('・')}。`;
 
-  const warnings = compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]);
+  const warnings = compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])]
+    .map(v=>groundSelectionFinalText(v,caseData,{warning:true})).filter(Boolean));
   const informationGaps = compactUnique(normalizedCross?.informationGaps || []);
   return canonicalizePlayerData({
     mode: 'SELECTION',
@@ -448,7 +472,7 @@ export function buildSelectionResult(second, cross) {
     candidateSupport: ranked,
     personaSelections,
     confidence: lowestConfidence(entries.map(([,v])=>v)),
-    majorReasons: compactUnique(entries.map(([,v])=>v?.primaryReason)),
+    majorReasons: compactUnique(entries.map(([,v])=>groundSelectionFinalText(v?.primaryReason,caseData)).filter(Boolean)),
     warnings,
     reDeliberationConditions: compactUnique([...informationGaps, ...warnings],5),
     reviewReason: '',
@@ -743,7 +767,7 @@ export default async function handler(req, res) {
         : isPitchingPlanQuestion(body.case)
           ? buildPitchingPlanResult(body.second, body.crossExamination || null)
           : isSelectionCase(body.case)
-            ? buildSelectionResult(body.second, body.crossExamination || null)
+            ? buildSelectionResult(body.second, body.crossExamination || null, body.case || {})
             : isReviewCase(body.case)
               ? buildReviewResult(body.second, body.crossExamination || null, body.case || {})
               : buildFinalResult(body.second, body.crossExamination || null);
