@@ -208,6 +208,8 @@ function recoverSoftTeamReviewDependency(result, issues) {
       .replace(/(?:特定の(?:選手|打者)(?:だけ)?への)?依存/g,'打撃成績の数値差')
       .replace(/(?:上位|主力|特定選手)偏重/g,'打撃成績の数値差')
       .replace(/一部の選手に経験や負担が偏りがち(?:だ|です)?/g,'選手間で出場機会や記録量に差がある')
+      .replace(/(?:一部|特定)(?:の)?選手(?:に|へ|への).{0,18}負担.{0,12}(?:集中|偏(?:る|り|って|りがち))/g,'選手間の出場機会の差')
+      .replace(/負担.{0,12}(?:集中|偏(?:る|り|って|りがち)).{0,18}(?:一部|特定)(?:の)?選手/g,'選手間の出場機会の差')
       .replace(/特定(?:の)?選手への負担集中/g,'選手間の出場機会の差')
       .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
 
@@ -327,6 +329,25 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
   if (teamReviewIssues.length && !recoverSoftTeamReviewDependency(result, teamReviewIssues)) return false;
   if (burdenIssues.length && !recoverSoftBurdenEscalation(result, burdenIssues)) return false;
   if (forecastIssues.length && !recoverSoftForecastLanguage(result, forecastIssues)) return false;
+  // TEAM_REVIEW often produces the unsupported burden and future-effect claim in
+  // the same sentence. Run one final sentence-level cleanup for the exact guard
+  // classes already identified above before re-validating. Do not touch hard
+  // evidence, numeric, roster, or structural failures.
+  if (teamReviewIssues.length) {
+    const unsafeTeamReviewSentence = sentence =>
+      /(?:負担.{0,12}(?:集中|偏(?:る|り|って|りがち))|経験や負担.{0,12}(?:集中|偏(?:る|り|って|りがち)))/.test(sentence)
+      || hasUnhedgedOutcomePrediction(sentence)
+      || isHardOutcomeGuarantee(sentence);
+    const cleanTeamText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafeTeamReviewSentence(s)).join('');
+    const cleanTeamArray=value=>(Array.isArray(value)?value:[]).map(cleanTeamText).filter(Boolean);
+    result.facts=cleanTeamArray(result.facts);
+    result.analysis=cleanTeamArray(result.analysis);
+    result.prediction=cleanTeamArray(result.prediction);
+    result.warnings=cleanTeamArray(result.warnings);
+    for(const key of ['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'])result[key]=cleanTeamText(result?.[key]);
+    if(!String(result.primaryReason||'').trim())result.primaryReason='確認済み記録と解釈を分け、現在確認できる事実だけを評価する。';
+    if(!String(result.publicStatement||'').trim())result.publicStatement='確認済み記録には選手間の差があります。ただし、その差だけで負担集中や将来影響までは断定しません。';
+  }
   if(caseData){
     const remaining=validatePersonaOutput(caseData,result,{focused});
     if(remaining.length){
