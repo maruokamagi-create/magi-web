@@ -540,6 +540,64 @@ test('G74 TEAM_REVIEW blocks tactical-constraint, scoring-dependency risk and ge
   assert.ok(issues.some(x=>x.includes('将来・育成・一般論')));
 });
 
+
+test('G75 FULL_LINEUP blocks Live132 scoring-chance, batting-stability and defensive-effect leakage',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',recentSix:{gameCount:6},summary:'現チームの打撃成績、直近6試合、実打順、公式戦・練習第1試合の先発守備資格を比較する。'}
+  };
+  const r=result({
+    persona:'CASPER',
+    analysis:[
+      '中嶋 玲月は通算打率 .485と高い数値を記録しており、3番打者として起用することで得点機会を創出する可能性があると考えられます。',
+      '嶋田 栄志は通算OPS .748と安定しており、4番打者として打線をつなぐ役割が期待されます。',
+      '守備位置の適性を考慮した配置により、守備の安定性が維持される可能性があります。'
+    ],
+    publicStatement:'守備の安定も考慮し、この打順でチームの連携を深めることを目指します。'
+  });
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('得点機会・安定性')));
+  assert.ok(issues.some(x=>x.includes('守備安定性や連携効果')));
+});
+
+test('G76 FULL_LINEUP blocks a mismatched recent-game window',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',recentSix:{gameCount:6},summary:'直近6試合の打撃成績を使用する。'}
+  };
+  const r=result({persona:'BALTHASAR',primaryReason:'直近5試合の打撃成績でも打率.375・OPS .849を記録している。'});
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('直近試合数をEvidenceと異なる値')));
+});
+
+test('G77 FULL_LINEUP allows the exact supplied recent-game window count',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',recentSix:{gameCount:6},summary:'直近6試合の打撃成績を使用する。'}
+  };
+  const r=result({persona:'MELCHIOR',primaryReason:'直近6試合の打撃成績を現在状態の比較材料として確認した。'});
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(!issues.some(x=>x.includes('直近試合数をEvidenceと異なる値')));
+});
+
+test('G78 FULL_LINEUP blocks unsupported current-slot fixation',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',summary:'現在の打撃成績と実打順を比較する。固定方針の記録はない。'}
+  };
+  const r=result({persona:'BALTHASAR',publicStatement:'中嶋 玲月を3番で固定する。'});
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('Evidenceにない打順固定')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
