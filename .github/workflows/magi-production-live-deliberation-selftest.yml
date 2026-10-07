@@ -52,7 +52,8 @@ jobs:
             done
           }
 
-          run_stage prepare
+          run_stage prepare 5
+          jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/lineup-prepare.json >/dev/null
           jq -e '
             .evidence.count==14 and
             .evidence.selectionKind=="FULL_LINEUP" and
@@ -135,7 +136,8 @@ jobs:
             done
           }
 
-          run_stage prepare
+          run_stage prepare 5
+          jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/closer-prepare.json >/dev/null
           jq -e '
             .question=="クローザーは誰がいい？" and
             .evidence.count==14 and
@@ -218,7 +220,8 @@ jobs:
             done
           }
 
-          run_stage prepare
+          run_stage prepare 5
+          jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/natural-third-prepare.json >/dev/null
           jq -e '
             .question=="3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？" and
             .evidence.count==14 and
@@ -293,7 +296,8 @@ jobs:
             done
           }
 
-          run_stage prepare
+          run_stage prepare 5
+          jq -e --arg expected_sha "$GITHUB_SHA" '.deployment.sha==$expected_sha and .deployment.env=="production"' /tmp/team-review-prepare.json >/dev/null
           jq -e '
             .question=="今の丸岡中の弱点は何？" and
             .evidence.count==14 and
