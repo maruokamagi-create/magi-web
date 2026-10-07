@@ -427,10 +427,22 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage includes the exact #119 「登板数4」 failure and proves mixed mismatch plus hard-error cases remain fail-closed.
 
 
+
+## Production Live #119 repeated closer numeric-mismatch follow-up
+
+- Main `546ef830...` contains the selection-grounding and TEAM_REVIEW mixed-soft-recovery changes from PR #94. All ordinary main checks passed after merge.
+- Production Live #119 attempt 1 failed staged best-order PRIMARY only with transient provider classes (`timeout -> invalid_structured_json -> timeout`). No deterministic guard issue was reported.
+- Attempt 2 completed staged best-order, then closer PRIMARY failed closed because MELCHIOR emitted `登板数4`, which does not match any supplied current Evidence value.
+- Attempt 3 reproduced the exact same `登板数4 は supplied CASE/EVIDENCE の 登板数 値と一致しない` immediately. The source Evidence was not changed; the repeated identical generation indicates the same invalid model/canonical result can be reused, so repeated workflow reruns are not a sufficient recovery strategy.
+- Persona-batch already had a deliberately narrow `recoverMismatchedSelectionMetricSentences` path: only candidate-selection cases, only when every issue is an exact numeric metric mismatch, remove only the sentence containing that mismatched number, preserve candidate structure and other verified facts, then re-run the authoritative persona guard. Mixed roster/structural/evidence failures remain fail-closed.
+- Inspection found the regex-escaping statement inside that recovery path had been corrupted, so the intended sentence match could not work. The branch `fix/persona-appearance-count-recovery-20261007` repairs that line to the standard regex-special-character escape and retains the existing exact `登板数4` regression test.
+- This repair does not substitute a corrected number and does not weaken numeric validation: the unsupported sentence is removed, and only Evidence-matching remaining text is publishable after re-validation.
+
+
 ## Next concrete work
 
 1. Complete CI for `fix/selection-metric-redaction-20261007`; merge only if metric redaction, persona guard/recovery, continuity and preview checks are green.
-2. Run Production Live Deliberation on the merged main. Require staged best-order, closer, natural-third and TEAM_REVIEW to complete, then inspect the actual semantic output rather than workflow status alone.
+2. Run Production Live Deliberation on the merged main. Require the repeated closer `登板数4` case to be removed rather than published or blocking the whole consultation, while all remaining text still passes the authoritative numeric guard.
 3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
 4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
 5. After TEAM_REVIEW is production-verified, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup and CLARIFY.
