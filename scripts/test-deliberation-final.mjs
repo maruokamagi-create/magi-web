@@ -412,6 +412,39 @@ test('C10 natural-third final removes certainty and generic growth rationale',()
   assert.match(reasons,/3番打順でのスタメン起用実績が最も多い/);
   assert.doesNotMatch(reasons,/最も確実な選択肢|選手の成長を慎重に見守/);
 });
+test('C11 closer final removes Live 124 debate-meta, certain-win and unsupported burden prose',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{
+      candidatePlayers:['坂田 暉馬','大久保 陽翔','橋向 結都'],
+      primaryReason:'指摘された通り、坂田 暉馬の起用は投球回4という小さな母数に基づくものである。ただ、現時点で2セーブが確認できるのは同選手のみであるため、私の判断は変えません。'
+    }),
+    balthasar:persona('BALTHASAR','BLUE',{
+      candidatePlayers:['坂田 暉馬','大久保 陽翔'],
+      primaryReason:'勝利に直結するセーブ実績を持つ選手を起用することが、現在の限られたデータに基づく確実な勝ち筋となる。',
+      warnings:['特定の選手への負担集中やコンディションには注意が必要です。']
+    }),
+    casper:persona('CASPER','BLUE',{
+      candidatePlayers:['坂田 暉馬','大久保 陽翔','中嶋 玲月'],
+      primaryReason:'指摘されたように小さな母数に基づく実績だけで固定化することには弱点があります。ただ、チーム全体のバランスを見守るため、僕の判断はこのままにします。'
+    })
+  };
+  const caseData={
+    selectionKind:'PITCHING_ROLE',
+    evidence:{
+      selectionKind:'PITCHING_ROLE',
+      allCurrentTeamCheck:{players:[
+        {name:'坂田 暉馬',pitching:{SV:'2'}},
+        {name:'大久保 陽翔',pitching:{SV:'0'}},
+        {name:'橋向 結都',pitching:{SV:'0'}}
+      ]}
+    }
+  };
+  const r=buildSelectionResult(second,{},caseData);
+  const rendered=JSON.stringify(r);
+  assert.ok(r.majorReasons.includes('坂田 暉馬は現チームで2セーブを記録している。'));
+  assert.doesNotMatch(rendered,/指摘された|私の判断は変え|確実な勝ち筋|勝利に直結|負担集中|僕の判断はこのまま/);
+});
+
 test('C05 cross evidence failure blocks candidate finalization',()=>{
   const second={
     melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['大野 竜暉']}),
