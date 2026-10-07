@@ -90,6 +90,16 @@ function stableDigest(value){return createHash('sha256').update(JSON.stringify(v
 async function serialPersonaSet(base,phase,buildBody,options={}){
   const sample=buildBody(PERSONAS[0]);
   const phaseName=String(sample?.phase||'PRIMARY').toUpperCase();
+  const selectionKind=String(sample?.case?.selectionKind||sample?.case?.evidence?.selectionKind||'').toUpperCase();
+  if(selectionKind==='FULL_LINEUP'){
+    const rows=await Promise.all(PERSONAS.map(async(p,index)=>{
+      if(index)await sleep(index*300);
+      const body=buildBody(p);
+      const raw=await post(base,'/api/magi/persona',body,`${phase}_${p.toUpperCase()}`,options);
+      return [p,recoverSoftLineup(raw||{},p)];
+    }));
+    return Object.fromEntries(rows);
+  }
   const batchBody=phaseName==='SECOND'
     ? {phase:'SECOND',case:sample.case,primary:Object.fromEntries(PERSONAS.map(p=>[p,buildBody(p)?.primarySelf||null])),crossExamination:Object.fromEntries(PERSONAS.map(p=>[p,buildBody(p)?.crossExamination||null]))}
     : {phase:'PRIMARY',case:sample.case};

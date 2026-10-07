@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 40bec6873539dec0ce09d89323da8276a4204af0
+- State base main SHA: 0239d9d5b465f3ee7752809fd92352307182273d
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`40bec6873539dec0ce09d89323da8276a4204af0`
+`0239d9d5b465f3ee7752809fd92352307182273d`
 
 Recent architectural fixes already merged:
 
@@ -490,10 +490,25 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Production acceptance regexes now reject the exact #124 closer, natural-third and TEAM_REVIEW leak phrases so a future green run cannot hide these semantic regressions.
 
 
+
+## Production Live #125 FULL_LINEUP transport reliability follow-up
+
+- Main `0239d9d5...` contains the Live #124 TEAM_REVIEW CROSS and semantic-grounding fixes. Vercel production deployment is green and the ordinary main CI checks are green.
+- Production Live #125 did not reach closer/natural-third/TEAM_REVIEW because staged best-order PRIMARY failed first. Attempt 1 produced three consecutive `timeout` failures from `PRIMARY_BATCH`.
+- A fresh failed-job rerun reproduced two more batch timeouts. Its third PRIMARY batch response finally arrived, but MELCHIOR was rejected for two correct deterministic reasons: an unhedged future-result claim and `FULL_LINEUP_STANDARD_DEFENSE / NO_COMPLETE_STANDARD_STARTING_MATCHING`, meaning its chosen nine could not cover all nine standard positions from official-game or 練習第1試合 starting Evidence.
+- Do not weaken either guard. The failure shows a transport/recovery mismatch: `persona-batch` performs one large Gemini generation for all three personas and intentionally performs no model correction pass, while the existing individual `/api/magi/persona` endpoint already supports one FULL_LINEUP correction pass and can rebuild an invalid nine using the exact standard-defense directive.
+- The actual production browser engine is installed by `deliberation-integrity-v348.js` as `1.1.2-serial-integrity`. It currently prefers `/api/magi/persona-batch` for PRIMARY/SECOND and only uses individual persona requests for obsolete-endpoint 404/405 fallback. Therefore the #125 batch failure is relevant to the real UI path, not only the selftest.
+- Current branch `fix/full-lineup-individual-persona-fallback-20261007` changes only FULL_LINEUP transport: PRIMARY and SECOND use three separate `/api/magi/persona` requests with a small 300ms stagger and parallel completion. Each persona keeps the same shared CASE/Evidence, but receives no other persona output during PRIMARY and only its own PRIMARY + own CROSS compartment during SECOND.
+- Other question classes retain the existing batch path. This keeps the scope narrow and preserves the quota-efficient route where the large FULL_LINEUP Evidence packet is not involved.
+- `api/magi-live-deliberation-selftest.js` mirrors the same FULL_LINEUP individual transport so the next Production Live run verifies the product path instead of the old batch-only path.
+- A dedicated transport contract test verifies that FULL_LINEUP uses `/api/magi/persona` for PRIMARY/SECOND while the non-FULL_LINEUP batch route remains present.
+- No Drive/CSV data is changed by this transport fix.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/live124-review-cross-grounding-20261007`; merge only if TEAM_REVIEW deterministic CROSS passes the full cross guard, Live #124 semantic regressions pass, continuity is green, and preview deployment succeeds.
-2. Run Production Live Deliberation on the merged main. Require all four staged classes to complete and inspect closer, natural-third and TEAM_REVIEW user-visible text semantically before accepting the run.
+1. Complete CI for `fix/full-lineup-individual-persona-fallback-20261007`; merge only if the transport contract, deliberation suite, continuity guard and preview deployment are green.
+2. Run Production Live Deliberation on the merged main. FULL_LINEUP PRIMARY/SECOND must exercise the individual persona path, then closer, natural-third and TEAM_REVIEW must also complete.
 3. Inspect actual closer, natural-third and TEAM_REVIEW PRIMARY/SECOND/FINAL output after the workflow is green. Do not declare the class solved from status alone.
 4. After those three classes are semantically clean, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, player comparison, direct statistics lookup and CLARIFY.
 5. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
