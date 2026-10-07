@@ -370,7 +370,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
     const unsupportedNoChangeClaim=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:他の記録が示されない限り|他の記録がない限り).{0,48}(?:判断|選択).{0,24}(?:変更|変える).{0,16}(?:理由はない|必要はない)/.test(sentence)
+      && /(?:他の記録が示されない限り|他の記録がない限り).{0,48}(?:判断|選択).{0,24}(?:変更|変える).{0,16}(?:理由は(?:ない|ありません)|必要は(?:ない|ありません))/.test(sentence)
     );
     if(unsupportedNoChangeClaim)issues.push('BATTING_ORDERで現在Evidenceを再比較せず判断変更不要を断定している');
 
