@@ -64,13 +64,21 @@ jobs:
           ' /tmp/lineup-prepare.json >/dev/null
 
           run_stage primary 3
-          jq -e '([.primary[].candidatePlayers|length] | all(.==9))' /tmp/lineup-primary.json >/dev/null
+          jq -e '
+            ([.primary[].candidatePlayers|length] | all(.==9)) and
+            (([.primary[]|tostring]|join("\n")) as $text |
+              ($text|test("得点効率|勝てる確率|勝率を高め|勝利の確率|確実な勝利|確実な勝ち筋|勝ちへの道|勝利に直結|得点力が発揮")|not))
+          ' /tmp/lineup-primary.json >/dev/null
 
           run_stage cross
           jq -e '([.cross.challengeCounts[]] | all(.>0))' /tmp/lineup-cross.json >/dev/null
 
           run_stage second 3
-          jq -e '([.second[].candidatePlayers|length] | all(.==9))' /tmp/lineup-second.json >/dev/null
+          jq -e '
+            ([.second[].candidatePlayers|length] | all(.==9)) and
+            (([.second[]|tostring]|join("\n")) as $text |
+              ($text|test("得点効率|勝てる確率|勝率を高め|勝利の確率|確実な勝利|確実な勝ち筋|勝ちへの道|勝利に直結|得点力が発揮")|not))
+          ' /tmp/lineup-second.json >/dev/null
 
           run_stage final
           jq -e '

@@ -297,6 +297,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const selectionKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
   const isPitchingRole=selectionKind==='PITCHING_ROLE';
   const isBattingOrder=selectionKind==='BATTING_ORDER';
+  const isFullLineup=selectionKind==='FULL_LINEUP';
   const isSelectionLike=Boolean(selectionKind&&selectionKind!=='NONE'&&selectionKind!=='TEAM_REVIEW')||String(caseData?.mode||'').toLowerCase()==='selection';
   const persona=String(result?.persona||'').toUpperCase();
 
@@ -336,6 +337,18 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       )
     );
     if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
+  }
+
+  if(isFullLineup){
+    const unsupportedLineupOutcome=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:打率|OPS|出塁率|長打率|安打|打数|成績|数値|打順|[1-9１-９]番).{0,90}(?:得点効率|勝てる確率|勝率を高め|勝利の確率|確実な勝利|確実な勝ち筋|勝ちへの道|勝利に直結|得点力が発揮|ランナーを(?:還す|返す))/.test(sentence)
+        || /(?:得点効率|勝てる確率|勝率を高め|勝利の確率|確実な勝利|確実な勝ち筋|勝ちへの道|勝利に直結|得点力が発揮).{0,90}(?:打率|OPS|出塁率|長打率|安打|打数|成績|数値|打順|[1-9１-９]番)/.test(sentence)
+        || /(?:一番|最も).{0,24}(?:勝てる確率|得点効率).{0,24}(?:高め|高い|結びつ|上が)/.test(sentence)
+      )
+    );
+    if(unsupportedLineupOutcome)issues.push('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している');
   }
 
   if(isSelectionLike&&persona.startsWith('CASPER')){

@@ -529,4 +529,25 @@ function baseResult(overrides={}) {
   assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','大久保 夢翔']);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 26/26 PASS');
+
+
+{
+  const caseData={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は2セーブ。捕手との兼任負担を考慮する必要がある。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['坂田 暉馬','大野 竜暉'],
+    analysis:['坂田 暉馬への役割集中はチーム全体の成長に影響する。'],
+    warnings:['特定の選手への負担集中が大きくならないよう注意が必要です。'],
+    publicStatement:'2セーブの坂田 暉馬を候補とします。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
+    'Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!/チーム全体の成長|負担集中が大き/.test(rendered));
+  assert.ok(rendered.includes('坂田 暉馬'));
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 27/27 PASS');
