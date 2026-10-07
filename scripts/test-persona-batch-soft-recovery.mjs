@@ -465,4 +465,68 @@ function baseResult(overrides={}) {
   assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔','中嶋 玲月']);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 22/22 PASS');
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'打撃成績には選手間の数値差がある。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    publicStatement:'打てる選手とそうでない選手の差が大きいのが現実だ。この偏りをどう埋めていくかが勝ちへの道だぜ。',
+    analysis:['勝つための打線構築や起用において、この偏りをどう克服していくかが実戦上の重要な課題である。'],
+    warnings:['特定の打者への偏りが攻撃の硬直化を招くリスクを考慮する必要がある。']
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!/勝ちへの道|攻撃の硬直化|実戦上の重要な課題/.test(rendered));
+  assert.ok(rendered.includes('選手間の数値差'));
+}
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの確認済み記録を横断する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    publicStatement:'試合に出ている選手だけでなく、チーム全体がどう成長していくかを見守りたいですね。',
+    analysis:['確認済みの出場機会や打数には選手間の差がある。']
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!JSON.stringify(result).includes('チーム全体がどう成長'));
+  assert.ok(result.publicStatement.length>0);
+}
+
+{
+  const caseData={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は2セーブ。制球に関する観察あり。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔'],
+    facts:['坂田 暉馬は2セーブを記録している。'],
+    analysis:['勝利に直結するセーブ実績を持つ選手を起用することが、現在の限られたデータに基づく確実な勝ち筋となる。'],
+    warnings:['特定の選手への負担集中やコンディションには注意が必要です。']
+  });
+  const changed=sanitizeKnownSelectionProse(result,caseData);
+  assert.equal(changed,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!/勝利に直結|確実な勝ち筋|負担集中/.test(rendered));
+  assert.ok(rendered.includes('坂田 暉馬は2セーブ'));
+  assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔']);
+}
+
+
+{
+  const caseData={question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番起用記録を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬','大久保 夢翔'],
+    publicStatement:'坂田 暉馬の打撃状態も良いので、選手たちの成長を見守りながら判断していきたいです。'
+  });
+  const changed=sanitizeKnownSelectionProse(result,caseData);
+  assert.equal(changed,true);
+  assert.ok(!JSON.stringify(result).includes('選手たちの成長'));
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','大久保 夢翔']);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 26/26 PASS');

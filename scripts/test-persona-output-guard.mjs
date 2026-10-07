@@ -464,6 +464,46 @@ test('G66 CASPER closer blocks explicit team-wide growth claim in analysis',()=>
   assert.ok(issues.some(x=>x.includes('成長・育成・負担影響')));
 });
 
+
+test('G67 TEAM_REVIEW blocks spread-to-win-path and attack-rigidity claims',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'打撃成績には選手間の数値差がある。'}};
+  const r=result({
+    persona:'BALTHASAR',
+    publicStatement:'打てる選手とそうでない選手の差が大きい。この偏りをどう埋めるかが勝ちへの道だ。',
+    warnings:['特定の打者への偏りが攻撃の硬直化を招くリスクを考慮する必要がある。']
+  });
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('数値差・偏り')));
+});
+
+test('G68 TEAM_REVIEW blocks generic team-growth advice in current weakness review',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({persona:'CASPER',publicStatement:'試合に出ている選手だけでなく、チーム全体がどう成長していくかを見守りたいですね。'});
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('将来・育成・一般論')));
+});
+
+test('G69 closer role blocks save-to-victory causality and certain win-path claims',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は2セーブを記録している。'}};
+  const r=result({persona:'BALTHASAR',analysis:['勝利に直結するセーブ実績を持つ選手を起用することが、現在の限られたデータに基づく確実な勝ち筋となる。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('勝利・成功確率')));
+});
+
+test('G70 unsupported reverse-order burden wording is blocked',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は2セーブ。制球に関する観察あり。'}};
+  const r=result({persona:'CASPER',analysis:['特定の選手への過度な負担が生じないよう観察を続ける必要がある。'],warnings:['特定の選手への負担集中やコンディションには注意が必要です。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('負担の大きさや具体的悪影響')));
+});
+
+test('G71 directly observed burden concentration remains usable',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'観察記録：特定の選手への負担集中が確認されている。'}};
+  const r=result({persona:'CASPER',warnings:['特定の選手への負担集中には注意が必要です。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(!issues.some(x=>x.includes('負担の大きさや具体的悪影響')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

@@ -19,7 +19,7 @@ function sentenceParts(value){
 }
 function isEvidenceGapStatement(sentence){
   const s=String(sentence||'');
-  return /(?:確認でき(?:ない|ません)|裏付け(?:られない|られません)|証明でき(?:ない|ません)|断定でき(?:ない|ません)|とは言え(?:ない|ません)|根拠(?:が|は)?(?:ない|ありません)|記録(?:が|は)?(?:ない|ありません|含まれていない|含まれていません)|Evidence(?:に|上に)?(?:ない|ありません)|未確認|不明|示されていない|示されていません|前提にでき(?:ない|ません)|直接.{0,12}でき(?:ない|ません))/.test(s);
+  return /(?:確認でき(?:ない|ません)|裏付け(?:られない|られません)|証明でき(?:ない|ません)|断定(?:しない|しません|できない|できません)|とは言え(?:ない|ません)|根拠(?:が|は)?(?:ない|ありません)|記録(?:が|は)?(?:ない|ありません|含まれていない|含まれていません)|Evidence(?:に|上に)?(?:ない|ありません)|未確認|不明|示されていない|示されていません|前提にでき(?:ない|ません)|直接.{0,12}でき(?:ない|ません))/.test(s);
 }
 
 const KEY_MAP=new Map([
@@ -260,8 +260,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // proof of a team-wide weakness, scoring dependency, tactical failure or
     // development impact. Keep those inference boundaries visible in PRIMARY and
     // SECOND too, not only in the synthesized FINAL.
-    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
-    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|直結|チーム力)/;
+    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:この|その|特定の打者への)?偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
+    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|実戦上.{0,12}課題|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|攻撃.{0,12}(?:硬直|硬直化)|勝負.{0,12}分かれ道|勝ちへの道|勝つため|直結|チーム力)/;
     const groundingHedge=/(?:断定(?:しない|しません|できない|できません)|とは言えない|追加(?:の)?Evidence|追加情報|確認できない|根拠がない|課題候補|可能性|おそれ|考えられ)/;
     const unsupportedSpreadOverclaim=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
@@ -288,7 +288,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // facts. Generic future/development coaching advice is not evidence.
     const unsupportedDevelopmentAdvice=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:半年後|1年後|将来|チーム全体で.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
+      && /(?:半年後|1年後|将来|チーム全体.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
       && !groundingHedge.test(sentence)
     );
     if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
@@ -322,7 +322,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
     const unsupportedProbability=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
+      && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|確実な勝ち筋|勝ちへの道)/.test(sentence)
     );
     if(unsupportedProbability)issues.push('PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している');
   }
@@ -357,10 +357,10 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     }
   }
 
-  const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
+  const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度|集中)|過度な負担|負担集中|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
   if(!hasStrongBurdenEvidence){
     const unsupportedBurden=[
-      /負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度)/,
+      /負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度|集中)|過度な負担|負担集中|特定の選手への負担/,
       /蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)/,
       /(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/,
       /(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)/,

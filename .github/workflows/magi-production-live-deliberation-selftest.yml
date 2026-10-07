@@ -139,7 +139,7 @@ jobs:
           jq -e '
             ([.primary[].candidatePlayers|length] | all(.>0)) and
             (([.primary[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|防御率.{0,45}安定している")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|過度な負担|負担集中|特定の選手への負担|勝利に直結|確実な勝ち筋|防御率.{0,45}安定している")|not))
           ' /tmp/closer-primary.json >/dev/null
 
           run_stage cross 3
@@ -149,7 +149,7 @@ jobs:
           jq -e '
             ([.second[].candidatePlayers|length] | all(.>0)) and
             (([.second[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|防御率.{0,45}安定している")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|過度な負担|負担集中|特定の選手への負担|勝利に直結|確実な勝ち筋|防御率.{0,45}安定している")|not))
           ' /tmp/closer-second.json >/dev/null
 
           run_stage final 3
@@ -160,7 +160,8 @@ jobs:
             (.closer.recommendedCandidates|length>0) and
             ([.closer.majorReasons[]?|select(test("坂田 暉馬.*2セーブ"))]|length>0) and
             ((.closer.majorReasons|join("\n")) as $reasons |
-              ($reasons|test("問いかけ|指摘に対する回答|勝ちに行くため|この選択を変える理由|将来のチーム力|確率的優位|競った場面")|not)) and
+              ($reasons|test("問いかけ|指摘に対する回答|指摘された|指摘の通り|勝ちに行くため|この選択を変える理由|私の判断は変え|僕の判断はこのまま|将来のチーム力|確率的優位|競った場面|勝利に直結|確実な勝ち筋")|not)) and
+            ((.closer.warnings|join("\n")|test("過度な負担|負担集中|特定の選手への負担")|not)) and
             (.digest|length==16)
           ' /tmp/closer-final.json >/dev/null
           echo 'PRODUCTION STAGED CLOSER DELIBERATION: PASS'
@@ -218,7 +219,7 @@ jobs:
           jq -e '
             ([.primary[].candidatePlayers|length] | all(.>0)) and
             (([.primary[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|半年後|選手の成長.{0,18}見守")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|半年後|選手(?:たち)?の成長.{0,18}見守")|not))
           ' /tmp/natural-third-primary.json >/dev/null
 
           run_stage cross 3
@@ -228,7 +229,7 @@ jobs:
           jq -e '
             ([.second[].candidatePlayers|length] | all(.>0)) and
             (([.second[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|半年後|選手の成長.{0,18}見守")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|半年後|選手(?:たち)?の成長.{0,18}見守")|not))
           ' /tmp/natural-third-second.json >/dev/null
 
           run_stage final 3
@@ -295,7 +296,7 @@ jobs:
             (.primary.balthasar.publicStatement|length>0) and
             (.primary.casper.publicStatement|length>0) and
             (([.primary[]|tostring]|join("\n")) as $text |
-              ($text|test("半年後|1年後|勝負の分かれ道|得点源が限定|得点力.{0,24}直結|数値の偏りこそ.{0,24}弱点|打線の偏り.{0,24}弱点|育成を疎か|チーム全体を.{0,24}育て")|not))
+              ($text|test("半年後|1年後|勝負の分かれ道|得点源が限定|得点力.{0,24}直結|数値の偏りこそ.{0,24}弱点|打線の偏り.{0,24}弱点|育成を疎か|チーム全体を.{0,24}育て|チーム全体.{0,24}成長|勝ちへの道|攻撃.{0,16}硬直|実戦上.{0,16}課題")|not))
           ' /tmp/team-review-primary.json >/dev/null
 
           run_stage cross 3
@@ -307,7 +308,7 @@ jobs:
             (.second.balthasar.publicStatement|length>0) and
             (.second.casper.publicStatement|length>0) and
             (([.second[]|tostring]|join("\n")) as $text |
-              ($text|test("半年後|1年後|勝負の分かれ道|得点源が限定|得点力.{0,24}直結|数値の偏りこそ.{0,24}弱点|打線の偏り.{0,24}弱点|育成を疎か|チーム全体を.{0,24}育て")|not))
+              ($text|test("半年後|1年後|勝負の分かれ道|得点源が限定|得点力.{0,24}直結|数値の偏りこそ.{0,24}弱点|打線の偏り.{0,24}弱点|育成を疎か|チーム全体を.{0,24}育て|チーム全体.{0,24}成長|勝ちへの道|攻撃.{0,16}硬直|実戦上.{0,16}課題")|not))
           ' /tmp/team-review-second.json >/dev/null
 
           run_stage final 3

@@ -193,10 +193,10 @@ function recoverSoftTeamReviewDependency(result, issues) {
   if(!list.length||!list.every(softIssue))return false;
 
   const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
-  const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|直結|チーム力)/;
+  const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|実戦上.{0,12}課題|育成(?:上)?の課題|得点源|得点力|打線.{0,12}(?:つながり|厚み)|攻撃.{0,12}(?:硬直|硬直化)|勝負.{0,12}分かれ道|勝ちへの道|勝つため|直結|チーム力)/;
   const individualBattingCue=/(?:無安打|安打0|打率\s*\.?0(?:00)?|低打率|打てていない|当たっていない)/;
   const teamOutcomeCue=/(?:得点源|得点力|得点ルート|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|戦術(?:上)?(?:の)?課題|直結)/;
-  const developmentAdvice=/(?:半年後|1年後|将来|チーム全体で.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/;
+  const developmentAdvice=/(?:半年後|1年後|将来|チーム全体.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/;
 
   const rewriteOne=value=>{
     let raw=String(value||'').trim();
@@ -215,6 +215,10 @@ function recoverSoftTeamReviewDependency(result, issues) {
       .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
 
     if(developmentAdvice.test(raw))return '';
+
+    if(/(?:偏り|差)/.test(raw)&&/(?:勝ちへの道|攻撃.{0,12}(?:硬直|硬直化)|実戦上.{0,12}課題|勝つため)/.test(raw)){
+      return '確認済みの打撃成績には選手間の数値差がある。';
+    }
 
     if(individualBattingCue.test(raw)&&teamOutcomeCue.test(raw)){
       const exactCount=raw.match(/直近\s*6\s*試合[^。！？!?]*?([0-9]+)選手が(?:安打0|無安打)/);
@@ -284,7 +288,8 @@ export function sanitizeKnownSelectionProse(result, caseData) {
   const evidenceText=JSON.stringify(caseData?.evidence||{});
   const question=String(caseData?.question||'');
   const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(question);
-  const hasDependencyEvidence=/(?:依存|頼り|負担集中|役割集中)/.test(evidenceText);
+  const hasDependencyEvidence=/(?:依存|頼り|役割集中)/.test(evidenceText);
+  const hasBurdenEvidence=/(?:負担.{0,10}(?:大きい|大きすぎる|重い|過大|過度|集中|蓄積)|過度な負担|負担集中|蓄積疲労|疲労蓄積|コンディション.{0,16}(?:負担|影響))/.test(evidenceText);
   const hasPressureEvidence=/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
 
   const pitchingStability=sentence=>
@@ -294,13 +299,14 @@ export function sanitizeKnownSelectionProse(result, caseData) {
   const pressureInference=sentence=>
     /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)/.test(sentence)
     ||/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence);
-  const probability=sentence=>/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence);
+  const probability=sentence=>/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|確実な勝ち筋|勝ちへの道)/.test(sentence);
   const battingTactics=sentence=>
     /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
     ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
     ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い)/.test(sentence);
-  const development=sentence=>/(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence);
+  const development=sentence=>/(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手(?:たち)?の成長)/.test(sentence);
   const dependency=sentence=>/(?:過度な)?依存|頼りすぎ|頼り切/.test(sentence);
+  const burden=sentence=>/(?:過度な負担|負担集中|特定の選手への負担|特定の選手に負担|コンディション.{0,20}負担)/.test(sentence);
 
   const unsafe=sentence=>
     (selectionKind==='PITCHING_ROLE' && pitchingStability(sentence))
@@ -308,7 +314,8 @@ export function sanitizeKnownSelectionProse(result, caseData) {
     ||(selectionKind==='PITCHING_ROLE' && probability(sentence))
     ||(selectionKind==='BATTING_ORDER' && battingTactics(sentence))
     ||(!developmentRequested && development(sentence))
-    ||(!hasDependencyEvidence && dependency(sentence));
+    ||(!hasDependencyEvidence && dependency(sentence))
+    ||(!hasBurdenEvidence && burden(sentence));
 
   const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
   const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
@@ -515,7 +522,7 @@ function normalizeCaseRosterHonorifics(value, caseData){
   const question=String(caseData?.question||'');
   const referencedSurnames=[...new Set(CURRENT_ROSTER.filter(name=>question.includes(name)).map(name=>name.split(' ')[0]).filter(Boolean))];
   if(!referencedSurnames.length)return normalized;
-  const escape=s=>String(s).replace(/[.*+?^$()|[\]\\]/g,'\\export default async function handler(req, res) {');
+  const escape=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const cleanString=input=>{
     let out=String(input??'');
     for(const surname of referencedSurnames){
