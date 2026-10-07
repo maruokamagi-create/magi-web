@@ -332,7 +332,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
     const unsupportedProbability=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|確実な勝ち筋|勝ちへの道)/.test(sentence)
+      && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|勝ちに直結|勝ち筋|勝ちパターン|勝ちへの道)/.test(sentence)
     );
     if(unsupportedProbability)issues.push('PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している');
   }
@@ -341,11 +341,38 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const unsupportedSlotTactics=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
-        /(?:3番|打順|起用|打率|AVG|OPS|役割).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
-        || /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS|役割)/.test(sentence)
+        /(?:3番|打順|起用|打率|AVG|OPS|役割).{0,90}(?:戦術的に最も安定|戦術.{0,24}(?:裏付け|安定|合致)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)|チームの形.{0,18}馴染)/.test(sentence)
+        || /(?:戦術的に最も安定|戦術.{0,24}(?:裏付け|安定|合致)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)|チームの形.{0,18}馴染).{0,90}(?:3番|打順|起用|打率|AVG|OPS|役割)/.test(sentence)
       )
     );
     if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
+
+    const hasExplicitSlotContinuity=/(?:3番|打順).{0,30}(?:固定|継続|維持|方針)|(?:固定|継続|維持).{0,30}(?:3番|打順)/.test(evidenceText);
+    if(!hasExplicitSlotContinuity){
+      const unsupportedIncumbency=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:3番|打順|起用実績|スタメン|7試合).{0,90}(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致)|(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致).{0,90}(?:3番|打順|起用実績|スタメン|7試合)/.test(sentence)
+      );
+      if(unsupportedIncumbency)issues.push('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定している');
+    }
+
+    const hasExplicitFormObservation=/(?:勢い|低調|好調|不調|状態の波|調子.{0,12}(?:良|悪|落)|安定した打撃)/.test(evidenceText);
+    if(!hasExplicitFormObservation){
+      const unsupportedFormLabel=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && (
+          /(?:直近|打率|OPS|打撃成績|数値).{0,70}(?:勢い.{0,18}(?:落|陰り)|低調(?:な状態)?|状態の波|安定した打撃|安定して残|調子.{0,12}(?:良|悪|落))/.test(sentence)
+          || /(?:勢い.{0,18}(?:落|陰り)|低調(?:な状態)?|状態の波|安定した打撃|安定して残|調子.{0,12}(?:良|悪|落)).{0,70}(?:直近|打率|OPS|打撃成績|数値)/.test(sentence)
+        )
+      );
+      if(unsupportedFormLabel)issues.push('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換している');
+    }
+
+    const unsupportedContinuityOutcome=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:打順|起用).{0,50}(?:変える|変動|頻繁に変).{0,60}(?:全体の)?(?:つながり|連携).{0,24}(?:影響|崩|悪化)|(?:全体の)?(?:つながり|連携).{0,24}(?:影響|崩|悪化).{0,60}(?:打順|起用).{0,50}(?:変える|変動|頻繁に変)/.test(sentence)
+    );
+    if(unsupportedContinuityOutcome)issues.push('BATTING_ORDERで打順変更からチームのつながり・連携への因果を推定している');
   }
 
   if(isFullLineup){
