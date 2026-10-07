@@ -355,6 +355,7 @@ function groundSelectionFinalText(value,caseData,{warning=false}={}){
   const stripMeta=sentence=>String(sentence||'')
     .replace(/^(?:メルキオール|バルタザール|カスパー)からの(?:指摘|問いかけ)(?:に対する回答として|に対し|に答え)?[、,]?\s*/,'')
     .replace(/^自分への(?:指摘|問いかけ)(?:に対し|に答え)?[、,]?\s*/,'')
+    .replace(/^(?:指摘された(?:通り|ように)|指摘の通り|二人の考えは分かります?|言いたいことは分かる)[、,]?\s*/,'')
     .trim();
   const unsafePitching=sentence=>
     /(?:安定した投球|安定した実績|安定感|信頼でき|信頼性|長いイニング|イニングを任せられ|勝利の確率|勝利に直結|勝ち筋|確率的優位|勝利の方程式|競った場面.{0,22}(?:切り抜け|実績)|勝ちに行くため|この選択を変える理由はない|将来のチーム力|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|半年後)/.test(sentence);
@@ -365,7 +366,7 @@ function groundSelectionFinalText(value,caseData,{warning=false}={}){
   const unsafeShared=sentence=>
     /(?:役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響|チーム全体で.{0,24}経験を積|チーム全体の成長|選手の成長.{0,18}(?:見守|考慮)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|負担をかけすぎ|(?:過度な)?依存|他の投手.{0,24}成長|成長も促)/.test(sentence)
     ||/(?:^|。)(?:指摘された|指摘の通り|二人の考え|3賢人|三賢人).{0,120}(?:判断|選択|維持|見直|変え)/.test(sentence)
-    ||/(?:私の判断|俺はこの選択|僕の判断|初志).{0,36}(?:変え|維持)/.test(sentence)
+    ||/(?:私の判断.{0,24}(?:変えない|変えません)|俺はこの選択.{0,24}変え|僕の判断.{0,24}(?:このまま|維持|変え)|初志.{0,24}維持)/.test(sentence)
     ||(!hasDirectBurdenEvidence && /(?:過度な負担|負担集中|特定の選手への負担|特定の選手に負担|コンディション.{0,20}負担)/.test(sentence));
   const unsafe=kind==='PITCHING_ROLE'
     ? sentence=>unsafePitching(sentence)||unsafeShared(sentence)
