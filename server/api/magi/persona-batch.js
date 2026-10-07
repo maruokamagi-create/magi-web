@@ -278,10 +278,11 @@ function recoverSoftForecastLanguage(result, issues) {
 
 export function recoverSoftSelectionInference(result, issues, caseData, {focused=false}={}) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
-  const supported=v=>v.includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定')
+  const selectionIssue=v=>v.includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定')
     ||v.includes('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定')
     ||v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加');
-  if(!list.length||!list.every(supported))return false;
+  const forecastIssue=v=>/(?:将来|不確実性|保証できない結果)/.test(v);
+  if(!list.length||!list.some(selectionIssue)||!list.every(v=>selectionIssue(v)||forecastIssue(v)))return false;
   const snapshot=JSON.parse(JSON.stringify(result||{}));
   const unsafe=sentence=>
     /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
@@ -299,6 +300,14 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
   for(const key of ['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'])result[key]=cleanText(result?.[key]);
   if(!String(result.primaryReason||'').trim())result.primaryReason='確認済みの数値・実起用・役割実績の範囲だけで候補を比較する。';
   if(!String(result.publicStatement||'').trim())result.publicStatement='確認済みEvidenceの範囲だけで候補を比較します。';
+
+  const forecastIssues=list.filter(forecastIssue);
+  if(forecastIssues.length&&!recoverSoftForecastLanguage(result,forecastIssues)){
+    for(const key of Object.keys(result))delete result[key];
+    Object.assign(result,snapshot);
+    return false;
+  }
+
   const remaining=validatePersonaOutput(caseData,result,{focused});
   if(remaining.length){
     for(const key of Object.keys(result))delete result[key];
