@@ -397,6 +397,20 @@ test('C09 closer final normalizes Maruoka honorific but leaves opponent honorifi
   assert.doesNotMatch(rendered,/坂田 暉馬くん/);
   assert.match(rendered,/宮永 陽生くん/);
 });
+
+
+test('C10 natural-third final removes certainty and generic growth rationale',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬','井坂 悠聖'],primaryReason:'記録に基づき3番打順でのスタメン起用実績が最も多い嶋田 栄志を第一候補とする。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬','中嶋 玲月'],primaryReason:'4番につなぐ打順として、実際に3番で7試合のスタメン実績がある嶋田 栄志が最も確実な選択肢だからだ。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬','大久保 夢翔'],primaryReason:'3番としての起用実績が最も積み上がっている嶋田 栄志を軸に置きつつ、選手の成長を慎重に見守りたいからだ。'})
+  };
+  const caseData={selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER'}};
+  const r=buildSelectionResult(second,{},caseData);
+  const reasons=r.majorReasons.join('\n');
+  assert.match(reasons,/3番打順でのスタメン起用実績が最も多い/);
+  assert.doesNotMatch(reasons,/最も確実な選択肢|選手の成長を慎重に見守/);
+});
 test('C05 cross evidence failure blocks candidate finalization',()=>{
   const second={
     melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['大野 竜暉']}),
