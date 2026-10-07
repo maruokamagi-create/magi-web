@@ -163,6 +163,27 @@ function baseResult(overrides={}) {
 }
 
 
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2。橋向 結都は防御率1.67、WHIP1.12。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['橋向 結都','坂田 暉馬'],
+    candidateBasis:'橋向 結都は防御率1.67で安定しており、この起用なら終盤が安定する。',
+    primaryReason:'橋向 結都はWHIP1.12で信頼でき、クローザーにすれば勝利につながる。',
+    publicStatement:'橋向 結都は防御率1.67で安定した投球ができ、クローザーなら勝ちを拾える。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している',
+    'Evidenceから保証できない結果を断定している',
+    '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.deepEqual(result.candidatePlayers,['橋向 結都','坂田 暉馬']);
+  assert.ok(!/安定した投球|信頼でき|勝利につながる|勝ちを拾える|終盤が安定する/.test(rendered));
+}
+
 {
   const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2、橋向 結都は防御率1.67、WHIP1.12。'}};
   const result=baseResult({
@@ -316,4 +337,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 14/14 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 15/15 PASS');
