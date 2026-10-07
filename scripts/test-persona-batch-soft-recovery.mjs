@@ -550,4 +550,37 @@ function baseResult(overrides={}) {
   assert.ok(rendered.includes('坂田 暉馬'));
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 27/27 PASS');
+
+
+{
+  const caseData={question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン起用。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    analysis:['嶋田 栄志は3番としての実戦経験が最も豊富で、チーム内での役割が定着している。'],
+    primaryReason:'3番で7試合起用されている嶋田 栄志を置くことで、打順の軸を安定させられる。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/実戦経験が最も豊富|役割が定着|打順の軸を安定/.test(JSON.stringify(result)));
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬']);
+}
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'打撃成績には選手間の数値差がある。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    analysis:['打撃成績の差は試合を勝ち抜く上で戦術的な制約になり得る。'],
+    warnings:['特定の選手の調子に得点が左右されるリスクを考慮する必要がある。','チーム全体の底上げにつながる課題を意識することが大切だ。']
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している',
+    'TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/戦術的な制約|得点が左右されるリスク|チーム全体の底上げ/.test(JSON.stringify(result)));
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 29/29 PASS');
