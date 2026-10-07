@@ -564,6 +564,7 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Therefore a stale/missing production revision stops the whole provider-heavy suite once at the entrance, while a genuine best-order/closer/natural-third semantic failure still allows the later question classes to execute and remain observable.
 - Each class keeps its own single PREPARE SHA/environment assertion as defense-in-depth after readiness succeeds; the redundant five-attempt PREPARE loops are removed from the individual class jobs.
 - The static live-production-SHA contract test is expanded to require this shared readiness topology and prove the readiness block contains no PRIMARY call.
+- The deliberation unit workflow path filters now include both the Production Live workflow and `scripts/test-live-production-sha-gate.mjs`, so workflow-only/readiness changes cannot bypass their own contract test on PR or main push.
 - No MAGI decision policy, Evidence data, Google Drive/CSV file, Vercel billing setting or provider model configuration is changed.
 
 ## Next concrete work
