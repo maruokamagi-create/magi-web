@@ -436,7 +436,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(proposedOrder.length===9){
       const proposalText=[result?.candidateBasis,result?.publicStatement].map(text).filter(Boolean).join('。');
       const slotClaims=[];
-      const escapeRegExp=value=>String(value).replace(/[.*+?^$()|[\]\\]/g,'\\    const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);');
+      const escapeRegExp=value=>String(value).replace(/[.*+?^${}()|[\]\\]/g,match=>'\\'+match);
       for(let slot=1;slot<=9;slot++){
         for(const player of CURRENT_ROSTER){
           const p=escapeRegExp(player);
@@ -451,7 +451,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       }
     }
 
-        const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
+    const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
     if(Number.isFinite(recentGameCount)&&recentGameCount>0){
       const outputNfkc=String(all||'').normalize('NFKC');
       const statedRecent=[...outputNfkc.matchAll(/直近\s*(\d+)\s*試合/g)].map(match=>Number(match[1])).filter(Number.isFinite);
