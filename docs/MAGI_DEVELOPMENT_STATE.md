@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 6643b67343d5d48b55d16bcb7ac7413c1da25126
+- State base main SHA: df4d13fdad9a11fe78019b5e2ff995d081dd10b1
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`6643b67343d5d48b55d16bcb7ac7413c1da25126`
+`df4d13fdad9a11fe78019b5e2ff995d081dd10b1`
 
 Recent architectural fixes already merged:
 
@@ -553,13 +553,27 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression tests reproduce the exact #128 phrases at persona guard, deterministic batch recovery and FINAL synthesis layers.
 - No Google Drive/CSV data is changed.
 
+## Production Live shared deployment-readiness gate follow-up
+
+- Main `df4d13fd...` contains the merged #110 residual semantic-grounding fix. PR CI was green for continuity and deterministic deliberation, including the new Live #128 guard/recovery/FINAL regressions.
+- Vercel Hobby still rejects the current main production deployment with `Deployment rate limited — retry in 24 hours`. The project remains on the free/Hobby plan; no upgrade or paid bypass is authorized.
+- The deployed-SHA guard is working in real Actions. Production Live run `37628213967` returned the stale production PREPARE payload, failed immediately at the SHA/environment assertion, and did not execute the best-order PRIMARY provider call.
+- The previous workflow still allowed closer, natural-third and TEAM_REVIEW jobs to start after this deployment-mismatch failure because `if: !cancelled()` was intentionally added so semantic failures in an earlier class would not hide later classes. With a stale deployment, however, those jobs only consume cooldown time and repeat the same PREPARE failure.
+- Current branch `fix/live-deployment-readiness-gate-20261007` separates **deployment readiness** from **semantic class observability**. A new `production-revision-ready` job checks the production PREPARE identity up to five times and never calls PRIMARY.
+- `exact-live-best-order` now depends on that readiness job. Closer, natural-third and TEAM_REVIEW depend on both readiness and their preceding semantic class, and use `always()` only when `needs.production-revision-ready.result == 'success'`.
+- Therefore a stale/missing production revision stops the whole provider-heavy suite once at the entrance, while a genuine best-order/closer/natural-third semantic failure still allows the later question classes to execute and remain observable.
+- Each class keeps its own single PREPARE SHA/environment assertion as defense-in-depth after readiness succeeds; the redundant five-attempt PREPARE loops are removed from the individual class jobs.
+- The static live-production-SHA contract test is expanded to require this shared readiness topology and prove the readiness block contains no PRIMARY call.
+- The deliberation unit workflow path filters now include both the Production Live workflow and `scripts/test-live-production-sha-gate.mjs`, so workflow-only/readiness changes cannot bypass their own contract test on PR or main push.
+- No MAGI decision policy, Evidence data, Google Drive/CSV file, Vercel billing setting or provider model configuration is changed.
+
 ## Next concrete work
 
-1. Complete CI for `fix/live-production-sha-gate-20261007`; merge only when continuity and the live-SHA contract test are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.
-2. Treat Production Live #128 as a stale-production diagnostic only. Do not use its best-order/closer failures to judge the merged #107 server fix.
-3. When production can accept a free deployment again, the first valid Production Live run must prove `deployment.sha == GITHUB_SHA` before PRIMARY and then execute best-order, closer, natural-third and TEAM_REVIEW sequentially through PRIMARY -> CROSS -> SECOND -> FINAL.
-4. Inspect every published rationale field, not only job status. Reject batting-number/order -> scoring/win causality, save -> certain victory, metric -> stability/reliability, unsupported growth/development, unsupported burden concentration, TEAM_REVIEW spread -> weakness/causal/future claims, and FINAL debate-meta.
-5. Only after all four classes are structurally and semantically clean, expand real-path acceptance to individual-player evaluation, player comparison, team tactics/next-game strategy, direct statistics lookup and CLARIFY.
+1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.
+2. Treat Production Live runs created while Vercel is serving an older SHA as deployment-readiness failures only. They must not consume Gemini/persona calls or be used to judge current-main semantics.
+3. The first valid Production Live run on a freely deployed current main must prove `deployment.sha == GITHUB_SHA` and then execute best-order, closer, natural-third and TEAM_REVIEW sequentially through PRIMARY -> CROSS -> SECOND -> FINAL.
+4. Inspect every published rationale field, not only job status. Reject batting-number/order -> scoring/win causality, batting-slot starts -> role settlement/experience-value/stability, save -> certain victory, metric -> stability/reliability, unsupported growth/development, unsupported burden concentration, TEAM_REVIEW spread -> tactical/scoring-dependency/future claims, and FINAL reintroduction.
+5. Only after all four classes are structurally and semantically clean on the same production SHA, expand real-path acceptance to individual-player evaluation, player comparison, team tactics/next-game strategy, direct statistics lookup and CLARIFY.
 6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation. Do not declare stabilization complete until the remaining classes are verified through their real production paths and user-visible answer quality is acceptable.
 
 ## Handoff instruction for a new ChatGPT chat
