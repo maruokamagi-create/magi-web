@@ -516,6 +516,30 @@ test('G72 FULL_LINEUP blocks batting-number-to-scoring and win-advantage claims'
   assert.ok(issues.some(x=>x.includes('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定')));
 });
 
+
+test('G73 batting-order start count cannot become settled role, experience value or lineup stability',()=>{
+  const battingCase={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン起用。'}};
+  const r=result({
+    persona:'BALTHASAR',
+    analysis:['嶋田 栄志は3番としての実戦経験が最も豊富で、チーム内での役割が定着している。'],
+    primaryReason:'3番で7試合起用されている嶋田 栄志を置くことで、打順の軸を安定させられる。'
+  });
+  const issues=validatePersonaOutput(battingCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('戦術的安定性')));
+});
+
+test('G74 TEAM_REVIEW blocks tactical-constraint, scoring-dependency risk and generic growth framing',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'打撃成績には選手間の数値差がある。'}};
+  const r=result({
+    persona:'BALTHASAR',
+    analysis:['打撃成績の差は試合を勝ち抜く上で戦術的な制約になり得る。'],
+    warnings:['特定の選手の調子に得点が左右されるリスクを考慮する必要がある。','チーム全体の底上げにつながる課題を意識することが大切だ。']
+  });
+  const issues=validatePersonaOutput(teamCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('数値差・偏り')));
+  assert.ok(issues.some(x=>x.includes('将来・育成・一般論')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
