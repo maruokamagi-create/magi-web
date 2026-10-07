@@ -386,9 +386,25 @@ async function runStagedLineup(base,packet,stage,session){
     const names=rows.map(x=>x?.name).filter(Boolean);
     const positions=rows.map(x=>text(x?.position)).filter(Boolean);
     const standardStartSupported=rows.every(x=>{const e=x?.positionEvidence||{};return Number(e.officialStarts)>0||Number(e.practiceFirstStarts)>0;});
-    const legal=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&final?.fieldingStatus==='COMPLETE'&&names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)))&&positions.length===9&&new Set(positions).size===9&&positions.every(p=>standardPositionKeys.has(p))&&standardStartSupported;
-    if(!legal)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}_FIELDING_${String(final?.fieldingStatus||'NO_STATUS')}`);
-    return {ok:true,mode:'lineup',stage:'FINAL',session,finalStatus:final.status,lineup:rows.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence})),digest:stableDigest({primary:state.primary,cross:state.cross,second:state.second,final})};
+    const legalLineup=final?.mode==='FULL_LINEUP'&&final?.status==='LINEUP_RESULT'&&final?.fieldingStatus==='COMPLETE'&&names.length===9&&new Set(names.map(norm)).size===9&&names.every(n=>rosterKeys.has(norm(n)))&&positions.length===9&&new Set(positions).size===9&&positions.every(p=>standardPositionKeys.has(p))&&standardStartSupported;
+    const legalDeadlock=final?.mode==='FULL_LINEUP'
+      && final?.status==='LINEUP_REVIEW_REQUIRED'
+      && final?.fieldingStatus==='NOT_EVALUATED'
+      && final?.reviewReason==='FULL_LINEUP_DEADLOCK_1_1_1'
+      && final?.deliberationDecision==='DEADLOCK'
+      && final?.finalVote==='1-1-1'
+      && rows.length===0;
+    if(!legalLineup&&!legalDeadlock)throw new Error(`FINAL_INVALID_${String(final?.status||'NO_STATUS')}_FIELDING_${String(final?.fieldingStatus||'NO_STATUS')}`);
+    return {
+      ok:true,mode:'lineup',stage:'FINAL',session,
+      finalStatus:final.status,
+      fieldingStatus:final?.fieldingStatus||'',
+      reviewReason:final?.reviewReason||'',
+      deliberationDecision:final?.deliberationDecision||'',
+      finalVote:final?.finalVote||'',
+      lineup:rows.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence})),
+      digest:stableDigest({primary:state.primary,cross:state.cross,second:state.second,final})
+    };
   }
   throw new Error('LIVE_STAGE_UNSUPPORTED');
 }
