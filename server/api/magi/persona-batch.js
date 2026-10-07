@@ -354,6 +354,7 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
     ||v.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')
     ||v.includes('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換')
     ||v.includes('BATTING_ORDERで打順変更からチームのつながり・連携への因果を推定')
+    ||v.includes('BATTING_ORDERで現在Evidenceを再比較せず判断変更不要を断定')
     ||v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加')
     ||v.includes('SELECTIONでEvidenceにない依存・役割集中を追加');
   const burdenSoft=v=>v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
