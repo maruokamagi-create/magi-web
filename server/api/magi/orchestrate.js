@@ -352,21 +352,39 @@ function groundSelectionFinalText(value,caseData,{warning=false}={}){
   const kind=selectionKindOf(caseData);
   if(!['PITCHING_ROLE','BATTING_ORDER'].includes(kind))return raw;
 
+  const stripMeta=sentence=>String(sentence||'')
+    .replace(/^(?:メルキオール|バルタザール|カスパー)からの(?:指摘|問いかけ)(?:に対する回答として|に対し|に答え)?[、,]?s*/,'')
+    .replace(/^自分への(?:指摘|問いかけ)(?:に対し|に答え)?[、,]?s*/,'')
+    .trim();
   const unsafePitching=sentence=>
-    /(?:安定した投球|安定した実績|安定感|信頼でき|信頼性|長いイニング|イニングを任せられ|勝利の確率|勝ち筋)/.test(sentence);
+    /(?:安定した投球|安定した実績|安定感|信頼でき|信頼性|長いイニング|イニングを任せられ|勝利の確率|勝ち筋|確率的優位|勝利の方程式|競った場面.{0,22}(?:切り抜け|実績)|勝ちに行くため|この選択を変える理由はない|将来のチーム力|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|半年後)/.test(sentence);
   const unsafeBatting=sentence=>
     /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|チームの戦術.{0,24}裏付け|役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響)/.test(sentence);
   const unsafeShared=sentence=>
-    /(?:役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響|チーム全体で.{0,24}経験を積|負担をかけすぎ)/.test(sentence);
+    /(?:役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響|チーム全体で.{0,24}経験を積|チーム全体の成長|負担をかけすぎ|(?:過度な)?依存|他の投手.{0,24}成長|成長も促)/.test(sentence);
   const unsafe=kind==='PITCHING_ROLE'
     ? sentence=>unsafePitching(sentence)||unsafeShared(sentence)
     : sentence=>unsafeBatting(sentence)||unsafeShared(sentence);
-  const kept=raw.split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s));
+  const kept=raw.split(/(?<=[。！？!?])/).map(stripMeta).filter(Boolean).filter(s=>!unsafe(s));
   if(kept.length)return kept.join('');
   if(warning)return '';
   return kind==='PITCHING_ROLE'
     ? '確認済みの投手成績・セーブ実績・指導者観察を比較した。'
     : '確認済みの打撃成績と実際の打順起用記録を比較した。';
+}
+
+function directSelectionEvidenceReasons(caseData){
+  const kind=selectionKindOf(caseData);
+  if(kind!=='PITCHING_ROLE')return [];
+  const players=Array.isArray(caseData?.evidence?.allCurrentTeamCheck?.players)
+    ? caseData.evidence.allCurrentTeamCheck.players
+    : [];
+  const savers=players.map(player=>({
+    name:String(player?.name||'').trim(),
+    saves:Number(String(player?.pitching?.SV??'').replace(/,/g,''))
+  })).filter(row=>row.name&&Number.isFinite(row.saves)&&row.saves>0)
+    .sort((a,b)=>b.saves-a.saves||a.name.localeCompare(b.name,'ja'));
+  return savers.slice(0,3).map(row=>`${row.name}は現チームで${row.saves}セーブを記録している。`);
 }
 
 export function buildSelectionResult(second, cross, caseData={}) {
@@ -383,7 +401,7 @@ export function buildSelectionResult(second, cross, caseData={}) {
       mode: 'SELECTION', status: 'SELECTION_REVIEW_REQUIRED', recommendation: '候補を確定せず、未解決の確認事項を解消して再審議する。',
       centerCandidates: [], recommendedCandidates: [], alternateCandidates: [], candidateSupport: [],
       personaSelections: Object.fromEntries(entries.map(([k,v])=>[k, Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),
-      confidence: 'LOW', majorReasons: compactUnique(entries.map(([,v])=>groundSelectionFinalText(v?.primaryReason,caseData)).filter(Boolean)),
+      confidence: 'LOW', majorReasons: compactUnique([...directSelectionEvidenceReasons(caseData), ...entries.map(([,v])=>groundSelectionFinalText(v?.primaryReason,caseData)).filter(Boolean)]),
       warnings: compactUnique([...(normalizedCross?.warnings||[]), ...entries.flatMap(([,v])=>Array.isArray(v?.warnings)?v.warnings:[])].map(v=>groundSelectionFinalText(v,caseData,{warning:true})).filter(Boolean)),
       reDeliberationConditions: compactUnique([...(normalizedCross?.informationGaps||[]), ...(normalizedCross?.warnings||[])],5),
       reviewReason: crossReviewReason || String(critical?.[1]?.reviewReason || 'MELCHIOR detected an unresolved DATA CONFLICT.'),
@@ -476,7 +494,7 @@ export function buildSelectionResult(second, cross, caseData={}) {
     candidateSupport: ranked,
     personaSelections,
     confidence: lowestConfidence(entries.map(([,v])=>v)),
-    majorReasons: compactUnique(entries.map(([,v])=>groundSelectionFinalText(v?.primaryReason,caseData)).filter(Boolean)),
+    majorReasons: compactUnique([...directSelectionEvidenceReasons(caseData), ...entries.map(([,v])=>groundSelectionFinalText(v?.primaryReason,caseData)).filter(Boolean)]),
     warnings,
     reDeliberationConditions: compactUnique([...informationGaps, ...warnings],5),
     reviewReason: '',
