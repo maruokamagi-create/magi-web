@@ -370,6 +370,35 @@ test('G53 team review allows explicit polite non-assertion boundary wording',()=
   assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
 });
 
+
+test('G54 closer role blocks numeric stability and trust claims',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2、橋向 結都は防御率1.67・WHIP1.12。'}};
+  const r=result({persona:'BALTHASAR',publicStatement:'橋向 結都の防御率1.67は信頼できる。',analysis:['橋向 結都は防御率1.67と安定している。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('安定・信頼・長いイニング適性')));
+});
+
+test('G55 closer role blocks long-inning inference from volume',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'橋向 結都は投球回37.2。'}};
+  const r=result({persona:'BALTHASAR',analysis:['橋向 結都は長いイニングを任せられる安定感がある。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('安定・信頼・長いイニング適性')));
+});
+
+test('G56 batting-order selection blocks unsupported tactical stability',()=>{
+  const battingCase={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合、打率.282、OPS.748。'}};
+  const r=result({persona:'BALTHASAR',primaryReason:'実際に3番で7試合、打率.282、OPS.748の嶋田 栄志が戦術的に最も安定するため。'});
+  const issues=validatePersonaOutput(battingCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('戦術的安定性')));
+});
+
+test('G57 CASPER selection cannot invent growth opportunity or burden impact',()=>{
+  const battingCase={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃・実打順記録を比較する。'}};
+  const r=result({persona:'CASPER',warnings:['特定の選手への役割集中が他のメンバーの成長機会に影響するおそれがある。'],publicStatement:'チーム全体で試合を締める経験を積んでいくことが大切です。'});
+  const issues=validatePersonaOutput(battingCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('成長・育成・負担影響')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

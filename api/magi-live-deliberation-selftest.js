@@ -164,6 +164,21 @@ function validateStagedSession(session){return /^[A-Za-z0-9_-]{3,100}$/.test(Str
 async function readStagedState(mode,session){return (await getCache().get(stagedSessionKey(mode,session)))||null;}
 async function writeStagedState(mode,session,state){await getCache().set(stagedSessionKey(mode,session),state,{ttl:STAGED_LIVE_TTL_SECONDS,tags:['magi-live-e2e']});}
 function summarizePersonaSet(set){return Object.fromEntries(PERSONAS.map(p=>[p,{judgment:set?.[p]?.judgment||'',confidence:set?.[p]?.confidence||'',candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],reviewRequested:Boolean(set?.[p]?.reviewRequested),dataConflict:Boolean(set?.[p]?.dataConflict)}]));}
+function summarizeNaturalThirdSet(set){
+  return Object.fromEntries(PERSONAS.map(p=>[p,{
+    judgment:set?.[p]?.judgment||'',
+    confidence:set?.[p]?.confidence||'',
+    candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],
+    candidateBasis:set?.[p]?.candidateBasis||'',
+    facts:Array.isArray(set?.[p]?.facts)?set[p].facts:[],
+    analysis:Array.isArray(set?.[p]?.analysis)?set[p].analysis:[],
+    primaryReason:set?.[p]?.primaryReason||'',
+    warnings:Array.isArray(set?.[p]?.warnings)?set[p].warnings:[],
+    publicStatement:set?.[p]?.publicStatement||'',
+    reviewRequested:Boolean(set?.[p]?.reviewRequested),
+    dataConflict:Boolean(set?.[p]?.dataConflict)
+  }]));
+}
 function assertLineupPersonaSet(set,phase){for(const p of PERSONAS){if(set?.[p]?.reviewRequested===true||set?.[p]?.dataConflict===true||!validNine(set?.[p]))throw new Error(`${phase}_${p.toUpperCase()}_INVALID`);}}
 function assertNaturalThirdPersonaSet(set,phase){
   for(const p of PERSONAS){
@@ -190,7 +205,7 @@ async function runStagedNaturalThird(base,packet,stage,session){
     const primary=await serialPersonaSet(base,'NATURAL_THIRD_PRIMARY',p=>({persona:p,phase:'PRIMARY',case:state.caseData}),{maxAttempts:1});
     assertNaturalThirdPersonaSet(primary,'PRIMARY');
     await writeStagedState('naturalThird',session,{...state,primary});
-    return {ok:true,mode:'naturalThird',stage:'PRIMARY',session,question:NATURAL_THIRD_QUESTION,primary:summarizePersonaSet(primary)};
+    return {ok:true,mode:'naturalThird',stage:'PRIMARY',session,question:NATURAL_THIRD_QUESTION,primary:summarizeNaturalThirdSet(primary)};
   }
   if(!state?.primary)throw new Error('LIVE_STAGE_STATE_NOT_FOUND');
   if(normalized==='cross'){
@@ -204,7 +219,7 @@ async function runStagedNaturalThird(base,packet,stage,session){
     const second=await serialPersonaSet(base,'NATURAL_THIRD_SECOND',p=>({persona:p,phase:'SECOND',case:state.caseData,primarySelf:state.primary[p],crossExamination:crossFor(p,state.cross)}),{maxAttempts:1});
     assertNaturalThirdPersonaSet(second,'SECOND');
     await writeStagedState('naturalThird',session,{...state,second});
-    return {ok:true,mode:'naturalThird',stage:'SECOND',session,second:summarizePersonaSet(second)};
+    return {ok:true,mode:'naturalThird',stage:'SECOND',session,second:summarizeNaturalThirdSet(second)};
   }
   if(normalized==='final'){
     if(!state?.cross||!state?.second)throw new Error('LIVE_STAGE_SECOND_NOT_FOUND');

@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { recoverSoftPersonaBatchValidation, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
+import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
 
 function baseResult(overrides={}) {
   return {
@@ -29,6 +29,21 @@ function baseResult(overrides={}) {
   assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
 }
 
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み記録を横断する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    analysis:['一部の選手に経験や負担が偏っており、このままなら半年後のチーム力に影響が出る。'],
+    publicStatement:'一部の選手への負担が偏っていて、今後の成長に影響を与える。'
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで起用差から負担集中を断定している',
+    '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/負担.{0,12}(?:偏|集中)|半年後|今後の成長|影響が出る|影響を与える/.test(JSON.stringify(result)));
+}
 
 {
   const result=baseResult({
@@ -147,6 +162,57 @@ function baseResult(overrides={}) {
   assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
 }
 
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2、橋向 結都は防御率1.67、WHIP1.12。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['橋向 結都','坂田 暉馬'],
+    candidateBasis:'橋向 結都は防御率1.67とWHIP1.12で最も安定している。',
+    analysis:['橋向 結都は長いイニングを任せられる安定感がある。'],
+    publicStatement:'橋向 結都の防御率1.67は信頼できる。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['橋向 結都','坂田 暉馬']);
+  assert.ok(!/最も安定|長いイニング|安定感|信頼できる/.test(JSON.stringify(result)));
+}
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番7試合、打率.282、OPS.748。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    primaryReason:'実際に3番で7試合、打率.282、OPS.748の嶋田 栄志が戦術的に最も安定するため。',
+    facts:['嶋田 栄志：3番7試合、打率.282、OPS.748']
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬']);
+  assert.ok(result.facts.some(x=>x.includes('3番7試合')));
+  assert.ok(!JSON.stringify(result).includes('戦術的に最も安定'));
+}
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃・実打順記録を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志'],
+    warnings:['特定の選手への役割集中が他のメンバーの成長機会に影響するおそれがある。'],
+    publicStatement:'チーム全体で試合を締める経験を積んでいくことが大切です。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'SELECTIONでEvidenceにない成長・育成・負担影響を追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志']);
+  assert.ok(!/成長機会|チーム全体で試合を締める経験/.test(JSON.stringify(result)));
+}
+
 {
   const caseData={
     mode:'selection',
@@ -202,4 +268,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 8/8 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 12/12 PASS');
