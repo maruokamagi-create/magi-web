@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
+import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
 
 function baseResult(overrides={}) {
   return {
@@ -213,6 +213,54 @@ function baseResult(overrides={}) {
   assert.ok(!/成長機会|チーム全体で試合を締める経験/.test(JSON.stringify(result)));
 }
 
+
+{
+  const caseData={
+    mode:'selection',
+    question:'クローザーは誰がいい？',
+    selectionKind:'PITCHING_ROLE',
+    evidence:{
+      selectionKind:'PITCHING_ROLE',
+      allCurrentTeamCheck:{
+        status:'COMPLETE',
+        players:[
+          {name:'橋向 結都',pitching:{APP:'8',ERA:'1.67',IP:'37.2'}},
+          {name:'坂田 暉馬',pitching:{APP:'3',ERA:'1.75',IP:'8.0',SV:'2'}}
+        ]
+      }
+    }
+  };
+  const result=baseResult({
+    persona:'MELCHIOR',
+    candidatePlayers:['坂田 暉馬','橋向 結都'],
+    facts:['坂田 暉馬は登板数4、セーブ2を記録している。','橋向 結都は投球回37.2。'],
+    candidateBasis:'坂田 暉馬は登板数4とセーブ2を記録しているため候補とする。',
+    primaryReason:'セーブ2の坂田 暉馬を第一候補とする。',
+    publicStatement:'坂田 暉馬は登板数4、セーブ2です。'
+  });
+  const ok=recoverMismatchedSelectionMetricSentences(result,[
+    '登板数4 は supplied CASE/EVIDENCE の 登板数 値と一致しない'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!rendered.includes('登板数4'));
+  assert.ok(result.candidatePlayers.includes('坂田 暉馬'));
+  assert.ok(result.facts.some(x=>x.includes('投球回37.2')));
+  assert.ok(result.primaryReason.includes('セーブ2'));
+}
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE'}};
+  const result=baseResult({candidatePlayers:['坂田 暉馬'],facts:['坂田 暉馬は登板数4。']});
+  const before=JSON.stringify(result);
+  const ok=recoverMismatchedSelectionMetricSentences(result,[
+    '登板数4 は supplied CASE/EVIDENCE の 登板数 値と一致しない',
+    'CURRENT_ROSTER / UNKNOWN_PLAYER'
+  ],caseData,{focused:false});
+  assert.equal(ok,false);
+  assert.equal(JSON.stringify(result),before);
+}
+
 {
   const caseData={
     mode:'selection',
@@ -268,4 +316,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 12/12 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 14/14 PASS');

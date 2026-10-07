@@ -416,9 +416,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage includes the exact #118 closer, natural-third and TEAM_REVIEW semantic classes.
 
 
+
+## Production Live #119 metric-mismatch follow-up
+
+- Main `546ef830...` contains the #118 selection-grounding fixes. Production Live #119 attempt 1 failed only at staged best-order PRIMARY with transient provider output classes (`timeout`, `invalid_structured_json`) and was re-run without a code change.
+- Attempt 2 completed staged best-order successfully. The returned lineup used nine unique current players and nine unique standard defensive positions, with every position backed by official or first-practice starting evidence.
+- The staged closer path then failed at PRIMARY/MELCHIOR because the model stated 「登板数4」 while the structured CASE/Evidence contained different verified APP values. The numeric guard correctly blocked publication.
+- This is a model transcription error, not a reason to weaken numeric validation. A narrow selection-only recovery now removes the entire sentence containing the mismatched metric/value rather than correcting or guessing the number. Candidate structure and unrelated verified facts are preserved.
+- Recovery is allowed only when every guard issue is exactly a supplied metric-value mismatch for APP/IP/SO/BB/HBP/ERA/WHIP/SV. Any roster, structural, evidence-source, unsupported-metric, or mixed hard issue remains fail-closed. The sanitized result is re-run through the authoritative persona guard before publication.
+- Regression coverage includes the exact #119 「登板数4」 failure and proves mixed mismatch plus hard-error cases remain fail-closed.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/selection-final-grounding-20261007`; merge only if persona guard/recovery, selection FINAL grounding, continuity and preview checks are green.
+1. Complete CI for `fix/selection-metric-redaction-20261007`; merge only if metric redaction, persona guard/recovery, continuity and preview checks are green.
 2. Run Production Live Deliberation on the merged main. Require staged best-order, closer, natural-third and TEAM_REVIEW to complete, then inspect the actual semantic output rather than workflow status alone.
 3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
 4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
