@@ -8,7 +8,7 @@ import {
   buildReviewResult,
   deterministicTeamReviewCross
 } from '../server/api/magi/orchestrate.js';
-import { validateDialoguePresence, validateCrossLanguage } from '../server/api/magi/_cross-output-guard.js';
+import { validateDialoguePresence, validateCrossLanguage, validateCrossOutput } from '../server/api/magi/_cross-output-guard.js';
 
 const tests=[];
 function test(name,fn){tests.push({name,fn});}
@@ -156,6 +156,7 @@ test('R06 TEAM_REVIEW deterministic cross gives every Wise Man a safe challenge'
   assert.ok(cross);
   assert.deepEqual(validateDialoguePresence(cross),[]);
   assert.deepEqual(validateCrossLanguage(cross),[]);
+  assert.deepEqual(validateCrossOutput({question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW'}},cross,{focused:true}),[]);
   assert.equal(cross.challenges.melchior.length,1);
   assert.equal(cross.challenges.balthasar.length,1);
   assert.equal(cross.challenges.casper.length,1);
