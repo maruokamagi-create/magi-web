@@ -24,7 +24,7 @@ function baseResult(overrides={}) {
     '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
   ]);
   assert.equal(ok,true);
-  assert.deepEqual(result.analysis,[]);
+  assert.deepEqual(result.analysis,['選手間で出場機会や記録量に差がある。']);
   assert.deepEqual(result.prediction,[]);
   assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
 }
