@@ -277,6 +277,61 @@ function recoverSoftForecastLanguage(result, issues) {
   return true;
 }
 
+export function sanitizeKnownSelectionProse(result, caseData) {
+  const selectionKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  if(!['PITCHING_ROLE','BATTING_ORDER'].includes(selectionKind))return false;
+
+  const evidenceText=JSON.stringify(caseData?.evidence||{});
+  const question=String(caseData?.question||'');
+  const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(question);
+  const hasDependencyEvidence=/(?:依存|頼り|負担集中|役割集中)/.test(evidenceText);
+  const hasPressureEvidence=/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
+
+  const pitchingStability=sentence=>
+    /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
+    ||/(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
+    ||/(?:長い|多くの?)イニング.{0,18}(?:任せ|投げら|投げ切)/.test(sentence);
+  const pressureInference=sentence=>
+    /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)/.test(sentence)
+    ||/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence);
+  const probability=sentence=>/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence);
+  const battingTactics=sentence=>
+    /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
+    ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+    ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い)/.test(sentence);
+  const development=sentence=>/(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence);
+  const dependency=sentence=>/(?:過度な)?依存|頼りすぎ|頼り切/.test(sentence);
+
+  const unsafe=sentence=>
+    (selectionKind==='PITCHING_ROLE' && pitchingStability(sentence))
+    ||(selectionKind==='PITCHING_ROLE' && !hasPressureEvidence && pressureInference(sentence))
+    ||(selectionKind==='PITCHING_ROLE' && probability(sentence))
+    ||(selectionKind==='BATTING_ORDER' && battingTactics(sentence))
+    ||(!developmentRequested && development(sentence))
+    ||(!hasDependencyEvidence && dependency(sentence));
+
+  const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
+  const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
+  const before=JSON.stringify({
+    facts:result?.facts,analysis:result?.analysis,prediction:result?.prediction,warnings:result?.warnings,
+    candidateBasis:result?.candidateBasis,primaryReason:result?.primaryReason,publicStatement:result?.publicStatement,
+    changeReason:result?.changeReason,reviewReason:result?.reviewReason
+  });
+
+  result.facts=cleanArray(result.facts);
+  result.analysis=cleanArray(result.analysis);
+  result.prediction=cleanArray(result.prediction);
+  result.warnings=cleanArray(result.warnings);
+  for(const key of ['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'])result[key]=cleanText(result?.[key]);
+
+  const after=JSON.stringify({
+    facts:result?.facts,analysis:result?.analysis,prediction:result?.prediction,warnings:result?.warnings,
+    candidateBasis:result?.candidateBasis,primaryReason:result?.primaryReason,publicStatement:result?.publicStatement,
+    changeReason:result?.changeReason,reviewReason:result?.reviewReason
+  });
+  return before!==after;
+}
+
 export function recoverSoftSelectionInference(result, issues, caseData, {focused=false}={}) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
   const selectionSoft=v=>v.includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定')
@@ -288,24 +343,7 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
   const forecastSoft=v=>/(?:将来|不確実性|保証できない結果)/.test(v);
   if(!list.length||!list.some(selectionSoft)||!list.every(v=>selectionSoft(v)||forecastSoft(v)))return false;
   const snapshot=JSON.parse(JSON.stringify(result||{}));
-  const unsafe=sentence=>
-    /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
-    ||/(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
-    ||/(?:長い|多くの?)イニング.{0,18}(?:任せ|投げら|投げ切)/.test(sentence)
-    ||/(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)/.test(sentence)
-    ||/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence)
-    ||/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
-    ||/(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
-    ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
-    ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い)/.test(sentence)
-    ||/(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮)|(?:過度な)?依存|頼りすぎ|頼り切)/.test(sentence);
-  const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
-  const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
-  result.facts=cleanArray(result.facts);
-  result.analysis=cleanArray(result.analysis);
-  result.prediction=cleanArray(result.prediction);
-  result.warnings=cleanArray(result.warnings);
-  for(const key of ['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'])result[key]=cleanText(result?.[key]);
+  sanitizeKnownSelectionProse(result,caseData);
   const forecastIssues=list.filter(forecastSoft);
   if(forecastIssues.length&&!recoverSoftForecastLanguage(result,forecastIssues)){
     for(const key of Object.keys(result))delete result[key];
@@ -684,6 +722,7 @@ export default async function handler(req, res) {
           retryScope: ''
         });
       }
+      if(finalized.candidateCase)sanitizeKnownSelectionProse(result,body.case);
       result=normalizeCaseRosterHonorifics(result,body.case);
       const publishIssues=validatePersonaOutput(body.case,result,{ focused: !finalized.candidateCase && !finalized.teamReviewCase });
       if(publishIssues.length){

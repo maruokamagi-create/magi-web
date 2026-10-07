@@ -465,9 +465,21 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Production acceptance is strengthened for closer and natural-third PRIMARY, SECOND and FINAL: the exact semantic classes found in #122, plus Maruoka honorific leakage, now fail the workflow even when structural candidate checks are green.
 
 
+
+## Production Live #123 repeated closer semantic leak follow-up
+
+- Main `ec091384...` tightened closer/natural-third visible semantic gates and added a final authoritative persona validation pass.
+- Production Live #123 completed staged best-order, but closer PRIMARY still returned two user-visible overclaims that the workflow correctly rejected: MELCHIOR converted IP/ERA into 「安定している」 and CASPER added 「チーム全体の成長」 to a current-role question.
+- Re-running the same #123 closer after deployment settlement reproduced the same PRIMARY text, so this is not treated as a one-off deployment race.
+- The CASPER guard did not include the exact phrase 「チーム全体の成長」. That phrase is now explicitly covered.
+- More importantly, known selection-semantic cleanup is now also applied unconditionally immediately before publication for PITCHING_ROLE/BATTING_ORDER outputs, then the authoritative guard runs again. This is defense-in-depth: it removes only the already-defined unsupported selection classes (metric-to-stability/trust, save-to-pressure inference, unsupported probability, batting-order tactical certainty, generic growth/development framing when not requested, and unsupported dependency framing) while preserving candidate structure and direct verified facts.
+- Development/growth language remains available when the user explicitly asks a development question. Pressure wording remains available when direct pressure/high-leverage Evidence exists. Dependency wording remains available when that Evidence exists.
+- Regression coverage uses the exact #123 MELCHIOR stability sentence and CASPER 「チーム全体の成長」 sentence, and verifies direct 坂田 暉馬 2セーブ Evidence and candidate order are preserved.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/closer-visible-semantic-grounding-20261007`; merge only if persona guard/recovery, FINAL grounding, honorific normalization, continuity, workflow syntax and preview checks are green.
+1. Complete CI for `fix/selection-prepublish-scrub-20261007`; merge only if the exact Live #123 semantic regressions, persona guard/recovery, continuity and preview checks are green.
 2. Run Production Live Deliberation on the merged main. Require all four staged real-data classes to complete and require closer/natural-third semantic gates to pass, not only candidate structure.
 3. Inspect actual closer, natural-third and TEAM_REVIEW PRIMARY/SECOND/FINAL output after the workflow is green. Do not declare the class solved from status alone.
 4. After those three classes are semantically clean, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, player comparison, direct statistics lookup and CLARIFY.
