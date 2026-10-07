@@ -163,7 +163,24 @@ function stagedSessionKey(mode,session){return `magi-live-e2e:v1:${String(mode||
 function validateStagedSession(session){return /^[A-Za-z0-9_-]{3,100}$/.test(String(session||''));}
 async function readStagedState(mode,session){return (await getCache().get(stagedSessionKey(mode,session)))||null;}
 async function writeStagedState(mode,session,state){await getCache().set(stagedSessionKey(mode,session),state,{ttl:STAGED_LIVE_TTL_SECONDS,tags:['magi-live-e2e']});}
-function summarizePersonaSet(set){return Object.fromEntries(PERSONAS.map(p=>[p,{judgment:set?.[p]?.judgment||'',confidence:set?.[p]?.confidence||'',candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],reviewRequested:Boolean(set?.[p]?.reviewRequested),dataConflict:Boolean(set?.[p]?.dataConflict)}]));}
+function summarizePersonaSet(set){
+  return Object.fromEntries(PERSONAS.map(p=>[p,{
+    judgment:set?.[p]?.judgment||'',
+    confidence:set?.[p]?.confidence||'',
+    candidatePlayers:Array.isArray(set?.[p]?.candidatePlayers)?set[p].candidatePlayers:[],
+    candidateBasis:set?.[p]?.candidateBasis||'',
+    facts:Array.isArray(set?.[p]?.facts)?set[p].facts:[],
+    analysis:Array.isArray(set?.[p]?.analysis)?set[p].analysis:[],
+    prediction:Array.isArray(set?.[p]?.prediction)?set[p].prediction:[],
+    primaryReason:set?.[p]?.primaryReason||'',
+    warnings:Array.isArray(set?.[p]?.warnings)?set[p].warnings:[],
+    publicStatement:set?.[p]?.publicStatement||'',
+    reviewRequested:Boolean(set?.[p]?.reviewRequested),
+    dataConflict:Boolean(set?.[p]?.dataConflict),
+    changedFromPrimary:Boolean(set?.[p]?.changedFromPrimary),
+    changeReason:set?.[p]?.changeReason||''
+  }]));
+}
 function summarizeNaturalThirdSet(set){
   return Object.fromEntries(PERSONAS.map(p=>[p,{
     judgment:set?.[p]?.judgment||'',
