@@ -2,6 +2,7 @@ import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJs
 import { PERSONA_PROMPTS } from './_prompts.js';
 import { deterministicFullLineupCross, deterministicSelectionCross, isSelectionCase } from './orchestrate.js';
 import { validatePersonaOutput, hasUnhedgedOutcomePrediction, isHardOutcomeGuarantee } from './_persona-output-guard.js';
+import { CURRENT_ROSTER, canonicalizePlayerData } from './_roster.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
@@ -294,9 +295,9 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
     ||/(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)/.test(sentence)
     ||/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence)
     ||/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
-    ||/(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定))/.test(sentence)
-    ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
-    ||/(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|(?:過度な)?依存|頼りすぎ|頼り切)/.test(sentence);
+    ||/(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
+    ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+    ||/(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮)|(?:過度な)?依存|頼りすぎ|頼り切)/.test(sentence);
   const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
   const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
   result.facts=cleanArray(result.facts);
@@ -470,6 +471,26 @@ export function recoverUnsupportedComponentMetricLabels(result, issues, caseData
 }
 
 
+function normalizeCaseRosterHonorifics(value, caseData){
+  const normalized=canonicalizePlayerData(value);
+  const question=String(caseData?.question||'');
+  const referencedSurnames=[...new Set(CURRENT_ROSTER.filter(name=>question.includes(name)).map(name=>name.split(' ')[0]).filter(Boolean))];
+  if(!referencedSurnames.length)return normalized;
+  const escape=s=>String(s).replace(/[.*+?^$()|[\]\\]/g,'\\export default async function handler(req, res) {');
+  const cleanString=input=>{
+    let out=String(input??'');
+    for(const surname of referencedSurnames){
+      out=out.replace(new RegExp(escape(surname)+'(?:くん|君)','g'),surname);
+    }
+    return out;
+  };
+  const walk=input=>{
+    if(Array.isArray(input))return input.map(walk);
+    if(input&&typeof input==='object')return Object.fromEntries(Object.entries(input).map(([k,v])=>[k,walk(v)]));
+    return typeof input==='string'?cleanString(input):input;
+  };
+  return walk(normalized);
+}
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -660,6 +681,18 @@ export default async function handler(req, res) {
           retryExhausted: true,
           retryFreshRequest: false,
           retryScope: ''
+        });
+      }
+      result=normalizeCaseRosterHonorifics(result,body.case);
+      const publishIssues=validatePersonaOutput(body.case,result,{ focused: !finalized.candidateCase && !finalized.teamReviewCase });
+      if(publishIssues.length){
+        return sendJson(res,503,{
+          error:phase+' batch sanitized persona failed final publish validation',
+          code:'PERSONA_BATCH_FINAL_VALIDATION_FAILED',
+          persona:persona.toUpperCase(),
+          retryExhausted:true,
+          retryFreshRequest:false,
+          diagnostic:{guardIssueCount:publishIssues.length,guardIssueCodes:publishIssues.map(v=>String(v||'')).slice(0,8)}
         });
       }
       out[persona] = result;
