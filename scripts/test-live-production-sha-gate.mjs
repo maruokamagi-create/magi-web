@@ -13,14 +13,14 @@ for (const file of ['lineup','closer','natural-third','team-review']) {
   assert.match(workflow,pattern);
 }
 
-const readiness=workflow.match(/production-revision-ready:[\\s\\S]*?\\n  exact-live-best-order:/)?.[0]||'';
+const readiness=workflow.match(/production-revision-ready:[\s\S]*?\n  exact-live-best-order:/)?.[0]||'';
 assert.match(readiness,/Verify production revision/);
 assert.match(readiness,/stage=prepare/);
 assert.match(readiness,/\.deployment\.sha==\$expected_sha/);
 assert.match(readiness,/\.deployment\.env=="production"/);
 assert.doesNotMatch(readiness,/stage=primary|run_stage primary/);
 
-assert.match(workflow,/exact-live-best-order:[\\s\\S]{0,120}needs: production-revision-ready/);
+assert.match(workflow,/exact-live-best-order:[\s\S]{0,120}needs: production-revision-ready/);
 assert.equal((workflow.match(/needs: \[production-revision-ready,/g)||[]).length,3);
 assert.equal((workflow.match(/needs\.production-revision-ready\.result == 'success'/g)||[]).length,3);
 assert.equal((workflow.match(/run_stage prepare$/gm)||[]).length,4);
