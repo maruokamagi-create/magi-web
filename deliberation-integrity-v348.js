@@ -94,10 +94,19 @@ function recoverSet(set,caseData){const out={};for(const p of PERSONAS)out[p]=re
 
 async function runPrimary(caseData,options){
   try{
-    // Prefer the quota-efficient batch PRIMARY endpoint when available.
-    // The endpoint must return the same three individually validated persona
-    // objects. A 404/405 means an older deployment, so retain the serial path
-    // as a compatibility fallback only.
+    // FULL_LINEUP is intentionally generated as three separate persona requests.
+    // The batch route repeatedly timed out on the full 14-player evidence packet
+    // and cannot perform the single-persona standard-defense correction pass.
+    // Separate requests preserve stronger PRIMARY independence and allow each
+    // persona endpoint to repair an invalid nine without weakening any guard.
+    if(isFullLineup(caseData)){
+      const rows=await Promise.all(PERSONAS.map(async(persona,index)=>{
+        if(index)await sleep(index*300);
+        const result=await postJSON('/api/magi/persona',{phase:'PRIMARY',persona,case:caseData},options);
+        return [persona,result];
+      }));
+      return recoverSet(Object.fromEntries(rows),caseData);
+    }
     try{
       const batch=await postJSON('/api/magi/persona-batch',{phase:'PRIMARY',case:caseData},options);
       if(batch&&batch.melchior&&batch.balthasar&&batch.casper){
@@ -131,6 +140,20 @@ function crossForPersona(cross,persona,independenceReview=''){
 async function runSecond(caseData,primaryLocked,cross,options,independenceReview=''){
   try{
     const revealed=reveal(primaryLocked);
+    if(isFullLineup(caseData)){
+      const rows=await Promise.all(PERSONAS.map(async(persona,index)=>{
+        if(index)await sleep(index*300);
+        const result=await postJSON('/api/magi/persona',{
+          phase:'SECOND',
+          persona,
+          case:caseData,
+          primarySelf:revealed[persona],
+          crossExamination:crossForPersona(cross,persona,independenceReview)
+        },options);
+        return [persona,result];
+      }));
+      return recoverSet(Object.fromEntries(rows),caseData);
+    }
     try{
       const result=await postJSON('/api/magi/persona-batch',{
         phase:'SECOND',
