@@ -439,9 +439,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - This repair does not substitute a corrected number and does not weaken numeric validation: the unsupported sentence is removed, and only Evidence-matching remaining text is publishable after re-validation.
 
 
+
+## Production Live #120 mixed selection-soft follow-up
+
+- Main `fd4f3e91...` plus the numeric-mismatch recovery repair was exercised again. Staged best-order completed successfully with nine unique current players and nine standard defensive positions.
+- Staged closer then failed at PRIMARY/BALTHASAR with three simultaneously valid guard findings: unsupported PITCHING_ROLE stability/trust inference, a hard future-result guarantee, and an unhedged future outcome claim.
+- The individual sanitizers already handle those prose classes safely, but the selection sanitizer previously required every issue to be selection-inference-only, so the compatible combination could not recover and publication stopped.
+- Selection soft recovery now accepts a mixed set only when every issue belongs to either the known PITCHING_ROLE/BATTING_ORDER inference class or the existing forecast-guarantee class, and at least one selection-inference issue is present. It removes the unsupported selection inference, then applies the existing forecast sanitizer, and finally re-runs the authoritative persona guard once.
+- Unknown numeric, roster, structural, Evidence-source, unsupported-metric and other hard issues are not admitted to this combined path. Candidate structure remains unchanged.
+- Regression coverage uses the exact #120 combination: pitching-number stability/trust wording plus unsupported closer win/stability outcome claims.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/selection-metric-redaction-20261007`; merge only if metric redaction, persona guard/recovery, continuity and preview checks are green.
+1. Complete CI for `fix/combined-selection-soft-recovery-v2-20261007`; merge only if mixed selection/forecast recovery, persona guard, continuity and preview checks are green.
 2. Run Production Live Deliberation on the merged main. Require the repeated closer `登板数4` case to be removed rather than published or blocking the whole consultation, while all remaining text still passes the authoritative numeric guard.
 3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
 4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
