@@ -567,6 +567,18 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The deliberation unit workflow path filters now include both the Production Live workflow and `scripts/test-live-production-sha-gate.mjs`, so workflow-only/readiness changes cannot bypass their own contract test on PR or main push.
 - No MAGI decision policy, Evidence data, Google Drive/CSV file, Vercel billing setting or provider model configuration is changed.
 
+
+## Full-lineup final-vote semantics follow-up
+
+- Review of current main found a separate structural flaw in `buildConsensusLineup`: when MELCHIOR, BALTHASAR and CASPER all produced different SECOND full-lineup proposals, the code ranked those three proposals by closeness to the shared average ranks and selected one anyway.
+- That behavior violated the MAGI deliberation rule. A 1-1-1 split is a DEADLOCK; agreement score is diagnostic context, not authority to break a three-way tie.
+- Branch `fix/full-lineup-deadlock-semantics-20261008` changes only the final proposal decision. It does not change Drive Evidence, batting/fielding data, persona prompts, or defensive eligibility.
+- Exact full-order voting now applies: 3 identical SECOND proposals = `CONSENSUS / 3-0`; 2 identical proposals = `MAJORITY / 2-1` with the minority proposal preserved; 3 different proposals = `DEADLOCK / 1-1-1` and no final lineup is fabricated.
+- A DEADLOCK exits before defensive assignment and returns `LINEUP_REVIEW_REQUIRED` with `FULL_LINEUP_DEADLOCK_1_1_1`.
+- The existing rule that the final lineup must be one actual SECOND proposal remains intact. No synthetic fourth lineup is created by slot averaging.
+- Regression coverage is extended so 3-0, 2-1 and 1-1-1 behaviors are explicit and fielding tests continue only from a valid majority/consensus batting proposal.
+- No Google Drive/CSV data is changed. Vercel Hobby/free remains mandatory.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.
