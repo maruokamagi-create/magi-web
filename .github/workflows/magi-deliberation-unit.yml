@@ -40,6 +40,7 @@ on:
       - 'magi-user-language-v382.js'
       - 'scripts/test-deliberation-final.mjs'
       - 'scripts/test-persona-output-guard.mjs'
+      - 'scripts/test-live133-residual-grounding.mjs'
       - 'scripts/test-persona-batch-soft-recovery.mjs'
       - 'scripts/test-persona-second-fallback.mjs'
       - 'scripts/test-lineup-persona-grounding.mjs'
@@ -99,6 +100,9 @@ jobs:
 
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
+
+      - name: Run Live 133 residual grounding cases
+        run: node --experimental-default-type=module scripts/test-live133-residual-grounding.mjs
 
       - name: Run persona-batch mixed soft-recovery cases
         run: node --experimental-default-type=module scripts/test-persona-batch-soft-recovery.mjs

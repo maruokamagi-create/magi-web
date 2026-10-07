@@ -631,6 +631,60 @@ test('G80 batting-order blocks Live132 incumbency, tactical-fit, form-label and 
   assert.ok(issues.some(x=>x.includes('つながり・連携への因果')));
 });
 
+
+test('G81 FULL_LINEUP blocks Live production scoring-optimization and win-proximity wording',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',summary:'現チームの打撃成績、実打順、守備起用実績を比較する。'}
+  };
+  const r=result({
+    persona:'BALTHASAR',
+    primaryReason:'1番から5番の現在成績を軸に、得点力を最大化する並びとした。',
+    prediction:['現在の数値を維持できれば、打線が機能して得点力を発揮できる可能性がある。'],
+    warnings:['守備連携の習熟度次第では、連係ミスを防ぎながら勝利へ近づくことができると考えられる。']
+  });
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('得点力最大化・勝利接近')));
+});
+
+test('G82 FULL_LINEUP blocks a rationale that narrates a different batting order from candidatePlayers',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',summary:'現チームの打撃成績、実打順、守備起用実績を比較する。'}
+  };
+  const order=['大野 竜暉','大久保 陽翔','中嶋 玲月','坂田 暉馬','嶋田 栄志','井坂 悠聖','武澤 大翔','橋向 結都','武田 晴琉翔'];
+  const r=result({
+    persona:'MELCHIOR',
+    candidatePlayers:order,
+    candidateBasis:'1番捕手は大野 竜暉、2番遊撃手は大久保 陽翔、3番中堅手は嶋田 栄志、4番一塁手は中嶋 玲月、5番二塁手は坂田 暉馬とする。',
+    publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番嶋田 栄志、4番中嶋 玲月、5番坂田 暉馬の並びです。'
+  });
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('candidatePlayersと打順説明が矛盾')));
+});
+
+test('G83 FULL_LINEUP allows numbered proposal prose when it matches candidatePlayers',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',
+    mode:'selection',
+    selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',summary:'現チームの打撃成績、実打順、守備起用実績を比較する。'}
+  };
+  const order=['大野 竜暉','大久保 陽翔','中嶋 玲月','坂田 暉馬','嶋田 栄志','井坂 悠聖','武澤 大翔','橋向 結都','武田 晴琉翔'];
+  const r=result({
+    persona:'MELCHIOR',
+    candidatePlayers:order,
+    candidateBasis:'1番捕手は大野 竜暉、2番遊撃手は大久保 陽翔、3番一塁手は中嶋 玲月、4番二塁手は坂田 暉馬、5番中堅手は嶋田 栄志とする。',
+    publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月、4番坂田 暉馬、5番嶋田 栄志の並びです。'
+  });
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(!issues.some(x=>x.includes('candidatePlayersと打順説明が矛盾')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

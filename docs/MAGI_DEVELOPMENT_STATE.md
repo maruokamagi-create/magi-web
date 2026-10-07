@@ -608,6 +608,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage reproduces the exact production leak classes at persona guard, batch recovery, FINAL aggregation and workflow-contract layers.
 - No Google Drive/CSV data, roster source, coach source, Vercel billing setting or paid service is changed.
 
+
+## Production Live current-main verification and residual grounding follow-up (2026-10-08)
+
+- Vercel Hobby deployment quota cleared and current main `2b25087b1c03789ccba3802bb8d4459d90b003a1` was deployed directly to production as `dpl_6qZJDHFwsQENh3xYXhmVUkAuVtGV`. The shared production-revision readiness gate passed against the exact production SHA.
+- Production Live run `37648717971` attempt 2 therefore tested the actual current main, not stale production.
+- Best-order reached PREPARE/PRIMARY/CROSS but failed during SECOND after provider 503/rate-limit responses. Manual PRIMARY inspection also found two semantic defects that structural checks missed: BALTHASAR used unsupported `得点力を最大化 / 得点力を発揮 / 勝利へ近づく` outcome language, and MELCHIOR's `candidatePlayers` order disagreed with its numbered `candidateBasis/publicStatement` order.
+- Closer completed structurally, but manual text inspection found residual CASPER development/workload framing such as `役割の分散`, `今後の成長`, `チーム全体の負担`, `大切に育てる`; FINAL could retain `今後の成長を考慮`.
+- Natural-third completed structurally, but SECOND retained incumbency/meta claims such as `実績がある選手をその位置に置くのが確実`, `チームの安定につながる可能性`, and `他の記録が示されない限り、この判断を変更する理由はありません`.
+- TEAM_REVIEW failed PRIMARY semantic acceptance. BALTHASAR still converted batting spread into `勝ちに繋げる`, `生産力に濃淡`, `戦術上の重要なポイント`, `戦術的リスク`; CASPER added `これからのチームの成長`, `チーム全体がどう強く`, `見守りたい`, `組織全体の育成機会`.
+- PR #115 / branch `fix/live-best-order-grounding-consistency-20261008` adds guards, prompt constraints, deterministic selection sanitization/final grounding, TEAM_REVIEW recovery coverage, and Production Live rejection patterns for those exact residual classes.
+- A dedicated `scripts/test-live133-residual-grounding.mjs` reproduces the observed best-order, closer, natural-third, TEAM_REVIEW and FINAL leakage. Its first two CI failures correctly exposed missing closer soft recovery and polite `理由はありません` handling; both were then added to detection/recovery/final layers.
+- Vercel project `magi-web` now has `previewDeploymentsDisabled=true` to protect the Hobby 100-deployments/day budget. One explicit isolated Preview was created for branch SHA `25f11b20...` and reached READY. Automatic branch previews remain disabled. No billing upgrade and no Google Drive/CSV mutation occurred.
+- Do not declare the four-class gate clear until PR #115 is green, merged, the resulting main SHA is deployed to production, and all four current-production staged flows are manually inspected through PRIMARY -> CROSS -> SECOND -> FINAL.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.

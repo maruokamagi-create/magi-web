@@ -260,8 +260,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // proof of a team-wide weakness, scoring dependency, tactical failure or
     // development impact. Keep those inference boundaries visible in PRIMARY and
     // SECOND too, not only in the synthesized FINAL.
-    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き)|打線.{0,10}偏り|(?:この|その|特定の打者への)?偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
-    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|戦術(?:的)?な?.{0,12}(?:制約|問題)|実戦上.{0,12}課題|育成(?:上)?の課題|得点源|得点力|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|攻撃.{0,12}(?:硬直|硬直化)|勝負.{0,12}分かれ道|勝ちへの道|勝つため|直結|チーム力)/;
+    const spreadLike=/(?:数値(?:差|の開き|の偏り)|打撃成績.{0,24}(?:差|偏り|開き)|成績.{0,24}(?:差|偏り|開き|集中|濃淡)|生産力.{0,18}濃淡|特定.{0,24}成績.{0,24}集中|打線.{0,10}偏り|(?:この|その|特定の打者への)?偏り|(?:差|開き)が(?:大きい|激しい)|上位.{0,20}下位|下位.{0,20}上位|高い数字.{0,36}低い|当たっている選手.{0,30}当たっていない選手|(?:打撃|起用).{0,18}(?:バランス|機会).{0,18}(?:偏り|偏って))/;
+    const spreadOverclaim=/(?:弱点|戦術(?:上)?(?:の)?(?:課題)?|戦術(?:的)?な?.{0,12}(?:制約|問題|リスク)|戦術上.{0,18}(?:重要|ポイント)|実戦上.{0,12}課題|育成(?:上)?の課題|得点源|得点力|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|攻撃.{0,12}(?:硬直|硬直化)|勝負.{0,12}分かれ道|勝ちへの道|勝ちに(?:つな|繋)げ|勝つため|勝負だ|直結|生産力|チーム力)/;
     const groundingHedge=/(?:断定(?:しない|しません|できない|できません)|とは言えない|追加(?:の)?Evidence|追加情報|確認できない|根拠がない|課題候補|可能性|おそれ|考えられ)/;
     const unsupportedSpreadOverclaim=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
@@ -275,7 +275,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // a team scoring route, game result or tactical consequence without explicit
     // team-level outcome evidence.
     const individualBattingCue=/(?:無安打|安打0|打率\s*\.?0(?:00)?|低打率|打てていない|当たっていない)/;
-    const teamOutcomeCue=/(?:得点源|得点力|得点ルート|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|戦術(?:上)?(?:の)?課題|戦術(?:的)?な?.{0,12}(?:制約|問題)|直結)/;
+    const teamOutcomeCue=/(?:得点源|得点力|得点ルート|得点.{0,20}左右|左右されるリスク|打線.{0,12}(?:つながり|厚み)|勝負.{0,12}分かれ道|勝ち|勝利|勝ちに(?:つな|繋)げ|戦術(?:上)?(?:の)?課題|戦術(?:的)?な?.{0,12}(?:制約|問題|リスク)|戦術上.{0,18}(?:重要|ポイント)|生産力|直結)/;
     const unsupportedBattingCausality=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && individualBattingCue.test(sentence)
@@ -297,7 +297,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // facts. Generic future/development coaching advice is not evidence.
     const unsupportedDevelopmentAdvice=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:半年後|1年後|将来|チーム全体.{0,18}(?:成長|底上げ)|組織的な成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
+      && /(?:半年後|1年後|将来|これから.{0,24}チーム.{0,24}(?:成長|強く)|チーム全体.{0,24}(?:成長|底上げ|強く)|組織的な成長|組織全体.{0,24}育成|育成機会|見守りたい|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
       && !groundingHedge.test(sentence)
     );
     if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
@@ -351,7 +351,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(!hasExplicitSlotContinuity){
       const unsupportedIncumbency=parts.find(sentence=>
         !isEvidenceGapStatement(sentence)
-        && /(?:3番|打順|起用実績|スタメン|7試合).{0,90}(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致)|(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致).{0,90}(?:3番|打順|起用実績|スタメン|7試合)/.test(sentence)
+        && /(?:3番|打順|起用実績|スタメン|7試合|実績).{0,90}(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致|その位置に置く.{0,18}確実|選択.{0,18}確実|チームの安定.{0,18}(?:つなが|可能性))|(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致|チームの安定.{0,18}(?:つなが|可能性)).{0,90}(?:3番|打順|起用実績|スタメン|7試合|実績)/.test(sentence)
       );
       if(unsupportedIncumbency)issues.push('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定している');
     }
@@ -367,6 +367,12 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       );
       if(unsupportedFormLabel)issues.push('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換している');
     }
+
+    const unsupportedNoChangeClaim=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:他の記録が示されない限り|他の記録がない限り).{0,48}(?:判断|選択).{0,24}(?:変更|変える).{0,16}(?:理由は(?:ない|ありません)|必要は(?:ない|ありません))/.test(sentence)
+    );
+    if(unsupportedNoChangeClaim)issues.push('BATTING_ORDERで現在Evidenceを再比較せず判断変更不要を断定している');
 
     const unsupportedContinuityOutcome=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
@@ -385,6 +391,16 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       )
     );
     if(unsupportedLineupOutcome)issues.push('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している');
+
+    // Live production can phrase the same unsupported causal jump without the
+    // older exact tokens: "得点力を最大化", "得点力を発揮できる可能性",
+    // or "勝利へ近づく". In a generic best-order task those are still game-
+    // outcome claims, not facts established by raw batting/usage evidence.
+    const unsupportedLineupOptimization=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:得点力.{0,10}(?:最大化|発揮)|勝利(?:へ|に).{0,12}近づ)/.test(sentence)
+    );
+    if(unsupportedLineupOptimization)issues.push('BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している');
 
     // Hedging does not make unsupported lineup causality acceptable. Raw rates,
     // slot placement and legal fielding starts establish present facts only.
@@ -416,6 +432,31 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       if(unsupportedFixedSlot)issues.push('BEST_ORDERでEvidenceにない打順固定を断定している');
     }
 
+    // candidatePlayers is the authoritative proposed batting order. When the
+    // user-facing proposal fields spell out multiple numbered slots, those slot
+    // claims must describe the same order. Otherwise the UI can show one lineup
+    // while the rationale describes another.
+    const proposedOrder=Array.isArray(result?.candidatePlayers)
+      ? result.candidatePlayers.map(text).filter(Boolean)
+      : [];
+    if(proposedOrder.length===9){
+      const proposalText=[result?.candidateBasis,result?.publicStatement].map(text).filter(Boolean).join('。');
+      const slotClaims=[];
+      const escapeRegExp=value=>String(value).replace(/[.*+?^${}()|[\]\\]/g,match=>'\\'+match);
+      for(let slot=1;slot<=9;slot++){
+        for(const player of CURRENT_ROSTER){
+          const p=escapeRegExp(player);
+          const slotFirst=new RegExp(String(slot)+'番(?:打者)?(?:投手|捕手|一塁手|二塁手|三塁手|遊撃手|左翼手|中堅手|右翼手)?(?:は|に|を|へ|と|：|:|\\s){0,3}'+p);
+          const playerFirst=new RegExp(p+'.{0,10}(?:を|は)?'+String(slot)+'番(?:に|へ|で|と)(?:置|据|配置|起用)?');
+          if(slotFirst.test(proposalText)||playerFirst.test(proposalText))slotClaims.push({slot,player});
+        }
+      }
+      if(slotClaims.length>=2){
+        const mismatch=slotClaims.find(({slot,player})=>text(proposedOrder[slot-1])!==player);
+        if(mismatch)issues.push('BEST_ORDERのcandidatePlayersと打順説明が矛盾している');
+      }
+    }
+
     const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
     if(Number.isFinite(recentGameCount)&&recentGameCount>0){
       const outputNfkc=String(all||'').normalize('NFKC');
@@ -430,7 +471,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(String(caseData?.question||''));
     const unsupportedDevelopment=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
+      && /(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|チーム全体.{0,20}負担|役割の分散|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|今後.{0,18}(?:成長|育成)|(?:大切に)?育てて|育てる|調整の過程|半年後|将来.{0,18}成長|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|別の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
       && !developmentRequested
     );
     if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
