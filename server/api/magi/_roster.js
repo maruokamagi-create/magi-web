@@ -178,6 +178,14 @@ export function canonicalizeKnownNameText(value) {
     text = text.replace(spaced, official);
   }
 
+  // Maruoka players are rendered without honorifics in MAGI output. This registry
+  // contains Maruoka players only; opponent names are not registered here and keep
+  // their explicitly supplied 「くん」 honorific.
+  for (const official of OFFICIAL_PLAYER_REGISTRY) {
+    const honorific = new RegExp(`${escapeRegExp(official)}(?:くん|君)`, 'g');
+    text = text.replace(honorific, official);
+  }
+
   // Expand a surname-only player reference only when the surname is unique AND at least two characters.
   // This avoids corrupting ordinary prose such as the one-character surname 「北」 used as a direction word.
   for (const [surname, officials] of surnameMap.entries()) {

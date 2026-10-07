@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
+import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
 
 function baseResult(overrides={}) {
   return {
@@ -43,6 +44,21 @@ function baseResult(overrides={}) {
   ],caseData,{focused:false});
   assert.equal(ok,true);
   assert.ok(!/負担.{0,12}(?:偏|集中)|半年後|今後の成長|影響が出る|影響を与える/.test(JSON.stringify(result)));
+}
+
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み記録を横断する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    analysis:['一部の選手に負担が集中している。'],
+    publicStatement:'一部の選手への負担の偏りが課題です。'
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで起用差から負担集中を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/負担.{0,12}(?:集中|偏)/.test(JSON.stringify(result)) || /断定しません/.test(JSON.stringify(result)));
 }
 
 {
@@ -178,6 +194,88 @@ function baseResult(overrides={}) {
   assert.equal(ok,true);
   assert.deepEqual(result.candidatePlayers,['橋向 結都','坂田 暉馬']);
   assert.ok(!/最も安定|長いイニング|安定感|信頼できる/.test(JSON.stringify(result)));
+}
+
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2を記録している。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔'],
+    candidateBasis:'勝利の方程式と試合を締める役割の確率的優位性を考慮し、坂田 暉馬を一番手に据える。',
+    analysis:['坂田 暉馬のセーブ数2は、終盤の競った場面を実際に切り抜けた直接的な実績である。'],
+    publicStatement:'坂田 暉馬くんを軸に勝ちに行くべきだ。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'PITCHING_ROLEでセーブ実績から高圧・競った場面の経験を推定している',
+    'PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(canonicalizePlayerData(result));
+  assert.ok(!/確率的優位|競った場面/.test(rendered));
+  assert.ok(!rendered.includes('坂田 暉馬くん'));
+  assert.ok(rendered.includes('坂田 暉馬'));
+}
+
+{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投手成績とセーブ実績を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔','中嶋 玲月'],
+    candidateBasis:'将来的なチームの投手層の厚みを考慮して選定する。',
+    analysis:['特定の選手への過度な依存を避ける視点も必要である。'],
+    publicStatement:'半年後のチーム全体の成長も見据え、他の投手たちの成長も促したいです。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
+    'SELECTIONでEvidenceにない依存・役割集中を追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!/将来的|投手層|過度な依存|半年後|成長も促/.test(rendered));
+  assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔','中嶋 玲月']);
+}
+
+{
+  const normalized=canonicalizePlayerData({
+    maruoka:'坂田 暉馬くんを候補にする。大野 竜暉君も比較する。',
+    opponent:'宮永 陽生くんの記録を確認する。'
+  });
+  assert.equal(normalized.maruoka,'坂田 暉馬を候補にする。大野 竜暉も比較する。');
+  assert.equal(normalized.opponent,'宮永 陽生くんの記録を確認する。');
+}
+
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン起用、打率.282、OPS.748。'}};
+  const result=baseResult({
+    persona:'MELCHIOR',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬','井坂 悠聖'],
+    analysis:['3番で7試合にスタメン起用されているため、ポジション適性の記録が最も豊富である。'],
+    primaryReason:'嶋田 栄志が最も確実な選択肢である。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','井坂 悠聖']);
+  assert.ok(!/ポジション適性|最も確実な選択肢/.test(JSON.stringify(result)));
+}
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番起用記録を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬','大久保 夢翔'],
+    primaryReason:'嶋田 栄志を軸に置きつつ、選手の成長を慎重に見守りたいからだ。',
+    publicStatement:'半年後のチームのことも考えて、選手たちの成長を見守りながら判断したいです。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'SELECTIONでEvidenceにない成長・育成・負担影響を追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','大久保 夢翔']);
+  assert.ok(!/半年後|成長を慎重に見守|成長を見守/.test(JSON.stringify(result)));
 }
 
 {
@@ -338,4 +436,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 15/15 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 21/21 PASS');

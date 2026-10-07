@@ -348,6 +348,69 @@ test('C07 batting-order final removes unsupported tactical-stability and growth 
   assert.ok(r.majorReasons.some(x=>x.includes('3番で7試合起用')));
 });
 
+
+
+test('C08 closer final uses structured save fact and removes Live 122 meta/future rhetoric',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{
+      candidatePlayers:['坂田 暉馬','大久保 陽翔','橋向 結都'],
+      primaryReason:'バルタザールからの指摘に対する回答として、坂田 暉馬の第1候補維持を確認する。現チームで実際に2セーブを挙げている記録を重視する。'
+    }),
+    balthasar:persona('BALTHASAR','BLUE',{
+      candidatePlayers:['坂田 暉馬','大久保 陽翔'],
+      primaryReason:'カスパーからの問いかけに対し、坂田 暉馬を第1候補に据える理由を明確にする。現チームにおけるセーブ実績という明確な事実を根拠として勝ちに行くために、この選択を変える理由はない。'
+    }),
+    casper:persona('CASPER','BLUE',{
+      candidatePlayers:['坂田 暉馬','大久保 陽翔','中嶋 玲月'],
+      primaryReason:'メルキオールからの問いかけに答え、坂田 暉馬を軸としつつも将来のチーム力と複数起用の可能性を残すために判断を維持する。'
+    })
+  };
+  const caseData={
+    selectionKind:'PITCHING_ROLE',
+    evidence:{
+      selectionKind:'PITCHING_ROLE',
+      allCurrentTeamCheck:{
+        status:'COMPLETE',
+        players:[
+          {name:'坂田 暉馬',pitching:{SV:'2'}},
+          {name:'大久保 陽翔',pitching:{SV:'0'}},
+          {name:'橋向 結都',pitching:{SV:'0'}}
+        ]
+      }
+    }
+  };
+  const r=buildSelectionResult(second,{},caseData);
+  const reasons=r.majorReasons.join('\n');
+  assert.ok(r.majorReasons.some(x=>x==='坂田 暉馬は現チームで2セーブを記録している。'));
+  assert.doesNotMatch(reasons,/バルタザールから|カスパーから|メルキオールから|勝ちに行くため|この選択を変える理由|将来のチーム力/);
+});
+
+test('C09 closer final normalizes Maruoka honorific but leaves opponent honorific alone',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['坂田 暉馬'],primaryReason:'坂田 暉馬くんはセーブ2。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['坂田 暉馬'],primaryReason:'坂田 暉馬くんを候補にする。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['坂田 暉馬'],primaryReason:'宮永 陽生くんの話ではなく、坂田 暉馬くんの現チーム記録を確認する。'})
+  };
+  const caseData={selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',allCurrentTeamCheck:{players:[{name:'坂田 暉馬',pitching:{SV:'2'}}]}}};
+  const r=buildSelectionResult(second,{},caseData);
+  const rendered=JSON.stringify(r);
+  assert.doesNotMatch(rendered,/坂田 暉馬くん/);
+  assert.match(rendered,/宮永 陽生くん/);
+});
+
+
+test('C10 natural-third final removes certainty and generic growth rationale',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬','井坂 悠聖'],primaryReason:'記録に基づき3番打順でのスタメン起用実績が最も多い嶋田 栄志を第一候補とする。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬','中嶋 玲月'],primaryReason:'4番につなぐ打順として、実際に3番で7試合のスタメン実績がある嶋田 栄志が最も確実な選択肢だからだ。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬','大久保 夢翔'],primaryReason:'3番としての起用実績が最も積み上がっている嶋田 栄志を軸に置きつつ、選手の成長を慎重に見守りたいからだ。'})
+  };
+  const caseData={selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER'}};
+  const r=buildSelectionResult(second,{},caseData);
+  const reasons=r.majorReasons.join('\n');
+  assert.match(reasons,/3番打順でのスタメン起用実績が最も多い/);
+  assert.doesNotMatch(reasons,/最も確実な選択肢|選手の成長を慎重に見守/);
+});
 test('C05 cross evidence failure blocks candidate finalization',()=>{
   const second={
     melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['大野 竜暉']}),

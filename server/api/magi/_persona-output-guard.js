@@ -238,9 +238,11 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
     const hasBurdenConcentrationEvidence=/(?:負担.{0,12}(?:集中|偏)|(?:一部|特定).{0,24}負担.{0,12}(?:集中|偏))/.test(evidenceText);
     if(!hasBurdenConcentrationEvidence){
+      const burdenNonAssertion=/(?:断定(?:しない|しません|できない|できません)|確認できない|Evidenceにない|根拠がない)/;
       const unsupportedBurdenConcentration=parts.find(sentence=>
         !isEvidenceGapStatement(sentence)
         && /(?:負担.{0,12}(?:集中|偏)|経験や負担.{0,12}(?:集中|偏)|(?:一部|特定).{0,24}負担.{0,12}(?:集中|偏))/.test(sentence)
+        && !burdenNonAssertion.test(sentence)
       );
       if(unsupportedBurdenConcentration)issues.push('TEAM_REVIEWで起用差から負担集中を断定している');
     }
@@ -308,22 +310,51 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       )
     );
     if(unsupportedPitchingStability)issues.push('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している');
+
+    const hasPressureEvidence=/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
+    if(!hasPressureEvidence){
+      const unsupportedSavePressure=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)|(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence)
+      );
+      if(unsupportedSavePressure)issues.push('PITCHING_ROLEでセーブ実績から高圧・競った場面の経験を推定している');
+    }
+
+    const unsupportedProbability=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
+    );
+    if(unsupportedProbability)issues.push('PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している');
   }
 
   if(isBattingOrder){
     const unsupportedSlotTactics=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定))|(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+      && (
+        /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
+        || /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+      )
     );
     if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
   }
 
   if(isSelectionLike&&persona.startsWith('CASPER')){
+    const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(String(caseData?.question||''));
     const unsupportedDevelopment=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響))/.test(sentence)
+      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
+      && !developmentRequested
     );
     if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
+
+    const hasDependencyEvidence=/(?:依存|頼り|負担集中|役割集中)/.test(evidenceText);
+    if(!hasDependencyEvidence){
+      const unsupportedDependency=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:過度な)?依存|頼りすぎ|頼り切/.test(sentence)
+      );
+      if(unsupportedDependency)issues.push('SELECTIONでEvidenceにない依存・役割集中を追加している');
+    }
   }
 
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);

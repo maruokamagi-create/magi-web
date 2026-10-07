@@ -399,6 +399,63 @@ test('G57 CASPER selection cannot invent growth opportunity or burden impact',()
   assert.ok(issues.some(x=>x.includes('成長・育成・負担影響')));
 });
 
+
+test('G58 closer role cannot infer pressured-game experience from save count alone',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2を記録している。'}};
+  const r=result({persona:'BALTHASAR',analysis:['坂田 暉馬のセーブ数2は、終盤の競った場面を実際に切り抜けた直接的な実績である。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('高圧・競った場面')));
+});
+
+test('G59 closer role cannot claim unsupported win probability',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬はセーブ2を記録している。'}};
+  const r=result({persona:'BALTHASAR',candidateBasis:'勝利の方程式と試合を締める役割の確率的優位性を考慮する。'});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('勝利・成功確率')));
+});
+
+test('G60 CASPER closer cannot invent future roster growth frame without Evidence',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投手成績とセーブ実績を比較する。'}};
+  const r=result({persona:'CASPER',candidateBasis:'将来的なチームの投手層の厚みを考慮する。',publicStatement:'半年後のチーム全体の成長も見据えたいです。'});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('成長・育成・負担影響')));
+});
+
+test('G61 CASPER closer cannot invent dependency from small sample',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は投球回4、セーブ2。'}};
+  const r=result({persona:'CASPER',analysis:['投球回が少ないため、特定の選手への過度な依存を避ける視点が必要である。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('依存・役割集中')));
+});
+
+
+test('G62 team-review explicit non-assertion about burden concentration is allowed',()=>{
+  const teamCase={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの確認済み記録を横断する。'}};
+  const r=result({publicStatement:'数値差だけで負担集中までは断定しません。'});
+  assert.deepEqual(validatePersonaOutput(teamCase,r,{focused:false}),[]);
+});
+
+test('G63 batting-order usage cannot become position suitability or certainty',()=>{
+  const battingCase={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン起用。'}};
+  const r=result({persona:'MELCHIOR',analysis:['3番で7試合に起用されているため、ポジション適性の記録が最も豊富である。'],primaryReason:'嶋田 栄志が最も確実な選択肢である。'});
+  const issues=validatePersonaOutput(battingCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('戦術的安定性')));
+});
+
+test('G64 CASPER current batting-order question cannot add半年後 growth frame',()=>{
+  const battingCase={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番起用記録を比較する。'}};
+  const r=result({persona:'CASPER',primaryReason:'選手の成長を慎重に見守りたいからだ。',publicStatement:'半年後のチームも考えて判断したいです。'});
+  const issues=validatePersonaOutput(battingCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('成長・育成・負担影響')));
+});
+
+test('G65 CASPER development wording is allowed when the user explicitly asks about development',()=>{
+  const battingCase={question:'半年後を見据えて3番を育成するなら誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と起用記録を比較する。'}};
+  const r=result({persona:'CASPER',publicStatement:'半年後の成長も見据えて候補を比較します。'});
+  const issues=validatePersonaOutput(battingCase,r,{focused:false});
+  assert.ok(!issues.some(x=>x.includes('成長・育成・負担影響')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
