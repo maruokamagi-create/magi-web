@@ -161,7 +161,7 @@ function recoverSoftBurdenEscalation(result, issues) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
   const target='Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている';
   if(!list.length||!list.every(v=>v.includes(target)))return false;
-  const unsafe=/(?:負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)|(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)|(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)|(?:兼任|負担|固定).{0,48}(?:半年後|来年|将来|今後).{0,24}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化))/;
+  const unsafe=/(?:負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度|集中)|過度な負担|負担集中|特定の選手への負担|特定の選手に負担|蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)|(?:兼任|負担).{0,24}(?:コンディション|成長|パフォーマンス).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)|(?:コンディション|成長|パフォーマンス).{0,24}(?:兼任|負担).{0,16}(?:影響が出|影響を与え|低下し|壊し|損な)|(?:兼任|負担|固定).{0,48}(?:半年後|来年|将来|今後).{0,24}(?:響く|響き|影響が出|影響を与え|損な|低下|悪化))/;
   const cleanText=value=>{
     const raw=String(value||'').trim();
     if(!raw||!unsafe.test(raw))return raw;
@@ -306,7 +306,7 @@ export function sanitizeKnownSelectionProse(result, caseData) {
     ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い)/.test(sentence);
   const development=sentence=>/(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手(?:たち)?の成長)/.test(sentence);
   const dependency=sentence=>/(?:過度な)?依存|頼りすぎ|頼り切/.test(sentence);
-  const burden=sentence=>/(?:過度な負担|負担集中|特定の選手への負担|特定の選手に負担|コンディション.{0,20}負担)/.test(sentence);
+  const burden=sentence=>/(?:負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度|集中)|過度な負担|負担集中|特定の選手への負担|特定の選手に負担|蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)|コンディション.{0,20}負担)/.test(sentence);
 
   const unsafe=sentence=>
     (selectionKind==='PITCHING_ROLE' && pitchingStability(sentence))
@@ -347,10 +347,17 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
     ||v.includes('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定')
     ||v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加')
     ||v.includes('SELECTIONでEvidenceにない依存・役割集中を追加');
+  const burdenSoft=v=>v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
   const forecastSoft=v=>/(?:将来|不確実性|保証できない結果)/.test(v);
-  if(!list.length||!list.some(selectionSoft)||!list.every(v=>selectionSoft(v)||forecastSoft(v)))return false;
+  if(!list.length||!list.some(selectionSoft)||!list.every(v=>selectionSoft(v)||burdenSoft(v)||forecastSoft(v)))return false;
   const snapshot=JSON.parse(JSON.stringify(result||{}));
   sanitizeKnownSelectionProse(result,caseData);
+  const burdenIssues=list.filter(burdenSoft);
+  if(burdenIssues.length&&!recoverSoftBurdenEscalation(result,burdenIssues)){
+    for(const key of Object.keys(result))delete result[key];
+    Object.assign(result,snapshot);
+    return false;
+  }
   const forecastIssues=list.filter(forecastSoft);
   if(forecastIssues.length&&!recoverSoftForecastLanguage(result,forecastIssues)){
     for(const key of Object.keys(result))delete result[key];
