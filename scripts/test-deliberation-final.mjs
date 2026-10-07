@@ -445,6 +445,33 @@ test('C11 closer final removes Live 124 debate-meta, certain-win and unsupported
   assert.doesNotMatch(rendered,/指摘された|私の判断は変え|確実な勝ち筋|勝利に直結|負担集中|僕の判断はこのまま/);
 });
 
+
+test('C12 natural-third final removes role-settlement, experience-value and lineup-stability prose',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'嶋田 栄志は3番で7試合スタメン起用されている。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'3番の経験値が最も高く、打順の軸を安定させられる嶋田 栄志を選ぶ。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'3番の実戦経験が最も豊富で、役割が定着している嶋田 栄志を選ぶ。'})
+  };
+  const caseData={selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER'}};
+  const r=buildSelectionResult(second,{},caseData);
+  const rendered=JSON.stringify(r);
+  assert.match(rendered,/3番で7試合スタメン起用/);
+  assert.doesNotMatch(rendered,/経験値|打順の軸を安定|実戦経験が最も豊富|役割が定着/);
+});
+
+test('R12 TEAM_REVIEW final removes unsupported scoring-dependency and growth warnings',()=>{
+  const second=[
+    persona('MELCHIOR','BLUE',{primaryReason:'確認済みの打撃成績には選手間の数値差がある。',warnings:[]}),
+    persona('BALTHASAR','BLUE',{primaryReason:'確認済みの打撃成績には選手間の数値差がある。',warnings:['特定の選手の調子に得点が左右されるリスクを考慮する必要がある。']}),
+    persona('CASPER','BLUE',{primaryReason:'確認済みの出場機会には選手間の差がある。',warnings:['チーム全体の底上げにつながる課題を意識することが大切だ。']})
+  ];
+  const caseData={selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',recentSix:{status:'COMPLETE',gameCount:6,players:[{name:'井坂 悠聖',batting:{AB:'4',H:'0'}}]}}};
+  const r=buildReviewResult(second,{},caseData);
+  const rendered=JSON.stringify(r);
+  assert.doesNotMatch(rendered,/得点が左右されるリスク|チーム全体の底上げ/);
+  assert.match(r.recommendation,/因果までは断定しない/);
+});
+
 test('C05 cross evidence failure blocks candidate finalization',()=>{
   const second={
     melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['大野 竜暉']}),
