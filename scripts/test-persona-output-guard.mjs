@@ -456,6 +456,14 @@ test('G65 CASPER development wording is allowed when the user explicitly asks ab
   assert.ok(!issues.some(x=>x.includes('成長・育成・負担影響')));
 });
 
+
+test('G66 CASPER closer blocks explicit team-wide growth claim in analysis',()=>{
+  const closerCase={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投手成績とセーブ実績を比較する。'}};
+  const r=result({persona:'CASPER',analysis:['特定の選手だけでなく複数の投手に出場機会と役割を経験させることは、チーム全体の成長にとって重要である。']});
+  const issues=validatePersonaOutput(closerCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('成長・育成・負担影響')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
