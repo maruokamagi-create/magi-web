@@ -300,11 +300,16 @@ export function sanitizeKnownSelectionProse(result, caseData) {
   const pressureInference=sentence=>
     /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)/.test(sentence)
     ||/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence);
-  const probability=sentence=>/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|確実な勝ち筋|勝ちへの道)/.test(sentence);
+  const probability=sentence=>/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|勝ちに直結|勝ち筋|勝ちパターン|勝ちへの道)/.test(sentence);
+  const hasExplicitSlotContinuity=/(?:3番|打順).{0,30}(?:固定|継続|維持|方針)|(?:固定|継続|維持).{0,30}(?:3番|打順)/.test(evidenceText);
+  const hasExplicitFormObservation=/(?:勢い|低調|好調|不調|状態の波|調子.{0,12}(?:良|悪|落)|安定した打撃)/.test(evidenceText);
   const battingTactics=sentence=>
-    /(?:3番|打順|起用|打率|AVG|OPS|役割).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
-    ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS|役割)/.test(sentence)
-    ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積))/.test(sentence);
+    /(?:3番|打順|起用|打率|AVG|OPS|役割).{0,90}(?:戦術的に最も安定|戦術.{0,24}(?:裏付け|安定|合致)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)|チームの形.{0,18}馴染)/.test(sentence)
+    ||/(?:戦術的に最も安定|戦術.{0,24}(?:裏付け|安定|合致)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)|チームの形.{0,18}馴染).{0,90}(?:3番|打順|起用|打率|AVG|OPS|役割)/.test(sentence)
+    ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積))/.test(sentence)
+    ||(!hasExplicitSlotContinuity&&/(?:3番|打順|起用実績|スタメン|7試合).{0,90}(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致)/.test(sentence))
+    ||(!hasExplicitFormObservation&&/(?:直近|打率|OPS|打撃成績|数値).{0,70}(?:勢い.{0,18}(?:落|陰り)|低調(?:な状態)?|状態の波|安定した打撃|安定して残|調子.{0,12}(?:良|悪|落))/.test(sentence))
+    ||/(?:打順|起用).{0,50}(?:変える|変動|頻繁に変).{0,60}(?:全体の)?(?:つながり|連携).{0,24}(?:影響|崩|悪化)/.test(sentence);
   const development=sentence=>/(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手(?:たち)?の成長)/.test(sentence);
   const dependency=sentence=>/(?:過度な)?依存|頼りすぎ|頼り切/.test(sentence);
   const burden=sentence=>/(?:負担(?:が|は|も)?(?:大きい|大きすぎる|重い|過大|過度|集中)|過度な負担|負担集中|特定の選手への負担|特定の選手に負担|蓄積疲労|疲労蓄積|疲労(?:や|と|・)?負担.{0,8}蓄積|(?:疲労|負担).{0,8}(?:蓄積|積み重な)|コンディション.{0,20}負担)/.test(sentence);
@@ -346,6 +351,9 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
     ||v.includes('PITCHING_ROLEでセーブ実績から高圧・競った場面の経験を推定')
     ||v.includes('PITCHING_ROLEでEvidenceにない勝利・成功確率を主張')
     ||v.includes('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定')
+    ||v.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')
+    ||v.includes('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換')
+    ||v.includes('BATTING_ORDERで打順変更からチームのつながり・連携への因果を推定')
     ||v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加')
     ||v.includes('SELECTIONでEvidenceにない依存・役割集中を追加');
   const burdenSoft=v=>v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
@@ -417,7 +425,25 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
     if(!String(result.publicStatement||'').trim())result.publicStatement='確認済み記録には選手間の差があります。ただし、その差だけで負担集中や将来影響までは断定しません。';
   }
   if(caseData){
-    const remaining=validatePersonaOutput(caseData,result,{focused});
+    let remaining=validatePersonaOutput(caseData,result,{focused});
+    if(remaining.length && teamReviewIssues.length && remaining.every(v=>isTeamReviewSoft(String(v))||isBurdenSoft(String(v))||isForecastSoft(String(v)))){
+      // Second-stage fail-safe for current TEAM_REVIEW prose only. Preserve no
+      // causal story: direct team facts are reintroduced deterministically by FINAL.
+      result.facts=[];
+      result.analysis=[];
+      result.prediction=[];
+      result.candidatePlayers=[];
+      result.candidateBasis='';
+      result.primaryReason='確認済み記録だけでは、数値差からチーム全体の弱点・戦術的制約・得点依存までは断定できない。';
+      result.publicStatement='確認済み記録にある数値差や個別結果は事実として扱います。ただし、その差だけでチーム全体の弱点や得点への因果までは断定しません。';
+      result.warnings=['TEAM_REVIEWでは数値差だけから弱点・因果・将来影響を断定しません。'];
+      result.reviewRequested=false;
+      result.reviewReason='';
+      result.dataConflict=false;
+      result.judgment='BLUE';
+      result.confidence='MEDIUM';
+      remaining=validatePersonaOutput(caseData,result,{focused});
+    }
     if(remaining.length){
       for(const key of Object.keys(result))delete result[key];
       Object.assign(result,snapshot);
