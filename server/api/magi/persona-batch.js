@@ -522,7 +522,7 @@ function normalizeCaseRosterHonorifics(value, caseData){
   const question=String(caseData?.question||'');
   const referencedSurnames=[...new Set(CURRENT_ROSTER.filter(name=>question.includes(name)).map(name=>name.split(' ')[0]).filter(Boolean))];
   if(!referencedSurnames.length)return normalized;
-  const escape=s=>String(s).replace(/[.*+?^$()|[\]\\]/g,'\\  const escape=s=>String(s).replace(/[.*+?^$()|[\]\\]/g,'\\export default async function handler(req, res) {');');
+  const escape=s=>String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
   const cleanString=input=>{
     let out=String(input??'');
     for(const surname of referencedSurnames){
