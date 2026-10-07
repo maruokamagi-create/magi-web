@@ -359,6 +359,55 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
   return true;
 }
 
+export function recoverMismatchedSelectionMetricSentences(result, issues, caseData, {focused=false}={}) {
+  const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
+  const selectionKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  if(!selectionKind||selectionKind==='TEAM_REVIEW'||selectionKind==='FULL_LINEUP')return false;
+
+  const parsed=list.map(issue=>{
+    const m=issue.match(/^(登板数|投球回|奪三振|与四球|与死球|防御率|WHIP|セーブ)([-+]?\d+(?:\.\d+)?) は supplied CASE\/EVIDENCE の \1 値と一致しない$/i);
+    return m?{label:m[1],value:m[2]}:null;
+  });
+  if(!list.length||parsed.some(v=>!v))return false;
+
+  const snapshot=JSON.parse(JSON.stringify(result||{}));
+  const labelPattern={
+    '登板数':'(?:登板(?:数)?|試合(?:に)?登板)',
+    '投球回':'(?:投球回(?:数)?|イニング)',
+    '奪三振':'(?:奪三振(?:数)?)',
+    '与四球':'(?:与四球(?:数)?|四球(?:数)?)',
+    '与死球':'(?:与死球(?:数)?)',
+    '防御率':'(?:防御率)',
+    'WHIP':'(?:WHIP)',
+    'セーブ':'(?:セーブ(?:数)?)'
+  };
+  const unsafe=sentence=>parsed.some(({label,value})=>{
+    const escaped=String(value).replace(/[.*+?^$()|[\]\\]/g,'\\export function recoverUnsupportedComponentMetricLabels(result, issues, caseData, { focused=false }={}) {');
+    const lp=labelPattern[label]||label;
+    const reA=new RegExp(lp+'.{0,10}'+escaped+'(?![0-9.])','i');
+    const reB=new RegExp(escaped+'(?![0-9.]).{0,10}'+lp,'i');
+    return reA.test(sentence)||reB.test(sentence);
+  });
+  const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
+  const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
+
+  result.facts=cleanArray(result.facts);
+  result.analysis=cleanArray(result.analysis);
+  result.prediction=cleanArray(result.prediction);
+  result.warnings=cleanArray(result.warnings);
+  for(const key of ['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'])result[key]=cleanText(result?.[key]);
+  if(!String(result.primaryReason||'').trim())result.primaryReason='確認済みEvidenceと一致する数値だけを判断材料にする。';
+  if(!String(result.publicStatement||'').trim())result.publicStatement='確認済みEvidenceと一致する記録だけで候補を比較します。';
+  result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),'数値はEvidenceと一致する記録だけを使用します。'])];
+
+  const remaining=validatePersonaOutput(caseData,result,{focused});
+  if(remaining.length){
+    for(const key of Object.keys(result))delete result[key];
+    Object.assign(result,snapshot);
+    return false;
+  }
+  return true;
+}
 export function recoverUnsupportedComponentMetricLabels(result, issues, caseData, { focused=false }={}) {
   const list=Array.isArray(issues)?issues.map(v=>String(v||'')):[];
   const unsupportedMetricIssue=v=>v.includes('Evidenceにない長打率を、存在する指標として述べている')
@@ -573,6 +622,7 @@ export default async function handler(req, res) {
       if (guardIssues.length
         && !recoverSoftPersonaBatchValidation(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverSoftSelectionInference(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
+        && !recoverMismatchedSelectionMetricSentences(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverUnsupportedComponentMetricLabels(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
