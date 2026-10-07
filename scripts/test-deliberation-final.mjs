@@ -324,6 +324,30 @@ test('C04 non-current candidate name is filtered from selection arrays',()=>{
   assert.ok(r.recommendedCandidates.includes('大野 竜暉'));
 });
 
+test('C06 pitching-role final removes unsupported stability and win-probability prose',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['坂田 暉馬','橋向 結都'],primaryReason:'坂田 暉馬はセーブ2を記録している。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['橋向 結都','坂田 暉馬'],primaryReason:'橋向 結都は防御率1.67で安定した投球成績を示し、勝利の確率を高められると考えられる。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['橋向 結都','坂田 暉馬'],primaryReason:'橋向 結都と坂田 暉馬の確認済み記録を比較した。',warnings:['特定の選手への役割集中が他のメンバーの成長機会に影響するおそれがある。']})
+  };
+  const r=buildSelectionResult(second,{}, {selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE'}});
+  const rendered=JSON.stringify(r);
+  assert.doesNotMatch(rendered,/安定した投球|勝利の確率|成長機会に影響/);
+  assert.ok(r.majorReasons.some(x=>x.includes('セーブ2')));
+});
+
+test('C07 batting-order final removes unsupported tactical-stability and growth prose',()=>{
+  const second={
+    melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'嶋田 栄志は3番で7試合起用されている。'}),
+    balthasar:persona('BALTHASAR','BLUE',{candidatePlayers:['嶋田 栄志','中嶋 玲月'],primaryReason:'3番で7試合、打率.282、OPS.748の嶋田 栄志が戦術的に最も安定するため。'}),
+    casper:persona('CASPER','BLUE',{candidatePlayers:['嶋田 栄志','坂田 暉馬'],primaryReason:'チームの戦術と出場実績の双方で裏付けがあるため。',warnings:['特定の選手への役割集中が他のメンバーの成長機会に影響するおそれがある。']})
+  };
+  const r=buildSelectionResult(second,{}, {selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER'}});
+  const rendered=JSON.stringify(r);
+  assert.doesNotMatch(rendered,/戦術的に最も安定|チームの戦術.{0,24}裏付け|成長機会に影響/);
+  assert.ok(r.majorReasons.some(x=>x.includes('3番で7試合起用')));
+});
+
 test('C05 cross evidence failure blocks candidate finalization',()=>{
   const second={
     melchior:persona('MELCHIOR','BLUE',{candidatePlayers:['大野 竜暉']}),
