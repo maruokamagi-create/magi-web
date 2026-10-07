@@ -228,11 +228,15 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
   if(reviewKind==='TEAM_REVIEW'){
     const dependencyLike=/(?:依存|頼っている|頼る|頼り切|頼り(?:っ|つ)?きり|上位偏重|主力偏重|特定選手偏重)/;
+    const scoringDependencyLike=/(?:特定|一部).{0,12}(?:選手|打者).{0,28}(?:調子|状態).{0,28}得点.{0,20}(?:左右|依存)|得点.{0,20}(?:特定|一部).{0,12}(?:選手|打者).{0,28}(?:調子|状態).{0,20}(?:左右|依存)/;
     const dependencyHedge=/(?:可能性|見方|考えられ|とみられ|傾向|断定(?:しない|しません|できない|できません)|断定でき|確認できない|Evidenceにない|根拠がない)/;
+    const dependencyNonAssertion=/(?:断定(?:しない|しません|できない|できません)|確認できない|Evidenceにない|根拠がない)/;
     const unsupportedDependency=parts.find(sentence=>
-      dependencyLike.test(sentence)
-      && !isEvidenceGapStatement(sentence)
-      && !dependencyHedge.test(sentence)
+      !isEvidenceGapStatement(sentence)
+      && (
+        (dependencyLike.test(sentence) && !dependencyHedge.test(sentence))
+        || (scoringDependencyLike.test(sentence) && !dependencyNonAssertion.test(sentence))
+      )
     );
     if(unsupportedDependency)issues.push('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している');
 
@@ -288,7 +292,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // facts. Generic future/development coaching advice is not evidence.
     const unsupportedDevelopmentAdvice=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:半年後|1年後|将来|チーム全体.{0,18}成長|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
+      && /(?:半年後|1年後|将来|チーム全体.{0,18}成長|組織的.{0,12}成長|組織.{0,12}成長|チーム全体.{0,18}底上げ|底上げ.{0,18}(?:課題|必要|つなが)|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
       && !groundingHedge.test(sentence)
     );
     if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
@@ -332,8 +336,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const unsupportedSlotTactics=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
-        /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
-        || /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+        /(?:3番|打順|起用|スタメン|実戦経験|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|打順の軸.{0,16}安定|役割.{0,16}定着|配置しやすい|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
+        || /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|打順の軸.{0,16}安定|役割.{0,16}定着|配置しやすい|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|スタメン|実戦経験|打率|AVG|OPS)/.test(sentence)
       )
     );
     if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
