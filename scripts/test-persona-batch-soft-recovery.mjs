@@ -31,6 +31,21 @@ function baseResult(overrides={}) {
 
 
 {
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み記録を横断する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    analysis:['一部の選手に経験や負担が偏っており、このままなら半年後のチーム力に影響が出る。'],
+    publicStatement:'一部の選手への負担が偏っていて、今後の成長に影響を与える。'
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで起用差から負担集中を断定している',
+    '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/負担.{0,12}(?:偏|集中)|半年後|今後の成長|影響が出る|影響を与える/.test(JSON.stringify(result)));
+}
+
+{
   const result=baseResult({
     publicStatement:'上位に頼りっきりじゃ、厳しい試合を勝ち抜けねえぞ。'
   });
@@ -253,4 +268,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 11/11 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 12/12 PASS');
