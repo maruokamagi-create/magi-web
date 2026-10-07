@@ -358,6 +358,45 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       )
     );
     if(unsupportedLineupOutcome)issues.push('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している');
+
+    // Hedging does not make unsupported lineup causality acceptable. Raw rates,
+    // slot placement and legal fielding starts establish present facts only.
+    const unsupportedLineupStabilityOrChance=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:打率|OPS|出塁率|長打率|安打|打数|成績|数値|打順|[1-9１-９]番|配置|起用).{0,90}(?:得点機会.{0,18}(?:創出|増加|増え|高め)|安定(?:して|した|感|性))/.test(sentence)
+        || /(?:得点機会.{0,18}(?:創出|増加|増え|高め)|安定(?:して|した|感|性)).{0,90}(?:打率|OPS|出塁率|長打率|安打|打数|成績|数値|打順|[1-9１-９]番|配置|起用)/.test(sentence)
+      )
+    );
+    if(unsupportedLineupStabilityOrChance)issues.push('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している');
+
+    const unsupportedDefenseEffect=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:守備|守備位置|先発守備資格|標準先発守備資格).{0,70}(?:安定(?:して|した|感|性)|連携.{0,18}(?:深め|高め|向上|強化))/.test(sentence)
+        || /(?:安定(?:して|した|感|性)|連携.{0,18}(?:深め|高め|向上|強化)).{0,70}(?:守備|守備位置|先発守備資格|標準先発守備資格)/.test(sentence)
+        || /(?:この打順|この配置|この構成).{0,50}(?:チームの)?連携.{0,18}(?:深め|高め|向上|強化)/.test(sentence)
+      )
+    );
+    if(unsupportedDefenseEffect)issues.push('BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している');
+
+    const hasExplicitFixedPolicy=/(?:[1-9１-９]番.{0,18}固定|固定.{0,18}[1-9１-９]番)/.test(evidenceText);
+    if(!hasExplicitFixedPolicy){
+      const unsupportedFixedSlot=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:[1-9１-９]番(?:打者)?(?:に|で)?[^。！？]{0,24}固定(?:する|します|した|とする)?|固定(?:する|します|した|とする)?[^。！？]{0,24}[1-9１-９]番)/.test(sentence)
+      );
+      if(unsupportedFixedSlot)issues.push('BEST_ORDERでEvidenceにない打順固定を断定している');
+    }
+
+    const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
+    if(Number.isFinite(recentGameCount)&&recentGameCount>0){
+      const outputNfkc=String(all||'').normalize('NFKC');
+      const statedRecent=[...outputNfkc.matchAll(/直近\s*(\d+)\s*試合/g)].map(match=>Number(match[1])).filter(Number.isFinite);
+      if(statedRecent.some(count=>count!==recentGameCount)){
+        issues.push('BEST_ORDERで直近試合数をEvidenceと異なる値で述べている');
+      }
+    }
   }
 
   if(isSelectionLike&&persona.startsWith('CASPER')){
