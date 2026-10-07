@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 37dcf495fc9383dcb2009e4da723857a7faa625e
+- State base main SHA: 6643b67343d5d48b55d16bcb7ac7413c1da25126
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`37dcf495fc9383dcb2009e4da723857a7faa625e`
+`6643b67343d5d48b55d16bcb7ac7413c1da25126`
 
 Recent architectural fixes already merged:
 
@@ -538,6 +538,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Every Production Live class now requires the runtime `VERCEL_GIT_COMMIT_SHA` to equal `GITHUB_SHA` and `VERCEL_ENV` to be `production` before PRIMARY. PREPARE is retried up to five times to allow normal deployment propagation; no Gemini/persona call is made while the production SHA is stale.
 - A dedicated static contract test verifies all four PREPARE modes expose deployment identity and all four workflow classes enforce the SHA/environment match.
 - This change does not deploy, promote, alter billing, mutate Drive/CSV data, or change any MAGI decision policy.
+
+## Production Live #128 residual semantic-grounding follow-up
+
+- Main `6643b673...` contains the deployed-SHA gate. Because Vercel Hobby rejected the current production deployment for build-rate-limit, the gate correctly prevents provider-heavy acceptance from treating stale production as current main.
+- Manual inspection of the earlier stale-production #128 output still produced useful regression evidence for two semantic classes that had passed the then-current acceptance regexes.
+- Natural-third output preserved direct facts such as `嶋田 栄志は3番で7試合スタメン`, but also elevated those facts into unsupported qualitative/causal language: `役割が定着している`, `3番の経験値`, `実戦経験が最も豊富`, and `打順の軸を安定させられる`.
+- These phrases are now treated as the same BATTING_ORDER overclaim class already used for tactical stability/certainty. Actual start counts remain publishable; the overclaim sentence is removed and the authoritative persona guard is run again.
+- TEAM_REVIEW output preserved the correct final boundary that hitless counts and rate spread do not prove dependency/causality, but persona text and FINAL warnings still leaked `戦術的な制約になり得る`, `特定の選手の調子に得点が左右されるリスク`, `組織的な成長`, and `チーム全体の底上げ`.
+- Hedging with `なり得る` or `リスク` is no longer accepted as a substitute for direct team-level causal Evidence. The current-state TEAM_REVIEW guard and deterministic recovery remove those stronger inferences while retaining the measured spread/hitless/usage facts.
+- TEAM_REVIEW FINAL warning grounding now removes the same unsupported scoring-dependency and generic growth language so sanitized persona text cannot re-enter during synthesis.
+- Persona instructions explicitly state the evidence boundary: a count of 3番 starts proves usage count only, not role settlement/experience value/stability; team numeric spread does not prove tactical constraint, scoring dependency risk, organizational growth impact or team-wide bottom-up development.
+- Production Live PRIMARY/SECOND/FINAL regexes now reject the #128 residual phrases even when structural status is green.
+- Regression tests reproduce the exact #128 phrases at persona guard, deterministic batch recovery and FINAL synthesis layers.
+- No Google Drive/CSV data is changed.
 
 ## Next concrete work
 
