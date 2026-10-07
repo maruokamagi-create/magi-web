@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels } from '../server/api/magi/persona-batch.js';
+import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse } from '../server/api/magi/persona-batch.js';
 import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
 
 function baseResult(overrides={}) {
@@ -436,4 +436,33 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 21/21 PASS');
+
+{
+  const caseData={
+    mode:'selection',
+    question:'クローザーは誰がいい？',
+    selectionKind:'PITCHING_ROLE',
+    evidence:{
+      selectionKind:'PITCHING_ROLE',
+      summary:'坂田 暉馬は2セーブ。橋向 結都は投球回37.2、防御率1.67。'
+    }
+  };
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔','中嶋 玲月'],
+    facts:['坂田 暉馬は2セーブを記録している。'],
+    analysis:[
+      '橋向 結都は投球回37.2と豊富なイニングを消化し防御率1.67と安定しているがセーブ記録はない。',
+      '特定の選手だけでなく複数の投手に出場機会と役割を経験させることは、チーム全体の成長にとって重要である。'
+    ],
+    publicStatement:'実際に2セーブを記録している坂田 暉馬を候補とします。'
+  });
+  const changed=sanitizeKnownSelectionProse(result,caseData);
+  assert.equal(changed,true);
+  const rendered=JSON.stringify(result);
+  assert.ok(!/防御率1\.67と安定している|チーム全体の成長/.test(rendered));
+  assert.ok(rendered.includes('坂田 暉馬は2セーブ'));
+  assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔','中嶋 玲月']);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 22/22 PASS');
