@@ -593,6 +593,21 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression tests reproduce the exact Live phrases and distinguish an incorrect 5-game window from the supplied 6-game window.
 - No Google Drive/CSV data, roster data, coach Evidence, Vercel billing setting or paid service is changed.
 
+
+## Production Live run 37645927583: closer / natural-third / TEAM_REVIEW semantic follow-up
+
+- Exact production SHA `21aed6f45eae69cb8efd31de1b5fc81dc2df085d` was inspected beyond job conclusions.
+- CLOSER was structurally green, but BALTHASAR still converted 「坂田 暉馬の2セーブ」 into unsupported outcome language: 「終盤の勝ちパターン」「一番の勝ち筋」「最も勝ちに直結」. Save count remains valid role evidence only; it does not establish a causal winning path.
+- NATURAL THIRD was structurally green, but the output still converted 「嶋田 栄志の3番スタメン7試合」 into incumbency/tactical-fit claims such as 「戦術的運用に最も合致」「固定されてきた」「チームの形に最も馴染む」. It also converted recent AVG/OPS movement into qualitative form labels such as 「勢いが落ちる」「低調」「状態の波」「安定した打撃」, and inferred team-connection harm from batting-order changes. The direct usage count and direct numeric change remain usable; those interpretations require separate Evidence.
+- TEAM_REVIEW correctly rejected MELCHIOR's spread-to-team-weakness inference at PRIMARY, but deterministic soft recovery could leave the same semantic class in another prose field and then restore the original draft, causing `PERSONA_BATCH_VALIDATION_FAILED`. The live workflow retried this deterministic failure three times.
+- Branch `fix/live132-selection-and-team-review-grounding-20261008` aligns generator instructions, deterministic guard, batch sanitizer/recovery, FINAL grounding, Production Live acceptance, and regressions for these exact classes.
+- PITCHING_ROLE now rejects generic 「勝ち筋」「勝ちパターン」「勝ちに直結」 in addition to existing win-probability/certain-win phrases when the causal relationship is not directly supplied.
+- BATTING_ORDER now treats start count as usage only. It does not establish fixed/continuation priority, tactical fit, familiarity, qualitative form, or team-continuity effects unless Evidence directly supplies those facts.
+- TEAM_REVIEW soft recovery now has a second safe fallback only when every remaining issue is still an already-recognized soft semantic class. The fallback removes causal prose and publishes an Evidence-limited non-causal statement; hard evidence, roster, numeric, or structural failures remain fail-closed.
+- TEAM_REVIEW Production Live now stops immediately on deterministic `PERSONA_BATCH_VALIDATION_FAILED` instead of retrying the same rejected generation.
+- Regression coverage reproduces the exact production leak classes at persona guard, batch recovery, FINAL aggregation and workflow-contract layers.
+- No Google Drive/CSV data, roster source, coach source, Vercel billing setting or paid service is changed.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.

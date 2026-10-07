@@ -598,6 +598,39 @@ test('G78 FULL_LINEUP blocks unsupported current-slot fixation',()=>{
   assert.ok(issues.some(x=>x.includes('Evidenceにない打順固定')));
 });
 
+
+test('G79 closer blocks Live132 win-path, win-directness and win-pattern prose',()=>{
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は現チームで2セーブを記録している。'}};
+  const r=result({
+    persona:'BALTHASAR',
+    candidatePlayers:['坂田 暉馬'],
+    candidateBasis:'セーブ2の実績を重視し、終盤の勝ちパターンを構築するために坂田 暉馬を選ぶ。',
+    publicStatement:'実際にセーブを2つ取っている坂田 暉馬を置くことが一番の勝ち筋で、現時点で最も勝ちに直結する。'
+  });
+  const issues=validatePersonaOutput(caseData,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('PITCHING_ROLEでEvidenceにない勝利・成功確率')));
+});
+
+test('G80 batting-order blocks Live132 incumbency, tactical-fit, form-label and continuity causality',()=>{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン、打率.282、OPS .748。直近6試合は打率.238、OPS .638。'}};
+  const r=result({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    analysis:[
+      '嶋田 栄志は3番で7試合スタメン起用されており、これまでの戦術的運用に最も合致する。',
+      '現チームの戦術の中で3番に固定されてきた経過がある。',
+      '直近6試合の打率が.238、OPS .638で、打撃の勢いが少し落ちている。',
+      'これまでのチームの形に最も馴染む。'
+    ],
+    warnings:['短期的な打撃成績の変動だけで打順を頻繁に変えると、全体のつながりに影響するおそれがある。']
+  });
+  const issues=validatePersonaOutput(caseData,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('戦術的安定性')));
+  assert.ok(issues.some(x=>x.includes('固定・継続優位・戦術適合')));
+  assert.ok(issues.some(x=>x.includes('勢い・低調・安定')));
+  assert.ok(issues.some(x=>x.includes('つながり・連携への因果')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

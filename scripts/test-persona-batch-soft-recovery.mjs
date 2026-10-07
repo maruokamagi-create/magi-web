@@ -583,4 +583,60 @@ function baseResult(overrides={}) {
   assert.ok(!/戦術的な制約|得点が左右されるリスク|チーム全体の底上げ/.test(JSON.stringify(result)));
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 29/29 PASS');
+
+{
+  const caseData={question:'クローザーは誰がいい？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'坂田 暉馬は現チームで2セーブ。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['坂田 暉馬','大久保 陽翔'],
+    candidateBasis:'セーブ2の実績を重視し、終盤の勝ちパターンを構築するために選ぶ。',
+    publicStatement:'坂田 暉馬を終盤に置くことが一番の勝ち筋で、現時点で最も勝ちに直結する。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/勝ちパターン|勝ち筋|勝ちに直結/.test(JSON.stringify(result)));
+  assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔']);
+}
+
+{
+  const caseData={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン。直近6試合は打率.238、OPS .638。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    analysis:[
+      '嶋田 栄志は3番で7試合スタメン起用され、これまでの戦術的運用に最も合致する。',
+      '3番に固定されてきた経過があり、チームの形に最も馴染む。',
+      '直近6試合の打撃の勢いが少し落ちている。'
+    ],
+    warnings:['打順を頻繁に変えると、全体のつながりに影響するおそれがある。']
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している',
+    'BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定している',
+    'BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換している',
+    'BATTING_ORDERで打順変更からチームのつながり・連携への因果を推定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/戦術的運用に最も合致|固定されて|チームの形|勢いが少し落ち|つながりに影響/.test(JSON.stringify(result)));
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬']);
+}
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み記録を横断する。'}};
+  const result=baseResult({
+    persona:'MELCHIOR',
+    candidateBasis:'打撃成績の数値差がチーム全体の弱点である。',
+    publicStatement:'確認済み記録を基に評価する。'
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.equal(result.candidateBasis,'');
+  assert.ok(/因果までは断定しません/.test(result.publicStatement));
+  assert.ok(!/チーム全体の弱点である/.test(JSON.stringify(result)));
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 32/32 PASS');

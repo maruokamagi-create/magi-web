@@ -38,4 +38,19 @@ assert.match(workflow,/\.fieldingStatus=="NOT_EVALUATED"/);
 assert.match(workflow,/得点機会\.\{0,24\}/);
 assert.match(workflow,/守備\.\{0,24\}安定/);
 
+// Live132 semantic acceptance must reject phrases that previously passed a green
+// job despite exceeding the supplied evidence.
+assert.match(workflow,/勝ちに直結/);
+assert.match(workflow,/勝ちパターン/);
+assert.match(workflow,/戦術\.\{0,24\}合致/);
+assert.match(workflow,/固定されて/);
+assert.match(workflow,/チームの形\.\{0,18\}馴染/);
+assert.match(workflow,/勢い\.\{0,18\}/);
+
+// Deterministic TEAM_REVIEW validation failure is not transient provider noise.
+// Do not consume repeated provider calls for the same rejected prose.
+const teamReview=workflow.match(/exact-live-team-review:[\s\S]*$/)?.[0]||'';
+assert.match(teamReview,/PERSONA_BATCH_VALIDATION_FAILED/);
+assert.match(teamReview,/do not retry the same team-review stage/);
+
 console.log('LIVE PRODUCTION SHA GATE RESULT: PASS');
