@@ -515,4 +515,18 @@ function baseResult(overrides={}) {
   assert.deepEqual(result.candidatePlayers,['坂田 暉馬','大久保 陽翔']);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 25/25 PASS');
+
+{
+  const caseData={question:'3番を誰にするか迷ってる。4番の大久保 陽翔につなぐことを考えると、誰がいいと思う？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番起用記録を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬','大久保 夢翔'],
+    publicStatement:'坂田 暉馬の打撃状態も良いので、選手たちの成長を見守りながら判断していきたいです。'
+  });
+  const changed=sanitizeKnownSelectionProse(result,caseData);
+  assert.equal(changed,true);
+  assert.ok(!JSON.stringify(result).includes('選手たちの成長'));
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','大久保 夢翔']);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 26/26 PASS');
