@@ -308,6 +308,21 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       )
     );
     if(unsupportedPitchingStability)issues.push('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している');
+
+    const hasPressureEvidence=/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
+    if(!hasPressureEvidence){
+      const unsupportedSavePressure=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)|(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence)
+      );
+      if(unsupportedSavePressure)issues.push('PITCHING_ROLEでセーブ実績から高圧・競った場面の経験を推定している');
+    }
+
+    const unsupportedProbability=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
+    );
+    if(unsupportedProbability)issues.push('PITCHING_ROLEでEvidenceにない勝利・成功確率を主張している');
   }
 
   if(isBattingOrder){
@@ -319,11 +334,22 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   }
 
   if(isSelectionLike&&persona.startsWith('CASPER')){
+    const hasDevelopmentEvidence=/(?:育成|成長|経験を積|選手層|投手層|半年後|将来)/.test(evidenceText);
     const unsupportedDevelopment=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響))/.test(sentence)
+      && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促)/.test(sentence)
+      && !hasDevelopmentEvidence
     );
     if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
+
+    const hasDependencyEvidence=/(?:依存|頼り|負担集中|役割集中)/.test(evidenceText);
+    if(!hasDependencyEvidence){
+      const unsupportedDependency=parts.find(sentence=>
+        !isEvidenceGapStatement(sentence)
+        && /(?:過度な)?依存|頼りすぎ|頼り切/.test(sentence)
+      );
+      if(unsupportedDependency)issues.push('SELECTIONでEvidenceにない依存・役割集中を追加している');
+    }
   }
 
   const hasStrongBurdenEvidence=/(?:負担.{0,8}(?:大きい|大きすぎる|重い|過大|過度)|蓄積疲労|疲労蓄積|疲労.{0,8}蓄積|負担.{0,8}蓄積|コンディション.{0,12}影響|成長.{0,12}影響)/.test(evidenceText);
