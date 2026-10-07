@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 2bfdd67dfc83689681225687886d5ef87a2ed562
+- State base main SHA: 37dcf495fc9383dcb2009e4da723857a7faa625e
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`2bfdd67dfc83689681225687886d5ef87a2ed562`
+`37dcf495fc9383dcb2009e4da723857a7faa625e`
 
 Recent architectural fixes already merged:
 
@@ -527,14 +527,26 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage reproduces both #125 failures. No Google Drive/CSV data, provider billing setting, or Vercel plan is changed; Hobby/free remains required.
 - Stale PR #106 was closed without merge because it was branched from `0239d9d5...` after main had already advanced. The authoritative fix is PR #107 from `2bfdd67d...`.
 
+## Production Live #128 stale-production verification finding
+
+- Main `37dcf495...` contains the merged #107 semantic-grounding/recovery fix and all ordinary GitHub checks are green.
+- Vercel rejected the corresponding main deployment with `Deployment rate limited — retry in 24 hours` under the existing Hobby plan. No paid upgrade is authorized or required.
+- Production Live #128 started anyway because the workflow's old `Wait for production deployment` step was only a fixed sleep. The workflow did not verify that `magi-web.vercel.app` was actually serving the triggering GitHub SHA.
+- As a result, #128 best-order and closer exercised the older production deployment, not main `37dcf495...`. Best-order correctly failed the new workflow-side semantic acceptance regex on an old MELCHIOR `得点力が発揮` claim; closer reproduced the pre-#107 mixed CASPER selection+burden validation failure. Neither result is evidence that the merged #107 server fix failed, because that server code was not deployed.
+- This is a verification-integrity fault: a production acceptance run must never attribute old production behavior to a newer main commit.
+- The live selftest PREPARE responses now expose only safe deployment identity metadata from Vercel system environment variables: Git commit SHA, environment and commit ref.
+- Every Production Live class now requires the runtime `VERCEL_GIT_COMMIT_SHA` to equal `GITHUB_SHA` and `VERCEL_ENV` to be `production` before PRIMARY. PREPARE is retried up to five times to allow normal deployment propagation; no Gemini/persona call is made while the production SHA is stale.
+- A dedicated static contract test verifies all four PREPARE modes expose deployment identity and all four workflow classes enforce the SHA/environment match.
+- This change does not deploy, promote, alter billing, mutate Drive/CSV data, or change any MAGI decision policy.
+
 ## Next concrete work
 
-1. Complete CI for PR #107 / `fix/live125-semantic-grounding-20261007`; merge only when continuity plus all MAGI semantic/unit guards are green. Vercel Preview Hobby build-rate-limit is not a reason to upgrade the plan.
-2. After merge, run the next Production Live Deliberation on the new main. Require best-order, closer, natural-third and TEAM_REVIEW to execute sequentially through PRIMARY -> CROSS -> SECOND -> FINAL.
-3. Inspect every published rationale field, not only job status. Specifically reject batting-number/order -> scoring/win causality, save -> certain victory, metric -> stability/reliability, unsupported growth/development, unsupported burden concentration, TEAM_REVIEW spread -> weakness/causal/future claims, and FINAL debate-meta.
-4. Only after all four classes are structurally and semantically clean, expand real-path acceptance to individual-player evaluation, player comparison, team tactics/next-game strategy, direct statistics lookup and CLARIFY.
-5. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
-6. Do not declare stabilization complete until the remaining classes are verified through their real production paths and user-visible answer quality is acceptable.
+1. Complete CI for `fix/live-production-sha-gate-20261007`; merge only when continuity and the live-SHA contract test are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.
+2. Treat Production Live #128 as a stale-production diagnostic only. Do not use its best-order/closer failures to judge the merged #107 server fix.
+3. When production can accept a free deployment again, the first valid Production Live run must prove `deployment.sha == GITHUB_SHA` before PRIMARY and then execute best-order, closer, natural-third and TEAM_REVIEW sequentially through PRIMARY -> CROSS -> SECOND -> FINAL.
+4. Inspect every published rationale field, not only job status. Reject batting-number/order -> scoring/win causality, save -> certain victory, metric -> stability/reliability, unsupported growth/development, unsupported burden concentration, TEAM_REVIEW spread -> weakness/causal/future claims, and FINAL debate-meta.
+5. Only after all four classes are structurally and semantically clean, expand real-path acceptance to individual-player evaluation, player comparison, team tactics/next-game strategy, direct statistics lookup and CLARIFY.
+6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation. Do not declare stabilization complete until the remaining classes are verified through their real production paths and user-visible answer quality is acceptable.
 
 ## Handoff instruction for a new ChatGPT chat
 
