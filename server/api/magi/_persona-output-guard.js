@@ -229,7 +229,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   if(reviewKind==='TEAM_REVIEW'){
     const dependencyLike=/(?:依存|頼っている|頼る|頼り切|頼り(?:っ|つ)?きり|上位偏重|主力偏重|特定選手偏重)/;
     const dependencyHedge=/(?:可能性|見方|考えられ|とみられ|傾向|断定(?:しない|しません|できない|できません)|断定でき|確認できない|Evidenceにない|根拠がない)/;
-    const unsupportedDependency=parts.find(sentence=>
+    const unsupportedDependency=assertiveParts.find(sentence=>
       dependencyLike.test(sentence)
       && !isEvidenceGapStatement(sentence)
       && !dependencyHedge.test(sentence)
@@ -301,7 +301,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   const persona=String(result?.persona||'').toUpperCase();
 
   if(isPitchingRole){
-    const unsupportedPitchingStability=parts.find(sentence=>
+    const unsupportedPitchingStability=assertiveParts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
         /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
@@ -313,14 +313,14 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
     const hasPressureEvidence=/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
     if(!hasPressureEvidence){
-      const unsupportedSavePressure=parts.find(sentence=>
+      const unsupportedSavePressure=assertiveParts.find(sentence=>
         !isEvidenceGapStatement(sentence)
         && /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)|(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面).{0,42}(?:セーブ|締める実績|終盤)/.test(sentence)
       );
       if(unsupportedSavePressure)issues.push('PITCHING_ROLEでセーブ実績から高圧・競った場面の経験を推定している');
     }
 
-    const unsupportedProbability=parts.find(sentence=>
+    const unsupportedProbability=assertiveParts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && /(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
     );
@@ -328,7 +328,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   }
 
   if(isBattingOrder){
-    const unsupportedSlotTactics=parts.find(sentence=>
+    const unsupportedSlotTactics=assertiveParts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
         /(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
@@ -340,7 +340,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   if(isSelectionLike&&persona.startsWith('CASPER')){
     const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(String(caseData?.question||''));
-    const unsupportedDevelopment=parts.find(sentence=>
+    const unsupportedDevelopment=assertiveParts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && /(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
       && !developmentRequested
