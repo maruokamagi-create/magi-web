@@ -351,7 +351,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(!hasExplicitSlotContinuity){
       const unsupportedIncumbency=parts.find(sentence=>
         !isEvidenceGapStatement(sentence)
-        && /(?:3番|打順|起用実績|スタメン|7試合).{0,90}(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致)|(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致).{0,90}(?:3番|打順|起用実績|スタメン|7試合)/.test(sentence)
+        && /(?:3番|打順|起用実績|スタメン|7試合|実績).{0,90}(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致|その位置に置く.{0,18}確実|選択.{0,18}確実|チームの安定.{0,18}(?:つなが|可能性))|(?:固定されて|固定する|継続起用|継続する|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|戦術.{0,24}合致|チームの安定.{0,18}(?:つなが|可能性)).{0,90}(?:3番|打順|起用実績|スタメン|7試合|実績)/.test(sentence)
       );
       if(unsupportedIncumbency)issues.push('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定している');
     }
@@ -367,6 +367,12 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       );
       if(unsupportedFormLabel)issues.push('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換している');
     }
+
+    const unsupportedNoChangeClaim=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:他の記録が示されない限り|他の記録がない限り).{0,48}(?:判断|選択).{0,24}(?:変更|変える).{0,16}(?:理由はない|必要はない)/.test(sentence)
+    );
+    if(unsupportedNoChangeClaim)issues.push('BATTING_ORDERで現在Evidenceを再比較せず判断変更不要を断定している');
 
     const unsupportedContinuityOutcome=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
@@ -465,7 +471,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(String(caseData?.question||''));
     const unsupportedDevelopment=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
+      && /(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|チーム全体.{0,20}負担|役割の分散|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|今後.{0,18}(?:成長|育成)|(?:大切に)?育てて|育てる|調整の過程|半年後|将来.{0,18}成長|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|別の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
       && !developmentRequested
     );
     if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
