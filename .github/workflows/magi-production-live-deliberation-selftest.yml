@@ -192,7 +192,7 @@ jobs:
           jq -e '
             ([.primary[].candidatePlayers|length] | all(.>0)) and
             (([.primary[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|過度な負担|負担集中|特定の選手への負担|勝利に直結|確実な勝ち筋|防御率.{0,45}安定している")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|過度な負担|負担集中|特定の選手への負担|勝利に直結|勝ちに直結|勝ち筋|勝ちパターン|防御率.{0,45}安定している")|not))
           ' /tmp/closer-primary.json >/dev/null
 
           run_stage cross 3
@@ -202,7 +202,7 @@ jobs:
           jq -e '
             ([.second[].candidatePlayers|length] | all(.>0)) and
             (([.second[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|過度な負担|負担集中|特定の選手への負担|勝利に直結|確実な勝ち筋|防御率.{0,45}安定している")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|確率的優位|勝利の確率|終盤の競った場面|長いイニングを任せ|信頼できる|半年後|将来的なチーム|投手層.{0,12}厚み|選手層.{0,12}広げ|チーム全体の成長|過度な依存|過度な負担|負担集中|特定の選手への負担|勝利に直結|勝ちに直結|勝ち筋|勝ちパターン|防御率.{0,45}安定している")|not))
           ' /tmp/closer-second.json >/dev/null
 
           run_stage final 3
@@ -213,7 +213,7 @@ jobs:
             (.closer.recommendedCandidates|length>0) and
             ([.closer.majorReasons[]?|select(test("坂田 暉馬.*2セーブ"))]|length>0) and
             ((.closer.majorReasons|join("\n")) as $reasons |
-              ($reasons|test("問いかけ|指摘に対する回答|指摘された|指摘の通り|勝ちに行くため|この選択を変える理由|私の判断は変え|僕の判断はこのまま|将来のチーム力|確率的優位|競った場面|勝利に直結|確実な勝ち筋")|not)) and
+              ($reasons|test("問いかけ|指摘に対する回答|指摘された|指摘の通り|勝ちに行くため|この選択を変える理由|私の判断は変え|僕の判断はこのまま|将来のチーム力|確率的優位|競った場面|勝利に直結|勝ちに直結|勝ち筋|勝ちパターン")|not)) and
             ((.closer.warnings|join("\n")|test("過度な負担|負担集中|特定の選手への負担")|not)) and
             (.digest|length==16)
           ' /tmp/closer-final.json >/dev/null
@@ -274,7 +274,7 @@ jobs:
           jq -e '
             ([.primary[].candidatePlayers|length] | all(.>0)) and
             (([.primary[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|役割.{0,12}定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|半年後|選手(?:たち)?の成長.{0,18}見守")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|役割.{0,12}定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|戦術.{0,24}合致|固定されて|継続起用|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|勢い.{0,18}(?:落|陰り)|低調(?:な状態)?|状態の波|安定した打撃|全体のつながり.{0,24}影響|半年後|選手(?:たち)?の成長.{0,18}見守")|not))
           ' /tmp/natural-third-primary.json >/dev/null
 
           run_stage cross 3
@@ -284,7 +284,7 @@ jobs:
           jq -e '
             ([.second[].candidatePlayers|length] | all(.>0)) and
             (([.second[]|tostring]|join("\n")) as $text |
-              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|役割.{0,12}定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|半年後|選手(?:たち)?の成長.{0,18}見守")|not))
+              ($text|test("(?:大野|大久保|井坂|坂田|嶋田|武澤|橋向|上村|長侶|中嶋|吉田|鰐渕|武田).{0,8}(?:くん|君)|ポジション適性.{0,18}(?:豊富|高い)|最も確実な選択肢|定着度が高い|役割.{0,12}定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|戦術.{0,24}合致|固定されて|継続起用|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|勢い.{0,18}(?:落|陰り)|低調(?:な状態)?|状態の波|安定した打撃|全体のつながり.{0,24}影響|半年後|選手(?:たち)?の成長.{0,18}見守")|not))
           ' /tmp/natural-third-second.json >/dev/null
 
           run_stage final 3
@@ -293,7 +293,7 @@ jobs:
             .final.mode=="SELECTION" and
             (.final.status=="SELECTION_RESULT" or .final.status=="SELECTION_SPLIT") and
             (.final.recommendedCandidates|length>0) and
-            ((.final.majorReasons|join("\n"))|test("最も確実な選択肢|役割.{0,12}定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|選手の成長.{0,18}見守|半年後")|not) and
+            ((.final.majorReasons|join("\n"))|test("最も確実な選択肢|役割.{0,12}定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|戦術.{0,24}合致|固定されて|継続起用|打順の継続性|崩す理由にはなら|チームの形.{0,18}馴染|勢い.{0,18}(?:落|陰り)|低調(?:な状態)?|状態の波|安定した打撃|全体のつながり.{0,24}影響|選手の成長.{0,18}見守|半年後")|not) and
             (.digest|length==16)
           ' /tmp/natural-third-final.json >/dev/null
           echo 'PRODUCTION STAGED NATURAL THIRD-BATTER DELIBERATION: PASS'
@@ -324,6 +324,10 @@ jobs:
               cat "$out" 2>/dev/null || true; echo
               if [ "$code" = "200" ] && jq -e --arg stage "$(echo "$stage" | tr '[:lower:]' '[:upper:]')" '.ok==true and .mode=="teamReview" and .stage==$stage' "$out" >/dev/null 2>&1; then
                 return 0
+              fi
+              if jq -e '((.error//"")|contains("PERSONA_BATCH_VALIDATION_FAILED"))' "$out" >/dev/null 2>&1; then
+                echo "Deterministic persona validation failure; do not retry the same team-review stage." >&2
+                return 1
               fi
               if jq -e '((.error//"")|contains("provider_rate_limit")) and ((.error//"")|contains("[quota=DAY"))' "$out" >/dev/null 2>&1; then
                 echo "Daily provider quota exhausted for this stage; do not hot-loop." >&2
