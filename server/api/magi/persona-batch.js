@@ -382,7 +382,7 @@ export function recoverMismatchedSelectionMetricSentences(result, issues, caseDa
     'セーブ':'(?:セーブ(?:数)?)'
   };
   const unsafe=sentence=>parsed.some(({label,value})=>{
-    const escaped=String(value).replace(/[.*+?^$()|[\]\\]/g,'\\export function recoverUnsupportedComponentMetricLabels(result, issues, caseData, { focused=false }={}) {');
+    const escaped=String(value).replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
     const lp=labelPattern[label]||label;
     const reA=new RegExp(lp+'.{0,10}'+escaped+'(?![0-9.])','i');
     const reB=new RegExp(escaped+'(?![0-9.]).{0,10}'+lp,'i');
