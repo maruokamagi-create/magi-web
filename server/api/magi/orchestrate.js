@@ -356,7 +356,11 @@ function groundSelectionFinalText(value,caseData,{warning=false}={}){
     /(?:安定した投球|安定した実績|安定感|信頼でき|信頼性|長いイニング|イニングを任せられ|勝利の確率|勝ち筋)/.test(sentence);
   const unsafeBatting=sentence=>
     /(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|チームの戦術.{0,24}裏付け|役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響)/.test(sentence);
-  const unsafe=kind==='PITCHING_ROLE'?unsafePitching:unsafeBatting;
+  const unsafeShared=sentence=>
+    /(?:役割集中.{0,36}(?:成長|育成|影響)|成長機会.{0,24}影響|チーム全体で.{0,24}経験を積|負担をかけすぎ)/.test(sentence);
+  const unsafe=kind==='PITCHING_ROLE'
+    ? sentence=>unsafePitching(sentence)||unsafeShared(sentence)
+    : sentence=>unsafeBatting(sentence)||unsafeShared(sentence);
   const kept=raw.split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s));
   if(kept.length)return kept.join('');
   if(warning)return '';
