@@ -297,6 +297,7 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
     ||/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率)/.test(sentence)
     ||/(?:3番|打順|起用|打率|AVG|OPS).{0,70}(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い))/.test(sentence)
     ||/(?:戦術的に最も安定|戦術.{0,18}(?:裏付け|安定)|最も確実な選択肢|定着度が高い|ポジション適性.{0,18}(?:豊富|高い)).{0,70}(?:3番|打順|起用|打率|AVG|OPS)/.test(sentence)
+    ||/(?:最も確実な選択肢|ポジション適性.{0,18}(?:豊富|高い)|定着度が高い)/.test(sentence)
     ||/(?:成長機会|育成|チームの成長|チーム全体で.{0,20}経験|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|半年後|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮)|(?:過度な)?依存|頼りすぎ|頼り切)/.test(sentence);
   const cleanText=value=>String(value||'').split(/(?<=[。！？!?])/).map(s=>s.trim()).filter(Boolean).filter(s=>!unsafe(s)).join('');
   const cleanArray=value=>(Array.isArray(value)?value:[]).map(cleanText).filter(Boolean);
