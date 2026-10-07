@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 2bfdd67dfc83689681225687886d5ef87a2ed562
+- State base main SHA: 37dcf495fc9383dcb2009e4da723857a7faa625e
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`2bfdd67dfc83689681225687886d5ef87a2ed562`
+`37dcf495fc9383dcb2009e4da723857a7faa625e`
 
 Recent architectural fixes already merged:
 
@@ -526,6 +526,20 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Burden sentence cleanup is aligned with the existing burden guard so phrases such as `負担集中`, `特定の選手への負担`, excessive burden and accumulated fatigue cannot survive merely because the cleanup regex was narrower than validation.
 - Regression coverage reproduces both #125 failures. No Google Drive/CSV data, provider billing setting, or Vercel plan is changed; Hobby/free remains required.
 - Stale PR #106 was closed without merge because it was branched from `0239d9d5...` after main had already advanced. The authoritative fix is PR #107 from `2bfdd67d...`.
+
+## Production Live #128 deployment-revision gate + residual semantic findings
+
+- Main `37dcf495...` contains PR #107, including the Live #125 FULL_LINEUP scoring/win-causality guard and mixed closer SELECTION+burden soft recovery. Ordinary main checks are green.
+- Vercel rejected the `37dcf495...` production deployment with Hobby `build-rate-limit` / “Deployment rate limited — retry in 24 hours.” No paid-plan upgrade is authorized or required.
+- Production Live #128 nevertheless started after the old fixed sleep and exercised the previously deployed production revision. Therefore #128 best-order/closer failures are **not** evidence that PR #107 failed in production.
+- Old production best-order reproduced the unsupported MELCHIOR sentence `この打順構成により、現チームの記録に基づいた得点力が発揮されると考えられる`. Old production closer reproduced the exact CASPER mixed soft pair from #125: unsupported SELECTION growth/development framing plus burden escalation.
+- Natural-third and TEAM_REVIEW completed under the existing acceptance regexes, but manual semantic inspection found residual quality leaks that must not be treated as solved merely because those jobs were green.
+- Natural-third residuals include `打順の軸を安定させられる`, `チーム内での役割が定着している`, `3番の経験値`, and SECOND debate-meta such as `指摘された点について` / `私の判断は変えません`. These go beyond the direct facts of actual 3番 starts and supplied batting numbers.
+- TEAM_REVIEW residuals include BALTHASAR `試合を勝ち抜く上での戦術的な制約になり得る`, `特定の選手の調子に得点が左右されるリスク`, and CASPER generic organization/growth framing such as `チームの組織的な成長に与える影響` / `チーム全体の底上げ`. FINAL preserved the unsupported scoring-dependency warning even though the recommendation itself correctly stated that dependency/causality was not established.
+- The current branch adds an explicit deployment-revision contract to every staged PREPARE response using Vercel system Git metadata. Production Live now requires `deployment.gitSha == GITHUB_SHA`, `gitRef == main`, and `target == production` before any PRIMARY provider call.
+- This makes a Vercel build-rate-limit or deployment lag fail at PREPARE instead of silently testing stale production, and prevents wasting Gemini quota on the wrong revision.
+- A dedicated CI contract test verifies that all four staged classes expose and enforce the deployment revision.
+- No Google Drive/CSV mutation is involved.
 
 ## Next concrete work
 
