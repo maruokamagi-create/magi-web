@@ -215,6 +215,28 @@ function baseResult(overrides={}) {
 
 
 {
+  const caseData={mode:'selection',question:'クローザーは誰がいい？',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'橋向 結都は防御率1.67、WHIP1.12。坂田 暉馬はセーブ2。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['橋向 結都','坂田 暉馬'],
+    candidateBasis:'橋向 結都は防御率1.67とWHIP1.12で最も安定している。',
+    analysis:['橋向 結都は長いイニングを任せられる安定感がある。'],
+    prediction:['橋向 結都を使えば必ず勝利できる。'],
+    publicStatement:'橋向 結都の防御率1.67は信頼できる。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している',
+    'Evidenceから保証できない結果を断定している',
+    '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  const rendered=JSON.stringify(result);
+  assert.deepEqual(result.candidatePlayers,['橋向 結都','坂田 暉馬']);
+  assert.ok(!/最も安定|長いイニング|安定感|信頼できる|必ず勝利/.test(rendered));
+  assert.ok(result.warnings.some(x=>x.includes('将来結果')&&x.includes('断定しません')));
+}
+
+{
   const caseData={
     mode:'selection',
     question:'クローザーは誰がいい？',
@@ -316,4 +338,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 14/14 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 15/15 PASS');
