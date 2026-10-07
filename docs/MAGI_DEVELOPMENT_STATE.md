@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-07
-- State base main SHA: 0239d9d5b465f3ee7752809fd92352307182273d
+- State base main SHA: 8efe88c39b34ea215dc3377e196317167ac0e2bb
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -77,7 +77,7 @@ Tests must exercise the same production path used by the UI wherever possible. A
 ## Current verified software state
 
 Base main SHA at this ledger update:
-`0239d9d5b465f3ee7752809fd92352307182273d`
+`8efe88c39b34ea215dc3377e196317167ac0e2bb`
 
 Recent architectural fixes already merged:
 
@@ -505,10 +505,18 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - No Drive/CSV data is changed by this transport fix.
 
 
+## Production Live #125 verification observability follow-up
+
+- Main `8efe88c3...` now contains the merged #103 FULL_LINEUP individual-persona transport fix. The strict standard-defense and semantic guards remain unchanged.
+- The existing Production Live #125 workflow run cannot verify closer, natural-third or TEAM_REVIEW after a best-order job failure because ordinary `needs` semantics skip every downstream job.
+- Current branch `fix/live125-verification-observability-20261007` changes only verification behavior: downstream live classes remain sequential and keep their cooldowns, but run after an upstream failure unless the workflow was cancelled.
+- The staged FULL_LINEUP PRIMARY/SECOND response summary now includes the already-published rationale fields so semantic inspection can read `candidateBasis`, facts/analysis/prediction, reasons, warnings and public statement instead of seeing only the candidate list and judgment.
+- No MAGI decision policy, Evidence source, Google Drive file, provider model configuration, or Vercel plan/configuration is changed by this observability patch.
+
 ## Next concrete work
 
-1. Complete CI for `fix/full-lineup-individual-persona-fallback-20261007`; merge only if the transport contract, deliberation suite, continuity guard and preview deployment are green.
-2. Run Production Live Deliberation on the merged main. FULL_LINEUP PRIMARY/SECOND must exercise the individual persona path, then closer, natural-third and TEAM_REVIEW must also complete.
+1. Complete CI for `fix/live125-verification-observability-20261007`; merge only if continuity and the existing MAGI guards are green. Vercel Preview Hobby build-rate-limit is not a reason to upgrade the plan.
+2. Run Production Live Deliberation on the merged main. FULL_LINEUP PRIMARY/SECOND must exercise the #103 individual-persona path; closer, natural-third and TEAM_REVIEW must run sequentially even if an earlier class fails, so semantic inspection is never hidden by `needs` skips.
 3. Inspect actual closer, natural-third and TEAM_REVIEW PRIMARY/SECOND/FINAL output after the workflow is green. Do not declare the class solved from status alone.
 4. After those three classes are semantically clean, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, player comparison, direct statistics lookup and CLARIFY.
 5. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
