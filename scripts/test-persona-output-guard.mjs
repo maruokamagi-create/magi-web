@@ -504,6 +504,18 @@ test('G71 directly observed burden concentration remains usable',()=>{
   assert.ok(!issues.some(x=>x.includes('負担の大きさや具体的悪影響')));
 });
 
+
+test('G72 FULL_LINEUP blocks batting-number-to-scoring and win-advantage claims',()=>{
+  const fullCase={question:'今の丸岡中のベストオーダーを、守備位置込みで審議して',mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP',summary:'現チームの打撃成績と実打順・守備記録を比較する。'}};
+  const r=result({
+    persona:'BALTHASAR',
+    analysis:['中嶋 玲月の打率とOPSを根拠に4番へ置く形が最も得点効率に結びつく。'],
+    publicStatement:'この形が一番勝てる確率を高めると判断した。'
+  });
+  const issues=validatePersonaOutput(fullCase,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
