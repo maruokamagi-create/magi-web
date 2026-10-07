@@ -451,15 +451,28 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage uses the exact #120 closer issue combination and verifies that unsupported stability/trust/guaranteed-win wording is removed while the two closer candidates are preserved.
 
 
+
+## Production Live #122 visible selection semantics and TEAM_REVIEW recovery follow-up
+
+- Main `b5cd7cfd...` completed staged best-order, staged closer and staged natural-third structurally in Production Live #122. TEAM_REVIEW still failed at PRIMARY/CASPER with the pure soft issue `TEAM_REVIEWで起用差から負担集中を断定している`.
+- Full closer log inspection showed that structural success was still not sufficient. Visible persona text retained unsupported claims such as ERA/IP -> 「安定している」「信頼できる」, save count -> 「終盤の競った場面を切り抜けた実績」, unsupported 「確率的優位性」, and CASPER's generic 「半年後」「投手層」「チーム全体の成長」「過度な依存」 framing. FINAL also retained debate-meta wording and future/win rhetoric even though the candidate aggregation itself was valid.
+- Full natural-third log inspection found the same pattern in batting-order form: 3番 starts were described as 「ポジション適性」 or 「最も確実な選択肢」, CASPER added generic半年後/growth framing, and Maruoka player names were rendered with `くん/君`.
+- Current branch `fix/closer-visible-semantic-grounding-20261007` tightens the exact evidence boundaries rather than weakening validation: save count may remain a direct fact, but it does not by itself prove pressure-game experience or win probability; current-role questions do not admit generic future-development framing unless the user explicitly asks for it; 3番 usage may remain a direct usage fact but does not become position suitability, tactical certainty or player development evidence.
+- Maruoka player honorific normalization is now deterministic for registered player names. Opponent names outside the Maruoka registry retain explicitly supplied `くん`. For an ambiguous Maruoka surname explicitly named in the user's current question, persona-batch also strips the honorific without guessing a different player identity.
+- PITCHING_ROLE FINAL now derives a direct reason from structured Evidence when saves are present (for example, `坂田 暉馬は現チームで2セーブを記録している。`) and removes debate-meta/future/probability rhetoric from persona reasons before publication.
+- Persona-batch performs a final authoritative guard pass after all deterministic sanitization and name normalization. Sanitized text therefore cannot bypass the same evidence guard used before recovery.
+- The TEAM_REVIEW burden guard now recognizes explicit non-assertion language such as 「負担集中までは断定しません」 so its own safe fallback cannot retrigger the burden-concentration violation.
+- Production acceptance is strengthened for closer and natural-third PRIMARY, SECOND and FINAL: the exact semantic classes found in #122, plus Maruoka honorific leakage, now fail the workflow even when structural candidate checks are green.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/selection-metric-redaction-20261007`; merge only if metric redaction, persona guard/recovery, continuity and preview checks are green.
-2. Run Production Live Deliberation on the merged main. Require the repeated closer `登板数4` case to be removed rather than published or blocking the whole consultation, while all remaining text still passes the authoritative numeric guard.
-3. Inspect the actual staged TEAM_REVIEW PRIMARY, SECOND and FINAL logs, not only workflow status. Reject any remaining spread-to-proven-weakness, scoring-causality or generic future/development wording in visible persona stages.
-4. Confirm FINAL surfaces the structured recent batting fact directly from Evidence, while explicitly refusing to infer dependency, a恒常的 team-wide weakness or scoring causality from that fact alone.
-5. After TEAM_REVIEW is production-verified, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, comparison, direct statistics lookup and CLARIFY.
-6. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
-7. Do not declare stabilization complete until those remaining classes are verified through the real production path and the user-visible response quality is acceptable.
+1. Complete CI for `fix/closer-visible-semantic-grounding-20261007`; merge only if persona guard/recovery, FINAL grounding, honorific normalization, continuity, workflow syntax and preview checks are green.
+2. Run Production Live Deliberation on the merged main. Require all four staged real-data classes to complete and require closer/natural-third semantic gates to pass, not only candidate structure.
+3. Inspect actual closer, natural-third and TEAM_REVIEW PRIMARY/SECOND/FINAL output after the workflow is green. Do not declare the class solved from status alone.
+4. After those three classes are semantically clean, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, player comparison, direct statistics lookup and CLARIFY.
+5. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
+6. Do not declare stabilization complete until the remaining classes are verified through their real production paths and user-visible answer quality is acceptable.
 
 ## Handoff instruction for a new ChatGPT chat
 
