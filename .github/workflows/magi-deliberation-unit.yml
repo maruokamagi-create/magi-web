@@ -159,3 +159,6 @@ jobs:
       - name: Run full-lineup persona transport contract
         run: node --experimental-default-type=module scripts/test-full-lineup-persona-transport.mjs
 
+      - name: Run live production SHA gate contract
+        run: node --experimental-default-type=module scripts/test-live-production-sha-gate.mjs
+
