@@ -46,6 +46,21 @@ function baseResult(overrides={}) {
   assert.ok(!/負担.{0,12}(?:偏|集中)|半年後|今後の成長|影響が出る|影響を与える/.test(JSON.stringify(result)));
 }
 
+
+{
+  const caseData={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み記録を横断する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    analysis:['一部の選手に負担が集中している。'],
+    publicStatement:'一部の選手への負担の偏りが課題です。'
+  });
+  const ok=recoverSoftPersonaBatchValidation(result,[
+    'TEAM_REVIEWで起用差から負担集中を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.ok(!/負担.{0,12}(?:集中|偏)/.test(JSON.stringify(result)) || /断定しません/.test(JSON.stringify(result)));
+}
+
 {
   const result=baseResult({
     publicStatement:'上位に頼りっきりじゃ、厳しい試合を勝ち抜けねえぞ。'
@@ -230,6 +245,39 @@ function baseResult(overrides={}) {
   assert.equal(normalized.opponent,'宮永 陽生くんの記録を確認する。');
 }
 
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン起用、打率.282、OPS.748。'}};
+  const result=baseResult({
+    persona:'MELCHIOR',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬','井坂 悠聖'],
+    analysis:['3番で7試合にスタメン起用されているため、ポジション適性の記録が最も豊富である。'],
+    primaryReason:'嶋田 栄志が最も確実な選択肢である。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','井坂 悠聖']);
+  assert.ok(!/ポジション適性|最も確実な選択肢/.test(JSON.stringify(result)));
+}
+
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番起用記録を比較する。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬','大久保 夢翔'],
+    primaryReason:'嶋田 栄志を軸に置きつつ、選手の成長を慎重に見守りたいからだ。',
+    publicStatement:'半年後のチームのことも考えて、選手たちの成長を見守りながら判断したいです。'
+  });
+  const ok=recoverSoftSelectionInference(result,[
+    'SELECTIONでEvidenceにない成長・育成・負担影響を追加している'
+  ],caseData,{focused:false});
+  assert.equal(ok,true);
+  assert.deepEqual(result.candidatePlayers,['嶋田 栄志','坂田 暉馬','大久保 夢翔']);
+  assert.ok(!/半年後|成長を慎重に見守|成長を見守/.test(JSON.stringify(result)));
+}
+
 {
   const caseData={mode:'selection',question:'3番は誰がいい？',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番7試合、打率.282、OPS.748。'}};
   const result=baseResult({
@@ -388,4 +436,4 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(result),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 18/18 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 21/21 PASS');
