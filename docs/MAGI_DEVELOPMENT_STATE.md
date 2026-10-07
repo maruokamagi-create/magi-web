@@ -477,10 +477,23 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Regression coverage uses the exact #123 MELCHIOR stability sentence and CASPER 「チーム全体の成長」 sentence, and verifies direct 坂田 暉馬 2セーブ Evidence and candidate order are preserved.
 
 
+
+## Production Live #124 semantic + TEAM_REVIEW CROSS follow-up
+
+- Main `8dcef384...` fixed the repeated #123 closer stability/growth leaks with pre-publication selection scrubbing. Production Live #124 then completed staged best-order, closer and natural-third.
+- Closer PRIMARY no longer published the #123 ERA/IP -> stability claim or CASPER 「チーム全体の成長」 claim. Direct 坂田 暉馬 SV=2 Evidence remained intact.
+- Semantic inspection still found two softer closer overclaims that the existing acceptance gate did not catch: BALTHASAR SECOND promoted saves into 「勝利に直結」「確実な勝ち筋」, and CASPER added unsupported 「過度な負担／負担集中」 wording despite no direct burden-concentration Evidence.
+- PITCHING_ROLE guards and the pre-publication sanitizer now treat those current-case phrases as unsupported unless corresponding direct Evidence exists. FINAL grounding also strips debate-meta such as 「指摘された」「判断は変えない」 and unsupported burden warnings while preserving direct structured save facts.
+- Natural-third completed, but CASPER still emitted generic 「選手たちの成長を見守り」 wording in a current batting-order question. The selection scrub now covers that plural growth wording unless the user explicitly asks a development question.
+- TEAM_REVIEW PRIMARY completed but contained two remaining interpretation leaks: spread -> 「勝ちへの道／実戦上の重要な課題／攻撃の硬直化」 and CASPER generic 「チーム全体がどう成長していくか」. TEAM_REVIEW guards/recovery now classify those as unsupported current-state extrapolation and reduce them to verified numeric/usage facts or evidence-boundary wording.
+- TEAM_REVIEW CROSS failed three times with `TEAM_REVIEW_CROSS_MELCHIOR_MISSING_CHALLENGE`. The deterministic cross itself had one challenge per persona, but its old wording triggered the same TEAM_REVIEW inference guard; fail-closed cross then intentionally erased all challenges. The deterministic challenge text has been rewritten to ask only for direct-fact vs unconfirmed-interpretation separation, and regression coverage now requires the full `validateCrossOutput(...,{focused:true})` result to be empty, not merely that challenge arrays exist.
+- Production acceptance regexes now reject the exact #124 closer, natural-third and TEAM_REVIEW leak phrases so a future green run cannot hide these semantic regressions.
+
+
 ## Next concrete work
 
-1. Complete CI for `fix/selection-prepublish-scrub-20261007`; merge only if the exact Live #123 semantic regressions, persona guard/recovery, continuity and preview checks are green.
-2. Run Production Live Deliberation on the merged main. Require all four staged real-data classes to complete and require closer/natural-third semantic gates to pass, not only candidate structure.
+1. Complete CI for `fix/live124-review-cross-grounding-20261007`; merge only if TEAM_REVIEW deterministic CROSS passes the full cross guard, Live #124 semantic regressions pass, continuity is green, and preview deployment succeeds.
+2. Run Production Live Deliberation on the merged main. Require all four staged classes to complete and inspect closer, natural-third and TEAM_REVIEW user-visible text semantically before accepting the run.
 3. Inspect actual closer, natural-third and TEAM_REVIEW PRIMARY/SECOND/FINAL output after the workflow is green. Do not declare the class solved from status alone.
 4. After those three classes are semantically clean, expand real-path acceptance to individual-player evaluation, team tactics/next-game strategy, player comparison, direct statistics lookup and CLARIFY.
 5. Measure response latency by class and keep direct statistics/clarification paths out of unnecessary full deliberation.
