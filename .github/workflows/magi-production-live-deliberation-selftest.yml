@@ -86,6 +86,7 @@ jobs:
 
   exact-live-closer:
     needs: exact-live-best-order
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -168,6 +169,7 @@ jobs:
 
   exact-natural-third:
     needs: exact-live-closer
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -246,6 +248,7 @@ jobs:
 
   exact-live-team-review:
     needs: exact-natural-third
+    if: ${{ !cancelled() }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
