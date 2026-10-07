@@ -440,6 +440,19 @@ export default async function handler(req,res){
       const staged=await runStagedNaturalThird(base,naturalPacket,'prepare',stagedSession);
       return res.status(200).json(staged);
     }
+    if(mode==='closer'&&['primary','cross','second','final'].includes(stagedStage)){
+      const staged=await runStagedCloser(base,null,stagedStage,stagedSession);
+      return res.status(200).json(staged);
+    }
+    if(mode==='closer'&&stagedStage==='prepare'){
+      const closerPacket=await buildCurrentSelectionEvidence({
+        question:CLOSER_QUESTION,
+        routed:{players:[],domains:['PITCHING','TEAM'],selectionKind:'PITCHING_ROLE'},
+        staffAccessContext:{role:'admin',purpose:'DELIBERATION'}
+      });
+      const staged=await runStagedCloser(base,closerPacket,'prepare',stagedSession);
+      return res.status(200).json(staged);
+    }
     if(mode==='teamReview'&&['primary','cross','second','final'].includes(stagedStage)){
       const staged=await runStagedTeamReview(base,null,stagedStage,stagedSession);
       return res.status(200).json(staged);
@@ -583,5 +596,12 @@ export default async function handler(req,res){
       strategySnapshotStatus:packet?.strategySnapshotStatus||'',
       strategySnapshotCurrentPolicy:packet?.strategySnapshotCurrentPolicy
     },finalStatus:result?.final?.status||'',lineup:result?.final?.lineup?.map(x=>({slot:x.slot,name:x.name,position:x.position,positionLabel:x.positionLabel,positionEvidence:x.positionEvidence}))||[],digest,naturalThird:{question:NATURAL_THIRD_QUESTION,evidence:{count:naturalPacket.count,selectionKind:naturalPacket.selectionKind},...(naturalThird||{}),error:naturalThirdError},closer:{question:CLOSER_QUESTION,...(closer||{})}});
-  }catch(error){console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);return res.status(200).json({ok:false,question:QUESTION,error:error?.message||String(error),diagnostic:error?.diagnostic||null});}
+  }catch(error){
+    console.error('[MAGI LIVE DELIBERATION SELFTEST]',error?.message||error);
+    const failedQuestion=String(req.query?.mode||'lineup')==='closer'?CLOSER_QUESTION
+      : String(req.query?.mode||'lineup')==='naturalThird'?NATURAL_THIRD_QUESTION
+      : String(req.query?.mode||'lineup')==='teamReview'?TEAM_REVIEW_QUESTION
+      : QUESTION;
+    return res.status(200).json({ok:false,question:failedQuestion,error:error?.message||String(error),diagnostic:error?.diagnostic||null});
+  }
 }
