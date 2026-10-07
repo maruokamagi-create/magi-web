@@ -87,19 +87,72 @@ jobs:
   exact-live-closer:
     needs: exact-live-best-order
     runs-on: ubuntu-latest
-    timeout-minutes: 12
+    timeout-minutes: 15
     steps:
       - name: Cool down provider capacity
         run: sleep 75
-      - name: Execute live closer consultation
+      - name: Execute staged closer consultation
         shell: bash
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
-          curl -L --fail --max-time 125 --retry 3 --retry-delay 8 --retry-all-errors -sS "$BASE/api/magi-live-deliberation-selftest?mode=closer" -o /tmp/closer.json
-          cat /tmp/closer.json; echo
-          jq -e '.ok==true and .mode=="closer" and .closer.sakataSaveCount=="2" and .closer.saveEvidenceUsed==true' /tmp/closer.json >/dev/null
-          echo 'PRODUCTION CLOSER DELIBERATION: PASS'
+          SESSION="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}-closer"
+
+          run_stage(){
+            stage="$1"
+            max_attempts="${2:-1}"
+            attempt=1
+            while [ "$attempt" -le "$max_attempts" ]; do
+              out="/tmp/closer-${stage}.json"
+              code="$(curl -L --max-time 58 -sS -w '%{http_code}' "$BASE/api/magi-live-deliberation-selftest?mode=closer&stage=${stage}&session=${SESSION}" -o "$out" || true)"
+              cat "$out" 2>/dev/null || true; echo
+              if [ "$code" = "200" ] && jq -e --arg stage "$(echo "$stage" | tr '[:lower:]' '[:upper:]')" '.ok==true and .mode=="closer" and .stage==$stage' "$out" >/dev/null 2>&1; then
+                return 0
+              fi
+              if jq -e '((.error//"")|contains("PERSONA_BATCH_VALIDATION_FAILED"))' "$out" >/dev/null 2>&1; then
+                echo "Deterministic persona validation failure; do not retry the same stage." >&2
+                return 1
+              fi
+              if jq -e '((.error//"")|contains("provider_rate_limit")) and ((.error//"")|contains("[quota=DAY"))' "$out" >/dev/null 2>&1; then
+                echo "Daily provider quota exhausted for this stage; do not hot-loop." >&2
+                return 1
+              fi
+              if [ "$attempt" -ge "$max_attempts" ]; then
+                echo "closer stage $stage failed after $attempt outer request attempt(s), HTTP=$code" >&2
+                return 1
+              fi
+              sleep $((attempt*12))
+              attempt=$((attempt+1))
+            done
+          }
+
+          run_stage prepare
+          jq -e '
+            .question=="クローザーは誰がいい？" and
+            .evidence.count==14 and
+            .evidence.selectionKind=="PITCHING_ROLE" and
+            .evidence.sakataSaveCount=="2" and
+            .evidence.coachObservationStatus=="COMPLETE"
+          ' /tmp/closer-prepare.json >/dev/null
+
+          run_stage primary 3
+          jq -e '([.primary[].candidatePlayers|length] | all(.>0))' /tmp/closer-primary.json >/dev/null
+
+          run_stage cross 3
+          jq -e '([.cross.challengeCounts[]] | all(.>0))' /tmp/closer-cross.json >/dev/null
+
+          run_stage second 3
+          jq -e '([.second[].candidatePlayers|length] | all(.>0))' /tmp/closer-second.json >/dev/null
+
+          run_stage final 3
+          jq -e '
+            .question=="クローザーは誰がいい？" and
+            .closer.sakataSaveCount=="2" and
+            .closer.saveEvidenceUsed==true and
+            (.closer.recommendedCandidates|length>0) and
+            (.digest|length==16)
+          ' /tmp/closer-final.json >/dev/null
+          echo 'PRODUCTION STAGED CLOSER DELIBERATION: PASS'
 
   exact-natural-third:
     needs: exact-live-closer
