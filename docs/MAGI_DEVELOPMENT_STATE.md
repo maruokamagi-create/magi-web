@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 8189470f2367054a791a2bbd0005cdd985471acd
+- State base main SHA: 7cdf2488e45ee082d5a14a221fac3bc14f35aab1
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -687,6 +687,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/trigger-live-after-lineup-smoke-contract-20261008` extends that workflow's push path triggers to the smoke workflow, jq contract and contract test. This is CI orchestration only, does not change production API responses, Vercel billing, or scoring evidence. As before, the Live workflow must first verify the actual production SHA before any provider-heavy calls and will trigger Sequential Suite only after success.
 - Acceptance still requires actual successful selection, full-lineup final with either a properly Evidence-qualified result or explicitly disclosed 1-1-1 DEADLOCK, then pitching plan, deliberation, and reproducibility. Never describe a test-accepted DEADLOCK as the team's final best order.
 - Keep Google Drive/CSV read-only, no paid upgrade, and retain 3-sage independent vote integrity.
+
+## 2026-10-08: Reproducibility smoke also required consensus unconditionally
+
+- Current main SHA `7cdf2488e45ee082d5a14a221fac3bc14f35aab1`, obtained by merging PR #123; Vercel has served this revision at READY and production revision gate passed in run `37733555849`. Its Live and downstream sequential outcomes must be observed before any further merge.
+- Source inspection shows `.github/workflows/magi-production-reproducibility-smoke.yml` demands `LINEUP_RESULT` and `fieldingStatus=COMPLETE` on both identical-Evidence full-lineup runs, even though the MAGI contract properly permits `FULL_LINEUP_DEADLOCK_1_1_1`. Thus reproducibility might be reported as failure solely because three distinct secondary lineups produce an honest, repeatable unresolved vote.
+- Branch `fix/reproducibility-accept-legitimate-lineup-deadlock-20261008` changes the reproducibility smoke to reuse the exact, strictly tested `scripts/validate-production-full-lineup-final.jq` acceptance contract created in PR #122. Both runs must independently satisfy authentic 3-0/2-1 lineup-with-fielding or 1-1-1 deadlock with **no fabricated lineup**, and the replay must match all relevant results including status, vote, fielding and conflict metadata. Unrelated or malformed REVIEW_REQUIRED outcomes continue to fail.
+- Add static regression of workflow wiring, plus trigger path to require SHA-matched Live acceptance after this workflow changes. This is **tests only**, not production model logic, and the fixture is synthetic, not any player's real defensive record.
+- Do not merge while prior Live / Sequential Suite is still executing. Require PR local CI, then merge and verify READY SHA plus entire downstream sequence, accounting for Vercel Hobby/free provider quotas; do not run duplicate provider-heavy jobs.
+- MAGI best order remains incomplete whenever it returns a 1-1-1 deadlock; true test acceptance is not the same as a recommended winning lineup.
 
 ## Next concrete work
 
