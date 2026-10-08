@@ -9,7 +9,7 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-08
+- State updated: 2026-10-09
 - State base main SHA: c39cf7f90508cd10e56b20222dd1d5f2a4507433
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
@@ -803,6 +803,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - This is a **general phrase-category gap** in an otherwise existing TEAM_REVIEW fail-closed guard: the current unsupported-development prescription covered `控え選手` / `全体` / `チーム` **before** `育成`, but omitted `控えの育成` and the explicit `弱点` predicate. The same gap existed in the recovery's pre-rewrite whole-sentence removal. Branch `fix/team-review-reserve-development-weakness-20261008` extends both existing checks to `控え（選手／の）` and `弱点` without changing guard type or risk classification. The normal existing soft recovery drops only unsupported developmental commentary and runs `validatePersonaOutput` again while preserving measured usage facts.
 - Added a direct TEAM_REVIEW positive guard regression with the exact Live statement, a negative explicit denial, and a batch recovery test requiring original observed facts to survive. PR CI + continuity must pass before merge; avoid duplicate provider-heavy Live requests until the running production chain finishes. No changes to Drive, CSV, coach intent or Vercel Hobby/free.
 - Still unresolved: actual authenticated iPhone/browser success for all nine question classes, player-by-player lineup evidence justification, and repeatable semantic-quality review. No selftest or single successful answer warrants a project-complete claim.
+
+## 2026-10-09: Semantic team-aggregate stats routing gap
+
+- Canonical main and READY Vercel production base SHA `9777aece8072009db7f649c6359a2d1d3f10051c` (merged #137 narrowed the unsupported TEAM_REVIEW reserve-development guard; overlapping #138 was closed). Its SHA-gated Live run `37797813166` began and best-order, closer, natural-third reached completed success; later steps may still be underway, so do not overlap heavy Gemini workflows.
+- Inspecting the **actual** `main-live-answer-v362.js` → POST `/api/magi/core` → `understandRequestGeminiFirst` → `routedFromSemantic` → `buildLiveAnswer` chain exposed a general domain mismatch: `normalizeModel` requires **one named player** for any `SINGLE_VALUE` or `SUMMARY` regardless of the semantic target `TEAM`, while `routedFromSemantic` prioritizes `BATTING` even if `TEAM` is explicitly present with no individual. This wrongly asks for an individual on questions like `今季のチームOPSだけ教えて` and prevents the already supported `TEAM_LOOKUP` aggregate route.
+- Branch `fix/semantic-team-aggregate-stats-20261009`: accept only high-confidence semantic `TEAM` requests with zero current/grounded player and `SINGLE_VALUE`/`SUMMARY` as `teamAggregate`, route them to the **existing** `TEAM_LOOKUP`; keep unrelated individual batting/pitching/fielding, ambiguous no-target, unsupported `FULL_REPORT`, and low-confidence `CLARIFY` fail-closed. No literal question string special cases, fabricated data or new external source.
+- Add six deterministic regressions for actual semantic normalization + core routing + `buildLiveAnswer` with fixed fake XLSM provider; includes positive team OPS/record, unchanged personal metrics, ambiguous/no player, unsupported full team report and confidence gate. Wire to Deliberation Final CI for the changed semantic/core files, before merging.
+- This is **local route contract evidence**, not verification of the authenticated production iPhone UI path. The remaining nine-class actual UI goal includes individual evaluation, tactics, comparison, direct statistics, and CLARIFY. Need verify production after CI, respecting free Vercel and protecting Drive/CSV and coach evidence.
 
 ## Next concrete work
 
