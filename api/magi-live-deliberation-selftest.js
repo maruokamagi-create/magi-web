@@ -207,7 +207,37 @@ function summarizeNaturalThirdSet(set){
     dataConflict:Boolean(set?.[p]?.dataConflict)
   }]));
 }
-function assertLineupPersonaSet(set,phase){for(const p of PERSONAS){if(set?.[p]?.reviewRequested===true||set?.[p]?.dataConflict===true||!validNine(set?.[p]))throw new Error(`${phase}_${p.toUpperCase()}_INVALID`);}}
+// Public live selftests expose only structural rejection categories. They must
+// never disclose player-level evidence or raw rejected persona prose.
+export function lineupPersonaFailureDiagnostic(row){
+  const names=candidateSeq(row);
+  const reason=String(row?.reviewReason||'');
+  const reasonClass=/FULL_LINEUP_STANDARD_DEFENSE/.test(reason)?'FIELDING_COVERAGE'
+    :/正式ロスター完全一致/.test(reason)?'ROSTER_CHECK'
+    :/(?:FULL_LINEUP:|9人の打順構成|打順構成エラー)/.test(reason)?'LINEUP_STRUCTURE'
+    :/回答文に、確認できた記録と合わない/.test(reason)?'EVIDENCE_OUTPUT_GUARD'
+    :row?.dataConflict===true?'DATA_CONFLICT'
+    :row?.reviewRequested===true?'REVIEW_REQUIRED'
+    :'INVALID_CANDIDATES';
+  return {
+    reasonClass,
+    reviewRequested:row?.reviewRequested===true,
+    dataConflict:row?.dataConflict===true,
+    candidateCount:names.length,
+    uniqueCandidateCount:new Set(names).size,
+    inRosterCandidateCount:names.filter(name=>rosterKeys.has(name)).length
+  };
+}
+function assertLineupPersonaSet(set,phase){
+  for(const p of PERSONAS){
+    const row=set?.[p];
+    if(row?.reviewRequested===true||row?.dataConflict===true||!validNine(row)){
+      const error=new Error(`${phase}_${p.toUpperCase()}_INVALID`);
+      error.diagnostic={persona:p,...lineupPersonaFailureDiagnostic(row)};
+      throw error;
+    }
+  }
+}
 function assertNaturalThirdPersonaSet(set,phase){
   for(const p of PERSONAS){
     const row=set?.[p]||{};
