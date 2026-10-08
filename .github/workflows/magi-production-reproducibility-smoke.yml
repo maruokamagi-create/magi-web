@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Checkout production acceptance contract
+        uses: actions/checkout@v4
+
       - name: Wait for production deployment
         run: sleep 45
 
@@ -78,6 +81,9 @@ jobs:
           }
           JSON
 
+          # Use the roster supplied by this synthetic CASE, not historic players.
+          jq '[.evidence.allCurrentTeamCheck.players[].name]' /tmp/case.json > /tmp/roster.json
+
           # Reproducibility fixture only: synthetic fielding evidence for all nine positions.
           # A deterministic score matrix gives any selected nine a unique complete assignment.
           jq '
@@ -136,12 +142,14 @@ jobs:
 
           run_once(){
             local tag="$1"
+            echo "REPRO_STAGE tag=$tag phase=PRIMARY"
             for p in melchior balthasar casper; do
               jq -n --arg p "$p" --slurpfile c /tmp/case.json '{persona:$p,phase:"PRIMARY",case:$c[0]}' > "/tmp/${tag}-${p}-primary-body.json"
               post '/api/magi/persona' "/tmp/${tag}-${p}-primary-body.json" "/tmp/${tag}-${p}-primary.json"
               jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-primary.json" >/dev/null
             done
 
+            echo "REPRO_STAGE tag=$tag phase=CROSS"
             jq -n --slurpfile c /tmp/case.json \
               --slurpfile m "/tmp/${tag}-melchior-primary.json" \
               --slurpfile b "/tmp/${tag}-balthasar-primary.json" \
@@ -149,6 +157,7 @@ jobs:
               '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > "/tmp/${tag}-cross-body.json"
             post '/api/magi/orchestrate' "/tmp/${tag}-cross-body.json" "/tmp/${tag}-cross.json"
 
+            echo "REPRO_STAGE tag=$tag phase=SECOND"
             for p in melchior balthasar casper; do
               jq -n --arg p "$p" --slurpfile c /tmp/case.json \
                 --slurpfile self "/tmp/${tag}-${p}-primary.json" \
@@ -158,13 +167,21 @@ jobs:
               jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-second.json" >/dev/null
             done
 
+            echo "REPRO_STAGE tag=$tag phase=FINAL"
             jq -n --slurpfile c /tmp/case.json \
               --slurpfile pm "/tmp/${tag}-melchior-primary.json" --slurpfile pb "/tmp/${tag}-balthasar-primary.json" --slurpfile pc "/tmp/${tag}-casper-primary.json" \
               --slurpfile sm "/tmp/${tag}-melchior-second.json" --slurpfile sb "/tmp/${tag}-balthasar-second.json" --slurpfile sc "/tmp/${tag}-casper-second.json" \
               --slurpfile x "/tmp/${tag}-cross.json" \
               '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > "/tmp/${tag}-final-body.json"
             post '/api/magi/orchestrate' "/tmp/${tag}-final-body.json" "/tmp/${tag}-final.json"
-            jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and .fieldingStatus=="COMPLETE" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9) and (([.lineup[].position]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
+            # Accept only a fully evidenced 3-0/2-1 lineup or a true 1-1-1
+            # deadlock that refuses to invent the lineup. Both must replay identically.
+            jq -c --arg tag "$tag" '{tag:$tag,status,finalVote,fieldingStatus,reviewReason}' "/tmp/${tag}-final.json"
+            if ! jq -e --slurpfile roster /tmp/roster.json -f scripts/validate-production-full-lineup-final.jq "/tmp/${tag}-final.json" >/dev/null; then
+              echo "REPRO_ACCEPTANCE_FAILURE tag=$tag stage=FINAL" >&2
+              return 1
+            fi
+            echo "REPRO_ACCEPTANCE_PASS tag=$tag stage=FINAL"
           }
 
           run_once a
@@ -172,6 +189,7 @@ jobs:
           sleep 3
           run_once b
 
+          echo 'REPRO_STAGE phase=COMPARE_PERSONA_OUTPUTS'
           for p in melchior balthasar casper; do
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/a-${p}-primary.json" > "/tmp/a-${p}-primary-stable.json"
             jq -S '{candidatePlayers,candidateBasis,facts,analysis,prediction,confidence,judgment,primaryReason,publicStatement,warnings,dataConflict,reviewRequested}' "/tmp/b-${p}-primary.json" > "/tmp/b-${p}-primary-stable.json"
@@ -182,12 +200,14 @@ jobs:
             cmp "/tmp/a-${p}-second-stable.json" "/tmp/b-${p}-second-stable.json"
           done
 
+          echo 'REPRO_STAGE phase=COMPARE_CROSS'
           jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/a-cross.json > /tmp/a-cross-stable.json
           jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/b-cross.json > /tmp/b-cross-stable.json
           cmp /tmp/a-cross-stable.json /tmp/b-cross-stable.json
 
-          jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/a-final.json > /tmp/a-final-stable.json
-          jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/b-final.json > /tmp/b-final-stable.json
+          echo 'REPRO_STAGE phase=COMPARE_FINAL'
+          jq -S '{mode,status,recommendation,lineup,battingOrder,fieldingStatus,fieldingReason,deliberationDecision,finalVote,reviewReason,proposalGroups,slotConflicts,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/a-final.json > /tmp/a-final-stable.json
+          jq -S '{mode,status,recommendation,lineup,battingOrder,fieldingStatus,fieldingReason,deliberationDecision,finalVote,reviewReason,proposalGroups,slotConflicts,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/b-final.json > /tmp/b-final-stable.json
           cmp /tmp/a-final-stable.json /tmp/b-final-stable.json
 
           echo 'PRODUCTION SAME QUESTION + SAME EVIDENCE REPRODUCIBILITY: PASS'
