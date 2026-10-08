@@ -215,6 +215,12 @@ function recoverSoftTeamReviewDependency(result, issues) {
       .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
 
     if(developmentAdvice.test(raw))return '';
+    // Reject standalone tactical/scoring rhetoric even if the sample-size
+    // description was in a previous sentence. Preserve only the evidence limit.
+    const standaloneTactical=/(?:勝負.{0,12}分かれ道|勝ちへの道|勝ちに(?:つな|繋)げ|生産力|戦術上.{0,18}(?:重要|ポイント)|実戦上.{0,16}課題|攻撃.{0,16}硬直)/;
+    if(standaloneTactical.test(raw)&&!/(?:偏り|差|集中|濃淡|生産力)/.test(raw)&&!/(?:断定(?:しない|しません|できない|できません)|確認できない|根拠がない)/.test(raw))
+      return '確認済みの個別記録から、チーム全体の得点・戦術効果までは断定できない。';
+
     if(/(?:特定.{0,24}(?:選手|打者).{0,32}(?:調子|打撃).{0,32}(?:得点|勝敗).{0,20}左右|得点.{0,24}左右されるリスク)/.test(raw))return '';
 
     if(/(?:偏り|差|集中|濃淡|生産力)/.test(raw)&&/(?:勝ちへの道|勝ちに(?:つな|繋)げ|攻撃.{0,12}(?:硬直|硬直化)|実戦上.{0,12}課題|勝つため|勝負だ|戦術(?:的)?な?.{0,12}(?:制約|問題|リスク)|戦術上.{0,18}(?:重要|ポイント)|得点.{0,20}左右|左右されるリスク|生産力)/.test(raw)){

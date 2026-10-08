@@ -685,6 +685,23 @@ test('G83 FULL_LINEUP allows numbered proposal prose when it matches candidatePl
   assert.ok(!issues.some(x=>x.includes('candidatePlayersと打順説明が矛盾')));
 });
 
+test('G84 TEAM_REVIEW blocks standalone tactical conclusions without a same-sentence batting spread',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み個別記録。'}};
+  const r=result({
+    persona:'BALTHASAR',
+    publicStatement:'特定の好調な選手だけでなく、全体の得点力をどう形作るかが勝負の分かれ道だ。'
+  });
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(issues.some(x=>x.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')));
+});
+
+test('G85 TEAM_REVIEW preserves explicit non-causal evidence limitations',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の確認済み個別記録。'}};
+  const r=result({persona:'BALTHASAR',publicStatement:'記録だけでは勝負の分かれ道までは断定できません。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.some(x=>x.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
