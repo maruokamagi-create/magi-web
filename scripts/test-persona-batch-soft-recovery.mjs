@@ -655,4 +655,41 @@ function baseResult(overrides={}) {
   assert.deepEqual(validatePersonaOutput(caseData,result,{focused:false}),[]);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 33/33 PASS');
+
+// Exact production-selection smoke uses mode='selection' without selectionKind.
+// Only an explicit CASPER guard rejection may activate generic sanitation.
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',evidence:{scope:'PRODUCTION_SELECTION_SMOKE_SYNTHETIC_FIXED_EVIDENCE'}};
+  const rejected=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    checkedPlayers:['嶋田 栄志','坂田 暉馬'],
+    candidateBasis:'記録された打撃成績と出場実績を比較する。',
+    facts:['嶋田 栄志には3番での先発起用記録がある。'],
+    primaryReason:'記録された起用実績から第一候補を選ぶ。',
+    publicStatement:'3番は嶋田 栄志を候補とする。チーム全体の成長も促せる。',
+    analysis:['現在の起用記録だけを比較する。'],
+    warnings:['将来のチーム全体の成長につながる。']
+  });
+  const issues=validatePersonaOutput(caseData,rejected,{focused:false});
+  assert.ok(issues.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加している'));
+  const candidateCopy=rejected.candidatePlayers.slice();
+  const ok=recoverSoftSelectionInference(rejected,issues,caseData,{focused:false});
+  assert.equal(ok,true,'the known CASPER generic-selection soft guard should recover');
+  assert.deepEqual(rejected.candidatePlayers,candidateCopy,'candidate order cannot be changed during prose repair');
+  assert.deepEqual(rejected.facts,['嶋田 栄志には3番での先発起用記録がある。']);
+  assert.ok(!/チーム全体の成長|成長も促/.test(JSON.stringify(rejected)));
+  assert.deepEqual(validatePersonaOutput(caseData,rejected,{focused:false}),[]);
+}
+// Without the exact soft error code, no generic correction or hard-guard bypass.
+{
+  const caseData={mode:'selection',question:'3番は誰がいい？',evidence:{}};
+  const rejected=baseResult({persona:'CASPER',candidatePlayers:['嶋田 栄志'],publicStatement:'チーム全体の成長を促す。'});
+  const original=JSON.stringify(rejected);
+  assert.equal(sanitizeKnownSelectionProse(rejected,caseData),false);
+  assert.equal(JSON.stringify(rejected),original,'normal generic selection cannot be sanitized without a rejected guard');
+  assert.equal(recoverSoftSelectionInference(rejected,['supplied CASE/EVIDENCE numerical mismatch'],caseData,{focused:false}),false);
+  assert.equal(JSON.stringify(rejected),original,'hard evidence failure must not mutate persona content');
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 35/35 PASS');
