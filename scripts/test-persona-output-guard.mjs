@@ -776,6 +776,20 @@ test('G94 TEAM_REVIEW preserves explicit uncertainty about growth opportunity',(
   assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
 });
 
+test('G95 TEAM_REVIEW rejects unverified growth-opportunity concern disguised as question',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個別打撃・出場記録のみ。'}};
+  const r=result({persona:'CASPER',publicStatement:'他の選手にも成長の機会がしっかり回っているか気にかかります。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
+test('G96 TEAM_REVIEW permits explicit evidence gap about growth opportunity',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個別打撃・出場記録のみ。'}};
+  const r=result({persona:'CASPER',publicStatement:'成長の機会が全員に十分回っているかは、この記録だけでは確認できない。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
