@@ -288,9 +288,15 @@ function recoverSoftForecastLanguage(result, issues) {
   return true;
 }
 
-export function sanitizeKnownSelectionProse(result, caseData) {
+export function sanitizeKnownSelectionProse(result, caseData, {allowGenericSelection=false}={}) {
   const selectionKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
-  if(!['PITCHING_ROLE','BATTING_ORDER'].includes(selectionKind))return false;
+  // Generic current-player selection has the same Evidence boundaries, but
+  // enable this sanitation only after the exact CASPER development/dependency
+  // guard has rejected a draft. Regular generic requests are unchanged.
+  const isGenericRecovery=allowGenericSelection
+    && String(caseData?.mode||'').toLowerCase()==='selection'
+    && (!selectionKind||selectionKind==='GENERIC_SELECTION');
+  if(!['PITCHING_ROLE','BATTING_ORDER'].includes(selectionKind)&&!isGenericRecovery)return false;
 
   const evidenceText=JSON.stringify(caseData?.evidence||{});
   const question=String(caseData?.question||'');
@@ -367,7 +373,10 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
   const forecastSoft=v=>/(?:将来|不確実性|保証できない結果)/.test(v);
   if(!list.length||!list.some(selectionSoft)||!list.every(v=>selectionSoft(v)||burdenSoft(v)||forecastSoft(v)))return false;
   const snapshot=JSON.parse(JSON.stringify(result||{}));
-  sanitizeKnownSelectionProse(result,caseData);
+  const hasGenericCasperGroundingIssue=list.some(v=>
+    v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加')
+    ||v.includes('SELECTIONでEvidenceにない依存・役割集中を追加'));
+  sanitizeKnownSelectionProse(result,caseData,{allowGenericSelection:hasGenericCasperGroundingIssue});
   const burdenIssues=list.filter(burdenSoft);
   if(burdenIssues.length&&!recoverSoftBurdenEscalation(result,burdenIssues)){
     for(const key of Object.keys(result))delete result[key];
