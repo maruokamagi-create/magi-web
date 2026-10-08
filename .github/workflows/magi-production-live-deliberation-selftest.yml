@@ -11,6 +11,9 @@ on:
       - 'server/api/magi/**'
       - '.github/workflows/magi-production-live-deliberation-selftest.yml'
       - '.github/workflows/magi-production-sequential-suite.yml'
+      - '.github/workflows/magi-production-full-lineup-smoke.yml'
+      - 'scripts/validate-production-full-lineup-final.jq'
+      - 'scripts/test-production-full-lineup-smoke-contract.mjs'
   workflow_call:
   workflow_dispatch:
 
