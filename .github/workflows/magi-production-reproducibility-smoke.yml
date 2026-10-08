@@ -194,8 +194,8 @@ jobs:
           jq -S '{agreement,disagreement,domainConflicts,challenges,informationGaps,reviewRequired}' /tmp/b-cross.json > /tmp/b-cross-stable.json
           cmp /tmp/a-cross-stable.json /tmp/b-cross-stable.json
 
-          jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/a-final.json > /tmp/a-final-stable.json
-          jq -S '{mode,status,recommendation,lineup,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/b-final.json > /tmp/b-final-stable.json
+          jq -S '{mode,status,recommendation,lineup,battingOrder,fieldingStatus,fieldingReason,deliberationDecision,finalVote,reviewReason,proposalGroups,slotConflicts,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/a-final.json > /tmp/a-final-stable.json
+          jq -S '{mode,status,recommendation,lineup,battingOrder,fieldingStatus,fieldingReason,deliberationDecision,finalVote,reviewReason,proposalGroups,slotConflicts,personaLineups,majorReasons,warnings,crossDiscussion}' /tmp/b-final.json > /tmp/b-final-stable.json
           cmp /tmp/a-final-stable.json /tmp/b-final-stable.json
 
           echo 'PRODUCTION SAME QUESTION + SAME EVIDENCE REPRODUCIBILITY: PASS'
