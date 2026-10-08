@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 49e6ba803e25862e38379840ad615f2b6fb9d484
+- State base main SHA: c2f00535dde88ef3d356f58580b5b07bba55af12
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -845,6 +845,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/semantic-two-player-batting-comparison-evidence-20261009` creates a strict current-season, high-confidence semantic `COMPARISON` Evidence reader: exactly two distinct canonical **current-roster** players, `BATTING` domain, no pitching/fielding mixed domain, and supported current/unspecified time scope. Both must have batting AB/H/AVG rows from the **same** verified current `XLSM_MASTER`. Only whitelisted available metrics enter the packet, including the exact source, period and player names. Failed read/missing row -> fail-closed CLARIFY/HOLD, never invent figures or silently replace with old-team data.
 - Integrate into `server/api/magi/core.js` *before* generic selection evidence. Preserve direct individual stat routes, actual member authentication gate, full-lineup and TEAM_REVIEW paths. Add deterministic `scripts/test-current-player-comparison-evidence.mjs` with successful, reversed, missing-stat, wrong-year, retired-player, unsupported-domain, Drive-error and explicit core-contract assertions. Wire into Deliberation Final CI on PR and push.
 - **Unresolved after this patch:** scope beyond current batting comparisons, real browser authenticated response rendering, actual multi-player/tactics/PLAYER_REVIEW/CLARIFY E2E, and personalized per-slot nine-player evidence explanation quality. Only merge if CI success and review; verify deployment SHA before real production claims. Preserve Vercel Hobby/free; no Google Drive/CSV mutation.
+
+## 2026-10-09: Natural 3rd-batter PRIMARY exposes unsupported role/team effect prose
+
+- Baseline GitHub main and READY Vercel production SHA `c2f00535dde88ef3d356f58580b5b07bba55af12` (PR #144 delivered evidence-verified two-player batting COMPARISON). The SHA-gated Production Live run `37810955799` passed revision, BEST_ORDER and CLOSER and TEAM_REVIEW; NATURAL_THIRD job `113428374310` failed at PRIMARY semantic-text acceptance. Its first PRIMARY request received transient provider `provider_retryable_http` and a later request returned a valid structured PRIMARY batch. **The failure is semantic acceptance of generated prose**, not a roster failure or proven model outage; do not hot-loop requests.
+- Inspection of the generated PRIMARY shows actual unsupported BATTING_ORDER claims: `安定した選択肢`, `3番の役割に慣れている可能性`, `最も有効な戦術`, `チームの安定につながる可能性`, `打順構成における連続性を維持できる可能性`, `打線の攻撃力を高める可能性`, and `将来的にチームを支える存在`. Prior 3番 start counts and batting stats cannot establish these abilities, team effects, or future outcomes. The already-valid statements `3番で7試合起用` and verified current batting AVG/OPS must be preserved.
+- Branch `fix/batting-order-unsupported-role-and-team-benefit-20261009`: add a small shared semantic matcher for unsupported slot familiarity, stability, offensive impact and future leadership. The existing fail-closed BATTING_ORDER output guard reports a new explicit soft-only issue for these sentences; the existing selection sanitizer drops only the offending prose, keeps candidatePlayers in their original order and verified facts, and re-runs `validatePersonaOutput`. Numeric, roster, source and fielding hard errors remain hard failures.
+- Add unit regressions with every observed LIVE phrasing, factual/negative examples, and batch recovery preserving candidates and measured records while refusing mixed hard guards. Require Deliberation Final + Development Continuity checks before merge. After new SHA READY, inspect LIVE PRIMARY/CROSS/SECOND/FINAL and manual semantic quality. No change to Google Drive/CSV, authorized coaches' statements, plan or Vercel protection.
+- Still unresolved: authenticated iPhone/Chrome UI E2E for nine distinct question types and clear independent per-slot evidence explanations. One favorable best-order vote is not proof of uniquely optimal lineup; preserve genuine 1-1-1 DEADLOCK if it occurs.
 
 ## Next concrete work
 

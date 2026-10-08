@@ -2,6 +2,7 @@ import { callGemini, rateLimit, readBody, requirePost, requireSameOrigin, sendJs
 import { PERSONA_PROMPTS } from './_prompts.js';
 import { deterministicFullLineupCross, deterministicSelectionCross, isSelectionCase } from './orchestrate.js';
 import { validatePersonaOutput, hasUnhedgedOutcomePrediction, isHardOutcomeGuarantee } from './_persona-output-guard.js';
+import { unsupportedBattingOrderEffect } from './_batting-order-unsupported-effect.js';
 import { CURRENT_ROSTER, canonicalizePlayerData } from './_roster.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
@@ -390,6 +391,7 @@ export function sanitizeKnownSelectionProse(result, caseData, {allowGenericSelec
     ||(selectionKind==='PITCHING_ROLE' && !hasPressureEvidence && pressureInference(sentence))
     ||(selectionKind==='PITCHING_ROLE' && probability(sentence))
     ||(selectionKind==='BATTING_ORDER' && battingTactics(sentence))
+    ||(selectionKind==='BATTING_ORDER' && unsupportedBattingOrderEffect(sentence) && !/(?:とは断定(?:できない|しない)|確認できない|根拠がない)/.test(sentence))
     ||(!developmentRequested && development(sentence))
     ||(!hasDependencyEvidence && dependency(sentence))
     ||(!hasBurdenEvidence && burden(sentence));
@@ -425,6 +427,7 @@ export function recoverSoftSelectionInference(result, issues, caseData, {focused
     ||v.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')
     ||v.includes('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換')
     ||v.includes('BATTING_ORDERで打順変更からチームのつながり・連携への因果を推定')
+    ||v.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定')
     ||v.includes('BATTING_ORDERで現在Evidenceを再比較せず判断変更不要を断定')
     ||v.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加')
     ||v.includes('SELECTIONでEvidenceにない依存・役割集中を追加');

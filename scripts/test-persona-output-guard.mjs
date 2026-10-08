@@ -899,6 +899,38 @@ test('G99 TEAM_REVIEW preserves explicit rejection of victory-key/alternative sh
   assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
 });
 
+test('Live natural-third rejects inferred role, team stability, attack gain and future leadership',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番の先発起用回数のみ。'}};
+  const claims=[
+    '嶋田 栄志は3番で7試合起用されており、安定した選択肢となる。',
+    '嶋田 栄志は3番の役割に慣れている可能性がある。',
+    '中嶋 玲月の高い打率を活かすことが、最も有効な戦術だ。',
+    '嶋田 栄志を3番に置けばチームの安定につながる可能性があります。',
+    '嶋田 栄志の起用は現在の打順の安定性を維持する可能性がある。',
+    '3番の起用実績から打順構成における連続性を維持できる可能性がある。',
+    '中嶋 玲月の起用は打線の攻撃力を高める可能性がある。',
+    '中嶋 玲月は将来的にチームを支える存在になるかもしれません。'
+  ];
+  for(const claim of claims){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',publicStatement:claim}),{focused:false});
+    assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),claim+' -> '+issues.join(' / '));
+  }
+});
+
+test('Live natural-third preserves measured starts/rates and explicit lack of effect evidence',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番の先発起用回数のみ。'}};
+  const statements=[
+    '嶋田 栄志は3番で7試合のスタメン起用が記録されている。',
+    '中嶋 玲月は打率 .485、OPS 1.120 を記録している。',
+    '3番起用だけでチームの安定につながるとは断定できない。',
+    '役割に慣れているかは確認できない。'
+  ];
+  for(const statement of statements){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+issues.join(' / '));
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
