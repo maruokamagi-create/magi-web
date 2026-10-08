@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 2682aafbb8c1f701119cd53176cc0dbfbba3bf40
+- State base main SHA: d272e2a194c9be70388c5cbaa46a9550b9778d03
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -778,6 +778,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Extend `recoverSoftTeamReviewDependency` to replace only those unsupported causal sentences with an explicit evidence boundary **before publishing**, then re-run `validatePersonaOutput`. Positive and qualified-denial regression, plus batch recovery test, are in the deterministic deliberation CI. This is not a broad rewrite of coaching strategy or model prompts.
 - Require CI and development continuity green; after merge and READY SHA, inspect authentic production TEAM_REVIEW PRIMARY, SECOND and FINAL, including the absence of unsupported causal stories. A green structural result alone is insufficient. Continue to separate independent judgments, 1-1-1 deadlock, and valid 2-1 majority; no forced consensus.
 - Do not edit Google Drive/CSV/score sheets, Vercel security or Hobby/free plan. Full authenticated iPhone/browser 9-class UI acceptance and 1–9 per-slot narrative accuracy remain unresolved priorities.
+
+## 2026-10-08: TEAM_REVIEW CASPER sentence integrity after successful staged E2E
+
+- Canonical main and READY Vercel production SHA at branch base: d272e2a194c9be70388c5cbaa46a9550b9778d03. Its Production Live Selftest run 37754450690 passed all four classes, including the actual TEAM_REVIEW PRIMARY/CROSS/SECOND/FINAL job 113236943271. Prior unsupported BALTHASAR scoring-concentration/tactic-selection inference no longer appeared in that run.
+- Manual reading of authentic TEAM_REVIEW PRIMARY nevertheless found CASPER analysis: 「目先の試合の勝敗だけでなく、控え選手の経験や全体の成長バランスを見据えた運用が求められる」 (unverified development/experience priority), and 「選手間の出場機会の差していないか、チーム全体で取り組む姿勢が問われている」 (malformed replacement residue). A fact-limited FINAL does not make unsupported PRIMARY acceptable.
+- The cause is generalized TEAM_REVIEW wording-guard incompleteness combined with partial string replacements inside recoverSoftTeamReviewDependency. The current user question is about observed team weaknesses, not speculative future coaching philosophy.
+- Branch fix/team-review-casper-sentence-integrity-20261008 extends the existing unsupported current development soft guard to normative generic experience/growth prescriptions and malformed usage-difference fragments. Recovery removes speculative burden/experience/development sentences as whole units before phrase replacements, then re-runs complete original validatePersonaOutput, preserving facts and allowing explicit evidence-limit denials.
+- Regress production phrases, explicit uncertainty, measured playing-time facts and no malformed output. Require deliberation + continuity CI green. Do not weaken numeric guard or turn a 1-1-1 deadlock into 2-1. Wait for ongoing prior Production Sequential Suite 37755091562 before main merge/deploy to avoid overlapping free-tier provider calls.
+- Still open: authenticated iPhone/browser nine-class real UI acceptance and every selected slot's evidence-based rationale. Staged workflow success alone does not prove those user paths.
 
 ## Next concrete work
 

@@ -209,6 +209,14 @@ function recoverSoftTeamReviewDependency(result, issues) {
     // first half of the sentence may leave broken Japanese in the second half
     // (such as 「選手間の出場機会の差いないか」).
     if(developmentAdvice.test(raw))return '';
+    const unverifiedGrowthPrescription=
+      /(?:控え選手|全体|チーム|選手層).{0,50}(?:経験|成長|育成)/.test(raw)
+      && /(?:運用|求めら|大切|必要|重要|優先|課題|バランス|すべき|見据え)/.test(raw);
+    const speculativeUsageConcern=
+      /(?:負担|出場機会|起用).{0,40}(?:集中|偏).{0,24}(?:していないか|ないか|気にかか|懸念|心配)/.test(raw);
+    const malformedUsageFragment=
+      /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(raw);
+    if(unverifiedGrowthPrescription||speculativeUsageConcern||malformedUsageFragment)return '';
 
     raw=raw
       .replace(/(?:得点生産の)?依存度が高い/g,'選手間の打撃成績に数値差がある')
