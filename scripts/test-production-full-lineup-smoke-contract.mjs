@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, fileURLToPath } from 'node:path';
+import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 
 // Exercise the SAME jq contract used in production smoke, not a JS replica.
