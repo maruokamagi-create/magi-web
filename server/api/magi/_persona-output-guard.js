@@ -271,6 +271,17 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedSpreadOverclaim)issues.push('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している');
 
+    // A standalone rhetorical conclusion can escape the spread-causality check
+    // when the quantitative premise and the tactical claim are in different
+    // sentences. TEAM_REVIEW cannot promote this to an evidence-based finding.
+    const standaloneTacticalOverclaim=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:勝負.{0,12}分かれ道|勝ちへの道|勝ちに(?:つな|繋)げ|生産力|戦術上.{0,18}(?:重要|ポイント)|実戦上.{0,16}課題|攻撃.{0,16}硬直)/.test(sentence)
+    );
+    if(standaloneTacticalOverclaim && !issues.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している'))
+      issues.push('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している');
+
+
     // Individual batting outcomes may be reported directly, but they do not prove
     // a team scoring route, game result or tactical consequence without explicit
     // team-level outcome evidence.
