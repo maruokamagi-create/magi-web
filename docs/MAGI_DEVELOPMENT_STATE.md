@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: fc278cea3b58b5af192f9f35b98afed20714424b
+- State base main SHA: 8189470f2367054a791a2bbd0005cdd985471acd
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -679,6 +679,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - That smoke fixture uses **entirely synthetic** batting and fielding, including official starting qualifications at all positions for every player. It is only suitable for testing structural contracts, NEVER as evidence of actual Maruoka players' ability or past appearances.
 - Branch `fix/smoke-accept-legitimate-full-lineup-deadlock-20261008`: factor one jq acceptance contract into `scripts/validate-production-full-lineup-final.jq`, so the smoke accepts either (1) `LINEUP_RESULT` with real nine-position Evidence in its fixture and an authentic 3-0/2-1 proposal vote, or (2) exactly 1-1-1 DEADLOCK with three distinct nine-player proposals, no assigned lineup, fielding not evaluated, and unresolved conflicts. Other review outcomes, incomplete rosters, ungrounded fielding, fabricated compromises or votes remain failures. Add 13 true jq positive/negative tests and run in PR CI before updating main.
 - After PR CI green and Vercel READY SHA, require sequential selection/full-lineup/pitching-plan/deliberation/reproducibility workflow results before declaring complete. A valid DEADLOCK is not a recommended best order: user still needs an evidence-grounded resolved 1–9 lineup or explicit explanation why impossible. Continue to audit rationales and actual current-year CSV/score Evidence, preserving zero paid costs and Drive read-only.
+
+## 2026-10-08: Acceptance changes must retrigger SHA-gated production validation
+
+- PR #122 merged as `8189470f2367054a791a2bbd0005cdd985471acd`; Vercel production URL served exactly this SHA in READY state. PR CI passed the full Deliberation Final suite, including the real-jq production final outcome contract, with 13/13 tests. The full-lineup smoke now accepts a genuine 1-1-1 DEADLOCK without accepting invented players, positions or a fake consensus.
+- The Production Live Deliberation Selftest workflow was not auto-dispatched by PR #122 because its push paths only covered application code and two workflow files, not the full-lineup smoke or reusable jq contract. There was therefore no new Sequential Suite run proving the entire downstream chain after this smoke fix.
+- Branch `fix/trigger-live-after-lineup-smoke-contract-20261008` extends that workflow's push path triggers to the smoke workflow, jq contract and contract test. This is CI orchestration only, does not change production API responses, Vercel billing, or scoring evidence. As before, the Live workflow must first verify the actual production SHA before any provider-heavy calls and will trigger Sequential Suite only after success.
+- Acceptance still requires actual successful selection, full-lineup final with either a properly Evidence-qualified result or explicitly disclosed 1-1-1 DEADLOCK, then pitching plan, deliberation, and reproducibility. Never describe a test-accepted DEADLOCK as the team's final best order.
+- Keep Google Drive/CSV read-only, no paid upgrade, and retain 3-sage independent vote integrity.
 
 ## Next concrete work
 
