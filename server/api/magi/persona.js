@@ -4,6 +4,7 @@ import { validatePersonaOutput } from './_persona-output-guard.js';
 import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
 import { assignEvidenceGroundedFielding, buildStandardDefenseEligibility } from './_lineup-fielding.js';
+import { reconcileLineupOrderExplanation } from './_lineup-order-explanation-reconcile.js';
 import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
 
 export const PERSONA_RESPONSE_SCHEMA = {
@@ -487,6 +488,25 @@ export default async function handler(req, res) {
         ...personaFullLineupIssues(rawResult, fullLineupCase, body.case),
         ...personaPitchingPlanIssues(rawResult, pitchingPlanCase)
       ];
+    }
+
+
+    // A structured nine-player order is authoritative. Reconcile *only* an
+    // isolated prose/order mismatch, then rerun the complete evidence and
+    // fielding guards. All other issues remain fail-closed.
+    if(fullLineupCase && guardIssues.length){
+      const reconciled=reconcileLineupOrderExplanation({...result,persona:persona.toUpperCase()},guardIssues);
+      if(reconciled){
+        const rechecked=[
+          ...validatePersonaOutput(body.case,reconciled,{focused:!candidateCase&&!isTeamReviewCase(body)}),
+          ...personaFullLineupIssues(rawResult,fullLineupCase,body.case),
+          ...personaPitchingPlanIssues(rawResult,pitchingPlanCase)
+        ];
+        if(rechecked.length===0){
+          result=reconciled;
+          guardIssues=[];
+        }
+      }
     }
 
     result.persona = persona.toUpperCase();
