@@ -140,13 +140,36 @@ jobs:
             done
           }
 
+          validate_repro_persona(){
+            local file="$1" phase="$2" persona="$3" tag="$4"
+            if jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "$file" >/dev/null; then
+              return 0
+            fi
+            echo "REPRO_PERSONA_ACCEPTANCE_FAILURE tag=$tag phase=$phase persona=$persona" >&2
+            # Structural diagnostics only. Never publish raw generated claims,
+            # selected names, stats, or the possibly sensitive reviewReason.
+            jq -c '{
+              reviewRequested:(.reviewRequested==true),
+              dataConflict:(.dataConflict==true),
+              candidateCount:(if (.candidatePlayers|type)=="array" then (.candidatePlayers|length) else 0 end),
+              uniqueCandidateCount:(if (.candidatePlayers|type)=="array" then (.candidatePlayers|unique|length) else 0 end),
+              checkedPlayerCount:(if (.checkedPlayers|type)=="array" then (.checkedPlayers|length) else 0 end),
+              reasonClass:(if ((.reviewReason//"")|contains("FULL_LINEUP_STANDARD_DEFENSE")) then "FIELDING"
+                elif ((.reviewReason//"")|contains("candidatePlayersと打順説明が矛盾")) then "ORDER_CONFLICT"
+                elif ((.reviewReason//"")|contains("回答文に、確認できた記録と合わない")) then "EVIDENCE_OUTPUT_GUARD"
+                elif ((.reviewReason//"")|length)>0 then "REVIEW_REQUIRED_OTHER"
+                else "NONE" end)
+            }' "$file" >&2 || true
+            return 1
+          }
+
           run_once(){
             local tag="$1"
             echo "REPRO_STAGE tag=$tag phase=PRIMARY"
             for p in melchior balthasar casper; do
               jq -n --arg p "$p" --slurpfile c /tmp/case.json '{persona:$p,phase:"PRIMARY",case:$c[0]}' > "/tmp/${tag}-${p}-primary-body.json"
               post '/api/magi/persona' "/tmp/${tag}-${p}-primary-body.json" "/tmp/${tag}-${p}-primary.json"
-              jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-primary.json" >/dev/null
+              validate_repro_persona "/tmp/${tag}-${p}-primary.json" PRIMARY "$p" "$tag"
             done
 
             echo "REPRO_STAGE tag=$tag phase=CROSS"
@@ -164,7 +187,7 @@ jobs:
                 --slurpfile cross "/tmp/${tag}-cross.json" \
                 '{persona:$p,phase:"SECOND",case:$c[0],primarySelf:$self[0],crossExamination:$cross[0]}' > "/tmp/${tag}-${p}-second-body.json"
               post '/api/magi/persona' "/tmp/${tag}-${p}-second-body.json" "/tmp/${tag}-${p}-second.json"
-              jq -e '.reviewRequested==false and .dataConflict==false and (.candidatePlayers|length==9) and ((.candidatePlayers|unique|length)==9)' "/tmp/${tag}-${p}-second.json" >/dev/null
+              validate_repro_persona "/tmp/${tag}-${p}-second.json" SECOND "$p" "$tag"
             done
 
             echo "REPRO_STAGE tag=$tag phase=FINAL"
