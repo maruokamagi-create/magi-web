@@ -92,6 +92,9 @@ try{
     'identical-Evidence reproducibility must enforce the same non-fabricated DEADLOCK contract');
   assert.match(reproducibilityWorkflow,/deliberationDecision,finalVote,reviewReason,proposalGroups,slotConflicts/,
     'reproducibility must compare all final vote and deadlock metadata');
+  assert.match(reproducibilityWorkflow,/REPRO_STAGE tag=\$tag phase=PRIMARY/,'replay must identify PRIMARY stage');
+  assert.match(reproducibilityWorkflow,/REPRO_STAGE tag=\$tag phase=SECOND/,'replay must identify SECOND stage');
+  assert.match(reproducibilityWorkflow,/REPRO_ACCEPTANCE_FAILURE tag=\$tag stage=FINAL/,'replay must expose safe failure stage without publishing rejected player details');
   console.log('PRODUCTION REPRODUCIBILITY WIRING: PASS');
   console.log('PRODUCTION FULL-LINEUP SMOKE CONTRACT: 13/13 PASS');
 }finally{
