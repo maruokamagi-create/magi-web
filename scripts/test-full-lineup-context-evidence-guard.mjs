@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { classifyLineupGuardIssues } from '../server/api/magi/_lineup-guard-issue-codes.js';
+import { reconcileLineupOrderExplanation, ORDER_EXPLANATION_CONFLICT } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
+import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 
 const core=fs.readFileSync(new URL('../server/api/magi/core.js',import.meta.url),'utf8');
 const selection=fs.readFileSync(new URL('../server/api/magi/_selection-live-evidence.js',import.meta.url),'utf8');
@@ -49,5 +51,35 @@ assert.deepEqual(
 );
 const liveSelftest=fs.readFileSync(new URL('../api/magi-live-deliberation-selftest.js',import.meta.url),'utf8');
 assert.match(liveSelftest,/issueCodes:classifyLineupGuardIssues\(reason\)/,'live acceptance must expose safe guard categories');
+
+// Regression: the nine structured candidate slots are authoritative; a
+// contradictory explanation may be discarded only if it is the sole failure.
+const chosen=['大野 竜暉','大久保 陽翔','坂田 暉馬','嶋田 栄志','中嶋 玲月','井坂 悠聖','武澤 大翔','橋向 結都','武田 晴琉翔'];
+const incompatible={
+  persona:'BALTHASAR',phase:'PRIMARY',judgment:'BLUE',confidence:'MEDIUM',
+  candidatePlayers:chosen,
+  candidateBasis:'1番大野 竜暉、2番大久保 陽翔、3番嶋田 栄志、4番井坂 悠聖とする。',
+  publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番嶋田 栄志。',
+  primaryReason:'成績を比較している。',
+  facts:['打順を誤って記載した説明は採用しない。'],
+  analysis:[],prediction:[],warnings:[],dataConflict:false,reviewRequested:false
+};
+const lineupCase={mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP'}};
+const initialIssues=validatePersonaOutput(lineupCase,incompatible,{focused:false});
+assert.deepEqual(initialIssues,[ORDER_EXPLANATION_CONFLICT],'mismatched declared lineup must remain a hard failure');
+const reconciled=reconcileLineupOrderExplanation(incompatible,initialIssues);
+assert.ok(reconciled,'isolated narration mismatch should admit a structural reconciliation');
+assert.deepEqual(reconciled.candidatePlayers,chosen,'the reconciliation must not reorder the nine proposed players');
+assert.match(reconciled.publicStatement,/3番坂田 暉馬/);
+assert.doesNotMatch(reconciled.publicStatement,/3番嶋田 栄志/);
+assert.deepEqual(reconciled.facts,[],'the conflicting generated rationale must not survive');
+assert.deepEqual(validatePersonaOutput(lineupCase,reconciled,{focused:false}),[],'corrected narrative must pass the original guard');
+assert.equal(reconcileLineupOrderExplanation(incompatible,[ORDER_EXPLANATION_CONFLICT,'NUMERIC_MISMATCH']),null);
+assert.equal(reconcileLineupOrderExplanation({...incompatible,dataConflict:true},[ORDER_EXPLANATION_CONFLICT]),null);
+assert.equal(reconcileLineupOrderExplanation({...incompatible,reviewRequested:true},[ORDER_EXPLANATION_CONFLICT]),null);
+assert.equal(reconcileLineupOrderExplanation({...incompatible,candidatePlayers:chosen.slice(0,8)},[ORDER_EXPLANATION_CONFLICT]),null);
+const personaSource=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
+assert.match(personaSource,/const reconciled=reconcileLineupOrderExplanation\(/);
+assert.match(personaSource,/const rechecked=\[/);
 
 console.log('FULL LINEUP CONTEXT EVIDENCE GUARD: PASS');

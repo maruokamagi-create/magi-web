@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: b933af8ace4313475d0d133df4c72d9d508fde54
+- State base main SHA: 30c6df0a9528f0f324124219b883e5e437770382
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -639,6 +639,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The exact reason is still unknown because `failClosedPersona()` contains specific guard-issue text only in `reviewReason`, which the Live selftest does not expose. Failure could be a semantic outcome claim, prose/order inconsistency, metric mismatch, etc. No guess is established as fact.
 - Branch `fix/live-lineup-guard-issue-codes-20261008`: add read-only, non-sensitive `issueCodes` classifications from the existing first three guard issues, without exposing raw rejected text or player records; add explicit tests. Existing rejection rules remain fail-closed.
 - Next: verify CI, merge only after green checks, confirm exact production SHA, observe the code in one staged best-order PRIMARY Live test and then fix the demonstrated issue. Do not disable evidence validation or modify Google Drive/CSV. Keep Vercel Hobby (free) and avoid rate-limit loops.
+
+## 2026-10-08: Root cause of BEST_ORDER primary rejection confirmed and narrow reconciliation
+
+- Current production SHA `30c6df0a9528f0f324124219b883e5e437770382`, Live run `37729004132`: BALTHASAR PRIMARY failed three times, exact `issueCodes=["ORDER_EXPLANATION_CONFLICT"]`. Structurally the nine candidates were unique and drawn from all 14 current players, and `dataConflict=false`. The candidate sequence and text explanation disagree; this is the observed issue, not an assumed numeric discrepancy.
+- Branch `fix/live-lineup-order-explanation-reconcile-20261008` proposes narrowly reconciling **only** that single isolated order-prose contradiction after the standard model correction attempt. Preserve the model's structured nine-candidate batting order, discard the incompatible generated prose/arguments, and restate the 1–9 order explicitly. Do **not** recover mixed errors, unsupported numerics, missing roster members, data conflicts, or deficient standard-position fielding.
+- The recovered row must pass `validatePersonaOutput` plus `personaFullLineupIssues` plus `personaPitchingPlanIssues` again before being accepted; otherwise remain fail-closed. Add explicit regression covering both positive and negative paths to Full Lineup Context Guard.
+- Only after CI green, merge, production SHA readiness, and a fresh staged Live run should best-order success be claimed. Inspect the CROSS, SECOND, and FINAL stages and check every reported position against actual starting-position Evidence. Do not confuse correct serialization with strong strategic rationale.
+- Keep Vercel Hobby/free. Never rewrite Google Drive, CSV, score sheets, or existing baseball records.
 
 ## Next concrete work
 
