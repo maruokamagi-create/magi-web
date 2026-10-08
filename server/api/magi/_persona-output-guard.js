@@ -281,6 +281,23 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(standaloneTacticalOverclaim && !issues.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している'))
       issues.push('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張している');
 
+    // TEAM_REVIEW asks which current weaknesses are *documented*. A generic
+    // prediction that the club cannot win unless a scoring plan is specified,
+    // or a forecast that scoring routes are restricted, is not such evidence.
+    // The negative case ("cannot assert") must remain an allowed limitation.
+    const unsupportedWinOrScoringRoute=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:得点|点を|点が|どうやって点).{0,48}(?:しないと|できなければ|はっきりさせないと).{0,28}(?:勝てない|勝利できない)/.test(sentence)
+        || /(?:得点|点を|勝利).{0,40}(?:勝てない|勝利できない)/.test(sentence)
+        || /(?:得点|攻撃).{0,16}(?:ルート|経路|手段|選択肢|機会).{0,30}(?:限定|狭|不足|制約|閉ざ)/.test(sentence)
+        || /(?:限定|狭ま|狭め|不足).{0,30}(?:得点|攻撃).{0,16}(?:ルート|経路|手段|選択肢|機会)/.test(sentence)
+      )
+    );
+    if(unsupportedWinOrScoringRoute)
+      issues.push('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している');
+
+
 
     // Individual batting outcomes may be reported directly, but they do not prove
     // a team scoring route, game result or tactical consequence without explicit
