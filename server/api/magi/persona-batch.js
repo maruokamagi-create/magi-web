@@ -421,6 +421,7 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
     || v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提')
     || v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
     || v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
+    || v.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張')
     || v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   const isBurdenSoft = v => v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
   const isForecastSoft = v => /(?:将来|不確実性|保証できない結果)/.test(v);
