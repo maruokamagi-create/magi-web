@@ -7,10 +7,13 @@ const team=workflow.slice(workflow.indexOf('  exact-live-team-review:'));
 assert.ok(team.startsWith('  exact-live-team-review:'),'TEAM_REVIEW job not found');
 
 function stageFilter(stage){
-  const re=new RegExp('run_stage '+stage+' 3\\s+jq -e \\'([\\s\\S]*?)\\' /tmp/team-review-'+stage+'\\.json');
-  const match=team.match(re);
-  assert.ok(match,'missing '+stage+' jq acceptance filter');
-  return match[1];
+  const stageStart=team.indexOf('run_stage '+stage+' 3');
+  assert.ok(stageStart>=0,'missing '+stage+' stage');
+  const section=team.slice(stageStart);
+  const filterStart=section.indexOf("jq -e '");
+  const filterEnd=section.indexOf("' /tmp/team-review-"+stage+".json",filterStart);
+  assert.ok(filterStart>=0 && filterEnd>filterStart,'missing '+stage+' jq acceptance filter');
+  return section.slice(filterStart+"jq -e '".length,filterEnd);
 }
 function fixture(stage,statement){
   const sages={};
