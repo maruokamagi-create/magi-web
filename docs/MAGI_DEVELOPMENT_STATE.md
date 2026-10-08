@@ -828,6 +828,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Positive and negative output-guard regressions and batch recovery/fact preservation are added. CI, continuity and source-guard must pass before main merge. Wait for any prior provider-heavy workflow to finish; avoid paid Vercel features or any Drive/CSV/score sheet writes.
 - New team aggregate natural stats route PR #141 is merged as `6226bcef`; tests passed, but its actual authenticated iPhone Chrome TEAM OPS query is still unverified. Full nine-class authenticated browser path and specific reasons for all nine batting slots remain priority; do not equate a green staged backend run with project completion.
 
+## 2026-10-09: Explicit TEAM aggregate question after named-player context
+
+- Baseline main/READY production SHA `bb5af2f76b5b0526df75a25a3d444b596aeaa9a9`; TEAM_REVIEW victory-key/alternative-claim guard changes from PR #142 are preserved. The source-of-truth TEAM aggregate route introduced via PR #141 is in main and had six synthetic routing tests, but none checked a preceding player-focused conversation.
+- `normalizeModel` uses `usesContextReference(question)` with the temporal phrase `今の` as an apparent player reference. `contextNames(context)` can therefore carry an unrelated previously named player into `groundedPlayers`, and `teamAggregateLookup` incorrectly rejects `今のチームOPSだけ教えて` even when Gemini correctly emits HIGH `TEAM`, SINGLE_VALUE, and no players. This could trigger an unjustified one-player clarification for an explicitly team-wide question.
+- Branch `fix/team-aggregate-context-carry-20261009` permits a high-confidence TEAM SINGLE_VALUE/SUMMARY with no model-selected player and explicit TEAM-scope wording (`チーム／全体／全員`) to remain TEAM aggregate even when unrelated player names exist only in earlier conversation. It preserves explicit player names, genuine anaphora (`その選手` etc), low-confidence CLARIFY and unsupported FULL_REPORT. No runtime metric values or coach statements are changed.
+- Extend the existing real semantic-normalizer + `routedFromSemantic` + synthetic XLSM `buildLiveAnswer` contract from six to ten cases: team OPS and team wins after named-player prior turns, explicit player-anaphora continuation, and ambiguous `その選手のチームOPS` clarification.
+- Require Deliberation Final + Development Continuity CI and no overlapping provider-heavy SHA-gated Live before merge/deploy. Verify latest production SHA READY. **This does not establish authenticated iPhone/browser nine-class E2E**; that remains open and no direct Google Drive/CSV or Vercel Hobby/free changes are allowed.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.

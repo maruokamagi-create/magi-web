@@ -69,4 +69,38 @@ async function answer(question,semantic){
   assert.equal(semantic.mode,'CLARIFY','semantic confidence gate remains authoritative');
 }
 
-console.log('SEMANTIC TEAM AGGREGATE ROUTING: 6/6 PASS');
+{
+  // A temporal adjective such as 「今の」 is not a reference to the person
+  // mentioned in an earlier turn when the new question names the team.
+  const context=[{role:'user',text:'大野 竜暉の打率は？'}];
+  const semantic=normalizeModel(input(),'今のチームOPSだけ教えて',context);
+  assert.equal(semantic.teamAggregate,true);
+  assert.equal(semantic.mode,'SINGLE_VALUE');
+  assert.deepEqual(semantic.players,[]);
+  assert.equal(routedFromSemantic(semantic).route,'TEAM_LOOKUP');
+  const {result}=await answer('今のチームOPSだけ教えて',semantic);
+  assert.ok(result.answer.includes('.738'));
+}
+{
+  const context=[{role:'user',text:'嶋田 栄志の打撃成績は？'}];
+  const semantic=normalizeModel(input({mode:'SUMMARY',domains:['TEAM'],metric:''}), '今のチームは何勝何敗？',context);
+  assert.equal(semantic.teamAggregate,true);
+  assert.equal(routedFromSemantic(semantic).route,'TEAM_LOOKUP');
+}
+{
+  // Genuine anaphora must still resolve to the preceding named individual.
+  const context=[{role:'user',text:'大野 竜暉について教えて'}];
+  const semantic=normalizeModel(input({players:['大野 竜暉'],domains:['BATTING'],metric:'AVG'}),'その選手の今季打率は？',context);
+  assert.equal(semantic.teamAggregate,undefined);
+  assert.equal(semantic.mode,'SINGLE_VALUE');
+  assert.deepEqual(semantic.players,['大野 竜暉']);
+  assert.equal(routedFromSemantic(semantic).route,'BATTING_LOOKUP');
+}
+{
+  // TEAM in a model response cannot override an unresolved anaphoric target.
+  const context=[{role:'user',text:'大野 竜暉について教えて'}];
+  const semantic=normalizeModel(input(),'その選手のチームOPSを教えて',context);
+  assert.equal(semantic.mode,'CLARIFY');
+}
+
+console.log('SEMANTIC TEAM AGGREGATE ROUTING: 10/10 PASS');
