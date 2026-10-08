@@ -236,7 +236,7 @@ function recoverSoftTeamReviewDependency(result, issues) {
       && !/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|とは言えない|根拠がない)/.test(raw)){
       // Preserve only the direct observed recent-window result when one mixed
       // sentence attaches an unsupported scoring conclusion to that result.
-      if(/直近\\s*6\\s*試合/.test(raw)&&/打率\\s*\\.?0(?:00)?/.test(raw))
+      if(/直近\s*6\s*試合/.test(raw)&&/打率\s*\.?0(?:00)?/.test(raw))
         return '直近6試合の打撃記録には打率.000の選手がいる。';
       return '個別の打撃成績だけでは、チームの得点力の集中や攻撃の選択肢への影響は断定できない。';
     }
