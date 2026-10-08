@@ -733,6 +733,37 @@ test('G89 TEAM_REVIEW preserves explicit non-causality and measured spread state
   assert.ok(!issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'));
 });
 
+test('G90 TEAM_REVIEW rejects unmeasured long-term development impact even as a possibility',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃・起用記録のみ。'}};
+  const statements=[
+    'チームの現状を評価する際、打撃成績の数値差や出場機会の偏りは、長期的なチームの成長や選手層の厚さに影響を与える可能性がある。',
+    '一部の選手への打撃成績の数値差や出場機会の偏りが長期的なチーム作りに与える影響に配慮すること。'
+  ];
+  for(const statement of statements){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',warnings:[statement]}),{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定している'),statement);
+  }
+});
+
+test('G91 TEAM_REVIEW permits limited observation without any forecast impact',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃・起用記録のみ。'}};
+  const r=result({persona:'CASPER',facts:['確認済みの出場機会や打数には選手間の差がある。'],warnings:['起用機会の差だけでは長期的なチームの成長への影響は断定できない。']});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.includes('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定している'));
+});
+
+test('G92 BATTING_ORDER rejects speculative fixed-role experience effects for CASPER',()=>{
+  const c={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打順別先発と打撃成績。'}};
+  const statements=[
+    '特定の選手への固定がチーム全体の経験機会に影響を与えるおそれがあります。',
+    '選手全体の成長につながる起用を考えたい。'
+  ];
+  for(const statement of statements){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',warnings:[statement]}),{focused:false});
+    assert.ok(issues.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加している'),statement);
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
