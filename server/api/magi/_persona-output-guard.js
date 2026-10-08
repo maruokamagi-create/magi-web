@@ -384,8 +384,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // prescriptions as discovered weaknesses; retain verified usage records.
     const unsupportedGrowthPrescription=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:控え選手|全体|チーム|選手層).{0,50}(?:経験|成長|育成)/.test(sentence)
-      && /(?:運用|求めら|大切|必要|重要|優先|課題|バランス|すべき|見据え)/.test(sentence)
+      && /(?:控え(?:選手|の)?|ベンチ(?:の)?|全体|チーム|選手層).{0,50}(?:経験|成長|育成)/.test(sentence)
+      && /(?:運用|求めら|大切|必要|重要|優先|課題|バランス|すべき|見据え|弱点)/.test(sentence)
     );
     // A previous phrase-level cleanup could leave a nonsensical fragment.
     // These fragments cannot count as a valid user-facing judgment.

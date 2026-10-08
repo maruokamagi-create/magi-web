@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 7becd82bca101a02e7555c762e633cfc2b30fef8
+- State base main SHA: c39cf7f90508cd10e56b20222dd1d5f2a4507433
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -795,6 +795,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Genuine overclaims separately present in BALTHASAR PRIMARY: `どうやって点を取るか、そこをはっきりさせないと勝てないぞ` and `試合中の得点ルートが限定されるリスクについて考慮する必要がある`. Neither follows from individual batting records. Do not treat correcting the smoke alone as resolving output quality.
 - Branch `fix/team-review-scoring-route-polarity-20261008` adds a narrowly bounded PRIMARY acceptance normalization for explicit tactical **non-causal disclaimers** (no crossing Japanese sentence punctuation), without hiding an adjacent unsupported assertion. It adds TEAM_REVIEW evidence guards for unsupported scoring-route restriction and necessary-to-win predictions, extends only the corresponding known soft-recovery guard classes, preserves direct facts and reruns `validatePersonaOutput`. Adds positive/asserted and negative/disclaimed tests and checks the actual jq PRIMARY filter. The first three stages of this fix must not invent tactics, injuries, coach intent or team scoring statistics.
 - Require CI + continuity green; merge only after checking exact main, and Vercel SHA READY. Run one controlled Live check; avoid rate-limit retry loops. Existing nine-class real browser acceptance and nine-player reasoning quality remain unresolved. Never alter Drive/CSV or free Vercel Hobby.
+
+## 2026-10-08: Reserve-player development weakness reintroduced into TEAM_REVIEW PRIMARY
+
+- Canonical pre-change `main` and Vercel READY SHA `c39cf7f90508cd10e56b20222dd1d5f2a4507433`. Production Live run `37795468517` passed all four SHA-gated staged classes, including TEAM_REVIEW PRIMARY/CROSS/SECOND/FINAL. Best-order returned a legitimate 1-1-1 deadlock; do not fabricate a majority.
+- Manual examination of TEAM_REVIEW PRIMARY job `113376404164` found CASPER's published statement: `出場記録の少ない選手の経験や控えの育成という課題も、今のチームの大切な弱点として見ていく必要があります`. The verified selection/usage spread does not by itself prove a present team weakness in reserve-player development. The synthesized FINAL avoided this claim, but every published PRIMARY statement must also be evidence-grounded.
+- This is a **general phrase-category gap** in an otherwise existing TEAM_REVIEW fail-closed guard: the current unsupported-development prescription covered `控え選手` / `全体` / `チーム` **before** `育成`, but omitted `控えの育成` and the explicit `弱点` predicate. The same gap existed in the recovery's pre-rewrite whole-sentence removal. Branch `fix/team-review-reserve-development-weakness-20261008` extends both existing checks to `控え（選手／の）` and `弱点` without changing guard type or risk classification. The normal existing soft recovery drops only unsupported developmental commentary and runs `validatePersonaOutput` again while preserving measured usage facts.
+- Added a direct TEAM_REVIEW positive guard regression with the exact Live statement, a negative explicit denial, and a batch recovery test requiring original observed facts to survive. PR CI + continuity must pass before merge; avoid duplicate provider-heavy Live requests until the running production chain finishes. No changes to Drive, CSV, coach intent or Vercel Hobby/free.
+- Still unresolved: actual authenticated iPhone/browser success for all nine question classes, player-by-player lineup evidence justification, and repeatable semantic-quality review. No selftest or single successful answer warrants a project-complete claim.
 
 ## Next concrete work
 
