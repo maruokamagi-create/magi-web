@@ -888,4 +888,30 @@ function baseResult(overrides={}) {
   assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 46/46 PASS');
+{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番先発起用回数のみ。'}};
+  const row=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','中嶋 玲月'],
+    facts:['嶋田 栄志は3番で7試合スタメン。','中嶋 玲月は打率 .485、OPS 1.120。'],
+    candidateBasis:'嶋田 栄志は3番の起用実績が7試合あり、チームの安定につながる可能性がある。',
+    primaryReason:'嶋田 栄志を置くことが最も有効な戦術である。',
+    analysis:['嶋田 栄志は3番の役割に慣れている可能性がある。','中嶋 玲月を使えば打線の攻撃力を高める可能性がある。'],
+    publicStatement:'嶋田 栄志を3番に置く。将来的にチームを支える存在になるかもしれません。',
+    warnings:['3番の適性は起用回数だけでは断定できない。']
+  });
+  const initial=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(initial.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),String(initial));
+  const before=row.candidatePlayers.slice();
+  assert.equal(recoverSoftSelectionInference(row,initial,c,{focused:false}),true,'removable prose must be recovered and revalidated');
+  assert.deepEqual(row.candidatePlayers,before,'no player should be added/removed/reordered');
+  assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合スタメン。','中嶋 玲月は打率 .485、OPS 1.120。']);
+  assert.ok(!/最も有効な戦術|役割に慣れて|チームの安定につなが|打線の攻撃力を高め|将来的にチームを支え/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  const hard=baseResult({persona:'CASPER',candidatePlayers:['嶋田 栄志','中嶋 玲月'],publicStatement:'将来的にチームを支える。'});
+  const original=JSON.stringify(hard);
+  assert.equal(recoverSoftSelectionInference(hard,initial.concat(['CASE外の選手名が混入']),c,{focused:false}),false);
+  assert.equal(JSON.stringify(hard),original,'hard validation failure cannot mutate persona');
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 47/47 PASS');
