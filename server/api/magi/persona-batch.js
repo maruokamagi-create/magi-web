@@ -215,6 +215,12 @@ function recoverSoftTeamReviewDependency(result, issues) {
       .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
 
     if(developmentAdvice.test(raw))return '';
+    // TEAM_REVIEW cannot call a team over-reliant on certain players from
+    // individual statistics alone. Replace such a claim with its evidence limit.
+    if(/頼り(?:すぎ|過ぎ)/.test(raw)
+      && !/(?:断定(?:しない|しません|できない|できません)|確認できない|根拠がない)/.test(raw))
+      return '確認済みの個別記録だけでは、特定選手への依存は断定できない。';
+
     // Reject standalone tactical/scoring rhetoric even if the sample-size
     // description was in a previous sentence. Preserve only the evidence limit.
     const standaloneTactical=/(?:勝負.{0,12}分かれ道|勝ちへの道|勝ちに(?:つな|繋)げ|生産力|戦術上.{0,18}(?:重要|ポイント)|実戦上.{0,16}課題|攻撃.{0,16}硬直)/;
