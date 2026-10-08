@@ -295,6 +295,19 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedBattingCausality)issues.push('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定している');
 
+    // A distribution of individual batting results does not demonstrate
+    // suppressed team offense, restricted scoring routes or a causal impact,
+    // even when phrased as a mere possibility. Explicit non-assertions survive.
+    const spreadToAttackEffect=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:打撃成績.{0,24}(?:偏り|数値差)|(?:この|その)?偏り|数値差|打率の差|低打率)/.test(sentence)
+      && /(?:攻撃力|得点力|攻撃.{0,12}(?:選択肢|手段|幅)|得点.{0,12}(?:ルート|機会|選択肢))/.test(sentence)
+      && /(?:制限|制約|狭め|減ら|下げ|低下|影響|左右|直結|つなが|繋が|結びつ)/.test(sentence)
+    );
+    if(spreadToAttackEffect)
+      issues.push('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している');
+
+
     const hasScoringDependencyEvidence=/(?:特定.{0,24}(?:選手|打者).{0,32}(?:調子|打撃).{0,32}(?:得点|勝敗).{0,20}左右|得点.{0,24}左右される|得点依存)/.test(evidenceText);
     if(!hasScoringDependencyEvidence){
       const unsupportedScoringDependencyRisk=parts.find(sentence=>
