@@ -62,6 +62,9 @@ on:
       - 'scripts/test-pitching-plan-semantic-route.mjs'
       - 'scripts/test-cross-output-guard.mjs'
       - 'scripts/test-persona-case-mode.mjs'
+      - '.github/workflows/magi-production-full-lineup-smoke.yml'
+      - 'scripts/validate-production-full-lineup-final.jq'
+      - 'scripts/test-production-full-lineup-smoke-contract.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
   pull_request:
     paths:
@@ -76,6 +79,9 @@ on:
       - 'server/api/magi/_full-lineup.js'
       - 'scripts/test-selection-live-evidence.mjs'
       - 'scripts/test-full-lineup-selection.mjs'
+      - '.github/workflows/magi-production-full-lineup-smoke.yml'
+      - 'scripts/validate-production-full-lineup-final.jq'
+      - 'scripts/test-production-full-lineup-smoke-contract.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
   workflow_dispatch:
 
@@ -145,6 +151,9 @@ jobs:
 
       - name: Run full 1-9 lineup deliberation cases
         run: node --experimental-default-type=module scripts/test-full-lineup-selection.mjs
+
+      - name: Validate production full-lineup outcome contract (real jq)
+        run: node --experimental-default-type=module scripts/test-production-full-lineup-smoke-contract.mjs
 
       - name: Run 7-inning pitching-plan deliberation cases
         run: node --experimental-default-type=module scripts/test-pitching-plan-selection.mjs
