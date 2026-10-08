@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 3528b87101b6327c696a2ac56220dd639d556329
+- State base main SHA: 6bf2f6d2b5b6d95880da395776ee6e4def98164b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -662,6 +662,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/team-review-standalone-tactical-overclaim-20261008`: extend TEAM_REVIEW rejection for the already disallowed standalone tactical phrases and reuse the existing soft-recovery class to replace unsupported rhetorical conclusions with explicit Evidence limitations. Preserve confirmed observations and numerical records; do not extrapolate performance, scoring or coaching intent. Add both positive failure and negative evidence-limitation tests plus a recover-and-revalidate regression.
 - Independently, on SHA `3528b87101b6327c696a2ac56220dd639d556329`, production best-order accepted PRIMARY -> CROSS -> SECOND -> FINAL, but the final status was correctly `FULL_LINEUP_DEADLOCK_1_1_1` and no official 1–9 result. Do not silently turn three distinct orders into consensus or a slot-vote composite. Remaining semantic concern: BALTHASAR SECOND `試合に勝つための最適な組み合わせ` is not a proven outcome.
 - Continue to evaluate live behavior and player-by-player rationale; do not declare MAGI final lineup ready merely because the structural workflow is green.
+
+## 2026-10-08: Generic current-player selection soft guard in Sequential Suite
+
+- SHA `3528b87101b6327c696a2ac56220dd639d556329` completed the four staged Production Live classes successfully (run `37729991061`), but BEST_ORDER final outcome remained correct `FULL_LINEUP_DEADLOCK_1_1_1` with no chosen lineup; Live PASS does not mean a resolved best order.
+- Its sequential production acceptance run `37730444726` failed the initial `selection / production-selection` job `113158113869` at CASPER PRIMARY with deterministic `PERSONA_BATCH_VALIDATION_FAILED`, `guardIssueCodes=["SELECTIONでEvidenceにない成長・育成・負担影響を追加している"]`. The fixture has `mode:"selection"`, question `3番は誰がいい？`, and **no selectionKind**, unlike staged BATTING_ORDER. The guard properly blocks unsupported growth, but the known sanitizer only supported explicit PITCHING_ROLE/BATTING_ORDER kinds, so soft recovery rejected it. The four downstream suite jobs were skipped. No retry loop: `retryFreshRequest=false`.
+- PR #120 (merged `6bf2f6d2b5b6d95880da395776ee6e4def98164b`) hardened standalone TEAM_REVIEW tactical rhetoric detection; code and tests green. This is separate from generic selection.
+- Branch `fix/generic-selection-casper-grounding-20261008` adds **opt-in** generic-selection sanitation only within `recoverSoftSelectionInference` after exactly the known CASPER growth/dependency soft guard issue. It removes unsupported prose but preserves structured candidates, verified numbers, and other evidence. All existing output guards still re-run; numeric/roster/structural failures stay fail-closed. Normal generic-selection requests are unaffected.
+- Test exact `mode:selection` + missing `selectionKind` generic fixture, preserving candidate order and verified facts, and negative without a guard issue or with a hard numeric issue. Require CI, merge, READY production SHA and sequential selection smoke confirmation before declaring generic selection stable.
+- Preserve Vercel Hobby/free and Google Drive/CSV read-only. Avoid claiming the whole MAGI system finished until actual verified questions and explanations are sound.
 
 ## Next concrete work
 
