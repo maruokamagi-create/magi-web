@@ -33,6 +33,11 @@ on:
       - 'scripts/test-provider-quota-cooldown.mjs'
       - 'server/api/magi/_roster.js'
       - 'engine-ui-v187.js'
+      - 'magi-formal-runner-v373.js'
+      - 'magi-app-bootstrap-v363.js'
+      - 'index.html'
+      - 'scripts/test-formal-deadlock-v373.mjs'
+      - '.github/workflows/magi-production-reproducibility-smoke.yml'
       - 'deliberation-integrity-v348.js'
       - 'api/magi-live-deliberation-selftest.js'
       - 'scripts/test-full-lineup-persona-transport.mjs'
@@ -77,6 +82,11 @@ on:
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_evidence-source-map.js'
       - 'server/api/magi/_full-lineup.js'
+      - 'magi-formal-runner-v373.js'
+      - 'magi-app-bootstrap-v363.js'
+      - 'index.html'
+      - 'scripts/test-formal-deadlock-v373.mjs'
+      - '.github/workflows/magi-production-reproducibility-smoke.yml'
       - 'scripts/test-selection-live-evidence.mjs'
       - 'scripts/test-full-lineup-selection.mjs'
       - '.github/workflows/magi-production-full-lineup-smoke.yml'
@@ -151,6 +161,9 @@ jobs:
 
       - name: Run full 1-9 lineup deliberation cases
         run: node --experimental-default-type=module scripts/test-full-lineup-selection.mjs
+
+      - name: Test actual formal UI runner's deadlock and evidence acceptance
+        run: node --experimental-default-type=module scripts/test-formal-deadlock-v373.mjs
 
       - name: Validate production full-lineup outcome contract (real jq)
         run: node --experimental-default-type=module scripts/test-production-full-lineup-smoke-contract.mjs

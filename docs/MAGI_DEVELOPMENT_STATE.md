@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: cd171e4e6d2c5a3299fa4ad1713ed7df246ef1e8
+- State base main SHA: f614c7f522f576320e8c77b8e6e8d3e7cb06fc31
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -712,6 +712,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/repro-primary-rejection-safe-diagnostics-20261008` adds explicit fail-closed structural diagnostics for PRIMARY and SECOND to the existing reproducibility workflow. It logs persona/stage/tag, review/data-conflict flags, candidate/unique/checked counts, and only coarse predefined review classes. It never exposes the generated free-text, individual evidence, player selection, or raw reviewReason. Existing acceptance conditions and application behavior are unchanged.
 - After green CI, run a SHA-gated normal Live plus Sequential Suite once, determine the concrete root cause of the first PRIMARY failure, and fix that cause without weakening evidence/roster/fielding verification. The synthetic full-fielding matrix in reproducibility workflow is **not** real appearance evidence.
 - Do not treat four green sequential jobs as full product acceptance. Even a reproducibility PASS would not substitute for the actual production UI path. Preserve MAGI 1-1-1 DEADLOCK semantics and free Hobby quota.
+
+## 2026-10-08: Complete sequential acceptance; real formal UI still rejected valid DEADLOCK
+
+- Main and Vercel READY SHA `f614c7f522f576320e8c77b8e6e8d3e7cb06fc31` passed four staged Live E2E classes in `37740331753`. Production Sequential Suite `37741041207` passed all five jobs: generic player selection, full lineup, pitching plan, deliberation, and reproducibility.
+- Reproducibility job `113193472077` completed PRIMARY/CROSS/SECOND/FINAL for two identical question/Evidence requests, accepted both results and passed strict persona, CROSS and FINAL stable-output comparisons. This proves **synthetic fixed-Evidence reproducibility in that test**, not automatically all real user questions.
+- Subsequent source review exposed a **real production UI-path acceptance mismatch** in `magi-formal-runner-v373.js`: `validateDelivered()` required `result.final.lineup.length===9` unconditionally for `FULL_LINEUP`. The canonical orchestrator correctly returns `LINEUP_REVIEW_REQUIRED`, `FULL_LINEUP_DEADLOCK_1_1_1`, `finalVote=1-1-1`, `lineup=[]` and `fieldingStatus=NOT_EVALUATED` when three independent SECOND orders differ. Therefore the formal browser wrapper wrongly throws `最終ベストオーダーが9人で確定していません` instead of exposing the valid unresolved result. The legacy `engine-ui-v187.js` renderer already supports `LINEUP_REVIEW_REQUIRED` as `打順 確定保留`, so this is a narrow delivery-guard mismatch.
+- Branch `fix/ui-formal-valid-deadlock-20261008` keeps numeric 14-player Evidence validation and the nine-player chosen-lineup guard, but also accepts **only** strict three-way deadlock: exact decision/status/vote/reviewReason, no selected lineup or fielding, valid 14-player current-roster membership, three unique complete 9-player SECOND orders, three matching proposal groups, slot conflicts and CROSS challenges. Any malformed/incomplete outcome still rejects. The UI reaches its existing hold verdict rather than a generic error, with a clear 99% hold progress message.
+- Add real formal-runner VM regression with 14 synthetic players, valid 1-1-1 result, existing normal consensus, UI event delivery and input restore, plus fail-closed negatives for fabricated lineup/vote, missing cross/roster/group and incomplete result. Bump index bootstrap cache-busting query and bootstrap REV `426→427` so an iPhone Chrome refresh loads the new formal runner code. The production reproducibility smoke's three asset URLs now use `v=427` as well, and the UI regression verifies this contract, preventing a false post-deployment failure caused by stale test URLs. Add frontend paths and test to Deliberation Final Selftest workflow.
+- Require PR CI and continuity success; merge only after checking current main and safe scope. After deployment READY, inspect the actual bootstrap and formal assets served by production and, when possible, verify via an authenticated browser UI. Do not claim the complete 9-class UI-path objective solved based solely on mocks or backend smoke. No CSV/Drive changes or paid Vercel plan.
 
 ## Next concrete work
 
