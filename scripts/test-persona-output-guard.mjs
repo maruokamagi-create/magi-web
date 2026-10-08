@@ -764,6 +764,18 @@ test('G92 BATTING_ORDER rejects speculative fixed-role experience effects for CA
   }
 });
 
+test('G93 TEAM_REVIEW rejects invented current growth-opportunity weakness',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個別打撃・起用記録のみ。'}};
+  const r=result({persona:'CASPER',analysis:['試合に出る選手だけでなく、出場機会が少ない選手も含めた全体の成長機会をどう確保するかという点が現在の課題である。']});
+  assert.ok(validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
+test('G94 TEAM_REVIEW preserves explicit uncertainty about growth opportunity',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個別の起用記録のみ。'}};
+  const r=result({persona:'CASPER',warnings:['全体の成長機会の不足が現在の課題かどうかは、この記録だけでは断定できない。']});
+  assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
