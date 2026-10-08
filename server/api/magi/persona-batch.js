@@ -204,6 +204,12 @@ function recoverSoftTeamReviewDependency(result, issues) {
     let raw=String(value||'').trim();
     if(!raw)return '';
 
+    // Remove an unsupported development/experience-opportunity proposition
+    // before partial phrase substitutions. Otherwise a replacement in the
+    // first half of the sentence may leave broken Japanese in the second half
+    // (such as 「選手間の出場機会の差いないか」).
+    if(developmentAdvice.test(raw))return '';
+
     raw=raw
       .replace(/(?:得点生産の)?依存度が高い/g,'選手間の打撃成績に数値差がある')
       .replace(/特定の(?:高打率|好調な)?(?:選手|打者)(?:だけ)?に(?:頼っている|頼る|依存している)/g,'選手間の打撃成績に数値差がある')
@@ -222,7 +228,6 @@ function recoverSoftTeamReviewDependency(result, issues) {
       && !/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|とは言えない|根拠がない)/.test(raw))
       return '確認済みの打撃成績には選手間の数値差がある。';
 
-    if(developmentAdvice.test(raw))return '';
     // TEAM_REVIEW cannot call a team over-reliant on certain players from
     // individual statistics alone. Replace such a claim with its evidence limit.
     if(/頼り(?:すぎ|過ぎ)/.test(raw)

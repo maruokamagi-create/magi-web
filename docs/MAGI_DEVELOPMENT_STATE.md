@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 36e185d9e85f9fcc9bfe4258e6f69c33f81c80b8
+- State base main SHA: 57e99ec37834a4629e98fe8c2a54059f4dad3d57
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -760,6 +760,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/team-review-current-growth-priority-20261008` addresses the **general** unsupported TEAM_REVIEW claim class: assertions that experience/growth opportunity, development, or team depth is currently a weakness/priority requiring action in a current-state assessment. Continue permitting explicit non-assertion/evidence-limit sentences. Reuse existing `TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している` guard and associated fail-closed soft recovery; do not add an unrelated bypass. Retain verified facts/candidate/evidence fields and rerun the original guard.
 - Add exact production-sentence guard + recovery regression, and negative explicit uncertainty test in existing deterministic deliberation CI. Require CI/continuity green. Wait for concurrent SHA `36e185d9` Production Sequential run `37751174683` to finish before merge/deploy. Never change Drive, CSV, security or Vercel Hobby/free settings.
 - Nine-class **authenticated real iPhone/browser UI-path** acceptance, individual-player evaluation, comparison, next-game strategy, direct stats and ambiguous CLARIFY are not fully verified. Continue on original canonical main+production without equating unit or staged selftest success to complete product readiness.
+
+## 2026-10-08: A rhetorical growth-opportunity worry survives TEAM_REVIEW PRIMARY
+
+- Starting source-of-truth main and READY Vercel production SHA: `57e99ec37834a4629e98fe8c2a54059f4dad3d57`. The existing guard correctly rejects unsupported current developmental priorities and causal effects; all four Live test classes passed on this SHA in run `37751934995`. The following is a **manual semantic-quality finding** despite structural green, not proof of total UI readiness.
+- In run `37751934995`, CASPER PRIMARY produced a concern that other players may not receive sufficient growth opportunity (`他の選手にも成長の機会がしっかり回っているか気にかかります`) despite only aggregate batting/appearance records and no supported inference about development access. A separate analysis speculated about long-term growth impact. The FINAL was appropriately limited to measured facts, but unsupported PRIMARY prose and partial word replacement produced a broken phrase resembling `選手間の出場機会の差いないか`.
+- Branch `fix/team-review-unverified-growth-concern-20261008` closes the *general* current-state TEAM_REVIEW gap for rhetorical worries about whether development/experience opportunities are adequate, allocated, or reaching all players. Allow explicit non-assertions of the evidence gap. Reuse the existing TEAM_REVIEW soft-guard class and revalidate after removal.
+- Move the established `developmentAdvice` early whole-sentence drop **ahead of** broad partial Japanese phrase rewrites in `recoverSoftTeamReviewDependency`. This prevents unsupported developmental claims from being left as grammatically broken fragments. Do not alter factual records, candidate selections, roster, coach statements or numerical grounding checks. Regression tests must assert the exact concern is blocked, an explicit non-assertion allowed, the compound unsupported sentence removed, and direct batting facts retained.
+- Require deterministic Deliberation Final CI and Development Continuity Guard green. Wait for ongoing production sequential run `37752540714` before merging/deploying; do not hot-loop provider calls. Preserve Vercel Hobby/free, security settings, Google Drive/CSV read-only, and the genuine best-order 1-1-1 deadlock rule.
+- Manual response-quality review is still essential. Real authenticated iPhone/browser end-to-end completion for the full nine-class question taxonomy is not yet verified, nor is every player's slot rationale convincingly explained.
 
 ## Next concrete work
 

@@ -334,7 +334,16 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       && /(?:課題|確保(?:する|すべき)|不足|必要|優先|重要)/.test(sentence)
       && /(?:チーム|選手)/.test(sentence)
     );
-    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority)
+    // In a present-state weakness review, a rhetorical worry that some players
+    // might not receive enough growth/experience opportunity still introduces
+    // an unverified developmental priority. It is not a recorded fact merely
+    // because it is phrased as a question or a personal concern.
+    const unsupportedGrowthConcern=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:成長(?:の)?機会|育成機会|経験(?:の)?機会|経験を積む機会)/.test(sentence)
+      && /(?:回ってい(?:る|ない)|足りてい(?:る|ない)|十分|行き渡|得られ|与えられ|確保|心配|懸念|気にかか|気になる|大事|重要|必要|望まし|できてい(?:る|ない))/.test(sentence)
+    );
+    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority||unsupportedGrowthConcern)
       issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
 
     // Hedging an unmeasured long-term impact as a 'possibility' does not make
