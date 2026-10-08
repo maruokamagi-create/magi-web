@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 9714e366141e4c921353c48ee34f8c598c8eab9b
+- State base main SHA: 015b02efaa397d54d3656de43107d635b8842816
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -728,6 +728,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Production Browser Bootstrap Smoke run `37743045852` failed its **Static canonical architecture guard** because `.github/workflows/magi-production-bootstrap-smoke.yml` still asserted `magi-app-bootstrap-v363.js?v=426`, although the new index correctly uses `v=427`. Lineup Stats Smoke run `37743045780` independently passed the authoritative 14-player season stats, rate formatter and player-name normalization steps, but failed its final main-path hydration check because that workflow also expected old `magi-app-bootstrap-v363.js?v=426`. These are stale test URLs, **not** evidence that the production bootstrap or MAGI deliberation failed.
 - Branch `fix/browser-bootstrap-smoke-rev427-20261008` updates six old `v=426` asset requests/assertions in the Browser Bootstrap Smoke workflow and two old references in `.github/workflows/magi-lineup-stats-smoke.yml` to `v=427`. It does not touch app code, UI result semantics, deployment access, Gemini calls, current-team Evidence, or Vercel Hobby/free settings.
 - Main's full-production Live E2E run launched by PR #126 is still in progress when this follow-up branch was opened. Prepare and test this branch independently, but **do not merge while the previous Live or downstream Sequential Suite is active**, so that SHA-gated checks are not confused by a new deployment mid-run. Afterwards merge, verify that the bootstrap smoke passes at the new SHA, and keep real browser-interaction testing marked unverified until explicitly observed.
+
+## 2026-10-08: Confirmed LIVE TEAM_REVIEW test-polarity failure and over-reliance claim
+
+- Pre-merge canonical main and Vercel production SHA: `015b02efaa397d54d3656de43107d635b8842816`. PR #127 was independently merged from `9714e366` to correct stale `v=426` expectations in the bootstrap and lineup-stats smoke workflows after the app's confirmed `v=427` upgrade. Do not duplicate/revert that fix. New work does not change bootstrap, player data, or the formal UI hold-verdict guard.
+- On canonical SHA `9714e366141e4c921353c48ee34f8c598c8eab9b`, Live run `37743045749` succeeded best-order, closer, natural-third and TEAM_REVIEW PREPARE/PRIMARY/CROSS/SECOND. It then failed the **TEAM_REVIEW SECOND workflow assertion** before FINAL. Exact BALTHASAR statement `戦術的制約の断定に繋げることはできない` correctly disclaimed causality, yet the smoke's flat forbidden-token regex rejected the embedded `戦術的制約`. This is a false-positive in acceptance, not evidence of an unsupported positive conclusion.
+- Separately the same TEAM_REVIEW PRIMARY contained an actual ungrounded CASPER statement `一部の選手に頼りすぎている部分があります`. The deterministic TEAM_REVIEW dependency guard checked dependency and reliance variants but omitted `頼りすぎ／頼り過ぎ`. Extend that exact semantic class, and allow only the existing soft recovery to discard this claim while retaining verified facts and revalidating with the original guard. No user/coach intent may be invented.
+- Branch `fix/team-review-polarity-casper-20261008` changes the backend guard + batch soft recovery; new assertions and recovery regression; and the Live TEAM_REVIEW acceptance filter to normalize only explicit denials of unsupported tactics/reliance before applying the **original** broad forbidden-assertion regex. Actual unsupported positive claims still fail. New deterministic CI test executes the **actual jq filters** against valid negations, ungrounded claims and mixed contradictory sentences before any provider-heavy Live acceptance can run.
+- Require green deliberation + continuity CI before merging. After new SHA READY, inspect authentic production TEAM_REVIEW PRIMARY/SECOND/FINAL and BALTHASAR/CASPER rationale. Do not mistake structural success or synthetic tests for completion of the nine-class actual browser UI-path target. No Google Drive/CSV edit; preserve free Vercel Hobby.
 
 ## Next concrete work
 

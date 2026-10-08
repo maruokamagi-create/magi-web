@@ -692,4 +692,15 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(rejected),original,'hard evidence failure must not mutate persona content');
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 35/35 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃成績のみ。'}};
+  const result=baseResult({persona:'CASPER',publicStatement:'今のチームは一部の選手に頼りすぎている部分があります。',facts:['選手ごとに安打数の差が記録されている。']});
+  const issues=validatePersonaOutput(c,result,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している'));
+  assert.equal(recoverSoftPersonaBatchValidation(result,issues,c,{focused:false}),true);
+  assert.ok(!/頼りすぎ|頼り過ぎ/.test(JSON.stringify(result)));
+  assert.deepEqual(result.facts,['選手ごとに安打数の差が記録されている。']);
+  assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 36/36 PASS');

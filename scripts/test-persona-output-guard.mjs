@@ -702,6 +702,18 @@ test('G85 TEAM_REVIEW preserves explicit non-causal evidence limitations',()=>{
   assert.ok(!issues.some(x=>x.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')));
 });
 
+test('G86 TEAM_REVIEW rejects unsupported over-reliance even without explicit dependency keywords',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃記録のみ。'}};
+  const r=result({persona:'CASPER',publicStatement:'今のチームは一部の選手に頼りすぎている部分があります。'});
+  assert.ok(validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している'));
+});
+
+test('G87 TEAM_REVIEW allows explicit non-assertion of over-reliance',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃記録のみ。'}};
+  const r=result({persona:'CASPER',publicStatement:'記録だけで特定選手に頼りすぎているとは断定できない。'});
+  assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
