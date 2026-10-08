@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 7cdf2488e45ee082d5a14a221fac3bc14f35aab1
+- State base main SHA: cd171e4e6d2c5a3299fa4ad1713ed7df246ef1e8
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -704,6 +704,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - PR #124 addresses the known unconditional reproducibility status assertion by reusing the strict verified final-outcome jq contract, separately compares all vote/fielding/conflict fields on identical-Evidence replay, and now adds safe progress markers `REPRO_STAGE` and final `{status, finalVote, fieldingStatus, reviewReason}` only, never rejected narrative or sensitive player records. Any subsequent failure should identify the stage without guessing.
 - Do not merge this PR until both local CI and development continuity checks pass. With old Sequential Suite complete, proceed with a single SHA-matched deployment and next Live→Sequential chain; avoid redundant provider-quota calls.
 - User-facing conclusion at this point: four sequential jobs succeeded, reproducibility unresolved; best-order itself remains 1-1-1 DEADLOCK, NOT a final 1–9 recommendation. No fee tier change or Drive/CSV writes.
+
+## 2026-10-08: Sequential suite reaches reproducibility; PRIMARY structural acceptance silently fails
+
+- Main and READY production SHA `cd171e4e6d2c5a3299fa4ad1713ed7df246ef1e8` passed all four staged Live E2E classes in run `37735068050`.
+- Production Sequential Suite run `37735552966`: selection, full-lineup, pitching-plan and deliberation jobs **all passed**. Reproducibility job `113175360789` failed after `REPRO_STAGE tag=a phase=PRIMARY`, before the first CROSS. The API produced no logged HTTP failure. The last ordinary shell acceptance required `reviewRequested==false`, `dataConflict==false`, and 9 distinct candidates, but did not report which check failed. We must not assume a generic model error or a caching/replay problem when the first PRIMARY attempt has not passed yet.
+- Branch `fix/repro-primary-rejection-safe-diagnostics-20261008` adds explicit fail-closed structural diagnostics for PRIMARY and SECOND to the existing reproducibility workflow. It logs persona/stage/tag, review/data-conflict flags, candidate/unique/checked counts, and only coarse predefined review classes. It never exposes the generated free-text, individual evidence, player selection, or raw reviewReason. Existing acceptance conditions and application behavior are unchanged.
+- After green CI, run a SHA-gated normal Live plus Sequential Suite once, determine the concrete root cause of the first PRIMARY failure, and fix that cause without weakening evidence/roster/fielding verification. The synthetic full-fielding matrix in reproducibility workflow is **not** real appearance evidence.
+- Do not treat four green sequential jobs as full product acceptance. Even a reproducibility PASS would not substitute for the actual production UI path. Preserve MAGI 1-1-1 DEADLOCK semantics and free Hobby quota.
 
 ## Next concrete work
 
