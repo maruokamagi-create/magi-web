@@ -914,4 +914,27 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(hard),original,'hard validation failure cannot mutate persona');
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 47/47 PASS');
+{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チーム3番起用回数、打率、OPSのみ。'}};
+  const row=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    facts:['嶋田 栄志は3番で7試合スタメン。','坂田 暉馬のOPSは.861。'],
+    candidateBasis:'嶋田 栄志は3番で7試合起用されていて、チームの安定性を優先する。',
+    primaryReason:'嶋田 栄志を3番に置くとチームの安定を図ることができる。',
+    analysis:['嶋田 栄志は3番の役割の継続性が確認できる。','坂田 暉馬はOPSが高く4番へのつなぎとして有効な可能性がある。'],
+    publicStatement:'3番での実績を考慮すると、嶋田 栄志は打順の安定性において強みを持つ。',
+    warnings:['坂田 暉馬の3番経験が少ない点はリスクとなる可能性がある。']
+  });
+  const issue='BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している';
+  const initial=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(initial.includes(issue),JSON.stringify(initial));
+  const previous=row.candidatePlayers.slice();
+  assert.equal(recoverSoftSelectionInference(row,initial,c,{focused:false}),true);
+  assert.deepEqual(row.candidatePlayers,previous);
+  assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合スタメン。','坂田 暉馬のOPSは.861。']);
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  assert.ok(!/チームの安定|打順の安定|役割の継続性|つなぎとして有効|リスクとなる可能性/.test(JSON.stringify(row)));
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 48/48 PASS');
