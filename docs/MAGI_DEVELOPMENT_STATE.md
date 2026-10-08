@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 30c6df0a9528f0f324124219b883e5e437770382
+- State base main SHA: 7c8ce7ab69490a213478cde8837b9396ebffb70c
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -647,6 +647,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - The recovered row must pass `validatePersonaOutput` plus `personaFullLineupIssues` plus `personaPitchingPlanIssues` again before being accepted; otherwise remain fail-closed. Add explicit regression covering both positive and negative paths to Full Lineup Context Guard.
 - Only after CI green, merge, production SHA readiness, and a fresh staged Live run should best-order success be claimed. Inspect the CROSS, SECOND, and FINAL stages and check every reported position against actual starting-position Evidence. Do not confuse correct serialization with strong strategic rationale.
 - Keep Vercel Hobby/free. Never rewrite Google Drive, CSV, score sheets, or existing baseball records.
+
+## 2026-10-08: BEST_ORDER moves from BALTHASAR to CASPER primary
+
+- Production SHA `7c8ce7ab69490a213478cde8837b9396ebffb70c`, Live run `37729499470` passed exact SHA readiness and the earlier BALTHASAR PRIMARY blocker after PR #118 reconciliation. It then failed `PRIMARY_CASPER_INVALID` three times with `issueCodes=["ORDER_EXPLANATION_CONFLICT","UNSUPPORTED_DEVELOPMENT_OR_BURDEN"]`, `dataConflict=false`, and exactly 9 unique in-roster candidates. This is improvement, not a full pass.
+- Branch `fix/live-lineup-mixed-prose-and-casper-grounding-20261008` extends the isolated narration-reconciliation path to one narrowly whitelisted class of CASPER unsupported growth/dependency/burden language when accompanied by the proven order description conflict. The generated explanatory text is discarded, the existing structured candidate sequence is unchanged, and all original validators must pass again before accepting. Any numeric, roster, other output or defense mismatch stays fail-closed.
+- Extend the Full Lineup Context Guard regression to verify the mixed CASPER case and negatives for standalone unsupported language and any additional fielding guard issue. Only merge after CI succeeds; wait for previous Live run to complete to avoid parallel provider calls on Hobby.
+- Continue live staged best-order tests through CROSS, SECOND and FINAL; preserve disagreements and independent rechecks. Manual semantic quality remains required before completion.
 
 ## Next concrete work
 
