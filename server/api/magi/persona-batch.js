@@ -225,7 +225,13 @@ function recoverSoftTeamReviewDependency(result, issues) {
       /(?:負担|出場機会|起用).{0,40}(?:集中|偏).{0,24}(?:していないか|ないか|気にかか|懸念|心配)/.test(raw);
     const malformedUsageFragment=
       /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(raw);
-    if(unverifiedGrowthPrescription||speculativeUsageConcern||malformedUsageFragment)return '';
+    const unsupportedBenchDevelopmentWeakness=
+      /(?:控え(?:選手)?|出場記録の少ない選手|出場機会の少ない選手).{0,48}(?:経験|育成|成長)/.test(raw)
+      && /(?:課題|弱点|必要|重要|優先|見ていく)/.test(raw)
+      && !/(?:指導者|保護者).{0,24}(?:発言|観察記録|記録した)/.test(raw)
+      && !/(?:断定(?:しない|しません|できない|できません)|確認できない|根拠がない|Evidenceにない)/.test(raw);
+
+    if(unverifiedGrowthPrescription||speculativeUsageConcern||malformedUsageFragment||unsupportedBenchDevelopmentWeakness)return '';
 
     raw=raw
       .replace(/(?:得点生産の)?依存度が高い/g,'選手間の打撃成績に数値差がある')
