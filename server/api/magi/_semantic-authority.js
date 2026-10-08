@@ -201,10 +201,15 @@ export function normalizeModel(raw,question,context){
   // A high-confidence TEAM aggregate is not an individual-player lookup.
   // Never demand an individual name for current team OPS, wins or similar
   // summary requests. FULL_REPORT still requires a supported report target.
+  // Explicit team-scope questions must not inherit an unrelated player
+  // mentioned earlier in the conversation just because they say 「今の」.
+  // Keep genuine player anaphora and model uncertainty under CLARIFY.
+  const explicitTeamSubject=/(?:チーム|全体|全員)/.test(String(question||''))
+    && !/(?:その選手|この選手|あの選手|その人|本人|彼(?:の)?)/.test(String(question||''));
   const teamAggregateLookup=['SINGLE_VALUE','SUMMARY'].includes(mode)
     && domains.includes('TEAM')
     && canonicalPlayers.length===0
-    && grounded.length===0;
+    && (grounded.length===0 || (direct.length===0 && explicitTeamSubject));
   if(teamAggregateLookup)base.teamAggregate=true;
   if(['SINGLE_VALUE','SUMMARY','FULL_REPORT'].includes(mode) && !teamAggregateLookup){
     const statDomains=domains.filter(d=>['BATTING','PITCHING','FIELDING'].includes(d));
