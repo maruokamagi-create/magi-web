@@ -70,12 +70,49 @@ function reinforceEvidence(evidence){
   return e;
 }
 
+// The engine correctly returns a non-selected FULL_LINEUP result when all
+// three SECOND orders differ. This is an answer (DEADLOCK), not a missing-data
+// error. Accept it only when every structural invariant is verifiable.
+function validFullLineupDeadlock(final,evidence){
+  if(final?.mode!=='FULL_LINEUP'||final?.status!=='LINEUP_REVIEW_REQUIRED')return false;
+  if(final?.reviewReason!=='FULL_LINEUP_DEADLOCK_1_1_1'
+    ||final?.deliberationDecision!=='DEADLOCK'||final?.finalVote!=='1-1-1')return false;
+  if(!Array.isArray(final.lineup)||final.lineup.length!==0
+    ||!Array.isArray(final.battingOrder)||final.battingOrder.length!==0)return false;
+  if(final.fieldingStatus!=='NOT_EVALUATED'||final.fieldingReason!=='LINEUP_DEADLOCK')return false;
+  const norm=v=>text(v).normalize('NFKC').replace(/[\\s　]/g,'');
+  const roster=currentPlayers(evidence).map(p=>norm(p.name));
+  if(roster.length!==14||new Set(roster).size!==14)return false;
+  const votes=final.personaLineups;
+  if(!votes||typeof votes!=='object'||Array.isArray(votes))return false;
+  const personas=Object.keys(votes).sort();
+  if(personas.join(',')!=='balthasar,casper,melchior')return false;
+  const signatures=[];
+  for(const persona of personas){
+    const order=votes[persona];
+    if(!Array.isArray(order)||order.length!==9)return false;
+    const keys=order.map(norm);
+    if(keys.some(x=>!x||!roster.includes(x))||new Set(keys).size!==9)return false;
+    signatures.push(keys.join('>'));
+  }
+  if(new Set(signatures).size!==3)return false;
+  if(!Array.isArray(final.proposalGroups)||final.proposalGroups.length!==3
+    ||!Array.isArray(final.slotConflicts)||final.slotConflicts.length===0)return false;
+  if(final.proposalGroups.some(g=>g?.support!==1||!Array.isArray(g?.order)||g.order.length!==9))return false;
+  const challenges=final.crossDiscussion?.challenges;
+  if(!challenges||personas.some(p=>!Array.isArray(challenges[p])||challenges[p].length===0))return false;
+  return true;
+}
+
 function validateDelivered(result,selectionKind){
   const kind=String(selectionKind||'').toUpperCase();
   if(kind!=='FULL_LINEUP')return;
   const delivered=result?.case?.evidence;
   if(delivered?.numericEvidenceContract?.currentBattingNumbersProvided!==true)throw new Error('数値Evidenceが3賢人エンジンへ到達していません');
   if(Number(delivered?.numericEvidenceContract?.currentPlayersWithCoreBatting)!==14)throw new Error('現チーム14名の数値Evidenceがエンジン側で不完全です');
+  // Preserve a legitimate 1-1-1 vote as a visible, unresolved verdict.
+  // No fabricated 1-9 order or fielding is permitted on this branch.
+  if(validFullLineupDeadlock(result?.final,delivered))return;
   const finalLineup=result?.final?.lineup;
   if(!Array.isArray(finalLineup)||finalLineup.length!==9)throw new Error('最終ベストオーダーが9人で確定していません');
   const names=finalLineup.map(v=>text(v?.name)).filter(Boolean);
@@ -144,7 +181,9 @@ const runner=async function({question,evidence=null,selectionKind='',semantic=nu
       window.MAGI_LAST_DELIBERATION_RESULT=clone(capturedResult);
       document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:clone(capturedResult)}));
     }
-    progress(99,'最終結果の構造・Evidence整合性を確認済み','FINAL VALIDATION');
+    const held=String(capturedResult?.final?.mode||'')==='FULL_LINEUP'
+      && String(capturedResult?.final?.reviewReason||'')==='FULL_LINEUP_DEADLOCK_1_1_1';
+    progress(99,held?'3賢人の意見不一致を確認。ベストオーダーは確定保留です':'最終結果の構造・Evidence整合性を確認済み','FINAL VALIDATION');
     return capturedResult||uiResult;
   }catch(error){
     const stage=text(error?.magiStage||'');
