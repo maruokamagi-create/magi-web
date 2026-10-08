@@ -117,6 +117,9 @@ jobs:
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
 
+      - name: Verify TEAM_REVIEW live-stage acceptance polarity
+        run: node --experimental-default-type=module scripts/test-team-review-stage-polarity.mjs
+
       - name: Run Live 133 residual grounding cases
         run: node --experimental-default-type=module scripts/test-live133-residual-grounding.mjs
 
