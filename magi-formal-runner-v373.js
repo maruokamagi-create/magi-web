@@ -98,7 +98,10 @@ function validFullLineupDeadlock(final,evidence){
   if(new Set(signatures).size!==3)return false;
   if(!Array.isArray(final.proposalGroups)||final.proposalGroups.length!==3
     ||!Array.isArray(final.slotConflicts)||final.slotConflicts.length===0)return false;
-  if(final.proposalGroups.some(g=>g?.support!==1||!Array.isArray(g?.order)||g.order.length!==9))return false;
+  if(final.proposalGroups.some(g=>g?.support!==1||!Array.isArray(g?.order)||g.order.length!==9
+    ||!Array.isArray(g?.personas)||g.personas.length!==1||!personas.includes(g.personas[0])))return false;
+  const groupSignatures=final.proposalGroups.map(g=>g.order.map(norm).join('>'));
+  if(new Set(groupSignatures).size!==3||groupSignatures.some(sig=>!signatures.includes(sig)))return false;
   const challenges=final.crossDiscussion?.challenges;
   if(!challenges||personas.some(p=>!Array.isArray(challenges[p])||challenges[p].length===0))return false;
   return true;
