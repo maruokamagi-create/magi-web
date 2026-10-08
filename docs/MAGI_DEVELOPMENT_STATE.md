@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 7becd82bca101a02e7555c762e633cfc2b30fef8
+- State base main SHA: c39cf7f90508cd10e56b20222dd1d5f2a4507433
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -795,6 +795,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Genuine overclaims separately present in BALTHASAR PRIMARY: `どうやって点を取るか、そこをはっきりさせないと勝てないぞ` and `試合中の得点ルートが限定されるリスクについて考慮する必要がある`. Neither follows from individual batting records. Do not treat correcting the smoke alone as resolving output quality.
 - Branch `fix/team-review-scoring-route-polarity-20261008` adds a narrowly bounded PRIMARY acceptance normalization for explicit tactical **non-causal disclaimers** (no crossing Japanese sentence punctuation), without hiding an adjacent unsupported assertion. It adds TEAM_REVIEW evidence guards for unsupported scoring-route restriction and necessary-to-win predictions, extends only the corresponding known soft-recovery guard classes, preserves direct facts and reruns `validatePersonaOutput`. Adds positive/asserted and negative/disclaimed tests and checks the actual jq PRIMARY filter. The first three stages of this fix must not invent tactics, injuries, coach intent or team scoring statistics.
 - Require CI + continuity green; merge only after checking exact main, and Vercel SHA READY. Run one controlled Live check; avoid rate-limit retry loops. Existing nine-class real browser acceptance and nine-player reasoning quality remain unresolved. Never alter Drive/CSV or free Vercel Hobby.
+
+## 2026-10-08: TEAM_REVIEW CASPER bench-development claim leaks despite staged green
+
+- Canonical main and READY Vercel production SHA: `c39cf7f90508cd10e56b20222dd1d5f2a4507433`. Production Live run `37795468517` passed best-order, closer, natural-third, TEAM_REVIEW and exact revision readiness. BEST_ORDER returned a valid `FULL_LINEUP_DEADLOCK_1_1_1`, which must be preserved rather than coerced to consensus.
+- Manual inspection of live TEAM_REVIEW job `113376404164` found CASPER PRIMARY `出場記録の少ない選手の経験や控えの育成という課題も、今のチームの大切な弱点として見ていく必要があります。` This extrapolates a generic coaching/development priority into a confirmed present team weakness. Individual usage differences or dated observations must not be silently promoted into such a causal/evaluative claim. FINAL happened to remain cautious; PRIMARY quality is still insufficient.
+- Branch `fix/team-review-bench-development-weakness-20261008` extends the existing TEAM_REVIEW unsupported-growth issue **only** for unsupported bench/low-appearance development prescriptions with explicit present weakness/priority markers; ordinary observed start/at-bat differences and explicit `確認できない` limitations remain allowed. Batch recovery deletes the unsafe sentence whole, preserves verified facts, and passes the existing evidence guard again. No fabricated coach intent; review dated direct observation claims separately.
+- Add regressions for exact live CASPER phrase, valid limited observations, and recovery. CI and Development Continuity Guard must be green before merge. Verify production exact READY SHA and live primary/second/final prose again. Do not confuse staged acceptance with full nine-class authenticated mobile/browser coverage.
+- No Google Drive/CSV mutation, no Vercel protection changes, no paid tier. The nine-player rationale quality and real UI-path verification remain open.
 
 ## Next concrete work
 
