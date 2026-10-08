@@ -871,4 +871,21 @@ function baseResult(overrides={}) {
   assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 45/45 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個別打撃記録のみ。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    facts:['現チームの打撃成績には選手間の数値差がある。'],
+    analysis:['試合を勝ち抜くためには、下位打線の出塁が勝敗の鍵を握る。'],
+    warnings:['攻撃の軸が抑え込まれた場合の代替策が不足する懸念がある。'],
+    publicStatement:'個別記録の数値差は確認できる。'
+  });
+  const issues=validatePersonaOutput(c,result,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
+  assert.equal(recoverSoftPersonaBatchValidation(result,issues,c,{focused:false}),true);
+  assert.deepEqual(result.facts,['現チームの打撃成績には選手間の数値差がある。']);
+  assert.ok(!/勝敗の鍵|代替策が不足/.test(JSON.stringify(result)));
+  assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 46/46 PASS');

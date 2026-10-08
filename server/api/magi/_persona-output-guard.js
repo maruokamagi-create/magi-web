@@ -294,6 +294,10 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
         || /(?:限定|狭ま|狭め|不足).{0,30}(?:得点|攻撃).{0,16}(?:ルート|経路|手段|選択肢|機会)/.test(sentence)
         || /(?:出塁|進塁打|安打|下位打線).{0,90}(?:高め|改善|増や|出せ|増え).{0,45}(?:打てなければ|できなければ|なければ|ないと|されないと).{0,80}(?:得点力|得点機会).{0,35}(?:限定|低下|下が|狭ま|厳し)/.test(sentence)
         || /(?:特定|一部|上位).{0,28}(?:バッター|打者|選手).{0,40}(?:だけに|ばかりに)(?:頼|依存).{0,40}(?:厳し|不利|勝てない|得点)/.test(sentence)
+        // Recorded individual batting stats alone do not demonstrate a
+        // necessary winning strategy or a lack of alternative attack options.
+        || /(?:勝敗.{0,16}鍵(?:を握|になる)|勝敗の鍵|勝利の鍵)/.test(sentence)
+        || /攻撃の軸.{0,42}代替(?:策|手段).{0,25}(?:不足|欠け|ない|懸念)/.test(sentence)
       )
     );
     if(unsupportedWinOrScoringRoute)

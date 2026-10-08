@@ -879,6 +879,26 @@ test('G97 TEAM_REVIEW allows explicit denials of the same hypothetical outcomes'
   assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
 });
 
+test('G98 TEAM_REVIEW blocks win-key and unverified missing attack alternatives',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個人別成績のみ。'}};
+  for(const claim of [
+    '試合を勝ち抜くためには、上位の好調な打線だけでなく、下位打線の出塁や得点機での効率的な進め方が勝敗の鍵を握る。',
+    '攻撃の軸が抑え込まれた場合の代替策が不足する懸念がある。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',warnings:[claim]}),{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'),claim);
+  }
+});
+
+test('G99 TEAM_REVIEW preserves explicit rejection of victory-key/alternative shortage inferences',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個人別成績のみ。'}};
+  const r=result({persona:'BALTHASAR',facts:['打撃成績に選手間の数値差がある。'],warnings:[
+    '下位打線の出塁が勝敗の鍵を握るとは断定できない。',
+    '攻撃の軸を抑えられた場合の代替策が不足するとは確認できない。'
+  ]});
+  assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

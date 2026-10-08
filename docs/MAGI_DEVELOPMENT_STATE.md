@@ -820,6 +820,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Add six deterministic regressions for actual semantic normalization + core routing + `buildLiveAnswer` with fixed fake XLSM provider; includes positive team OPS/record, unchanged personal metrics, ambiguous/no player, unsupported full team report and confidence gate. Wire to Deliberation Final CI for the changed semantic/core files, before merging.
 - This is **local route contract evidence**, not verification of the authenticated production iPhone UI path. The remaining nine-class actual UI goal includes individual evaluation, tactics, comparison, direct statistics, and CLARIFY. Need verify production after CI, respecting free Vercel and protecting Drive/CSV and coach evidence.
 
+## 2026-10-09: TEAM_REVIEW win-key and unverified alternative-tactic claims
+
+- Baseline canonical GitHub main/READY production SHA: `6226bcef9c2b50756b87777cdae3aaee610e03c5`. The four-class Production Live workflow `37801269938` passed through TEAM_REVIEW FINAL. The BEST_ORDER returned a legitimate 1-1-1 DEADLOCK, so do not fabricate a selected 1–9 lineup.
+- Manual read of TEAM_REVIEW job `113395622100` found two still-ungrounded PRIMARY BALTHASAR sentences: `下位打線の出塁や得点機での効率的な進め方が勝敗の鍵を握る` in analysis, and `攻撃の軸が抑え込まれた場合の代替策が不足する懸念がある` in warnings. Individual batting statistics and current appearance records alone do not prove either a particular necessary winning factor or the absence of an alternative attack tactic. The synthesized FINAL did not repeat these, but PRIMARY must also be evidence-grounded.
+- Branch `fix/team-review-victory-key-and-alternative-overclaim-20261009` extends the **existing** TEAM_REVIEW win/scoring causal guard category to the observed "勝敗の鍵" and absent alternative strategy variants; the same existing fail-closed soft recovery replaces these sentences with an explicit evidence limitation before publication. Measured batting facts and direct negative statements (`とは断定できない`) remain intact.
+- Positive and negative output-guard regressions and batch recovery/fact preservation are added. CI, continuity and source-guard must pass before main merge. Wait for any prior provider-heavy workflow to finish; avoid paid Vercel features or any Drive/CSV/score sheet writes.
+- New team aggregate natural stats route PR #141 is merged as `6226bcef`; tests passed, but its actual authenticated iPhone Chrome TEAM OPS query is still unverified. Full nine-class authenticated browser path and specific reasons for all nine batting slots remain priority; do not equate a green staged backend run with project completion.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.
