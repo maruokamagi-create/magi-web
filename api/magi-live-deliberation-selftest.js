@@ -214,7 +214,7 @@ export function lineupPersonaFailureDiagnostic(row){
   const reason=String(row?.reviewReason||'');
   const reasonClass=/FULL_LINEUP_STANDARD_DEFENSE/.test(reason)?'FIELDING_COVERAGE'
     :/正式ロスター完全一致/.test(reason)?'ROSTER_CHECK'
-    :/(?:FULL_LINEUP:|9人の打順構成|打順構成エラー)/.test(reason)?'LINEUP_STRUCTURE'
+    :/(?:FULL_LINEUP:|打順構成)/.test(reason)?'LINEUP_STRUCTURE'
     :/回答文に、確認できた記録と合わない/.test(reason)?'EVIDENCE_OUTPUT_GUARD'
     :row?.dataConflict===true?'DATA_CONFLICT'
     :row?.reviewRequested===true?'REVIEW_REQUIRED'
