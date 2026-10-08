@@ -790,6 +790,25 @@ test('G96 TEAM_REVIEW permits explicit evidence gap about growth opportunity',()
   assert.ok(!issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
 });
 
+test('G97 TEAM_REVIEW rejects scoring concentration inferred from individual batting averages',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個別打率と打数だけが記録されている。'}};
+  const phrases=[
+    '特定の選手に得点力が偏っている現状は無視できない。',
+    '特定の打者に成績が集中している現状は、実戦における攻撃の選択肢に影響を与える可能性がある。'
+  ];
+  for(const phrase of phrases){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:phrase}),{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'),phrase);
+  }
+});
+
+test('G98 TEAM_REVIEW preserves explicitly unproven team-scoring concentration',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個別打率と打数だけが記録されている。'}};
+  const r=result({persona:'BALTHASAR',publicStatement:'特定の選手に得点力が偏っているかは、個別の打率だけでは確認できない。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

@@ -786,4 +786,21 @@ function baseResult(overrides={}) {
     'the unsupported sentence must be removed as a whole, not partially replaced into broken Japanese');
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 41/41 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの打率・打数・個別安打数。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    facts:['確認済みの打撃成績には選手間の数値差がある。'],
+    publicStatement:'特定の選手に得点力が偏っている現状は無視できない。',
+    analysis:['特定の打者に成績が集中している現状は、実戦における攻撃の選択肢に影響を与える可能性がある。'],
+    warnings:['確認済みの記録と未確認の影響を混同しないこと。']
+  });
+  const issues=validatePersonaOutput(c,result,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'));
+  assert.equal(recoverSoftPersonaBatchValidation(result,issues,c,{focused:false}),true);
+  assert.deepEqual(result.facts,['確認済みの打撃成績には選手間の数値差がある。']);
+  assert.ok(!/得点力が偏っている現状|攻撃の選択肢に影響を与える可能性/.test(JSON.stringify(result)));
+  assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 42/42 PASS');

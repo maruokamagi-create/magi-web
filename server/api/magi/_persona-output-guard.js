@@ -307,6 +307,26 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     if(spreadToAttackEffect)
       issues.push('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している');
 
+    // A difference in individual AVG/OPS/AB is not evidence that runs or
+    // scoring power are concentrated in particular players. Likewise, a
+    // concentration of individual batting metrics is not a measured limit
+    // on offensive tactical choices or scoring routes.
+    const scoringConcentrationLeap=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:特定|一部|上位).{0,26}(?:選手|打者).{0,28}(?:得点力|得点源|得点).{0,26}(?:偏|集中|依存|限定)/.test(sentence)
+        || /(?:得点力|得点源).{0,25}(?:特定|一部|上位).{0,28}(?:選手|打者).{0,24}(?:偏|集中|依存)/.test(sentence)
+        || (
+          /(?:選手|打者).{0,36}(?:打撃)?成績.{0,28}(?:集中|偏)/.test(sentence)
+          && /(?:攻撃|得点|戦術|試合展開).{0,42}(?:選択肢|ルート|手段|幅|機会)/.test(sentence)
+          && /(?:影響|左右|制約|狭め|不足|損な|制限|減ら)/.test(sentence)
+        )
+      )
+    );
+    if(scoringConcentrationLeap && !issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'))
+      issues.push('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している');
+
+
 
     const hasScoringDependencyEvidence=/(?:特定.{0,24}(?:選手|打者).{0,32}(?:調子|打撃).{0,32}(?:得点|勝敗).{0,20}左右|得点.{0,24}左右される|得点依存)/.test(evidenceText);
     if(!hasScoringDependencyEvidence){
