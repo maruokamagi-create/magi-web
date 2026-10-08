@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: f614c7f522f576320e8c77b8e6e8d3e7cb06fc31
+- State base main SHA: 9714e366141e4c921353c48ee34f8c598c8eab9b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -721,6 +721,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/ui-formal-valid-deadlock-20261008` keeps numeric 14-player Evidence validation and the nine-player chosen-lineup guard, but also accepts **only** strict three-way deadlock: exact decision/status/vote/reviewReason, no selected lineup or fielding, valid 14-player current-roster membership, three unique complete 9-player SECOND orders, three matching proposal groups, slot conflicts and CROSS challenges. Any malformed/incomplete outcome still rejects. The UI reaches its existing hold verdict rather than a generic error, with a clear 99% hold progress message.
 - Add real formal-runner VM regression with 14 synthetic players, valid 1-1-1 result, existing normal consensus, UI event delivery and input restore, plus fail-closed negatives for fabricated lineup/vote, missing cross/roster/group and incomplete result. Bump index bootstrap cache-busting query and bootstrap REV `426→427` so an iPhone Chrome refresh loads the new formal runner code. The production reproducibility smoke's three asset URLs now use `v=427` as well, and the UI regression verifies this contract, preventing a false post-deployment failure caused by stale test URLs. Add frontend paths and test to Deliberation Final Selftest workflow.
 - Require PR CI and continuity success; merge only after checking current main and safe scope. After deployment READY, inspect the actual bootstrap and formal assets served by production and, when possible, verify via an authenticated browser UI. Do not claim the complete 9-class UI-path objective solved based solely on mocks or backend smoke. No CSV/Drive changes or paid Vercel plan.
+
+## 2026-10-08: Live TEAM_REVIEW assertion/polarity and stale browser revision smoke
+
+- Starting canonical main and deployed Vercel SHA: `9714e366141e4c921353c48ee34f8c598c8eab9b`. This SHA includes the formal UI 1-1-1 deadlock hold-verdict delivery change, but actual iPhone Chrome UI validation is still pending.
+- Production Live run `37743045749` passed revision, best-order, closer and natural-third; TEAM_REVIEW run job `113199232900` successfully generated PRIMARY/CROSS/SECOND but failed a **test-only** jq text check before FINAL. The SECOND BALTHASAR text said `戦術的制約の断定に繋げることはできない`; the smoke rejected the substring `戦術的制約` even though the statement **negated** the unsupported inference. This does not prove a TEAM_REVIEW application failure.
+- The same PRIMARY showed a genuine CASPER grounding issue `今のチームは一部の選手に頼りすぎている部分があります`. The existing `TEAM_REVIEW` guard recognized `頼り切` and `依存` but not `頼りすぎ`. Extend the detection and recover only this known soft dependency assertion into an explicit evidence limit. Preserve verified individual facts and recheck all original guards. Add assertion-vs-denial regression and recovery test.
+- Two other current-SHA smoke jobs failed due to **outdated test assertions**, not evidence of actual bootstrap/stats breakage: `37743045852` demanded `magi-app-bootstrap-v363.js?v=426` while index and the bootstrap itself are at revision `427`; `37743045780` had the same stale version assertion. Replace hardcoded number with extraction of `const REV` from the actual bootstrap and enforce exact matching between served index and runtime source, never silently ignore a mismatch.
+- The Live workflow's SECOND text check now normalizes only explicit non-causal denials of tactical constraints before applying its existing broad forbidden-assertion regex. It also prohibits standalone `頼りすぎ` claims at PRIMARY and SECOND. This is an acceptance-gate polarity correction, not an evidence-guard bypass.
+- Branch `fix/live-team-review-assertion-and-rev-smokes-20261008` includes two backend files, three CI workflows, two focused test scripts and this ledger. Require CI to pass before merge and the new main SHA to be READY. Do not claim the full nine-class real UI problem is finished from these tests; preserve Vercel Hobby/free and do not touch Google Drive originals/CSV.
 
 ## Next concrete work
 
