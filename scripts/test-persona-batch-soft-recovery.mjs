@@ -839,4 +839,20 @@ function baseResult(overrides={}) {
   assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 43/43 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の出場機会と打撃成績のみ。'}};
+  const result=baseResult({
+    persona:'CASPER',
+    facts:['現チームの出場機会には選手間の差がある。'],
+    publicStatement:'出る選手だけがチームじゃないです。出場記録の少ない選手の経験や控えの育成という課題も、今のチームの大切な弱点として見ていく必要があります。',
+    warnings:['確認できる出場記録だけを根拠に評価する。']
+  });
+  const issues=validatePersonaOutput(c,result,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+  assert.equal(recoverSoftPersonaBatchValidation(result,issues,c,{focused:false}),true);
+  assert.deepEqual(result.facts,['現チームの出場機会には選手間の差がある。']);
+  assert.ok(!/控えの育成という課題|チームの大切な弱点/.test(JSON.stringify(result)));
+  assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 44/44 PASS');
