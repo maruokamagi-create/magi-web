@@ -387,12 +387,23 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       && /(?:控え選手|全体|チーム|選手層).{0,50}(?:経験|成長|育成)/.test(sentence)
       && /(?:運用|求めら|大切|必要|重要|優先|課題|バランス|すべき|見据え)/.test(sentence)
     );
+    // Having fewer recorded appearances does not itself establish that bench
+    // development or experience is a present team weakness. The concrete
+    // observed appearance counts remain available as facts; do not promote
+    // generic development prescriptions into evaluated current deficiencies.
+    const unsupportedBenchDevelopmentWeakness=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:控え(?:選手)?|出場記録の少ない選手|出場機会の少ない選手).{0,48}(?:経験|育成|成長)/.test(sentence)
+      && /(?:課題|弱点|必要|重要|優先|見ていく)/.test(sentence)
+      && !/(?:指導者|保護者).{0,24}(?:発言|観察記録|記録した)/.test(sentence)
+    );
+
     // A previous phrase-level cleanup could leave a nonsensical fragment.
     // These fragments cannot count as a valid user-facing judgment.
     const malformedUsageFragment=parts.find(sentence=>
       /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(sentence)
     );
-    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority||unsupportedGrowthConcern||unsupportedGrowthPrescription||malformedUsageFragment)
+    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority||unsupportedGrowthConcern||unsupportedGrowthPrescription||unsupportedBenchDevelopmentWeakness||malformedUsageFragment)
       issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
 
     // Hedging an unmeasured long-term impact as a 'possibility' does not make
