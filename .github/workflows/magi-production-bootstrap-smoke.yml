@@ -53,7 +53,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=426' index.html
+          REV="$(sed -n "s/.*const REV='\\([0-9]*\\)'.*/\\1/p" magi-app-bootstrap-v363.js | head -n 1)"
+          test -n "$REV"
+          grep -Fq "/magi-app-bootstrap-v363.js?v=$REV" index.html
           grep -q '/chat-ui-canonical-v387.js?v=434' index.html
           grep -q '/wise-men-chat-repair-v389.js?v=434' index.html
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
