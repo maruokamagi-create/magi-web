@@ -218,7 +218,7 @@ function recoverSoftTeamReviewDependency(result, issues) {
     // Reject standalone tactical/scoring rhetoric even if the sample-size
     // description was in a previous sentence. Preserve only the evidence limit.
     const standaloneTactical=/(?:勝負.{0,12}分かれ道|勝ちへの道|勝ちに(?:つな|繋)げ|生産力|戦術上.{0,18}(?:重要|ポイント)|実戦上.{0,16}課題|攻撃.{0,16}硬直)/;
-    if(standaloneTactical.test(raw)&&!/(?:断定(?:しない|しません|できない|できません)|確認できない|根拠がない)/.test(raw))
+    if(standaloneTactical.test(raw)&&!/(?:偏り|差|集中|濃淡|生産力)/.test(raw)&&!/(?:断定(?:しない|しません|できない|できません)|確認できない|根拠がない)/.test(raw))
       return '確認済みの個別記録から、チーム全体の得点・戦術効果までは断定できない。';
 
     if(/(?:特定.{0,24}(?:選手|打者).{0,32}(?:調子|打撃).{0,32}(?:得点|勝敗).{0,20}左右|得点.{0,24}左右されるリスク)/.test(raw))return '';
