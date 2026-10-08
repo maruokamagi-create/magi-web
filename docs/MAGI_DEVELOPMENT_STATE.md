@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: c2f00535dde88ef3d356f58580b5b07bba55af12
+- State base main SHA: 21555edfb46b21abb46560d11f5dedbb509cf9c2
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -853,6 +853,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/batting-order-unsupported-role-and-team-benefit-20261009`: add a small shared semantic matcher for unsupported slot familiarity, stability, offensive impact and future leadership. The existing fail-closed BATTING_ORDER output guard reports a new explicit soft-only issue for these sentences; the existing selection sanitizer drops only the offending prose, keeps candidatePlayers in their original order and verified facts, and re-runs `validatePersonaOutput`. Numeric, roster, source and fielding hard errors remain hard failures.
 - Add unit regressions with every observed LIVE phrasing, factual/negative examples, and batch recovery preserving candidates and measured records while refusing mixed hard guards. Require Deliberation Final + Development Continuity checks before merge. After new SHA READY, inspect LIVE PRIMARY/CROSS/SECOND/FINAL and manual semantic quality. No change to Google Drive/CSV, authorized coaches' statements, plan or Vercel protection.
 - Still unresolved: authenticated iPhone/Chrome UI E2E for nine distinct question types and clear independent per-slot evidence explanations. One favorable best-order vote is not proof of uniquely optimal lineup; preserve genuine 1-1-1 DEADLOCK if it occurs.
+
+## 2026-10-09: Natural third-batter live still contains inferred team/role effects despite structural success
+
+- Pre-change canonical main and Vercel READY SHA: `21555edfb46b21abb46560d11f5dedbb509cf9c2` (PR #145). GitHub Production Live run `37860227100` passed PREPARE, PRIMARY, CROSS, SECOND, FINAL for NATURAL_THIRD in job `113595133433`. FINAL returned center candidate 嶋田 栄志 (MELCHIOR/CASPER vs BALTHASAR favoring 坂田 暉馬); supported facts include 3番起用7試合 vs 1試合, and verified batting OPS. This is structural success, **not** complete semantic approval.
+- Actual published PRIMARY/SECOND still included phrases like `役割の継続性が確認できる`, `打順への適応が確認されている`, `チームの安定性を優先`, `チームの安定を考える`, `3番での起用経験が少ない点はリスク`, `4番へのつなぎとして有効な可能性`, and `得点機を拡大する可能性`. No verified coach observation or team scoring/lineup outcome Evidence supports these causal claims. Even hedging does not turn a current-stat comparison into a proven future game effect.
+- Branch `fix/batting-slot-unsupported-inference-chain-20261009` adds general regex families to the existing shared BATTING_ORDER cause matcher: past starts->role adaptation, start counts->team stability/continuity, individual OPS->scoring-chance increase/next-batter success, and limited sample->risk. This extends the exact previously introduced evidence guard and its sanitizer, **not** a bypass or a question string special case.
+- Positive and negative validator regressions cover 10 real published variants and explicit Evidence limitations. Batch recovery regression checks the entire candidate array and verified AB/OPS facts are preserved and the recovered persona again passes all guards. Mixed hard errors remain fail-closed. Run deliberation CI + continuity before merge. Do not overlap with the running prior Live workflow; deploy only after READY with SHA match.
+- Still unresolved: authenticated iPhone/Chrome real nine-class UI path, persuasive player-by-player reasons for slots 1–9, stability/reproducibility across samples. Never change Drive/CSV, coach observations or Vercel Hobby/free.
 
 ## Next concrete work
 
