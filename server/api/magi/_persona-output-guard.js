@@ -363,7 +363,19 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       && /(?:成長(?:の)?機会|育成機会|経験(?:の)?機会|経験を積む機会)/.test(sentence)
       && /(?:回ってい(?:る|ない)|足りてい(?:る|ない)|十分|行き渡|得られ|与えられ|確保|心配|懸念|気にかか|気になる|大事|重要|必要|望まし|できてい(?:る|ない))/.test(sentence)
     );
-    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority||unsupportedGrowthConcern)
+    // Current weakness reviews cannot present generic development/experience
+    // prescriptions as discovered weaknesses; retain verified usage records.
+    const unsupportedGrowthPrescription=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:控え選手|全体|チーム|選手層).{0,50}(?:経験|成長|育成)/.test(sentence)
+      && /(?:運用|求めら|大切|必要|重要|優先|課題|バランス|すべき|見据え)/.test(sentence)
+    );
+    // A previous phrase-level cleanup could leave a nonsensical fragment.
+    // These fragments cannot count as a valid user-facing judgment.
+    const malformedUsageFragment=parts.find(sentence=>
+      /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(sentence)
+    );
+    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority||unsupportedGrowthConcern||unsupportedGrowthPrescription||malformedUsageFragment)
       issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
 
     // Hedging an unmeasured long-term impact as a 'possibility' does not make
