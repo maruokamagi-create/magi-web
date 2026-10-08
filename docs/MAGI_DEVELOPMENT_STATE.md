@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: c39cf7f90508cd10e56b20222dd1d5f2a4507433
+- State base main SHA: 9777aece8072009db7f649c6359a2d1d3f10051c
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -803,6 +803,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - This is a **general phrase-category gap** in an otherwise existing TEAM_REVIEW fail-closed guard: the current unsupported-development prescription covered `控え選手` / `全体` / `チーム` **before** `育成`, but omitted `控えの育成` and the explicit `弱点` predicate. The same gap existed in the recovery's pre-rewrite whole-sentence removal. Branch `fix/team-review-reserve-development-weakness-20261008` extends both existing checks to `控え（選手／の）` and `弱点` without changing guard type or risk classification. The normal existing soft recovery drops only unsupported developmental commentary and runs `validatePersonaOutput` again while preserving measured usage facts.
 - Added a direct TEAM_REVIEW positive guard regression with the exact Live statement, a negative explicit denial, and a batch recovery test requiring original observed facts to survive. PR CI + continuity must pass before merge; avoid duplicate provider-heavy Live requests until the running production chain finishes. No changes to Drive, CSV, coach intent or Vercel Hobby/free.
 - Still unresolved: actual authenticated iPhone/browser success for all nine question classes, player-by-player lineup evidence justification, and repeatable semantic-quality review. No selftest or single successful answer warrants a project-complete claim.
+
+## 2026-10-09: Conditional batting-fix -> late scoring harm leak in TEAM_REVIEW
+
+- Canonical main and READY production SHA at branch base: `9777aece8072009db7f649c6359a2d1d3f10051c`. The latest Production Live run `37797813166` passed all four staged jobs through FINAL. The previously unsupported CASPER statement `控えの育成という課題も今のチームの大切な弱点` did not recur in that run. BEST_ORDER appropriately held a genuine 1-1-1 `DEADLOCK`.
+- Manual read of TEAM_REVIEW PRIMARY job `113384055000` revealed fresh unsupported BALTHASAR statements: `特定のバッターだけに頼った状態では厳しい` and `下位打線や直近で安打のない選手たちの出塁や進塁打の確率を高める手が打てなければ、試合終盤の得点力が限定される`. Both turn individual batting observations into a projected team-result limitation without measured team scoring/outcome Evidence. A clean FINAL does not excuse incorrect published PRIMARY.
+- Branch `fix/team-review-conditional-scoring-leaps-20261009` extends the **existing** TEAM_REVIEW scoring-path/necessary-to-win issue classification to specifically handle conditional late-scoring decline and one-batter reliance -> claimed game-result disadvantage. Reuse that very same existing fail-closed soft recovery. Keep explicit non-assertion/evidence-limitation sentences, and retain measured batting facts and all player/roster/fielding validation. No numerical evidence is inferred or altered.
+- Add positive-assertion vs negative-disclaimer regression and a batch recovery test preserving direct recorded facts while dropping the unsupported hypothetical consequences. Require deliberation/continuity CI. Do not hot-loop provider calls or merge amid older provider-heavy Sequential tests. After READY production SHA, run staged Live and inspect every published PRIMARY/SECOND/FINAL text.
+- Still open: end-to-end authenticated real iPhone/browser checks for all nine question classes; a persuasive player-by-player rationale for each lineup slot; and avoiding overclaiming completed system quality from green synthetic checks. Keep Vercel Hobby/free and all Drive/CSV score originals read-only.
 
 ## Next concrete work
 
