@@ -9,8 +9,8 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-08
-- State base main SHA: 9777aece8072009db7f649c6359a2d1d3f10051c
+- State updated: 2026-10-09
+- State base main SHA: bf55b6641c9522a799f8367fc0c0c11a5707a8a8
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -811,6 +811,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/team-review-conditional-scoring-leaps-20261009` extends the **existing** TEAM_REVIEW scoring-path/necessary-to-win issue classification to specifically handle conditional late-scoring decline and one-batter reliance -> claimed game-result disadvantage. Reuse that very same existing fail-closed soft recovery. Keep explicit non-assertion/evidence-limitation sentences, and retain measured batting facts and all player/roster/fielding validation. No numerical evidence is inferred or altered.
 - Add positive-assertion vs negative-disclaimer regression and a batch recovery test preserving direct recorded facts while dropping the unsupported hypothetical consequences. Require deliberation/continuity CI. Do not hot-loop provider calls or merge amid older provider-heavy Sequential tests. After READY production SHA, run staged Live and inspect every published PRIMARY/SECOND/FINAL text.
 - Still open: end-to-end authenticated real iPhone/browser checks for all nine question classes; a persuasive player-by-player rationale for each lineup slot; and avoiding overclaiming completed system quality from green synthetic checks. Keep Vercel Hobby/free and all Drive/CSV score originals read-only.
+
+## 2026-10-09: Semantic team-aggregate stats routing gap
+
+- Original analysis base SHA `9777aece8072009db7f649c6359a2d1d3f10051c`; rebased changes on latest main `bf55b6641c9522a799f8367fc0c0c11a5707a8a8` (merged #137 narrowed the unsupported TEAM_REVIEW reserve-development guard; overlapping #138 was closed). Its SHA-gated Live run `37797813166` began and best-order, closer, natural-third reached completed success; later steps may still be underway, so do not overlap heavy Gemini workflows.
+- Inspecting the **actual** `main-live-answer-v362.js` → POST `/api/magi/core` → `understandRequestGeminiFirst` → `routedFromSemantic` → `buildLiveAnswer` chain exposed a general domain mismatch: `normalizeModel` requires **one named player** for any `SINGLE_VALUE` or `SUMMARY` regardless of the semantic target `TEAM`, while `routedFromSemantic` prioritizes `BATTING` even if `TEAM` is explicitly present with no individual. This wrongly asks for an individual on questions like `今季のチームOPSだけ教えて` and prevents the already supported `TEAM_LOOKUP` aggregate route.
+- Branch `fix/semantic-team-aggregate-stats-20261009`: accept only high-confidence semantic `TEAM` requests with zero current/grounded player and `SINGLE_VALUE`/`SUMMARY` as `teamAggregate`, route them to the **existing** `TEAM_LOOKUP`; keep unrelated individual batting/pitching/fielding, ambiguous no-target, unsupported `FULL_REPORT`, and low-confidence `CLARIFY` fail-closed. No literal question string special cases, fabricated data or new external source.
+- Add six deterministic regressions for actual semantic normalization + core routing + `buildLiveAnswer` with fixed fake XLSM provider; includes positive team OPS/record, unchanged personal metrics, ambiguous/no player, unsupported full team report and confidence gate. Wire to Deliberation Final CI for the changed semantic/core files, before merging.
+- This is **local route contract evidence**, not verification of the authenticated production iPhone UI path. The remaining nine-class actual UI goal includes individual evaluation, tactics, comparison, direct statistics, and CLARIFY. Need verify production after CI, respecting free Vercel and protecting Drive/CSV and coach evidence.
 
 ## Next concrete work
 
