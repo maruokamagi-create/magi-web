@@ -1,12 +1,20 @@
 import { validateFullLineupOrder } from './_full-lineup.js';
 
-// Only the *written order* may be replaced, never an invalid roster, numeric
-// claim, unsupported effect, or defense-eligibility rejection.
+// Only incompatible narrative is discarded, never an invalid roster, numeric
+// claim, unsupported outcome effect, or defense-eligibility rejection.
+// CASPER's unsupported generic growth/dependency/burden prose is also removable
+// when (and only when) a candidate-order contradiction is already present.
 export const ORDER_EXPLANATION_CONFLICT='BEST_ORDERのcandidatePlayersと打順説明が矛盾している';
+const DISCARDABLE_UNGROUNDED_LANGUAGE=new Set([
+  'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
+  'SELECTIONでEvidenceにない依存・役割集中を追加している',
+  'Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている'
+]);
 
 export function reconcileLineupOrderExplanation(result,guardIssues){
   if(!result||result.reviewRequested===true||result.dataConflict===true)return null;
-  if(!Array.isArray(guardIssues)||guardIssues.length!==1||guardIssues[0]!==ORDER_EXPLANATION_CONFLICT)return null;
+  if(!Array.isArray(guardIssues)||!guardIssues.includes(ORDER_EXPLANATION_CONFLICT))return null;
+  if(guardIssues.some(issue=>issue!==ORDER_EXPLANATION_CONFLICT&&!DISCARDABLE_UNGROUNDED_LANGUAGE.has(issue)))return null;
   const check=validateFullLineupOrder(result.candidatePlayers);
   if(!check.ok)return null;
   const order=check.order.map((name,index)=>`${index+1}番${name}`).join('、');
@@ -23,6 +31,6 @@ export function reconcileLineupOrderExplanation(result,guardIssues){
     facts:[],
     analysis:[],
     prediction:[],
-    warnings:['元の打順説明に候補順との食い違いがあり、矛盾する説明を採用していません。']
+    warnings:['候補順と食い違う説明や、Evidenceで裏付けられない評価は採用していません。']
   };
 }
