@@ -786,4 +786,4 @@ function baseResult(overrides={}) {
     'the unsupported sentence must be removed as a whole, not partially replaced into broken Japanese');
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 38/38 PASS');
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 41/41 PASS');
