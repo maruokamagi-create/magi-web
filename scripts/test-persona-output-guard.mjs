@@ -809,6 +809,24 @@ test('G98 TEAM_REVIEW preserves explicitly unproven team-scoring concentration',
   assert.ok(!issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'));
 });
 
+test('G99 TEAM_REVIEW refuses generic growth prescriptions and malformed replacement fragments',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'14名の打撃成績と出場回数のみ。'}};
+  const bad=[
+    '目先の試合の勝敗だけでなく、控え選手の経験や全体の成長バランスを見据えた運用が求められる。',
+    '選手間の出場機会の差していないか、チーム全体で取り組む姿勢が問われている。'
+  ];
+  for(const sentence of bad){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',analysis:[sentence]}),{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'),sentence);
+  }
+});
+
+test('G100 TEAM_REVIEW permits explicit evidence limit for development allocation',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'14名の打撃成績と出場回数のみ。'}};
+  const r=result({persona:'CASPER',analysis:['控え選手の経験や成長に関する運用の必要性は、現記録だけでは確認できない。']});
+  assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
