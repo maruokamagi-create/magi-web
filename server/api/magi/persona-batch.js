@@ -189,6 +189,7 @@ function recoverSoftTeamReviewDependency(result, issues) {
     ||v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提')
     ||v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
     ||v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
+    ||v.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張')
     ||v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   if(!list.length||!list.every(softIssue))return false;
 
@@ -213,6 +214,12 @@ function recoverSoftTeamReviewDependency(result, issues) {
       .replace(/負担.{0,12}(?:集中|偏(?:る|り|って|りがち)).{0,18}(?:一部|特定)(?:の)?選手/g,'選手間の出場機会の差')
       .replace(/特定(?:の)?選手への負担集中/g,'選手間の出場機会の差')
       .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
+
+    const ungroundedOffense=/(?:打撃成績.{0,24}(?:偏り|数値差)|(?:この|その)?偏り|数値差|打率の差|低打率)[^。！？!?]{0,85}(?:攻撃力|得点力|攻撃.{0,12}(?:選択肢|手段|幅)|得点.{0,12}(?:ルート|機会|選択肢))[^。！？!?]{0,70}(?:制限|制約|狭め|減ら|下げ|低下|影響|左右|直結|つなが|繋が|結びつ)/
+      .test(raw);
+    if(ungroundedOffense
+      && !/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|とは言えない|根拠がない)/.test(raw))
+      return '確認済みの打撃成績には選手間の数値差がある。';
 
     if(developmentAdvice.test(raw))return '';
     // TEAM_REVIEW cannot call a team over-reliant on certain players from
@@ -414,6 +421,7 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
     || v.includes('TEAM_REVIEWでEvidenceにない未出場選手を前提')
     || v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
     || v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
+    || v.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張')
     || v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   const isBurdenSoft = v => v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');
   const isForecastSoft = v => /(?:将来|不確実性|保証できない結果)/.test(v);

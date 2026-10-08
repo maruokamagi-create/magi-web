@@ -714,6 +714,25 @@ test('G87 TEAM_REVIEW allows explicit non-assertion of over-reliance',()=>{
   assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで打撃成績の偏りから依存・頼り・偏重を断定している'));
 });
 
+test('G88 TEAM_REVIEW rejects spread-to-attack-power harm without scoring Evidence',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個人別打撃成績。チーム得点への因果は確認されていない。'}};
+  const samples=[
+    '打撃成績の偏りがそのまま攻撃力の制限につながる点に注意すること。',
+    'この打撃成績の偏りが試合展開における攻撃の選択肢や得点ルートを狭めている可能性がある。'
+  ];
+  for(const statement of samples){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',warnings:[statement]}),{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'),statement);
+  }
+});
+
+test('G89 TEAM_REVIEW preserves explicit non-causality and measured spread statements',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個人別打撃成績のみ。'}};
+  const r=result({persona:'BALTHASAR',facts:['確認済みの打撃成績には選手間の数値差がある。'],warnings:['打撃成績の偏りが攻撃力の制限につながるとは断定できない。']});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

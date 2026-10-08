@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 015b02efaa397d54d3656de43107d635b8842816
+- State base main SHA: 251f5da21649c34afe680f728df8468beab7f780
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -736,6 +736,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Separately the same TEAM_REVIEW PRIMARY contained an actual ungrounded CASPER statement `一部の選手に頼りすぎている部分があります`. The deterministic TEAM_REVIEW dependency guard checked dependency and reliance variants but omitted `頼りすぎ／頼り過ぎ`. Extend that exact semantic class, and allow only the existing soft recovery to discard this claim while retaining verified facts and revalidating with the original guard. No user/coach intent may be invented.
 - Branch `fix/team-review-polarity-casper-20261008` changes the backend guard + batch soft recovery; new assertions and recovery regression; and the Live TEAM_REVIEW acceptance filter to normalize only explicit denials of unsupported tactics/reliance before applying the **original** broad forbidden-assertion regex. Actual unsupported positive claims still fail. New deterministic CI test executes the **actual jq filters** against valid negations, ungrounded claims and mixed contradictory sentences before any provider-heavy Live acceptance can run.
 - Require green deliberation + continuity CI before merging. After new SHA READY, inspect authentic production TEAM_REVIEW PRIMARY/SECOND/FINAL and BALTHASAR/CASPER rationale. Do not mistake structural success or synthetic tests for completion of the nine-class actual browser UI-path target. No Google Drive/CSV edit; preserve free Vercel Hobby.
+
+## 2026-10-08: Live TEAM_REVIEW passes structure but leaks offensive-causality warning
+
+- Starting canonical main and READY production SHA `251f5da21649c34afe680f728df8468beab7f780`. GitHub Production Live Selftest run `37747686672` completed all four staged classes successfully. BEST_ORDER FINAL reached `LINEUP_RESULT`, `MAJORITY (2-1)`, 9 selected players, and `fieldingStatus=COMPLETE`. This is one valid run, not a claim that every independent judgment is reproducible or fully explained.
+- Manual reading of the run's TEAM_REVIEW job `113214715788` exposed a genuine BALTHASAR PRIMARY warning: `打撃成績の偏りがそのまま攻撃力の制限につながる点に注意すること。` It survived into `final.warnings` and `reDeliberationConditions`, while the deterministic FINAL recommendation separately said individual batting statistics cannot establish team-wide scoring causality. This contradiction is unacceptable even when Live structural acceptance is green. Another generated analysis suggested that batting differences might `攻撃の選択肢や得点ルートを狭めている可能性がある`; it was not supported by team-level scoring evidence.
+- Branch `fix/team-review-unsupported-attack-effect-20261008`: extend TEAM_REVIEW evidence-language guard to reject batting-spread to team-offense harm, restriction, or scoring-route cause, even when hedged as possibility. Explicit denials (`とは断定できない`) and measured individual differences must still pass. Extend the existing **soft-recovery** whitelist to discard only this causal speculation and preserve confirmed individual facts, then rerun the original complete deterministic guard.
+- Add direct regression for the exact offending production warning and speculative scoring-route statement, plus negative/noncausal and recovery tests. Do not weaken unrelated selection, lineup or source-evidence validations. Production Sequential Suite `37748390775` for the pre-change SHA may still be running; wait for it to finish before merging or triggering another provider-heavy run.
+- Continue manual review after CI/deployment. The verified 2-to-1 lineup needs player-by-player reason quality: CASPER changed the 4/5 order at SECOND with a vague `より適した形` rationale; this is an unresolved explanation-quality issue and must not be presented as proven superiority. Keep the full nine-class real browser UI-path objective open. Vercel Hobby/free and Drive/CSV originals unchanged.
 
 ## Next concrete work
 
