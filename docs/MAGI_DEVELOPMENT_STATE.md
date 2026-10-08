@@ -697,6 +697,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Do not merge while prior Live / Sequential Suite is still executing. Require PR local CI, then merge and verify READY SHA plus entire downstream sequence, accounting for Vercel Hobby/free provider quotas; do not run duplicate provider-heavy jobs.
 - MAGI best order remains incomplete whenever it returns a 1-1-1 deadlock; true test acceptance is not the same as a recommended winning lineup.
 
+## 2026-10-08: Actual Sequential Suite failure isolated to reproducibility
+
+- On `7cdf2488e45ee082d5a14a221fac3bc14f35aab1`, Live production workflow `37733555849` completed all staged cases successfully with an exact READY production SHA.
+- The subsequent Sequential Suite run `37734008007` passed jobs `selection / production-selection`, `full-lineup / production-full-lineup`, `pitching-plan / production-pitching-plan`, and `deliberation / production-deliberation`. Full-lineup smoke explicitly logged `PASS (status=LINEUP_REVIEW_REQUIRED, vote=1-1-1, fielding=NOT_EVALUATED)`, as intended. Reproducibility job `113171430463` **failed**; one-step workflow logs do not identify whether an earlier persona gate or the unconditional `LINEUP_RESULT` assertion caused its exit. Do not label its precise exit as confirmed until traced.
+- PR #124 addresses the known unconditional reproducibility status assertion by reusing the strict verified final-outcome jq contract, separately compares all vote/fielding/conflict fields on identical-Evidence replay, and now adds safe progress markers `REPRO_STAGE` and final `{status, finalVote, fieldingStatus, reviewReason}` only, never rejected narrative or sensitive player records. Any subsequent failure should identify the stage without guessing.
+- Do not merge this PR until both local CI and development continuity checks pass. With old Sequential Suite complete, proceed with a single SHA-matched deployment and next Live→Sequential chain; avoid redundant provider-quota calls.
+- User-facing conclusion at this point: four sequential jobs succeeded, reproducibility unresolved; best-order itself remains 1-1-1 DEADLOCK, NOT a final 1–9 recommendation. No fee tier change or Drive/CSV writes.
+
 ## Next concrete work
 
 1. Complete CI for `fix/live-deployment-readiness-gate-20261007`; merge only when continuity and the expanded live-SHA/readiness contract are green. Keep Vercel Hobby/free; do not upgrade for build-rate-limit.
