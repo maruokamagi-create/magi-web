@@ -931,6 +931,38 @@ test('Live natural-third preserves measured starts/rates and explicit lack of ef
   }
 });
 
+test('BATTING_ORDER blocks invented adaptation, team stability and scoring impact from starts or OPS',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番に誰を起用すべき？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チーム3番起用記録、打率、OPS。チーム得点因果や打順適応力の測定はない。'}};
+  const claims=[
+    '嶋田 栄志は3番打順での経験が豊富であり、チームの戦術的な軸となっている可能性がある。',
+    '嶋田 栄志は3番打順での起用が最も多く、役割の継続性が確認できる。',
+    '嶋田 栄志は3番での起用実績が7回あり、打順への適応が確認されている。',
+    '嶋田 栄志は3番での起用回数が多く、打順の安定性において強みを持つ。',
+    'チームの安定を考えると、まずは嶋田 栄志を軸にするのが良い。',
+    '嶋田 栄志の起用実績を尊重し、チームの安定性を優先するため。',
+    '坂田 暉馬のOPSは嶋田 栄志を上回っており、得点機を拡大する可能性がある。',
+    'OPSが高く、4番へのつなぎとして有効な可能性がある。',
+    '坂田 暉馬の3番での起用経験が少ない点はリスクとなる可能性がある。',
+    '嶋田 栄志の3番起用実績を根拠に打順構成の安定を図る。'
+  ];
+  for(const statement of claims){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' '+JSON.stringify(issues));
+  }
+});
+
+test('BATTING_ORDER retains measured starts, metrics and explicit lack of evidence for effects',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番に誰を起用すべき？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チーム3番起用記録、打率、OPS。'}};
+  for(const statement of [
+    '嶋田 栄志は3番で7試合のスタメン起用が記録されている。',
+    '坂田 暉馬のOPS .861は嶋田 栄志のOPS .748を上回る。',
+    '3番への適応力や得点機増加は、今の記録だけでは確認できない。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement);
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
