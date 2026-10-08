@@ -325,6 +325,19 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       && !groundingHedge.test(sentence)
     );
     if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
+
+    // Hedging an unmeasured long-term impact as a 'possibility' does not make
+    // it observed evidence. Current-state TEAM_REVIEW cannot convert a
+    // batting/usage distribution into a team-development effect.
+    const unsupportedLongTermEffect=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:打撃成績|数値差|成績.{0,20}偏り|出場機会|起用差|打数)/.test(sentence)
+      && /(?:長期的.{0,28}(?:成長|チーム作り|選手層)|チーム全体.{0,25}成長|(?:他の)?選手.{0,18}経験機会|成長の機会)/.test(sentence)
+      && /(?:影響|左右|つなが|繋が|結びつ|狭め|減ら|低下)/.test(sentence)
+    );
+    if(unsupportedLongTermEffect)
+      issues.push('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定している');
+
   }
 
   const selectionKind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
@@ -495,7 +508,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const developmentRequested=/(?:半年後|来年|将来|育成|成長|経験を積ませ|選手層|投手層)/.test(String(caseData?.question||''));
     const unsupportedDevelopment=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|チーム全体.{0,20}負担|役割の分散|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|今後.{0,18}(?:成長|育成)|(?:大切に)?育てて|育てる|調整の過程|半年後|将来.{0,18}成長|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|別の投手.{0,24}成長|成長も促|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
+      && /(?:成長機会|育成|チームの成長|チーム全体の成長|チーム全体で.{0,20}経験|チーム全体.{0,20}負担|役割の分散|経験を積んでいく|負担をかけすぎ|役割集中.{0,28}(?:成長|育成|影響)|今後.{0,18}(?:成長|育成)|(?:大切に)?育てて|育てる|調整の過程|半年後|将来.{0,18}成長|将来(?:的)?な.{0,18}(?:チーム|投手層|選手層)|投手層.{0,18}(?:厚み|広げ)|選手層.{0,18}(?:厚み|広げ)|他の投手.{0,24}成長|別の投手.{0,24}成長|成長も促|選手全体.{0,20}成長|(?:固定|継続起用).{0,40}経験機会.{0,25}(?:影響|制限|狭め|減)|選手の成長.{0,18}(?:見守|考慮))/.test(sentence)
       && !developmentRequested
     );
     if(unsupportedDevelopment)issues.push('SELECTIONでEvidenceにない成長・育成・負担影響を追加している');
