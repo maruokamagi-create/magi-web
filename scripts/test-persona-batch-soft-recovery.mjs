@@ -720,4 +720,38 @@ function baseResult(overrides={}) {
   assert.deepEqual(validatePersonaOutput(c,result,{focused:false}),[]);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 37/37 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃と出場機会のみ。'}};
+  const output=baseResult({
+    persona:'CASPER',
+    facts:['確認済みの出場機会や打数には選手間の差がある。'],
+    analysis:['打撃成績の数値差や出場機会の偏りは、長期的なチームの成長や選手層の厚さに影響を与える可能性がある。'],
+    warnings:['出場機会の偏りが長期的なチーム作りに与える影響に配慮すること。']
+  });
+  const issues=validatePersonaOutput(c,output,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定している'));
+  assert.equal(recoverSoftPersonaBatchValidation(output,issues,c,{focused:false}),true);
+  assert.deepEqual(output.facts,['確認済みの出場機会や打数には選手間の差がある。']);
+  assert.ok(!/長期的なチームの成長|長期的なチーム作り/.test(JSON.stringify(output)));
+  assert.deepEqual(validatePersonaOutput(c,output,{focused:false}),[]);
+}
+{
+  const c={question:'3番は誰がいい？',mode:'selection',selectionKind:'BATTING_ORDER',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの打撃成績と3番起用実績のみ。'}};
+  const output=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    facts:['嶋田 栄志の3番先発記録がある。'],
+    publicStatement:'選手全体の成長につながる起用を考えていきたい。',
+    warnings:['特定の選手への固定がチーム全体の経験機会に影響を与えるおそれがあります。']
+  });
+  const issues=validatePersonaOutput(c,output,{focused:false});
+  assert.ok(issues.includes('SELECTIONでEvidenceにない成長・育成・負担影響を追加している'));
+  const selected=output.candidatePlayers.slice();
+  assert.equal(recoverSoftSelectionInference(output,issues,c,{focused:false}),true);
+  assert.deepEqual(output.candidatePlayers,selected);
+  assert.deepEqual(output.facts,['嶋田 栄志の3番先発記録がある。']);
+  assert.ok(!/選手全体の成長|経験機会に影響/.test(JSON.stringify(output)));
+  assert.deepEqual(validatePersonaOutput(c,output,{focused:false}),[]);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 39/39 PASS');
