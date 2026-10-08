@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -87,6 +87,12 @@ try{
     assert.equal(accepted(input),expected,description);
     console.log('PASS',description);
   }
+  const reproducibilityWorkflow=readFileSync(new URL('../.github/workflows/magi-production-reproducibility-smoke.yml',import.meta.url),'utf8');
+  assert.match(reproducibilityWorkflow,/jq -e --slurpfile roster \/tmp\/roster\.json -f scripts\/validate-production-full-lineup-final\.jq/,
+    'identical-Evidence reproducibility must enforce the same non-fabricated DEADLOCK contract');
+  assert.match(reproducibilityWorkflow,/deliberationDecision,finalVote,reviewReason,proposalGroups,slotConflicts/,
+    'reproducibility must compare all final vote and deadlock metadata');
+  console.log('PRODUCTION REPRODUCIBILITY WIRING: PASS');
   console.log('PRODUCTION FULL-LINEUP SMOKE CONTRACT: 13/13 PASS');
 }finally{
   rmSync(dir,{recursive:true,force:true});
