@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: f614c7f522f576320e8c77b8e6e8d3e7cb06fc31
+- State base main SHA: 9714e366141e4c921353c48ee34f8c598c8eab9b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -721,6 +721,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/ui-formal-valid-deadlock-20261008` keeps numeric 14-player Evidence validation and the nine-player chosen-lineup guard, but also accepts **only** strict three-way deadlock: exact decision/status/vote/reviewReason, no selected lineup or fielding, valid 14-player current-roster membership, three unique complete 9-player SECOND orders, three matching proposal groups, slot conflicts and CROSS challenges. Any malformed/incomplete outcome still rejects. The UI reaches its existing hold verdict rather than a generic error, with a clear 99% hold progress message.
 - Add real formal-runner VM regression with 14 synthetic players, valid 1-1-1 result, existing normal consensus, UI event delivery and input restore, plus fail-closed negatives for fabricated lineup/vote, missing cross/roster/group and incomplete result. Bump index bootstrap cache-busting query and bootstrap REV `426→427` so an iPhone Chrome refresh loads the new formal runner code. The production reproducibility smoke's three asset URLs now use `v=427` as well, and the UI regression verifies this contract, preventing a false post-deployment failure caused by stale test URLs. Add frontend paths and test to Deliberation Final Selftest workflow.
 - Require PR CI and continuity success; merge only after checking current main and safe scope. After deployment READY, inspect the actual bootstrap and formal assets served by production and, when possible, verify via an authenticated browser UI. Do not claim the complete 9-class UI-path objective solved based solely on mocks or backend smoke. No CSV/Drive changes or paid Vercel plan.
+
+## 2026-10-08: Follow-up bootstrap smoke contract alignment for v427
+
+- UI deadlock fix PR #126 merged as `9714e366141e4c921353c48ee34f8c598c8eab9b`. It passed five pull-request CI workflows, including 15/15 VM regression for the actual formal UI runner, and changed `index.html`/bootstrap query revision from `426` to `427` to prevent stale browser assets.
+- Production Browser Bootstrap Smoke run `37743045852` failed its **Static canonical architecture guard** because `.github/workflows/magi-production-bootstrap-smoke.yml` still asserted `magi-app-bootstrap-v363.js?v=426`, although the new index correctly uses `v=427`. Lineup Stats Smoke run `37743045780` independently passed the authoritative 14-player season stats, rate formatter and player-name normalization steps, but failed its final main-path hydration check because that workflow also expected old `magi-app-bootstrap-v363.js?v=426`. These are stale test URLs, **not** evidence that the production bootstrap or MAGI deliberation failed.
+- Branch `fix/browser-bootstrap-smoke-rev427-20261008` updates six old `v=426` asset requests/assertions in the Browser Bootstrap Smoke workflow and two old references in `.github/workflows/magi-lineup-stats-smoke.yml` to `v=427`. It does not touch app code, UI result semantics, deployment access, Gemini calls, current-team Evidence, or Vercel Hobby/free settings.
+- Main's full-production Live E2E run launched by PR #126 is still in progress when this follow-up branch was opened. Prepare and test this branch independently, but **do not merge while the previous Live or downstream Sequential Suite is active**, so that SHA-gated checks are not confused by a new deployment mid-run. Afterwards merge, verify that the bootstrap smoke passes at the new SHA, and keep real browser-interaction testing marked unverified until explicitly observed.
 
 ## Next concrete work
 
