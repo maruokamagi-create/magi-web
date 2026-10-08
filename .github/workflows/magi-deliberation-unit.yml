@@ -17,6 +17,8 @@ on:
       - 'server/api/magi/dialogue-resilient.js'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/core.js'
+      - 'server/api/magi/_semantic-authority.js'
+      - 'scripts/test-semantic-team-aggregate-route.mjs'
       - 'server/api/magi/_evaluation-routing.js'
       - 'server/api/magi/_semantic-postguard.js'
       - 'server/api/magi/_selection-live-evidence.js'
@@ -73,6 +75,9 @@ on:
       - '.github/workflows/magi-deliberation-unit.yml'
   pull_request:
     paths:
+      - 'server/api/magi/core.js'
+      - 'server/api/magi/_semantic-authority.js'
+      - 'scripts/test-semantic-team-aggregate-route.mjs'
       - 'server/api/magi/persona-batch.js'
       - 'scripts/test-persona-batch-soft-recovery.mjs'
       - 'server/api/magi/_persona-output-guard.js'
@@ -152,6 +157,9 @@ jobs:
 
       - name: Run structured deliberation evidence bridge cases
         run: node --experimental-default-type=module scripts/test-deliberation-evidence-bridge.mjs
+
+      - name: Validate semantic team aggregate stats routing
+        run: node --experimental-default-type=module scripts/test-semantic-team-aggregate-route.mjs
 
       - name: Run natural team/player evaluation routing cases
         run: node --experimental-default-type=module scripts/test-natural-evaluation-routing.mjs
