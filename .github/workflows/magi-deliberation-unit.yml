@@ -21,6 +21,8 @@ on:
       - 'scripts/test-semantic-team-aggregate-route.mjs'
       - 'server/api/magi/_evaluation-routing.js'
       - 'server/api/magi/_semantic-postguard.js'
+      - 'server/api/magi/_player-comparison-evidence.js'
+      - 'scripts/test-current-player-comparison-evidence.mjs'
       - 'server/api/magi/_selection-live-evidence.js'
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_evidence-source-map.js'
@@ -84,6 +86,8 @@ on:
       - 'scripts/test-persona-output-guard.mjs'
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_selection-live-evidence.js'
+      - 'server/api/magi/_player-comparison-evidence.js'
+      - 'scripts/test-current-player-comparison-evidence.mjs'
       - 'server/api/magi/_appearance-fielding-evidence.js'
       - 'server/api/magi/_evidence-source-map.js'
       - 'server/api/magi/_full-lineup.js'
@@ -160,6 +164,9 @@ jobs:
 
       - name: Validate semantic team aggregate stats routing
         run: node --experimental-default-type=module scripts/test-semantic-team-aggregate-route.mjs
+
+      - name: Verify current two-player batting comparison Evidence
+        run: node --experimental-default-type=module scripts/test-current-player-comparison-evidence.mjs
 
       - name: Run natural team/player evaluation routing cases
         run: node --experimental-default-type=module scripts/test-natural-evaluation-routing.mjs
