@@ -233,8 +233,13 @@ function recoverSoftTeamReviewDependency(result, issues) {
         && /(?:影響|左右|制約|狭め|不足|損な|制限|減ら)/.test(raw)
       );
     if(unsupportedScoringConcentration
-      && !/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|とは言えない|根拠がない)/.test(raw))
+      && !/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|とは言えない|根拠がない)/.test(raw)){
+      // Preserve only the direct observed recent-window result when one mixed
+      // sentence attaches an unsupported scoring conclusion to that result.
+      if(/直近\\s*6\\s*試合/.test(raw)&&/打率\\s*\\.?0(?:00)?/.test(raw))
+        return '直近6試合の打撃記録には打率.000の選手がいる。';
       return '個別の打撃成績だけでは、チームの得点力の集中や攻撃の選択肢への影響は断定できない。';
+    }
 
     const ungroundedOffense=/(?:打撃成績.{0,24}(?:偏り|数値差)|(?:この|その)?偏り|数値差|打率の差|低打率)[^。！？!?]{0,85}(?:攻撃力|得点力|攻撃.{0,12}(?:選択肢|手段|幅)|得点.{0,12}(?:ルート|機会|選択肢))[^。！？!?]{0,70}(?:制限|制約|狭め|減ら|下げ|低下|影響|左右|直結|つなが|繋が|結びつ)/
       .test(raw);
