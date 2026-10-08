@@ -190,6 +190,7 @@ function recoverSoftTeamReviewDependency(result, issues) {
     ||v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
     ||v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
     ||v.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張')
+    ||v.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張')
     ||v.includes('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定')
     ||v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   if(!list.length||!list.every(softIssue))return false;
@@ -208,6 +209,14 @@ function recoverSoftTeamReviewDependency(result, issues) {
     // before partial phrase substitutions. Otherwise a replacement in the
     // first half of the sentence may leave broken Japanese in the second half
     // (such as 「選手間の出場機会の差いないか」).
+    const unsupportedWinScoring=/(?:得点|点を|点が|どうやって点).{0,48}(?:しないと|できなければ|はっきりさせないと).{0,28}(?:勝てない|勝利できない)/
+      .test(raw)
+      || /(?:得点|点を|勝利).{0,40}(?:勝てない|勝利できない)/.test(raw)
+      || /(?:得点|攻撃).{0,16}(?:ルート|経路|手段|選択肢|機会).{0,30}(?:限定|狭|不足|制約|閉ざ)/.test(raw)
+      || /(?:限定|狭ま|狭め|不足).{0,30}(?:得点|攻撃).{0,16}(?:ルート|経路|手段|選択肢|機会)/.test(raw);
+    if(unsupportedWinScoring&&!/(?:断定(?:しない|しません|できない|できません)|確認できない|根拠がない|Evidenceにない)/.test(raw))
+      return '個別の打撃記録だけでは、得点経路や勝敗への因果関係は断定できない。';
+
     if(developmentAdvice.test(raw))return '';
     const unverifiedGrowthPrescription=
       /(?:控え選手|全体|チーム|選手層).{0,50}(?:経験|成長|育成)/.test(raw)
@@ -455,6 +464,7 @@ export function recoverSoftPersonaBatchValidation(result, issues, caseData=null,
     || v.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')
     || v.includes('TEAM_REVIEWで個別打撃結果からチーム得点・戦術への因果を断定')
     || v.includes('TEAM_REVIEWで個別打撃の偏りからチーム攻撃力への未確認の効果を主張')
+    || v.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張')
     || v.includes('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定')
     || v.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加');
   const isBurdenSoft = v => v.includes('Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている');

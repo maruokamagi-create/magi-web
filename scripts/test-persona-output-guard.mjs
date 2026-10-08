@@ -827,6 +827,25 @@ test('G100 TEAM_REVIEW permits explicit evidence limit for development allocatio
   assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
 });
 
+test('G93 TEAM_REVIEW blocks ungrounded scoring-route loss and win-necessity rhetoric',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個別打撃成績だけ。'}};
+  const examples=[
+    '試合中の得点ルートが限定されるリスクについて考慮する必要がある。',
+    'どうやって点を取るか、そこをはっきりさせないと勝てないぞ。'
+  ];
+  for(const phrase of examples){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:phrase}),{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'),phrase);
+  }
+});
+
+test('G94 TEAM_REVIEW preserves an explicit non-causal scoring-route limit',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個別の打撃記録のみ。'}};
+  const r=result({persona:'BALTHASAR',publicStatement:'個別の成績だけでは、得点ルートが限定されるとは断定できない。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

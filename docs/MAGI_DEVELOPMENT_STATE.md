@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: d272e2a194c9be70388c5cbaa46a9550b9778d03
+- State base main SHA: 7becd82bca101a02e7555c762e633cfc2b30fef8
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -787,6 +787,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch fix/team-review-casper-sentence-integrity-20261008 extends the existing unsupported current development soft guard to normative generic experience/growth prescriptions and malformed usage-difference fragments. Recovery removes speculative burden/experience/development sentences as whole units before phrase replacements, then re-runs complete original validatePersonaOutput, preserving facts and allowing explicit evidence-limit denials.
 - Regress production phrases, explicit uncertainty, measured playing-time facts and no malformed output. Require deliberation + continuity CI green. Do not weaken numeric guard or turn a 1-1-1 deadlock into 2-1. Wait for ongoing prior Production Sequential Suite 37755091562 before main merge/deploy to avoid overlapping free-tier provider calls.
 - Still open: authenticated iPhone/browser nine-class real UI acceptance and every selected slot's evidence-based rationale. Staged workflow success alone does not prove those user paths.
+
+## 2026-10-08: Current SHA TEAM_REVIEW PRIMARY stopped by polarity bug, with genuine scoring-route overclaim
+
+- Canonical pre-merge main and Vercel production SHA `7becd82bca101a02e7555c762e633cfc2b30fef8`. Its Production Live Selftest run `37755825609` passed SHA readiness, best-order, closer and natural third. TEAM_REVIEW job `113241666556` produced PREPARE and PRIMARY, then failed the PRIMARY acceptance jq assertion before CROSS/SECOND/FINAL.
+- Exact false-positive: MELCHIOR wrote `打率の数値の差や一部の無安打状態を直ちにチーム全体の弱点や戦術的制約と断定するだけの追加的な因果関係の記録はEvidenceにない`. This explicitly rejects a team-wide causal inference. The smoke test rejected the bare `戦術的制約` token because PRIMARY had only a `頼りすぎ` negation normalization, unlike SECOND.
+- Genuine overclaims separately present in BALTHASAR PRIMARY: `どうやって点を取るか、そこをはっきりさせないと勝てないぞ` and `試合中の得点ルートが限定されるリスクについて考慮する必要がある`. Neither follows from individual batting records. Do not treat correcting the smoke alone as resolving output quality.
+- Branch `fix/team-review-scoring-route-polarity-20261008` adds a narrowly bounded PRIMARY acceptance normalization for explicit tactical **non-causal disclaimers** (no crossing Japanese sentence punctuation), without hiding an adjacent unsupported assertion. It adds TEAM_REVIEW evidence guards for unsupported scoring-route restriction and necessary-to-win predictions, extends only the corresponding known soft-recovery guard classes, preserves direct facts and reruns `validatePersonaOutput`. Adds positive/asserted and negative/disclaimed tests and checks the actual jq PRIMARY filter. The first three stages of this fix must not invent tactics, injuries, coach intent or team scoring statistics.
+- Require CI + continuity green; merge only after checking exact main, and Vercel SHA READY. Run one controlled Live check; avoid rate-limit retry loops. Existing nine-class real browser acceptance and nine-player reasoning quality remain unresolved. Never alter Drive/CSV or free Vercel Hobby.
 
 ## Next concrete work
 
