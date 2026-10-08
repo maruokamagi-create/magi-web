@@ -860,6 +860,25 @@ test('G95 TEAM_REVIEW allows explicit rejection of invented reserve-development 
   assert.ok(!issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
 });
 
+test('G96 TEAM_REVIEW rejects projected late scoring decline from individual batting record',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個人別打撃成績のみ。チーム得点の推移は未確認。'}};
+  const cases=[
+    '下位打線や直近で安打のない選手たちの出塁や進塁打の確率を高める手が打てなければ、試合終盤の得点力が限定される。',
+    '特定のバッターだけに頼った状態では厳しい。'
+  ];
+  for(const claim of cases){
+    const result={persona:'BALTHASAR',publicStatement:claim};
+    const issues=validatePersonaOutput(c,result,{focused:false});
+    assert.ok(issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'),claim);
+  }
+});
+
+test('G97 TEAM_REVIEW allows explicit denials of the same hypothetical outcomes',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個人成績のみ。'}};
+  const r=result({persona:'BALTHASAR',publicStatement:'出塁を改善できなければ得点力が低下するとは断定できない。'});
+  assert.ok(!validatePersonaOutput(c,r,{focused:false}).includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
