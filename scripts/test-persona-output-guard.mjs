@@ -846,6 +846,20 @@ test('G94 TEAM_REVIEW preserves an explicit non-causal scoring-route limit',()=>
   assert.ok(!issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'));
 });
 
+test('G94 TEAM_REVIEW refuses reserve-development inference as a present team weakness',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現在の打撃成績と出場機会のみ。育成上の弱点を裏付ける観察はない。'}};
+  const r=result({persona:'CASPER',publicStatement:'出る選手だけがチームじゃないです。出場記録の少ない選手の経験や控えの育成という課題も、今のチームの大切な弱点として見ていく必要があります。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
+test('G95 TEAM_REVIEW allows explicit rejection of invented reserve-development weakness',()=>{
+  const c={question:'今の丸岡中の弱点は何？',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの実際の出場記録のみ。'}};
+  const r=result({persona:'CASPER',publicStatement:'出場記録だけで控えの育成がチームの弱点だとは断定できない。'});
+  const issues=validatePersonaOutput(c,r,{focused:false});
+  assert.ok(!issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
