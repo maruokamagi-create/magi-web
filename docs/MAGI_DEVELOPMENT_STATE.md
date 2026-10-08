@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: b7363c8c3041e276febff6e7ef211efa1a6a6382
+- State base main SHA: 36e185d9e85f9fcc9bfe4258e6f69c33f81c80b8
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -752,6 +752,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - On the same SHA, natural-third Live job `113218965828` included CASPER FINAL warning `特定の選手への固定がチーム全体の経験機会に影響を与えるおそれがあります`. The original user asked who should bat third, not for a future player-development policy. Current Evidence does not establish the asserted experience effect. It also used `選手全体の成長につながる` in CASPER primary despite no developmental request.
 - Branch `fix/selection-teamreview-growth-evidence-20261008`: guard the general semantic classes of individual batting/usage record -> hypothetical long-term team growth/experience outcomes in TEAM_REVIEW, and fixed batting-slot -> other players' experience opportunity or overall growth in normal CASPER BATTING_ORDER/SELECTION. A hedge such as `可能性`/`おそれ` is not a record of the claimed effect. Explicit evidence gaps must remain allowed. Extend existing **fail-closed** soft-recovery only for these exactly known prose guards, preserve player candidate arrays and confirmed individual numeric facts, and rerun the original evidence guard.
 - Add two production-phrase guard tests, explicit-denial negative test, and two recovery regressions to existing deterministic deliberation suite. Require both PR CI and continuity green. Wait for the ongoing Sequential Suite to finish before merging a new main SHA; then verify deployment READY and the full Live stage outputs. Do not claim the overall 9-class **actual browser UI** goal complete from narrow selftests. Keep Vercel Hobby/free and Google Drive/CSV originals untouched.
+
+## 2026-10-08: TEAM_REVIEW CASPER invents a present growth-opportunity weakness despite clean final
+
+- Pre-merge canonical GitHub main and READY Vercel SHA `36e185d9e85f9fcc9bfe4258e6f69c33f81c80b8`. Production Live run `37750570724` completed all four classes through FINAL. BEST_ORDER produced a 2-1 valid 9-player fielding lineup; natural-third FINAL no longer contained the speculative fixed-lineup -> team experience-opportunity warning. TEAM_REVIEW FINAL remained fact-limited.
+- Manual reading of TEAM_REVIEW PRIMARY job `113223885611` found CASPER analysis: `試合に出る選手だけでなく、出場機会が少ない選手も含めた全体の成長機会をどう確保するかという点が現在の課題である。` This assigns a **present weakness/current priority** to developmental opportunity based only on individual current-season batting and appearance records. Neither a causal development effect nor the coach's stated intent is established. A clean synthesized FINAL does not excuse unsupported PRIMARY.
+- Branch `fix/team-review-current-growth-priority-20261008` addresses the **general** unsupported TEAM_REVIEW claim class: assertions that experience/growth opportunity, development, or team depth is currently a weakness/priority requiring action in a current-state assessment. Continue permitting explicit non-assertion/evidence-limit sentences. Reuse existing `TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している` guard and associated fail-closed soft recovery; do not add an unrelated bypass. Retain verified facts/candidate/evidence fields and rerun the original guard.
+- Add exact production-sentence guard + recovery regression, and negative explicit uncertainty test in existing deterministic deliberation CI. Require CI/continuity green. Wait for concurrent SHA `36e185d9` Production Sequential run `37751174683` to finish before merge/deploy. Never change Drive, CSV, security or Vercel Hobby/free settings.
+- Nine-class **authenticated real iPhone/browser UI-path** acceptance, individual-player evaluation, comparison, next-game strategy, direct stats and ambiguous CLARIFY are not fully verified. Continue on original canonical main+production without equating unit or staged selftest success to complete product readiness.
 
 ## Next concrete work
 

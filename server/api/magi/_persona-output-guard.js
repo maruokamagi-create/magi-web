@@ -324,7 +324,18 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       && /(?:半年後|1年後|将来|これから.{0,24}チーム.{0,24}(?:成長|強く)|チーム全体.{0,24}(?:成長|底上げ|強く)|組織的な成長|組織全体.{0,24}育成|育成機会|見守りたい|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
       && !groundingHedge.test(sentence)
     );
-    if(unsupportedDevelopmentAdvice)issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
+    // A question about current weaknesses cannot turn an unmeasured growth
+    // opportunity into a presently confirmed team weakness or priority.
+    // Unlike the already guarded causal projections, this catches statements
+    // such as "growth opportunities are the current issue" with no causal verb.
+    const unsupportedGrowthPriority=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:成長(?:の)?機会|育成機会|経験機会|選手層)/.test(sentence)
+      && /(?:課題|確保(?:する|すべき)|不足|必要|優先|重要)/.test(sentence)
+      && /(?:チーム|選手)/.test(sentence)
+    );
+    if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority)
+      issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
 
     // Hedging an unmeasured long-term impact as a 'possibility' does not make
     // it observed evidence. Current-state TEAM_REVIEW cannot convert a
