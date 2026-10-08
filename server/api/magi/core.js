@@ -61,11 +61,15 @@ function isTeamReviewSample(question){
   return normalized(question)===normalized('現チーム14名の現在データをもとに、今のチームで最優先に改善すべき課題を審議してください。');
 }
 function isStarterEvaluationSample(question){return Boolean(starterSamplePlayer(question));}
-function routedFromSemantic(semantic){
+export function routedFromSemantic(semantic){
   const domains=Array.isArray(semantic?.domains)?semantic.domains:[];
   const domain=domains.find(d=>['BATTING','PITCHING','FIELDING'].includes(d))||domains[0]||'OTHER';
   let route='GENERAL_QUESTION';
-  if(domain==='PITCHING')route='PITCHING_LOOKUP';
+  // This is the validated, semantic-first TEAM aggregate flag from the
+  // question authority. Do not route it through a one-player batting lookup.
+  if(semantic?.teamAggregate===true && domains.includes('TEAM')
+    && (!Array.isArray(semantic?.players)||semantic.players.length===0))route='TEAM_LOOKUP';
+  else if(domain==='PITCHING')route='PITCHING_LOOKUP';
   else if(domain==='BATTING')route='BATTING_LOOKUP';
   else if(domain==='FIELDING')route='FIELDING_LOOKUP';
   else if(domain==='TEAM')route='TEAM_LOOKUP';

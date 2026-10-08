@@ -148,7 +148,7 @@ function clarification(message,reason,base={}){
     validated:true,semanticAuthority:'GEMINI_FIRST'
   };
 }
-function normalizeModel(raw,question,context){
+export function normalizeModel(raw,question,context){
   const mode=MODES.includes(String(raw?.mode||'').toUpperCase())?String(raw.mode).toUpperCase():'CLARIFY';
   const confidence=['HIGH','MEDIUM','LOW'].includes(String(raw?.confidence||'').toUpperCase())?String(raw.confidence).toUpperCase():'LOW';
   const domains=uniq(raw?.domains).map(x=>x.toUpperCase()).filter(x=>DOMAINS.includes(x));
@@ -198,7 +198,15 @@ function normalizeModel(raw,question,context){
   if(mode==='CLARIFY'){
     return clarification(base.clarificationQuestion||'質問の意味を正確に確認したいので、もう少し具体的に教えてください。',base.routeReason||'Geminiが複数解釈を検出した。',base);
   }
-  if(['SINGLE_VALUE','SUMMARY','FULL_REPORT'].includes(mode)){
+  // A high-confidence TEAM aggregate is not an individual-player lookup.
+  // Never demand an individual name for current team OPS, wins or similar
+  // summary requests. FULL_REPORT still requires a supported report target.
+  const teamAggregateLookup=['SINGLE_VALUE','SUMMARY'].includes(mode)
+    && domains.includes('TEAM')
+    && canonicalPlayers.length===0
+    && grounded.length===0;
+  if(teamAggregateLookup)base.teamAggregate=true;
+  if(['SINGLE_VALUE','SUMMARY','FULL_REPORT'].includes(mode) && !teamAggregateLookup){
     const statDomains=domains.filter(d=>['BATTING','PITCHING','FIELDING'].includes(d));
     if(statDomains.length!==1)return clarification('打撃・投手・守備のどの成績を確認しますか？','成績照会の領域が一意でない。',base);
     if(canonicalPlayers.length!==1)return clarification('誰の成績を確認しますか？','個人成績照会の対象選手が一意でない。',base);
