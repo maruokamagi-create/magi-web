@@ -11,6 +11,7 @@ import { understandRequestGeminiFirst } from './_semantic-authority.js';
 import { CURRENT_ROSTER } from './_roster.js';
 import { buildObservationEvidence } from './_observation-evidence.js';
 import { runDriveLiveAudit } from './_drive-live-audit.js';
+import { currentTwoPlayerBattingComparison, resolveCurrentBattingComparison } from './_player-comparison-evidence.js';
 import { needsCrossEvidenceAnalysis } from './_evaluation-routing.js';
 
 export const CORE_VERSION='magi-core-v12-staff-evidence-gate';
@@ -146,6 +147,23 @@ async function deliberationPayload({question,semantic,routed,role='member'}){
 
   let effectiveResolution=resolution;
   if(!resolution?.requestedDocument){
+    // Semantic COMPARISON is not automatically a lineup selection. Retrieve
+    // both named players' verified current batting rows from one XLSM source;
+    // if either row is missing, hold rather than invent comparative evidence.
+    if(currentTwoPlayerBattingComparison(semantic)){
+      const comparison=await resolveCurrentBattingComparison({semantic});
+      if(comparison?.status!=='COMPLETE'){
+        const answer='指定された2選手の今季打撃正本を完全には確認できませんでした。確認できない数値を補完せず、この比較を保留します。';
+        return {
+          ok:true,handled:true,coreVersion:CORE_VERSION,
+          route:'CLARIFY',action:'CLARIFY',answer,needsClarification:true,clarificationQuestion:answer,
+          semantic,evidenceResolution:{status:'UNAVAILABLE',source:'CURRENT_MASTER_BATTING_COMPARISON',reason:comparison?.reason||'UNKNOWN'}
+        };
+      }
+      effectiveResolution={version:'current-two-player-batting-comparison-v1',
+        status:'RESOLVED',requestedDocument:false,source:'CURRENT_MASTER_BATTING_COMPARISON',
+        evidence:comparison.evidence};
+    }
     const naturalTeamReview = !Array.isArray(semantic?.players) || semantic.players.length===0
       ? needsCrossEvidenceAnalysis(question,semantic)
       : false;

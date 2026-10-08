@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: bf55b6641c9522a799f8367fc0c0c11a5707a8a8
+- State base main SHA: 49e6ba803e25862e38379840ad615f2b6fb9d484
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -835,6 +835,16 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/team-aggregate-context-carry-20261009` permits a high-confidence TEAM SINGLE_VALUE/SUMMARY with no model-selected player and explicit TEAM-scope wording (`チーム／全体／全員`) to remain TEAM aggregate even when unrelated player names exist only in earlier conversation. It preserves explicit player names, genuine anaphora (`その選手` etc), low-confidence CLARIFY and unsupported FULL_REPORT. No runtime metric values or coach statements are changed.
 - Extend the existing real semantic-normalizer + `routedFromSemantic` + synthetic XLSM `buildLiveAnswer` contract from six to ten cases: team OPS and team wins after named-player prior turns, explicit player-anaphora continuation, and ambiguous `その選手のチームOPS` clarification.
 - Require Deliberation Final + Development Continuity CI and no overlapping provider-heavy SHA-gated Live before merge/deploy. Verify latest production SHA READY. **This does not establish authenticated iPhone/browser nine-class E2E**; that remains open and no direct Google Drive/CSV or Vercel Hobby/free changes are allowed.
+
+## 2026-10-09: Semantic two-player batting COMPARISON requires its own verified Evidence
+
+- Canonical branch base main `49e6ba803e25862e38379840ad615f2b6fb9d484` (PR #143 merged after green CI), Vercel `magi-web.vercel.app` READY at the same SHA. Its newly triggered Production Live run `37809003083` is underway; do not overlap Gemini-heavy deployments/tests. The previous SHA `bb5af2f76b5b0526df75a25a3d444b596aeaa9a9` completed all four SHA-gated live stages and all Sequential Suite jobs, but real authenticated iPhone UI paths remain unverified.
+- Following the **actual** semantic `COMPARISON` -> `deliberationPayload` path exposed a two-player batting Evidence gap: `buildCurrentSelectionEvidence` refuses named-player non-selection questions, while the natural player-review special case handles exactly one player, and the existing pitching augmentation only handles `PITCHING`. Therefore `大野 竜暉と坂田 暉馬の今季打撃成績を比較して` can enter deliberation with no explicit matched batting table. Do not expect the language model to infer these two records.
+- Newly observed background Live run `37809003083` on the preceding SHA `49e6ba803e25862e38379840ad615f2b6fb9d484` passed BEST_ORDER but failed **CLOSER SECOND**: after valid PREPARE/PRIMARY/CROSS, the Gemini persona-batch provider returned a transient `timeout` (`PERSONA_BATCH_GENERATION_FAILED`) on all three controlled requests, not a deterministic evidence-guard rejection. Do not hot-loop; this is separate from the two-player comparison Evidence change. Other live jobs may still be active.
+- The same Live run also failed NATURAL_THIRD PRIMARY after three transient provider `timeout` responses; again not a deterministic Evidence check rejection. BEST_ORDER itself succeeded 3–0 with 3番 嶋田 栄志 / 4番 中嶋 玲月 (9 positions COMPLETE), whereas previous valid runs had produced different 3/4 configurations or 1–1–1 DEADLOCK. Do not interpret a single vote as proof of a uniquely optimal or reproducible batting order; inspect actual individual rationale, changes after CROSS and source sample sizes.
+- Branch `fix/semantic-two-player-batting-comparison-evidence-20261009` creates a strict current-season, high-confidence semantic `COMPARISON` Evidence reader: exactly two distinct canonical **current-roster** players, `BATTING` domain, no pitching/fielding mixed domain, and supported current/unspecified time scope. Both must have batting AB/H/AVG rows from the **same** verified current `XLSM_MASTER`. Only whitelisted available metrics enter the packet, including the exact source, period and player names. Failed read/missing row -> fail-closed CLARIFY/HOLD, never invent figures or silently replace with old-team data.
+- Integrate into `server/api/magi/core.js` *before* generic selection evidence. Preserve direct individual stat routes, actual member authentication gate, full-lineup and TEAM_REVIEW paths. Add deterministic `scripts/test-current-player-comparison-evidence.mjs` with successful, reversed, missing-stat, wrong-year, retired-player, unsupported-domain, Drive-error and explicit core-contract assertions. Wire into Deliberation Final CI on PR and push.
+- **Unresolved after this patch:** scope beyond current batting comparisons, real browser authenticated response rendering, actual multi-player/tactics/PLAYER_REVIEW/CLARIFY E2E, and personalized per-slot nine-player evidence explanation quality. Only merge if CI success and review; verify deployment SHA before real production claims. Preserve Vercel Hobby/free; no Google Drive/CSV mutation.
 
 ## Next concrete work
 
