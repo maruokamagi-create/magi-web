@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 786d6970db9feb0f696b1c4c6b4e2946926823b0
+- State base main SHA: b933af8ace4313475d0d133df4c72d9d508fde54
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -632,6 +632,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - TEAM_REVIEW completed all staged steps and did not assert a causal link between observed individual batting differences and team-wide scoring or chronic weaknesses; language polish remains.
 - PR #116 (`fix/live-lineup-rejection-diagnostics-20261008`) adds **diagnostic-only** rejection classification to the staged lineup selftest: enum/booleans/candidate counts, not underlying player records or rejected prose. Do not confuse this with fixing the underlying PRIMARY failure.
 - Next: ensure PR #116 passes CI and continuity, then merge/deploy only after review; use a single controlled lineup-only production rerun to determine the rejection class and implement a grounded regression fix. Preserve Vercel Hobby/free, do not change Drive or CSV, and avoid repeated provider-rate-limit calls.
+
+## 2026-10-08: Exact Live lineup guard rejection classified
+
+- Production main SHA `b933af8ace4313475d0d133df4c72d9d508fde54`, GitHub Production Live Selftest run `37728398500`: `production-revision-ready` passed. Exact best-order PRIMARY failed three times with `PRIMARY_BALTHASAR_INVALID` and `reasonClass=EVIDENCE_OUTPUT_GUARD`, `reviewRequested=true`, `dataConflict=false`, candidateCount/unique/inRoster each 9. This disproves the theory that this specific rejection is due to a missing ninth name, duplicate names, or an out-of-roster pick.
+- The exact reason is still unknown because `failClosedPersona()` contains specific guard-issue text only in `reviewReason`, which the Live selftest does not expose. Failure could be a semantic outcome claim, prose/order inconsistency, metric mismatch, etc. No guess is established as fact.
+- Branch `fix/live-lineup-guard-issue-codes-20261008`: add read-only, non-sensitive `issueCodes` classifications from the existing first three guard issues, without exposing raw rejected text or player records; add explicit tests. Existing rejection rules remain fail-closed.
+- Next: verify CI, merge only after green checks, confirm exact production SHA, observe the code in one staged best-order PRIMARY Live test and then fix the demonstrated issue. Do not disable evidence validation or modify Google Drive/CSV. Keep Vercel Hobby (free) and avoid rate-limit loops.
 
 ## Next concrete work
 
