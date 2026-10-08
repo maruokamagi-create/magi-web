@@ -80,7 +80,7 @@ function validFullLineupDeadlock(final,evidence){
   if(!Array.isArray(final.lineup)||final.lineup.length!==0
     ||!Array.isArray(final.battingOrder)||final.battingOrder.length!==0)return false;
   if(final.fieldingStatus!=='NOT_EVALUATED'||final.fieldingReason!=='LINEUP_DEADLOCK')return false;
-  const norm=v=>text(v).normalize('NFKC').replace(/[\\s　]/g,'');
+  const norm=v=>text(v).normalize('NFKC').replace(/[\s　]/g,'');
   const roster=currentPlayers(evidence).map(p=>norm(p.name));
   if(roster.length!==14||new Set(roster).size!==14)return false;
   const votes=final.personaLineups;
