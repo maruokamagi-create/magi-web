@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 6bf2f6d2b5b6d95880da395776ee6e4def98164b
+- State base main SHA: fc278cea3b58b5af192f9f35b98afed20714424b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -671,6 +671,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/generic-selection-casper-grounding-20261008` adds **opt-in** generic-selection sanitation only within `recoverSoftSelectionInference` after exactly the known CASPER growth/dependency soft guard issue. It removes unsupported prose but preserves structured candidates, verified numbers, and other evidence. All existing output guards still re-run; numeric/roster/structural failures stay fail-closed. Normal generic-selection requests are unaffected.
 - Test exact `mode:selection` + missing `selectionKind` generic fixture, preserving candidate order and verified facts, and negative without a guard issue or with a hard numeric issue. Require CI, merge, READY production SHA and sequential selection smoke confirmation before declaring generic selection stable.
 - Preserve Vercel Hobby/free and Google Drive/CSV read-only. Avoid claiming the whole MAGI system finished until actual verified questions and explanations are sound.
+
+## 2026-10-08: Sequential FULL_LINEUP smoke falsely rejected correct deadlock
+
+- Main and READY Vercel production SHA `fc278cea3b58b5af192f9f35b98afed20714424b`. The four-case staged Production Live run `37731176624` completed successfully.
+- The follow-on Production Sequential Suite run `37731621626` advanced beyond its previously blocked regular player selection (selection job `113161803704` **success**, confirming the PR #121 remediation in production). The next full-lineup job `113161999735` reached FINAL and got `LINEUP_REVIEW_REQUIRED`, `FULL_LINEUP_DEADLOCK_1_1_1`, `1-1-1`, `lineup=[]`, `fieldingStatus=NOT_EVALUATED` for three distinct valid nine-player orders. The job failed because workflow `.github/workflows/magi-production-full-lineup-smoke.yml` erroneously required `LINEUP_RESULT` and all nine fielding positions unconditionally. The production solver correctly followed the no-fabricated-majority rule; this was a **smoke acceptance mismatch**, not a verified engine failure.
+- That smoke fixture uses **entirely synthetic** batting and fielding, including official starting qualifications at all positions for every player. It is only suitable for testing structural contracts, NEVER as evidence of actual Maruoka players' ability or past appearances.
+- Branch `fix/smoke-accept-legitimate-full-lineup-deadlock-20261008`: factor one jq acceptance contract into `scripts/validate-production-full-lineup-final.jq`, so the smoke accepts either (1) `LINEUP_RESULT` with real nine-position Evidence in its fixture and an authentic 3-0/2-1 proposal vote, or (2) exactly 1-1-1 DEADLOCK with three distinct nine-player proposals, no assigned lineup, fielding not evaluated, and unresolved conflicts. Other review outcomes, incomplete rosters, ungrounded fielding, fabricated compromises or votes remain failures. Add 13 true jq positive/negative tests and run in PR CI before updating main.
+- After PR CI green and Vercel READY SHA, require sequential selection/full-lineup/pitching-plan/deliberation/reproducibility workflow results before declaring complete. A valid DEADLOCK is not a recommended best order: user still needs an evidence-grounded resolved 1–9 lineup or explicit explanation why impossible. Continue to audit rationales and actual current-year CSV/score Evidence, preserving zero paid costs and Drive read-only.
 
 ## Next concrete work
 
