@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Checkout production acceptance contract
+        uses: actions/checkout@v4
+
       - name: Wait for production deployment
         run: sleep 45
 
@@ -77,6 +80,9 @@ jobs:
             }
           }
           JSON
+
+          # Use the roster supplied by this synthetic CASE, not historic players.
+          jq '[.evidence.allCurrentTeamCheck.players[].name]' /tmp/case.json > /tmp/roster.json
 
           # Reproducibility fixture only: synthetic fielding evidence for all nine positions.
           # A deterministic score matrix gives any selected nine a unique complete assignment.
@@ -164,7 +170,9 @@ jobs:
               --slurpfile x "/tmp/${tag}-cross.json" \
               '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > "/tmp/${tag}-final-body.json"
             post '/api/magi/orchestrate' "/tmp/${tag}-final-body.json" "/tmp/${tag}-final.json"
-            jq -e '.mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and .fieldingStatus=="COMPLETE" and (.lineup|length==9) and (([.lineup[].name]|unique|length)==9) and (([.lineup[].position]|unique|length)==9)' "/tmp/${tag}-final.json" >/dev/null
+            # Accept only a fully evidenced 3-0/2-1 lineup or a true 1-1-1
+            # deadlock that refuses to invent the lineup. Both must replay identically.
+            jq -e --slurpfile roster /tmp/roster.json -f scripts/validate-production-full-lineup-final.jq "/tmp/${tag}-final.json" >/dev/null
           }
 
           run_once a
