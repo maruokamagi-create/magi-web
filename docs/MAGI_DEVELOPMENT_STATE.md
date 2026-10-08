@@ -9,8 +9,8 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-07
-- State base main SHA: df4d13fdad9a11fe78019b5e2ff995d081dd10b1
+- State updated: 2026-10-08
+- State base main SHA: 786d6970db9feb0f696b1c4c6b4e2946926823b0
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -621,6 +621,17 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - A dedicated `scripts/test-live133-residual-grounding.mjs` reproduces the observed best-order, closer, natural-third, TEAM_REVIEW and FINAL leakage. Its first two CI failures correctly exposed missing closer soft recovery and polite `理由はありません` handling; both were then added to detection/recovery/final layers.
 - Vercel project `magi-web` now has `previewDeploymentsDisabled=true` to protect the Hobby 100-deployments/day budget. One explicit isolated Preview was created for branch SHA `25f11b20...` and reached READY. Automatic branch previews remain disabled. No billing upgrade and no Google Drive/CSV mutation occurred.
 - Do not declare the four-class gate clear until PR #115 is green, merged, the resulting main SHA is deployed to production, and all four current-production staged flows are manually inspected through PRIMARY -> CROSS -> SECOND -> FINAL.
+
+## 2026-10-08: SHA-matched production Live rerun and next diagnosis
+
+- Canonical main and production deployment SHA: `786d6970db9feb0f696b1c4c6b4e2946926823b0`. The original workflow run had checked an older production revision before the new deployment was READY; deployment readiness and deliberation quality must be distinguished.
+- Re-ran GitHub Actions production Live Selftest run `37657015253`, attempt 2. `production-revision-ready` passed with the exact main SHA. Results: best-order **failed**, closer **passed**, natural-third **passed**, TEAM_REVIEW **passed**.
+- Best-order failed PRIMARY for BALTHASAR on three distinct stage calls with `PRIMARY_BALTHASAR_INVALID` despite complete 14-player evidence. The existing endpoint hides the exact rejection category. The failure can be a review flag, data conflict, or invalid nine-player selection; the available logs do not resolve which. Do not guess or weaken roster, fielding or grounding guards.
+- Closer FINAL named 坂田 暉馬 first based on 2 recorded saves and preserved the four-inning small-sample and coach control concerns.
+- Natural-third automated acceptance passed, but manual reading found residual unsupported phrasing: BALTHASAR `固定しつつ` and CASPER `チームの打撃力が向上する可能性`. Automated success does **not** imply full semantic acceptance.
+- TEAM_REVIEW completed all staged steps and did not assert a causal link between observed individual batting differences and team-wide scoring or chronic weaknesses; language polish remains.
+- PR #116 (`fix/live-lineup-rejection-diagnostics-20261008`) adds **diagnostic-only** rejection classification to the staged lineup selftest: enum/booleans/candidate counts, not underlying player records or rejected prose. Do not confuse this with fixing the underlying PRIMARY failure.
+- Next: ensure PR #116 passes CI and continuity, then merge/deploy only after review; use a single controlled lineup-only production rerun to determine the rejection class and implement a grounded regression fix. Preserve Vercel Hobby/free, do not change Drive or CSV, and avoid repeated provider-rate-limit calls.
 
 ## Next concrete work
 
