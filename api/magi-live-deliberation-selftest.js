@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { getCache } from '@vercel/functions';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 import { buildCurrentSelectionEvidence, buildCurrentTeamReviewEvidence } from '../server/api/magi/_selection-live-evidence.js';
+import { classifyLineupGuardIssues } from '../server/api/magi/_lineup-guard-issue-codes.js';
 
 export const config = { maxDuration: 120 };
 
@@ -221,6 +222,7 @@ export function lineupPersonaFailureDiagnostic(row){
     :'INVALID_CANDIDATES';
   return {
     reasonClass,
+    issueCodes:classifyLineupGuardIssues(reason),
     reviewRequested:row?.reviewRequested===true,
     dataConflict:row?.dataConflict===true,
     candidateCount:names.length,
