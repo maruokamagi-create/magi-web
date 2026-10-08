@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 251f5da21649c34afe680f728df8468beab7f780
+- State base main SHA: b7363c8c3041e276febff6e7ef211efa1a6a6382
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -744,6 +744,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/team-review-unsupported-attack-effect-20261008`: extend TEAM_REVIEW evidence-language guard to reject batting-spread to team-offense harm, restriction, or scoring-route cause, even when hedged as possibility. Explicit denials (`とは断定できない`) and measured individual differences must still pass. Extend the existing **soft-recovery** whitelist to discard only this causal speculation and preserve confirmed individual facts, then rerun the original complete deterministic guard.
 - Add direct regression for the exact offending production warning and speculative scoring-route statement, plus negative/noncausal and recovery tests. Do not weaken unrelated selection, lineup or source-evidence validations. Production Sequential Suite `37748390775` for the pre-change SHA may still be running; wait for it to finish before merging or triggering another provider-heavy run.
 - Continue manual review after CI/deployment. The verified 2-to-1 lineup needs player-by-player reason quality: CASPER changed the 4/5 order at SECOND with a vague `より適した形` rationale; this is an unresolved explanation-quality issue and must not be presented as proven superiority. Keep the full nine-class real browser UI-path objective open. Vercel Hobby/free and Drive/CSV originals unchanged.
+
+## 2026-10-08: Live coverage green but future growth/experience-effect claims still leaked
+
+- Pre-merge source of truth: GitHub main + Vercel READY SHA `b7363c8c3041e276febff6e7ef211efa1a6a6382`. PR #129 fixed unsupported individual-batting-spread -> offensive impact in TEAM_REVIEW. SHA-matched Live `37749266961` passed all four staged classes through FINAL; current-production TEAM_REVIEW FINAL now no longer repeats the unsupported attack-limitation warning. Its CURRENT final remains cautious that individual batting spread does not prove team-wide scoring or permanent weaknesses. Earlier Sequential run `37748390775` completed all five jobs successfully on preceding SHA `251f5da2`; the newest SHA's Sequential suite `37749858615` may still be running.
+- Manual read of Live TEAM_REVIEW PRIMARY job `113219553981` found CASPER: `打撃成績の数値差や出場機会の偏りは、長期的なチームの成長や選手層の厚さに影響を与える可能性がある` and a similar `長期的なチーム作り` warning. These infer future organizational impact from current individual records even hedged, not measured current-team evidence. They were absent from the FINAL on that run, but PRIMARY itself remains non-compliant with the stated fact/inference boundary.
+- On the same SHA, natural-third Live job `113218965828` included CASPER FINAL warning `特定の選手への固定がチーム全体の経験機会に影響を与えるおそれがあります`. The original user asked who should bat third, not for a future player-development policy. Current Evidence does not establish the asserted experience effect. It also used `選手全体の成長につながる` in CASPER primary despite no developmental request.
+- Branch `fix/selection-teamreview-growth-evidence-20261008`: guard the general semantic classes of individual batting/usage record -> hypothetical long-term team growth/experience outcomes in TEAM_REVIEW, and fixed batting-slot -> other players' experience opportunity or overall growth in normal CASPER BATTING_ORDER/SELECTION. A hedge such as `可能性`/`おそれ` is not a record of the claimed effect. Explicit evidence gaps must remain allowed. Extend existing **fail-closed** soft-recovery only for these exactly known prose guards, preserve player candidate arrays and confirmed individual numeric facts, and rerun the original evidence guard.
+- Add two production-phrase guard tests, explicit-denial negative test, and two recovery regressions to existing deterministic deliberation suite. Require both PR CI and continuity green. Wait for the ongoing Sequential Suite to finish before merging a new main SHA; then verify deployment READY and the full Live stage outputs. Do not claim the overall 9-class **actual browser UI** goal complete from narrow selftests. Keep Vercel Hobby/free and Google Drive/CSV originals untouched.
 
 ## Next concrete work
 
