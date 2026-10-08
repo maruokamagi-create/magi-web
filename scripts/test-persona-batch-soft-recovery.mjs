@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse } from '../server/api/magi/persona-batch.js';
 import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
+import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 
 function baseResult(overrides={}) {
   return {
@@ -639,4 +640,19 @@ function baseResult(overrides={}) {
   assert.ok(!/チーム全体の弱点である/.test(JSON.stringify(result)));
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 32/32 PASS');
+{
+  const caseData={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃・出場記録のみ。'}};
+  const result=baseResult({
+    persona:'BALTHASAR',
+    analysis:['現チームの打撃記録には選手間の数値差がある。'],
+    publicStatement:'全体の得点力をどう形作るかが勝負の分かれ道だ。'
+  });
+  const issues=validatePersonaOutput(caseData,result,{focused:false});
+  assert.ok(issues.some(x=>x.includes('TEAM_REVIEWで数値差・偏りをチーム全体の弱点・戦術・育成影響へ拡張')));
+  const ok=recoverSoftPersonaBatchValidation(result,issues,caseData,{focused:false});
+  assert.equal(ok,true,'only known TEAM_REVIEW rhetorical overclaims may be recovered');
+  assert.ok(!/勝負の分かれ道|勝ちへの道|生産力/.test(JSON.stringify(result)));
+  assert.deepEqual(validatePersonaOutput(caseData,result,{focused:false}),[]);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 33/33 PASS');
