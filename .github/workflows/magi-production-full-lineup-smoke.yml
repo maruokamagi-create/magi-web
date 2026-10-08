@@ -9,6 +9,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - name: Checkout acceptance contract
+        uses: actions/checkout@v4
+
       - name: Wait for production deployment
         run: sleep 40
 
@@ -173,19 +176,11 @@ jobs:
           curl -L --fail --retry 2 --retry-delay 4 -sS -H "Origin: $ORIGIN" -H 'Content-Type: application/json' -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
           cat /tmp/final.json; echo
 
-          jq -e --slurpfile roster /tmp/roster.json '
-            .mode=="FULL_LINEUP" and .status=="LINEUP_RESULT" and
-            (.lineup|length==9) and (([.lineup[].name]|unique|length)==9) and
-            ([.lineup[].name as $p | ($roster[0] | index($p)) != null] | all) and
-            (([.lineup[].name]|index("宮嵜 翔")) == null) and
-            .fieldingStatus=="COMPLETE" and
-            (([.lineup[].position]|unique|length)==9) and
-            (([.lineup[].position]|sort)==(["一","三","中","二","右","左","投","捕","遊"]|sort)) and
-            ([.lineup[].positionEvidence | ([.officialStarts,.practiceFirstStarts,.totalStarts,.recentStarts,.fieldingAppearances] | any(.>0))] | all) and
-            (.personaLineups|keys|length==3) and
-            (.crossDiscussion.challenges.melchior|length>0) and
-            (.crossDiscussion.challenges.balthasar|length>0) and
-            (.crossDiscussion.challenges.casper|length>0)
-          ' /tmp/final.json >/dev/null
+          # Only two outcomes may pass this synthetic fixture:
+          # 1. Consensus/majority backed by all nine verified positions.
+          # 2. Genuine 1-1-1 DEADLOCK, with NO fabricated lineup or fielding.
+          # All other REVIEW_REQUIRED outcomes remain failures.
+          jq -e --slurpfile roster /tmp/roster.json -f scripts/validate-production-full-lineup-final.jq /tmp/final.json >/dev/null
 
-          echo 'PRODUCTION FULL 1-9 THREE-SAGE DELIBERATION: PASS'
+          observed=$(jq -r '"status=" + .status + ", vote=" + (.finalVote // "unknown") + ", fielding=" + (.fieldingStatus // "unknown")' /tmp/final.json)
+          echo "PRODUCTION FULL 1-9 THREE-SAGE DELIBERATION: PASS ($observed)"
