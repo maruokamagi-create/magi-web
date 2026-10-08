@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-08
-- State base main SHA: 57e99ec37834a4629e98fe8c2a54059f4dad3d57
+- State base main SHA: 2682aafbb8c1f701119cd53176cc0dbfbba3bf40
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -769,6 +769,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Move the established `developmentAdvice` early whole-sentence drop **ahead of** broad partial Japanese phrase rewrites in `recoverSoftTeamReviewDependency`. This prevents unsupported developmental claims from being left as grammatically broken fragments. Do not alter factual records, candidate selections, roster, coach statements or numerical grounding checks. Regression tests must assert the exact concern is blocked, an explicit non-assertion allowed, the compound unsupported sentence removed, and direct batting facts retained.
 - Require deterministic Deliberation Final CI and Development Continuity Guard green. Wait for ongoing production sequential run `37752540714` before merging/deploying; do not hot-loop provider calls. Preserve Vercel Hobby/free, security settings, Google Drive/CSV read-only, and the genuine best-order 1-1-1 deadlock rule.
 - Manual response-quality review is still essential. Real authenticated iPhone/browser end-to-end completion for the full nine-class question taxonomy is not yet verified, nor is every player's slot rationale convincingly explained.
+
+## 2026-10-08: TEAM_REVIEW individual AVG wrongly recast as scoring concentration
+
+- Pre-merge canonical main and READY Vercel SHA `2682aafbb8c1f701119cd53176cc0dbfbba3bf40`. Its staged production Live run `37753251218` passed exact SHA readiness, best-order, closer and natural-third. TEAM_REVIEW job `113232844234` reached PREPARE and PRIMARY but failed the PRIMARY acceptance (the workflow correctly did not advance into CROSS/FINAL).
+- Inspecting its authentic TEAM_REVIEW PRIMARY shows two ungrounded BALTHASAR claims: `特定の選手に得点力が偏っている現状` and `特定の打者に成績が集中している現状は、実戦における攻撃の選択肢に影響を与える可能性がある`. The Evidence contains individual batting rates and usage, not directly verified team scoring dependency, tactical restrictions or causal effects. Do not present these as confirmed facts, even with 「可能性」 wording.
+- The existing TEAM_REVIEW guard recognized `打撃成績の偏り→攻撃力の制限` but failed this different rhetorical structure, so the batch returned the unsupported text. Branch `fix/team-review-scoring-concentration-20261008` adds two semantic patterns under the **same existing soft-guard classification**: individual-player scoring-power concentration, and concentration of individual batting records -> measured team tactical choice/scoring consequences. Preserve explicit negations, recorded individual stats and fielding/roster validations.
+- Extend `recoverSoftTeamReviewDependency` to replace only those unsupported causal sentences with an explicit evidence boundary **before publishing**, then re-run `validatePersonaOutput`. Positive and qualified-denial regression, plus batch recovery test, are in the deterministic deliberation CI. This is not a broad rewrite of coaching strategy or model prompts.
+- Require CI and development continuity green; after merge and READY SHA, inspect authentic production TEAM_REVIEW PRIMARY, SECOND and FINAL, including the absence of unsupported causal stories. A green structural result alone is insufficient. Continue to separate independent judgments, 1-1-1 deadlock, and valid 2-1 majority; no forced consensus.
+- Do not edit Google Drive/CSV/score sheets, Vercel security or Hobby/free plan. Full authenticated iPhone/browser 9-class UI acceptance and 1–9 per-slot narrative accuracy remain unresolved priorities.
 
 ## Next concrete work
 
