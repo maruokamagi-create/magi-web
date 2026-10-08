@@ -1,5 +1,6 @@
 import { CURRENT_ROSTER } from './_roster.js';
 import { validatePitchingPlanPersonaOutput } from './_pitching-plan-output-guard.js';
+import { unsupportedBattingOrderEffect } from './_batting-order-unsupported-effect.js';
 
 function text(value){return String(value ?? '').trim();}
 function numberValue(value){
@@ -458,6 +459,16 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       )
     );
     if(unsupportedSlotTactics)issues.push('BATTING_ORDERで実打順・打撃数値から戦術的安定性を断定している');
+
+    // Batting-slot starts and current rates do not prove a player's role
+    // familiarity, the team's future stability, or a change in scoring power.
+    const unsupportedTeamOrRoleEffect=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && unsupportedBattingOrderEffect(sentence)
+    );
+    if(unsupportedTeamOrRoleEffect)
+      issues.push('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している');
+
 
     const hasExplicitSlotContinuity=/(?:3番|打順).{0,30}(?:固定|継続|維持|方針)|(?:固定|継続|維持).{0,30}(?:3番|打順)/.test(evidenceText);
     if(!hasExplicitSlotContinuity){
