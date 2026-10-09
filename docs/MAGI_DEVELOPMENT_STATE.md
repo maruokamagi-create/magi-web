@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: fa96979caf4fe9cea43ece05f892747d7c193681
+- State base main SHA: 64f4eea3f0b378b802b221755ef5d04beb0a997c
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1023,3 +1023,12 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Branch `fix/second-contested-lineup-evidence-20261009` builds a minimal independent SECOND evidence packet **only** from that persona's own PRIMARY, its assigned CROSS disagreement/challenge, and the exact verified current/recent batters in CASE.evidence; limited to two adjacent disputed pairs. It does not show other personas' private FIRST/SECOND. It omits absent/invalid metrics and does not touch the authoritative roster, player stats, or Drive. Both the individually called persona endpoint and batch SECOND transport forward this same packet.
 - SECOND instruction requires explicit player-vs-player figures and either real role-specific corroboration of preferred batting direction or an explicit statement that slot-specific superiority is not demonstrated; AB differences and legal defense for the same nine cannot justify a 4/5 swap. OPS ranking alone does not prove game outcomes. No automated reorder, false confidence, fabricated runs, or forced convergence. Regression asserts exactly the reproduced 4/5 pair, missing pair/no current evidence, PRIMARY isolation, and batch forwarding.
 - This is an instructional/evidence transport improvement, **not yet proof** that the next real model output is persuasive. Require PR CI, merge, production READY exact SHA, full staged Live jobs and manual inspection of every SECOND and FINAL before claiming a semantic resolution. Maintain Hobby/free and read-only Google Drive. Do not run parallel provider-heavy suites.
+
+
+## 2026-10-09: PR #161 production PRIMARY block before SECOND (Live run 37900807854)
+
+- PR #161 merged after deterministic/continuity CI success, main SHA `64f4eea3f0b378b802b221755ef5d04beb0a997c`. Live `37900807854` PREPARE verified `deployment.sha` exactly matching main and all required Evidence statuses COMPLETE.
+- BEST_ORDER PRIMARY returned HTTP success, but the GitHub staged production quality gate **correctly failed** before CROSS/SECOND. BALTHASAR proposed a different third/fourth configuration (3嶋田・4中嶋), and published hedged unsupported effects: `このオーダーにより、上位打線で得点機会を創出できる可能性がある。`, `橋向 結都の投球と大野 竜暉の捕手起用により、守備の安定を図れる可能性がある。`, `下位打線が繋がれば、得点力が増す可能性がある。`, and `上位で得点機を作るのが俺の狙いだ。`. The existing guard previously focused on `打順/打率/起用` near the outcome and `守備の安定性` or `安定した`; some of these hedged bare-effect forms escaped the guard even though the smoke rejects them. The new SECOND contested-pair code has **not** yet received live acceptance because PRIMARY blocked progression. Do not claim semantic improvement or a correct best lineup.
+- Branch `fix/full-lineup-primary-hedged-effect-20261009` extends the existing FULL_LINEUP guard to catch bare hedged scoring-chance/points-power creation and defense-stability effects in any narrative field even without a proximal numeric cue. Explicit evidence-limit disclaimers remain allowed. Add exact live-reproduced regression texts and keep preexisting evidence/roster/fielding gates. Existing deterministic soft recovery may discard unsupported prose (safety first), but this does NOT establish persuasive reasons. Do not merge until original Live run finishes its remaining staged jobs; do not spend Hobby/provider quota by stacking provider tests. After CI and merge, verify new production SHA and all stages anew.
+
+- Also in the **same old READY Live run** `37900807854`, exact natural third-batter stage failed after a successfully generated SECOND. The runner correctly rejected phrases that converted seven actual 3番 starts for 嶋田 栄志 into `現状の選択肢として確実である` and a continuation preference despite alternate 坂田 暉馬's stronger current OPS .861 vs .748. This is a **separate BATTING_ORDER quality gap**, not fixed by this FULL_LINEUP-only guard patch. Preserve the evidence and address it explicitly after verifying this current repair. The closer stage succeeded; TEAM_REVIEW stage remained pending as of this note.

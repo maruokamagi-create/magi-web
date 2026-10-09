@@ -1173,6 +1173,26 @@ test('Live closer must not label innings and ERA as measured stability',()=>{
   assert.ok(!validatePersonaOutput(c,allowed,{focused:false}).includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している'));
 });
 
+
+test('G-live161 FULL_LINEUP blocks hedged scoring chance and defense stability without adjacent numeric language',()=>{
+  const fullCase={
+    question:'今の丸岡中のベストオーダーは？',mode:'selection',selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',summary:'現チームの打撃数値と先発守備位置が確認できる'}
+  };
+  for(const sentence of [
+    'このオーダーにより、上位打線で得点機会を創出できる可能性がある。',
+    '橋向 結都の投球と大野 竜暉の捕手起用により、守備の安定を図れる可能性がある。',
+    '下位打線がつながれば、得点力が増す可能性がある。',
+    '実績のあるポジションに配置し、守備の安定を優先した。',
+    '上位で得点機を作るのが俺の狙いだ。'
+  ]){
+    const issues=validatePersonaOutput(fullCase,result({persona:'BALTHASAR',publicStatement:sentence}),{focused:false});
+    assert.ok(issues.some(x=>x.includes('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定')),sentence+' => '+issues.join(';'));
+  }
+  const allowed=validatePersonaOutput(fullCase,result({persona:'BALTHASAR',publicStatement:'両選手の打順順序による得点機会の創出や守備の安定は、この記録だけでは確認できません。'}),{focused:false});
+  assert.ok(!allowed.some(x=>x.includes('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定')),allowed.join(';'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
