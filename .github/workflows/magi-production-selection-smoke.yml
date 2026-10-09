@@ -151,14 +151,29 @@ jobs:
             jq --arg p "$p" '.[$p]' /tmp/primary-batch.json > "/tmp/${p}-primary.json"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
             STAGE="PRIMARY_${p}_FIELDS"
-            jq -e --arg p "$expected" '
+            if ! jq -e --arg p "$expected" '
               .persona==$p and .phase=="PRIMARY" and
               (.reviewRequested==false) and (.dataConflict==false) and
               (.checkedPlayers|length==14) and
               ((.candidateBasis//"")|length>0) and
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|length>0)
-            ' "/tmp/${p}-primary.json" >/dev/null
+            ' "/tmp/${p}-primary.json" >/dev/null; then
+              # Strictly flags/counts only. Never print model drafts, player
+              # names, factual Evidence, or the actual prose to CI logs.
+              jq -c --arg expected "$expected" '{
+                stage:"PRIMARY_FIELDS",
+                personaMatches:(.persona==$expected),
+                phaseMatches:(.phase=="PRIMARY"),
+                acceptedWithoutReview:(.reviewRequested==false),
+                noDataConflict:(.dataConflict==false),
+                checkedPlayerCount:(.checkedPlayers|if type=="array" then length else -1 end),
+                candidateBasisPresent:((.candidateBasis//"")|length>0),
+                primaryReasonPresent:((.primaryReason//"")|length>0),
+                publicStatementPresent:((.publicStatement//"")|length>0)
+              }' "/tmp/${p}-primary.json" >&2
+              exit 22
+            fi
             STAGE="PRIMARY_${p}_ROSTER"
             same_roster "/tmp/${p}-primary.json"
             STAGE="PRIMARY_${p}_CANDIDATES"
