@@ -231,7 +231,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
   if(reviewKind==='TEAM_REVIEW'){
     // The same forbidden conclusion types must be used by the validator and
     // the bounded soft-recovery step; preserve verified individual statistics.
-    const observedOutcomeKinds=new Set(parts.map(unsupportedTeamReviewOutcomeKind).filter(Boolean));
+    const observedOutcomeKinds=new Set(parts.filter(sentence=>!isEvidenceGapStatement(sentence)).map(unsupportedTeamReviewOutcomeKind).filter(Boolean));
     if(observedOutcomeKinds.has('SCORING'))
       issues.push('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している');
     if(observedOutcomeKinds.has('BURDEN'))
