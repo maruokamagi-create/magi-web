@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 33610359542645a521a2fb5ed347dfa38f38d0fb
+- State base main SHA: f971ffab91e2c2de3ae35718d880d0db78284aed
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -907,6 +907,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/lineup-second-casper-mixed-grounding-20261009` narrowly extends the existing order-narrative reconciler's allowlist for *text-only* output claims already guarded by BEST_ORDER (scoring optimization/outcome and unsupported defense stability/cooperation), **only when an independent numbered batting-order contradiction is present**. All other numeric, roster, fielding, factual, unsupported guarantee, or other issues still block reconciliation. The original structured nine-player sequence must remain unchanged; result prose is rewritten to evidence limitations and the original full `validatePersonaOutput + personaFullLineupIssues + personaPitchingPlanIssues` gates must pass again before accepting.
 - Add exact-class regression covering the conjunction, unchanged lineup, discarded speculative prose, and fail-closed hard effects. Also add an enum-only issue category list and count across the **complete** failed guard issue array to prevent `failClosedPersona`'s first-three-text truncation from concealing a later order/fielding/numeric guard. This telemetry contains no player identity, raw draft prose, or Evidence values; the Live selftest prefers this safe full list over the historic prefix parser. The diagnostics do not bypass any validation. If PR CI passes, do not call the Live issue resolved until this branch is deployed READY, the observed rejected failure is actually absent, the cross->SECOND->FINAL status is checked, and player-by-player reasons are independently checked. This change cannot guarantee an actual order contradiction existed in the production response, and should not turn genuine absence of evidence into a majority.
 - Prior PR #150's TEAM_REVIEW semantic denial fix and selection stage diagnostic are already in main; do not duplicate. Keep Hobby/free, avoid concurrent provider-heavy runs or repeated 429/503 calls, and leave Drive/CSV untouched.
+
+## 2026-10-09: NATURAL_THIRD still labels next-batter bridge as established selection rationale
+
+- Canonical main and Vercel READY SHA `f971ffab91e2c2de3ae35718d880d0db78284aed` after PR #151; new production Live workflow `37878894406` passed SHA readiness and best-order PRIMARY/CROSS/SECOND/FINAL. Best-order legitimately returned `FULL_LINEUP_DEADLOCK_1_1_1` and no certified nine-person order. Closer all stages passed; center candidate 坂田 暉馬 based on 2 saves with small-sample and control observations.
+- Exact NATURAL_THIRD job `113654472136` also passed all structural stages, centered 嶋田 栄志 with alternate 坂田 暉馬. However BALTHASAR PRIMARY stated `4番の大久保につなぐならこのどちらかだ`, and PRIMARY/SECOND rationale `4番の大久保 陽翔につなぐ役割として`. The latter also reached FINAL majorReasons. The current batting-slot evidence verifies 3番 starts, AVG/OPS and players, not next-hitter bridging success or a fixed contemporary cleanup hitter. Past 4番 role cannot silently be imported to current strategy.
+- Shared matcher `unsupportedBattingOrderEffect()` correctly handled `4番につなぐ...機能/最適/効果` but did not catch a 4番 bridge assertion used **as the sole choosing rationale**, phrased `なら` or `役割として` without outcome adjectives. Thus structural green was not semantic green.
+- Branch `fix/batting-slot-fourth-hitter-linkage-20261009`: extend only that generic BATTING_ORDER matcher with a next-hitter linkage-as-selection-reason form (no player-name or question-literal special case). Its existing validator and batch sanitizer must reject/remove unsupported prose, retain candidate identity/order plus verified 3番 starts and OPS, and re-run original Evidence validation. Explicit `つなぎの効果は確認できない` limitations and actual start counts remain allowed; hard numeric mismatches remain fail-closed. Add exact published statement and negative/recovery regressions. No new provider calls for tests.
+- Require Deliberation Final and Development Continuity checks before merge, then Vercel READY SHA and production NATURAL_THIRD manual PRIMARY/SECOND/FINAL prose inspection. The Live `37878894406` TEAM_REVIEW and any triggered Sequential Suite may still be in progress: avoid overlapping provider-heavy calls or new deployment while in progress.
+- Even if green, the authenticated iPhone Chrome real nine-class UI execution path and persuasive grounded 1–9 rationale remain open. Keep Vercel Hobby/free and all Drive/CSV/score originals read-only.
 
 ## Next concrete work
 
