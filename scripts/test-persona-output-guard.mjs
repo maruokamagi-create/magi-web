@@ -1193,6 +1193,25 @@ test('G-live161 FULL_LINEUP blocks hedged scoring chance and defense stability w
   assert.ok(!allowed.some(x=>x.includes('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定')),allowed.join(';'));
 });
 
+
+test('G-live161-natural-third 3番 starts do not establish certain player selection',()=>{
+  const battingCase={
+    question:'3番を誰にするか迷ってる。4番につなぐことを考えると？',
+    mode:'selection',selectionKind:'BATTING_ORDER',
+    evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合先発、OPS .748。坂田 暉馬のOPSは .861。'}
+  };
+  for(const sentence of [
+    '3番としての起用実績がある嶋田 栄志を置くのが現状の選択肢として確実である。',
+    'これまでの起用実績を確認すると嶋田 栄志が確実です。',
+    '3番で7試合先発した嶋田 栄志は最も確実な選択肢だ。'
+  ]){
+    const issues=validatePersonaOutput(battingCase,result({persona:'BALTHASAR',analysis:[sentence]}),{focused:false});
+    assert.ok(issues.some(x=>x.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')),sentence+' => '+issues.join(';'));
+  }
+  const permitted=validatePersonaOutput(battingCase,result({analysis:['嶋田 栄志は3番で7試合先発している。','坂田 暉馬はOPS .861である。','出場実績のみで嶋田 栄志の3番起用が確実とは断定できません。']}),{focused:false});
+  assert.ok(!permitted.some(x=>x.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')),permitted.join(';'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
