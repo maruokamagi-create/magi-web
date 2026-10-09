@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
+import { recoverSoftFullLineupLanguage } from '../server/api/magi/persona.js';
+import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 import { reconcileLineupOrderExplanation, verifiedLineupStats } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 import { buildLineupOrderCorrectionContext, personaCorrectionDirective } from '../server/api/magi/persona.js';
 
@@ -1268,6 +1270,42 @@ test('G-live161 FULL_LINEUP blocks hedged scoring chance and defense stability w
   assert.ok(!allowed.some(x=>x.includes('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定')),allowed.join(';'));
 });
 
+
+test('Soft FULL_LINEUP recovery retains only verified current batting figures and reduces confidence',()=>{
+  const order=['大野 竜暉','大久保 陽翔','中嶋 玲月','嶋田 栄志','坂田 暉馬','武澤 大翔','橋向 結都','井坂 悠聖','武田 晴琉翔'];
+  const players=CURRENT_ROSTER.map(name=>({name,batting:name==='中嶋 玲月'?{AB:'33',AVG:'.485',OBP:'.514',SLG:'.606',OPS:'1.120'}:
+    name==='嶋田 栄志'?{AB:'39',AVG:'.282',OBP:'.364',SLG:'.385',OPS:'.748'}:{AB:'25',AVG:'.200',OPS:'.600'}}));
+  const c={question:'ベストオーダーは？',mode:'selection',selectionKind:'FULL_LINEUP',
+    evidence:{selectionKind:'FULL_LINEUP',allCurrentTeamCheck:{status:'COMPLETE',players}}};
+  const draft=result({persona:'CASPER',phase:'SECOND',candidatePlayers:order,confidence:'HIGH',
+    publicStatement:'今の打撃成績で得点機会を創出します。',primaryReason:'チームの成長につなげる。'});
+  const issue=['BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'];
+  const original=JSON.stringify(draft);
+  assert.equal(recoverSoftFullLineupLanguage(draft,issue,true,c),true);
+  assert.deepEqual(draft.candidatePlayers,order);
+  assert.equal(draft.confidence,'MEDIUM');
+  assert.ok(draft.facts.some(x=>/3番中嶋 玲月：今季通算打数33、打率.485/.test(x)));
+  assert.match(draft.primaryReason,/4番嶋田 栄志（打数39、打率.282/);
+  assert.match(draft.publicStatement,/勝利に優れるとは判定できません/);
+  assert.doesNotMatch(JSON.stringify(draft),/得点機会を創出|チームの成長につなげる/);
+  assert.deepEqual(validatePersonaOutput(c,draft,{focused:false}),[]);
+  assert.notEqual(JSON.stringify(draft),original);
+  const absent=result({persona:'CASPER',phase:'SECOND',candidatePlayers:order,confidence:'HIGH'});
+  const missing={...c,evidence:{selectionKind:'FULL_LINEUP',allCurrentTeamCheck:{status:'PARTIAL',players}}};
+  assert.equal(recoverSoftFullLineupLanguage(absent,issue,true,missing),true);
+  assert.deepEqual(absent.facts,[]);
+  assert.equal(absent.confidence,'MEDIUM');
+  assert.match(absent.primaryReason,/比較に必要な今季打撃数値は確認できていません/);
+  assert.doesNotMatch(absent.candidateBasis,/今季通算の確認済み記録/);
+  const duplicated={...c,evidence:{...c.evidence,allCurrentTeamCheck:{status:'COMPLETE',players:[...players.slice(1),players[1]]}}};
+  const duplicate=result({persona:'CASPER',phase:'SECOND',candidatePlayers:order});
+  assert.equal(recoverSoftFullLineupLanguage(duplicate,issue,true,duplicated),true);
+  assert.deepEqual(duplicate.facts,[]);
+  const hard=result({persona:'CASPER',phase:'SECOND',candidatePlayers:order});
+  assert.equal(recoverSoftFullLineupLanguage(hard,['FULL_LINEUP_STANDARD_DEFENSE: unsupported'],true,c),false);
+  assert.equal(recoverSoftFullLineupLanguage(result({candidatePlayers:order}),issue,false,c),false);
+  assert.equal(recoverSoftFullLineupLanguage(result({candidatePlayers:[...order.slice(0,8),order[0]]}),issue,true,c),false);
+});
 
 test('G-live161-natural-third 3番 starts do not establish certain player selection',()=>{
   const battingCase={
