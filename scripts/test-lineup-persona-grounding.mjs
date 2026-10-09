@@ -2,7 +2,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
 import { sanitizeSuccessfulPersona } from '../server/api/magi/persona-resilient.js';
-import { personaFullLineupIssues } from '../server/api/magi/persona.js';
+import { personaFullLineupIssues, buildPersonaRequest } from '../server/api/magi/persona.js';
+import { buildContestedAdjacentSlotEvidence } from '../server/api/magi/_lineup-contested-evidence.js';
 
 const personaSrc=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
 assert.match(personaSrc,/PRIMARY publicStatement must not be only a nine-name announcement/);
@@ -89,4 +90,38 @@ assert.match(missing[0].text,/数値Evidence未取得/);
 assert.match(missing[0].text,/優劣は保留/);
 assert.equal(reviews(judges,currentOrder.slice(0,8),batting).length,1);
 assert.match(uiSrc,/for\(const review of adjacentSwapReviews\(entries,names,statsMap\)\)/);
+
+const disputedCurrent={
+  question:'ベストオーダーは？',
+  selectionKind:'FULL_LINEUP',
+  evidence:{
+    allCurrentTeamCheck:{
+      status:'COMPLETE',
+      players:['井坂 悠聖','大久保 陽翔','大野 竜暉','坂田 暉馬','嶋田 栄志','武澤 大翔','橋向 結都','上村 蓮','大久保 夢翔','長侶 穹','中嶋 玲月','吉田 真翔','鰐渕 将太','武田 晴琉翔'].map(name=>({
+        name,batting:name==='嶋田 栄志'?{AB:39,AVG:'.282',SLG:'.385',OPS:'.748'}:name==='坂田 暉馬'?{AB:26,AVG:'.308',SLG:'.423',OPS:'.861'}:{AB:4,AVG:'.250',OPS:'.600'}
+      }))
+    },
+    recentSix:{status:'COMPLETE',gameCount:6,players:[{name:'嶋田 栄志',batting:{AB:21,AVG:'.238',OPS:'.638'}},{name:'坂田 暉馬',batting:{AB:16,AVG:'.250',OPS:'.775'}}]}
+  }
+};
+const ownSecondaryOrder=['大野 竜暉','大久保 陽翔','中嶋 玲月','嶋田 栄志','坂田 暉馬','武澤 大翔','橋向 結都','井坂 悠聖','武田 晴琉翔'];
+const ownCross={disagreement:['4番と5番で意見が割れています。'],challenges:['4番嶋田 栄志と5番坂田 暉馬の順番を再比較してください。']};
+const pairs=buildContestedAdjacentSlotEvidence(disputedCurrent,{candidatePlayers:ownSecondaryOrder},ownCross);
+assert.equal(pairs.length,1);
+assert.deepEqual(pairs[0].slots,[4,5]);
+assert.equal(pairs[0].players[0].name,'嶋田 栄志');
+assert.equal(pairs[0].players[0].current.OPS,'.748');
+assert.equal(pairs[0].players[1].current.OPS,'.861');
+assert.equal(pairs[0].players[1].recentSix.OPS,'.775');
+assert.deepEqual(buildContestedAdjacentSlotEvidence(disputedCurrent,{candidatePlayers:ownSecondaryOrder},{disagreement:['4番に意見があります']}),[]);
+assert.deepEqual(buildContestedAdjacentSlotEvidence({...disputedCurrent,evidence:{...disputedCurrent.evidence,allCurrentTeamCheck:{status:'UNAVAILABLE',players:disputedCurrent.evidence.allCurrentTeamCheck.players}}},{candidatePlayers:ownSecondaryOrder},ownCross),[]);
+const secondPayload=buildPersonaRequest({case:disputedCurrent,primarySelf:{candidatePlayers:ownSecondaryOrder},crossExamination:ownCross},'melchior','SECOND').payload;
+assert.equal(secondPayload.contestedAdjacentSlotEvidence.length,1);
+assert.match(secondPayload.instruction,/CONTESTED ADJACENT SLOTS/);
+assert.match(secondPayload.instruction,/relative batting-slot advantage is NOT demonstrated/);
+assert.match(secondPayload.instruction,/Total at-bats alone describe sample size/);
+const primaryPayload=buildPersonaRequest({case:disputedCurrent},'melchior','PRIMARY').payload;
+assert.equal('contestedAdjacentSlotEvidence' in primaryPayload,false);
+assert.match(fs.readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8'),/contestedAdjacentSlotEvidence: payload.contestedAdjacentSlotEvidence/);
+
 console.log('LINEUP PERSONA GROUNDING: PASS');
