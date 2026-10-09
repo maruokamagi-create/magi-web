@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
+import { reconcileLineupOrderExplanation } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 
 const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
@@ -1136,6 +1137,31 @@ test('Live TEAM_REVIEW rejects conditional opponent-narrowing and lineup-fixatio
     const issues=validatePersonaOutput(c,result({warnings:[safe]}),{focused:false});
     assert.ok(!issues.some(v=>v.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果')||v.includes('TEAM_REVIEWでEvidenceにない将来・育成')),safe+' => '+JSON.stringify(issues));
   }
+});
+
+test('Live FULL_LINEUP rejects a truncated numbered player name while preserving structured nine',()=>{
+  const lineup=['大野 竜暉','大久保 陽翔','中嶋 玲月','嶋田 栄志','坂田 暉馬','武澤 大翔','橋向 結都','井坂 悠聖','武田 晴琉翔'];
+  const c={question:'今の丸岡中のベストオーダー',mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP',summary:'正式14名の守備資格と出場記録'}};
+  const rows=lineup.slice(0,8).map((name,index)=>(index+1)+'番'+name).join('、');
+  const malformed=result({persona:'MELCHIOR',candidatePlayers:lineup,publicStatement:rows+'、9番田です。'});
+  const issues=validatePersonaOutput(c,malformed,{focused:false});
+  assert.ok(issues.includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'),JSON.stringify(issues));
+  const corrected=reconcileLineupOrderExplanation(malformed,issues);
+  assert.ok(corrected,'prose-only numbered-name conflict should be recoverable');
+  assert.deepEqual(corrected.candidatePlayers,lineup,'structured lineup must remain unchanged');
+  assert.ok(!corrected.publicStatement.includes('9番田です'));
+  assert.ok(corrected.publicStatement.includes('9番武田 晴琉翔'));
+  assert.deepEqual(validatePersonaOutput(c,corrected,{focused:false}),[]);
+  const before=JSON.stringify(malformed);
+  assert.equal(reconcileLineupOrderExplanation(malformed,[...issues,'数値3 は supplied CASE/EVIDENCE の値と一致しない']),null);
+  assert.equal(JSON.stringify(malformed),before,'numeric mismatch must remain fail-closed');
+
+  const surnameShort=result({persona:'MELCHIOR',candidatePlayers:lineup,
+    publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月、9番武田です。'});
+  assert.ok(!validatePersonaOutput(c,surnameShort,{focused:false}).includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'));
+  const givenShort=result({persona:'MELCHIOR',candidatePlayers:lineup,
+    publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月、9番晴琉翔です。'});
+  assert.ok(!validatePersonaOutput(c,givenShort,{focused:false}).includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'));
 });
 
 test('Live closer must not label innings and ERA as measured stability',()=>{
