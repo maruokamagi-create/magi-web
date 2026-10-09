@@ -323,7 +323,8 @@ function datedSlotCoachObservation(e,name){
   if(e?.normalizedObservationStatus!=='COMPLETE'||!Array.isArray(e.normalizedObservations))return '指導者観察は未取得または権限外';
   const rows=e.normalizedObservations.filter(x=>norm(x?.player)===norm(name)&&x?.sourceType==='指導者'&&
      /^20\d{2}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]|$)/.test(String(x?.recordedAt||''))&&
-     typeof x?.statement==='string'&&x.statement.length<=280&&
+     typeof x?.statement==='string'&&x.statement.length>0&&x.statement.length<=280&&
+     !/^(?:使用禁止|除外|非公開)$/.test(String(x?.handling||''))&&
      /打順|打撃|打席|打率|出塁|打球|バッティング|スイング/.test(x.statement));
   if(!rows.length)return '該当する日付付き指導者の打撃観察なし';
   rows.sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt)));
