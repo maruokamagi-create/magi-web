@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 4b6c7939fbe8d38b780b99099e909452f16d36d5
+- State base main SHA: e7f89e27d750d3b1b376888e8e266efcfd03ef45
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -883,6 +883,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Add actual production phrase/negative disclaimer regressions and batch recovery proof with mixed hard failure held. Require Deliberation Final + Development Continuity CI before merge, plus exact Vercel READY SHA and NATURAL_THIRD Live stage/text inspection after merge. Avoid running additional Gemini load concurrently with current Live/Suite, and do not touch Google Drive, CSV or Vercel Hobby/free settings.
 - The automatically triggered pre-change Production Sequential Suite run `37868889030` on the SAME base SHA failed its first `selection / production-selection` job `113622079952` (all downstream jobs skipped), despite all 4 staged Live classes passing. GitHub job log exited status 1 in `Run one full candidate-selection deliberation` without a response/error or identifying the failed silent jq/cmp predicate. **Root cause unknown**; do not claim that all acceptance gates passed or ascribe the failure to this BATTING_ORDER-only patch. Vercel runtime-log read for the scoped 2026-10-09T01:15:55Z–01:16:25Z window returned 403, so this path could not be diagnosed from Vercel logs. Follow up with safe, player-data-free stage diagnostics at the selection acceptance gate, and a controlled rerun after the next deploy, not ad hoc hot-looped production calls.
 - Even if this patch passes, final output must not advertise 3番 choice as proven to improve subsequent hitter productivity. Keep the independently grounded cross-examination, any legitimate deadlock, player-by-player 1–9 explanations, and real authenticated iPhone/Chrome nine-class UI E2E as open requirements.
+
+## 2026-10-09: 3番 SECOND still imports ungrounded win probability after semantic cleanup
+
+- Base main/READY production SHA `e7f89e27d750d3b1b376888e8e266efcfd03ef45` (PR #148). The exact SHA-gated Live run `37869271287` passed the 3番 NATURAL_THIRD structural stages, but manual reading of job `113623982220` found BALTHASAR SECOND again predicting unmeasured winning effects: `4番につなぐ打順として最適と判断する` and `得点力を最大化する観点では…打撃数値を上位に置く方が勝つ確率を高めると考えられる`. The prior CASPER unsupported team-growth and burden hypotheses were absent. The final `majorReasons` on this run only retained verified starts and a generic Evidence limitation, but intermediate published persona output must also remain grounded.
+- Generic batting-usage/OPS evidence alone cannot establish objective optimality for the next hitter or improved win probability even when phrased `考えられる`. The original `FULL_LINEUP` guards already reject similar win-probability inferences; `BATTING_ORDER` used the shared guard but lacked these exact semantic families.
+- Branch `fix/batting-slot-win-rate-and-optimality-20261009` extends that **shared** `unsupportedBattingOrderEffect` matcher for next-batter `最適` (not only `最適化`) and metrics/slot choices -> win probability/odds. Existing validator+sanitizer remove the unsupported claims and recheck unchanged candidates and direct usage facts. No player-specific special cases or additional provider calls are needed for deterministic tests.
+- Add exact observed positive, direct-stat negative and explicit non-causality regressions in persona guard and batch recovery, including mixed hard error fail-closed checks. Require Deliberation Final + Continuity CI green, previous Live/Suite completion, READY production SHA and new Live NATURAL_THIRD prose review before semantic approval.
+- The prior main SHA `4b6c7939…` completed all Live classes but its Sequential Suite `37868889030` failed with only a silent early selection smoke `exit 1` and no diagnostic stage; remain honest that generalized selection acceptance stability is unresolved. After current SHA's Sequential Suite either passes or fails, add safe diagnostic staging only if still needed. No Google Drive/CSV/score sheet changes and retain Vercel Hobby/free.
 
 ## Next concrete work
 
