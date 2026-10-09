@@ -1073,6 +1073,41 @@ test('BATTING_ORDER accepts explicit bridge non-evidence statements and unrelate
   }
 });
 
+test('Live TEAM_REVIEW rejects documented opponent, load and growth inference classes',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チーム14名の個別打撃率と起用回数のみ。対戦相手への対策効果、身体負荷、成長成果は未検証。'}};
+  const cases=[
+    ['相手に研究された時に点数が止まる。','TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'],
+    ['相手投手陣に対策された場合の攻撃力低下が戦術上の大きなリスクとなる。','TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'],
+    ['試合に勝つための得点を生み出すルートが特定の上位打線に偏っている。','TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'],
+    ['3人がチームの攻撃を牽引している。','TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'],
+    ['一定の出場や投球の負荷がかかっていることが記録されている。','TEAM_REVIEWで起用差から負担集中を断定している'],
+    ['長い目で見て強いチームになるための課題を見据えましょう。','TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'],
+    ['出場機会の差があり、打数や経験値に差が生じている。','TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'],
+    ['一部選手への過度な起用偏重がもたらす長期的なチーム編成への影響に注意する。','TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'],
+    ['ここをどう崩していくかが勝負だ。','TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している']
+  ];
+  for(const [statement,expected] of cases){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(issues.includes(expected),statement+' => '+JSON.stringify(issues));
+  }
+});
+
+test('Live TEAM_REVIEW retains verified individual facts and explicit limitations',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの出場詳細と打撃成績のみ。'}};
+  const safe=[
+    '現チームの打撃成績には選手間の数値差が記録されている。',
+    '橋向 結都は投手として8試合に先発した。',
+    '投球の身体的負荷がかかっているかは確認できない。',
+    '相手に研究された場合に得点が止まるとは断定できない。',
+    '起用偏重が長期的なチーム編成に影響するかは未確認である。',
+    '出場回数に違いはあるが、経験値に差が生じているかは不明である。'
+  ];
+  for(const statement of safe){
+    const issues=validatePersonaOutput(c,result({persona:'MELCHIOR',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.some(v=>v.startsWith('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果')||v.startsWith('TEAM_REVIEWで起用差から負担集中')||v.startsWith('TEAM_REVIEWでEvidenceにない将来・育成')),statement+' => '+JSON.stringify(issues));
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
