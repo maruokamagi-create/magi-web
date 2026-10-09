@@ -134,7 +134,7 @@ assert.equal(reconcileLineupOrderExplanation(recoverableCasper,recoverableIssues
  // unsupported prose while keeping the authoritative candidate order.
 const mixedMelchior={
   ...incompatible, persona:'MELCHIOR',phase:'SECOND',
-  analysis:['通算打率から得点効率が高まると判断する。','この打順なら得点機会が増加し、安定性が高まる。'],
+  analysis:['通算打率から得点効率が高まると判断する。','打順の配置と成績から得点機会が増加し、安定性があると判断する。'],
   warnings:['先発守備資格を満たすため、守備連携を強化できる。']
 };
 const melchiorIssues=validatePersonaOutput(lineupCase,mixedMelchior,{focused:false});
