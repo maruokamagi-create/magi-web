@@ -365,7 +365,7 @@ function recordedDisputeCards(entries,e){
 }
 function recordedDisputeHtml(entries,e){
   const pairs=recordedDisputeCards(entries,e);
-  if(!pairs.length)return '<div class="magiRecordedDisputeNote">照合可能な隣接打順の対立記録がありません。判定を補完しません。</div>';
+  if(!pairs.length)return '';
   return pairs.map(pair=>{
     const headline=pair.firstSlot+'・'+pair.secondSlot+'番：'+pair.supporting.join('・')+'の配置は'+
       pair.firstSlot+'番'+pair.left+'／'+pair.secondSlot+'番'+pair.right+
@@ -391,7 +391,7 @@ function deadlockDisputeHtml(r){
   return '<div class="magiRecordedDisputeOnly" role="region" aria-label="未決定の打順対立の記録比較">'+
    '<div class="magiLineupReasonsTitle">打順の対立・実記録の比較</div>'+
    '<div class="magiRecordedDisputeNote">3賢人の全9人案は1対1対1で、最終オーダーは確定していません。以下は争点の記録比較であり、採用打順ではありません。</div>'+
-   recordedDisputeHtml(entries,r?.case?.evidence||{})+'</div>';
+   (recordedDisputeHtml(entries,r?.case?.evidence||{})||'<div class="magiRecordedDisputeNote">位置を交換した対立は確認できないか、記録の完全性を確認できません。打順の優劣は判定しません。</div>')+'</div>';
 }
 function renderDeadlock(r){
   const html=deadlockDisputeHtml(r);
