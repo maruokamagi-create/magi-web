@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 154780a86ab414723bb860074d420619ba71613a
+- State base main SHA: 857995d2862675aedcff8690d90b5cbfc93859bd
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -976,3 +976,12 @@ The correct first action is:
 4. continue from **Current unresolved priority** and **Next concrete work**.
 
 Do not restart architectural discovery from memory. Do not ask the user to reconstruct work already recorded here.
+
+## 2026-10-09: Current READY Live passes structurally but TEAM_REVIEW conditional effect reaches FINAL
+
+- Pre-merge canonical main: `857995d2862675aedcff8690d90b5cbfc93859bd`. Production Live `37893545952` completed its five jobs successfully, and its PREPARE packet positively matched that exact production SHA. Deliberation Final `37893545956` and Continuity Guard `37893545961` succeeded. Production Sequential `37894058160` was in progress at the beginning of this investigation; do not repeat or overlap its provider-heavy requests.
+- **Semantic leak despite PASS:** TEAM_REVIEW PRIMARY BALTHASAR emitted `特定の打者に頼った構成のままでは、相手に対策された際に攻撃の幅が狭まるおそれがある`. The same unsupported conditional opponent outcome propagated into SECOND warnings and FINAL warnings/re-deliberation conditions. PRIMARY CASPER emitted `目先の勝利だけに固執して選手起用が固定化されると、組織としての総合力が低下する可能性がある`. Individual batting/appearance spread does not establish either counterfactual. FINAL recommendation itself avoided a scoring causal conclusion, but inherited warnings were not clean. The smoke regex did not inspect these conditional forms; its success was narrower than semantic acceptance.
+- **Other quality defect left open:** BEST_ORDER PRIMARY MELCHIOR `publicStatement` included `9番田です。` despite a valid structured nine-person candidate list. Latest accepted FINAL has nine distinct eligible positions and a 2–1 vote (4番嶋田 栄志, 5番坂田 暉馬), but this does not establish persuasive nine-slot explanations or error-free displayed persona prose. Do not silently rewrite player records to hide this.
+- Branch `fix/team-review-opponent-and-usage-effect-20261009` extends only the shared TEAM_REVIEW unsupported-outcome classifier: conditional opponent countermeasures causing a narrower attack are unsupported SCORING effects; hypothetical lineup fixation lowering collective ability is unsupported DEVELOPMENT effect. The existing fail-closed persona validation and bounded prose-only recovery share that classifier. Sentence-level explicit denials remain allowed, individual factual fields remain intact, and roster/numeric/fielding/coach evidence rules are unchanged.
+- Added direct guard tests for exact published sentences and explicit uncertainty, plus soft-recovery regression preserving separately checked facts, revalidating the original complete guard and refusing any mixed hard numeric issue. Check CI/continuity on the PR head. **Do not claim fixed in production yet**: after merge, wait for Vercel production to serve the new SHA and inspect a single staged Live run, especially the complete TEAM_REVIEW PRIMARY/SECOND/FINAL prose, not just status. Do not overlap provider-heavy jobs.
+- Vercel management connector returned 403 to deployment listing and 404 on project/deployment lookup with the supplied scope, so management-side READY inspection was unavailable. The Live PREPARE explicitly matching deployed SHA is confirmed, but authenticated iPhone Chrome UI interactions and nine-class acceptance are still unverified. Do not spend Hobby/free limits to work around management visibility, alter Google Drive/CSV/score originals, or weaken any Evidence guard.
