@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 64f4eea3f0b378b802b221755ef5d04beb0a997c
+- State base main SHA: 44e627546f6981af7c05431f82fbcc6d14b25776
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1032,3 +1032,12 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Branch `fix/full-lineup-primary-hedged-effect-20261009` extends the existing FULL_LINEUP guard to catch bare hedged scoring-chance/points-power creation and defense-stability effects in any narrative field even without a proximal numeric cue. Explicit evidence-limit disclaimers remain allowed. Add exact live-reproduced regression texts and keep preexisting evidence/roster/fielding gates. Existing deterministic soft recovery may discard unsupported prose (safety first), but this does NOT establish persuasive reasons. Do not merge until original Live run finishes its remaining staged jobs; do not spend Hobby/provider quota by stacking provider tests. After CI and merge, verify new production SHA and all stages anew.
 
 - Also in the **same old READY Live run** `37900807854`, exact natural third-batter stage failed after a successfully generated SECOND. The runner correctly rejected phrases that converted seven actual 3番 starts for 嶋田 栄志 into `現状の選択肢として確実である` and a continuation preference despite alternate 坂田 暉馬's stronger current OPS .861 vs .748. This is a **separate BATTING_ORDER quality gap**, not fixed by this FULL_LINEUP-only guard patch. Preserve the evidence and address it explicitly after verifying this current repair. The closer stage succeeded; TEAM_REVIEW stage remained pending as of this note.
+
+
+## 2026-10-09: READY natural-third SECOND promoted starts into certainty
+
+- Full Live `37900807854` on previous main `64f4eea...` concluded: BEST_ORDER failure in PRIMARY (addressed by PR #162); CLOSER successful; natural-third SECOND returned an invalid `3番としての起用実績がある嶋田 栄志を置くのが現状の選択肢として確実である` even though actual record was only 7 starts, and the score baseline also had alternate 坂田 暉馬 at OPS .861 vs 嶋田 .748. Existing BATTING_ORDER guard prohibited some fixation/tactical claims but did not match the `選択肢として確実` construction. TEAM_REVIEW stage succeeded. Existing smoke failed rightly at SECOND before FINAL, no full nine-class acceptance.
+- Separate scoped patch `fix/batting-order-usage-certainty-inference-20261009` adds exactly this start-count-to-certainty class to the preexisting `BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定` guard. An explicit statement that real starts cannot prove certain selection remains permissible. Regression covers exact production phrase and a simple factual comparison. No changes to batting records, actual candidates, coach observations, other stage semantics or Drive originals.
+- **Do not merge while preceding PR #162 new-SHA Live run `37901509999` is still provider-active.** Require PR deterministic/continuity CI green, then new READY SHA Live and manual semantic check before claiming natural-third success. Keep Vercel Hobby/free.
+
+- Added matching bounded soft-prose cleanup in `persona-batch.js`: the exact invalid BATTING_ORDER certainty sentence is removed only when an existing guard issue identifies that class; verified facts and structured candidate order are preserved; complete original guard re-runs. This avoids replacing a single unsupported sentence with a 503 failure, without relaxing any hard numeric/identity check. Added direct end-to-end sanitizer regression in `scripts/test-persona-batch-soft-recovery.mjs` (old console label is historical, test count may be larger).

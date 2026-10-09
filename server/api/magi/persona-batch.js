@@ -384,6 +384,12 @@ export function sanitizeKnownSelectionProse(result, caseData, {allowGenericSelec
   const probability=sentence=>/(?:確率的優位|勝利の確率|勝率を高め|勝てる確率|成功確率|勝利確率|勝利に直結|勝ちに直結|勝ち筋|勝ちパターン|勝ちへの道)/.test(sentence);
   const hasExplicitSlotContinuity=/(?:3番|打順).{0,30}(?:固定|継続|維持|方針)|(?:固定|継続|維持).{0,30}(?:3番|打順)/.test(evidenceText);
   const hasExplicitFormObservation=/(?:勢い|低調|好調|不調|状態の波|調子.{0,12}(?:良|悪|落)|安定した打撃)/.test(evidenceText);
+  const battingStartCertainty=sentence=>
+    !/(?:断定(?:できない|しない|できません|しません)|確認できない|証明できない|とは言えない|根拠がない)/.test(sentence)
+    && (
+      /(?:3番|実打順|打順|スタメン|起用(?:実績|数)|先発(?:出場|起用)?|実績).{0,100}(?:選択肢として確実|候補として確実|最も確実な選択肢|確実(?:な|である|です|だ).{0,18}(?:選択肢|候補|配置))/.test(sentence)
+      ||/(?:これまでの起用実績|先発出場(?:数)?|実打順の起用).{0,70}(?:が確実|を確実|確実(?:である|です|だ))/.test(sentence)
+    );
   const battingTactics=sentence=>
     /(?:3番|打順|起用|打率|AVG|OPS|役割).{0,90}(?:戦術的に最も安定|戦術.{0,24}(?:裏付け|安定|合致)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)|チームの形.{0,18}馴染)/.test(sentence)
     ||/(?:戦術的に最も安定|戦術.{0,24}(?:裏付け|安定|合致)|最も確実な選択肢|定着度が高い|役割が定着|打順の軸.{0,12}安定|3番.{0,18}経験値|実戦経験.{0,18}(?:豊富|蓄積)|ポジション適性.{0,18}(?:豊富|高い)|チームの形.{0,18}馴染).{0,90}(?:3番|打順|起用|打率|AVG|OPS|役割)/.test(sentence)
@@ -400,6 +406,7 @@ export function sanitizeKnownSelectionProse(result, caseData, {allowGenericSelec
     ||(selectionKind==='PITCHING_ROLE' && !hasPressureEvidence && pressureInference(sentence))
     ||(selectionKind==='PITCHING_ROLE' && probability(sentence))
     ||(selectionKind==='BATTING_ORDER' && battingTactics(sentence))
+    ||(selectionKind==='BATTING_ORDER' && battingStartCertainty(sentence))
     ||(selectionKind==='BATTING_ORDER' && unsupportedBattingOrderEffect(sentence) && !/(?:とは断定(?:できない|しない)|確認できない|根拠がない)/.test(sentence))
     ||(!developmentRequested && development(sentence))
     ||(!hasDependencyEvidence && dependency(sentence))
