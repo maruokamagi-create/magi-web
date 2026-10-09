@@ -154,6 +154,16 @@ jobs:
               candidateCount:(if (.candidatePlayers|type)=="array" then (.candidatePlayers|length) else 0 end),
               uniqueCandidateCount:(if (.candidatePlayers|type)=="array" then (.candidatePlayers|unique|length) else 0 end),
               checkedPlayerCount:(if (.checkedPlayers|type)=="array" then (.checkedPlayers|length) else 0 end),
+              guardIssueCount:(if (.guardIssueCount|type)=="number" then .guardIssueCount else 0 end),
+              guardIssueCodes:((.guardIssueCodes//[])|if type=="array" then
+                map(select(. as $code | [
+                  "ORDER_EXPLANATION_CONFLICT","FIELDING_COVERAGE","LINEUP_STRUCTURE",
+                  "RECENT_WINDOW_MISMATCH","ROSTER_MISMATCH","NUMERIC_EVIDENCE_MISMATCH",
+                  "METRIC_INFERENCE_OR_ABSENT","UNSUPPORTED_FIXED_SLOT",
+                  "UNSUPPORTED_DEFENSE_EFFECT","UNSUPPORTED_STABILITY_CLAIM",
+                  "UNSUPPORTED_SCORING_CLAIM","UNSUPPORTED_OUTCOME_PREDICTION",
+                  "UNSUPPORTED_DEVELOPMENT_OR_BURDEN","OTHER_GUARD"
+                ]|index($code)!=null))|unique else [] end),
               reasonClass:(if ((.reviewReason//"")|contains("FULL_LINEUP_STANDARD_DEFENSE")) then "FIELDING"
                 elif ((.reviewReason//"")|contains("candidatePlayersと打順説明が矛盾")) then "ORDER_CONFLICT"
                 elif ((.reviewReason//"")|contains("回答文に、確認できた記録と合わない")) then "EVIDENCE_OUTPUT_GUARD"
