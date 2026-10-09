@@ -1,6 +1,7 @@
 import { CURRENT_ROSTER } from './_roster.js';
 import { validatePitchingPlanPersonaOutput } from './_pitching-plan-output-guard.js';
 import { unsupportedBattingOrderEffect } from './_batting-order-unsupported-effect.js';
+import { unsupportedTeamReviewOutcomeKind } from './_team-review-unsupported-outcomes.js';
 
 function text(value){return String(value ?? '').trim();}
 function numberValue(value){
@@ -228,6 +229,16 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
 
   const reviewKind=String(caseData?.evidence?.reviewKind||caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
   if(reviewKind==='TEAM_REVIEW'){
+    // The same forbidden conclusion types must be used by the validator and
+    // the bounded soft-recovery step; preserve verified individual statistics.
+    const observedOutcomeKinds=new Set(parts.map(unsupportedTeamReviewOutcomeKind).filter(Boolean));
+    if(observedOutcomeKinds.has('SCORING'))
+      issues.push('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している');
+    if(observedOutcomeKinds.has('BURDEN'))
+      issues.push('TEAM_REVIEWで起用差から負担集中を断定している');
+    if(observedOutcomeKinds.has('DEVELOPMENT'))
+      issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
+
     const dependencyLike=/(?:依存|頼っている|頼る|頼り切|頼り(?:っ|つ)?きり|頼り(?:すぎ|過ぎ)|上位偏重|主力偏重|特定選手偏重)/;
     const dependencyHedge=/(?:可能性|見方|考えられ|とみられ|傾向|断定(?:しない|しません|できない|できません)|断定でき|確認できない|Evidenceにない|根拠がない)/;
     const unsupportedDependency=parts.find(sentence=>
