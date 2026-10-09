@@ -129,6 +129,9 @@ jobs:
       - name: Verify TEAM_REVIEW live-stage acceptance polarity
         run: node --experimental-default-type=module scripts/test-team-review-stage-polarity.mjs
 
+      - name: Verify safe production selection smoke diagnostics
+        run: node --experimental-default-type=module scripts/test-production-selection-smoke-diagnostics.mjs
+
       - name: Run Live 133 residual grounding cases
         run: node --experimental-default-type=module scripts/test-live133-residual-grounding.mjs
 
