@@ -1118,6 +1118,26 @@ test('TEAM_REVIEW blocks malformed usage wording created during a cleanup pass',
   assert.ok(!clean.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
 });
 
+test('Live TEAM_REVIEW rejects conditional opponent-narrowing and lineup-fixation effects',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個別打撃成績・出場回数のみ。相手の対策効果と組織の長期的影響は未確認。'}};
+  const unsafe=[
+    ['特定の打者に頼った構成のままでは、相手に対策された際に攻撃の幅が狭まるおそれがある。','TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'],
+    ['目先の勝利だけに固執して選手起用が固定化されると、組織としての総合力が低下する可能性がある。','TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している']
+  ];
+  for(const [statement,code] of unsafe){
+    const issues=validatePersonaOutput(c,result({warnings:[statement]}),{focused:false});
+    assert.ok(issues.includes(code),statement+' => '+JSON.stringify(issues));
+  }
+  for(const safe of [
+    '相手に対策された場合に攻撃の幅が狭まるかは確認できない。',
+    '選手起用が固定化されるとチーム力が低下するとは断定できない。',
+    '現チームには個別打撃成績の数値差がある。'
+  ]){
+    const issues=validatePersonaOutput(c,result({warnings:[safe]}),{focused:false});
+    assert.ok(!issues.some(v=>v.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果')||v.includes('TEAM_REVIEWでEvidenceにない将来・育成')),safe+' => '+JSON.stringify(issues));
+  }
+});
+
 test('Live closer must not label innings and ERA as measured stability',()=>{
   const c={question:'今のクローザー候補は？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チーム投球回と防御率、セーブ数の記録。'}};
   const statement='橋向 結都の投球回と防御率の安定性は事実ですが、セーブ実績を比較します。';
