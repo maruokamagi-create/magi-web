@@ -1106,4 +1106,28 @@ function baseResult(overrides={}) {
   assert.ok(!/防御率の安定性は事実/.test(JSON.stringify(row)));
   assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
 }
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 57/57 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'14名の現チーム個別打撃成績と出場記録だけ。対戦相手の効果や将来の総合力は未確認。'}};
+  const row=baseResult({
+    persona:'BALTHASAR',
+    facts:['選手間の打数に差がある。'],
+    warnings:[
+      '特定の打者に頼った構成のままでは、相手に対策された際に攻撃の幅が狭まるおそれがある。',
+      '目先の勝利だけに固執して選手起用が固定化されると、組織としての総合力が低下する可能性がある。'
+    ],
+    publicStatement:'現チームの記録には選手間の数値差がある。'
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.some(v=>v.includes('TEAM_REVIEWで得点経路の制限')),JSON.stringify(issues));
+  assert.ok(issues.some(v=>v.includes('TEAM_REVIEWでEvidenceにない将来・育成')),JSON.stringify(issues));
+  assert.equal(recoverSoftPersonaBatchValidation(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.facts,['選手間の打数に差がある。']);
+  assert.ok(!/相手に対策された際|組織としての総合力が低下/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  const hard=baseResult({persona:'BALTHASAR',warnings:['特定の打者に頼った構成のままでは、相手に対策された際に攻撃の幅が狭まるおそれがある。']});
+  const original=JSON.stringify(hard);
+  assert.equal(recoverSoftPersonaBatchValidation(hard,[...issues,'supplied CASE/EVIDENCE numerical mismatch'],c,{focused:false}),false);
+  assert.equal(JSON.stringify(hard),original);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 58/58 PASS');
