@@ -961,4 +961,30 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(hard),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 49/49 PASS');
+{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番を誰にするか迷っている。4番へのつなぎを考えると？',evidence:{selectionKind:'BATTING_ORDER',summary:'今季の打撃成績と3番のスタメン起用回数のみ。'}};
+  const row=baseResult({
+    persona:'CASPER',
+    candidatePlayers:['嶋田 栄志','中嶋 玲月','坂田 暉馬'],
+    facts:['嶋田 栄志は3番で7試合スタメン。','中嶋 玲月は4番に起用された記録がある。'],
+    candidateBasis:'現チームの経験の蓄積とチーム全体のバランスを考慮して選ぶ。',
+    primaryReason:'積み上げてきた経験がチームの力になっていく。',
+    analysis:['中嶋 玲月の高い打率とOPSは攻撃の軸として機能する可能性がある。','嶋田 栄志は3番でのスタメン起用実績が7試合ある。'],
+    publicStatement:'4番の大久保 陽翔につなぐ打順として十分に機能するはずだ。',
+    warnings:['固定化が選手の負担に影響するおそれがある。']
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),JSON.stringify(issues));
+  const originalCandidates=row.candidatePlayers.slice();
+  assert.equal(recoverSoftSelectionInference(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.candidatePlayers,originalCandidates);
+  assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合スタメン。','中嶋 玲月は4番に起用された記録がある。']);
+  assert.ok(!/つなぐ打順として十分に機能|経験の蓄積とチーム全体|チームの力になって|攻撃の軸として機能|固定化が選手の負担/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  const hard=baseResult({persona:'CASPER',candidatePlayers:originalCandidates,publicStatement:'4番につなぐ打順として十分に機能する。'});
+  const snapshot=JSON.stringify(hard);
+  assert.equal(recoverSoftSelectionInference(hard,[...issues,'CASE/EVIDENCE にない数値を追加'],c,{focused:false}),false);
+  assert.equal(JSON.stringify(hard),snapshot);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 50/50 PASS');
