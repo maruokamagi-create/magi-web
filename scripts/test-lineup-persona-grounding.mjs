@@ -273,6 +273,26 @@ assert.equal(api.recordedSlotSample({...withActualSources.evidence,allCurrentTea
 assert.equal(api.deadlockDisputeHtml({...deadlock,final:{...deadlock.final,lineup:ownSecondaryOrder.map(name=>({name}))}}),'');
 assert.equal(api.deadlockDisputeHtml({...deadlock,final:{...deadlock.final,status:'LINEUP_RESULT'}}),'');
 assert.equal(api.deadlockDisputeHtml({...deadlock,final:{...deadlock.final,finalVote:'2-1'}}),'');
+// Exercise real DOM insertion/idempotence with a synthetic review container;
+// no actual team data or authentication is simulated by this fixture.
+const testHost={nodes:[],querySelector(selector){return selector==='.magiRecordedDisputeOnly'?this.nodes[0]||null:null;},
+ appendChild(n){this.nodes.push(n);}};
+browser.document.getElementById=()=>({id:'already-installed-styles'});
+browser.document.querySelector=selector=>selector==='.final'?testHost:null;
+browser.document.createElement=()=>{
+ const root={firstElementChild:null};
+ Object.defineProperty(root,'innerHTML',{set(html){root.firstElementChild={html,dataset:{},remove(){testHost.nodes=[];}};}});
+ return root;
+};
+assert.equal(api.renderDeadlock(deadlock),true);
+assert.equal(testHost.nodes.length,1);
+assert.match(testHost.nodes[0].html,/最終オーダーは確定していません/);
+assert.match(testHost.nodes[0].html,/2026-09-26 08:12/);
+assert.equal(api.renderDeadlock(deadlock),true);
+assert.equal(testHost.nodes.length,1,'a duplicate render must not repeat visible dispute cards');
+assert.equal(api.renderDeadlock({...deadlock,final:{...deadlock.final,status:'LINEUP_RESULT'}}),false);
+assert.equal(testHost.nodes.length,1,'do not replace previously mounted content for the wrong result');
+
 // Public render path must accept the deadlock's zero lineup without inventing one.
 assert.match(uiSrc,/if\(finalNames\(r\)\.length!==9\)return renderDeadlock\(r\)/);
 assert.match(uiSrc,/html\+=recordedDisputeHtml\(entries,r\?\.case\?\.evidence\|\|\{\}\)/);
