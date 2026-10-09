@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: f0d5709fa84171f5b08dc2f7fd028e0806aacc00
+- State base main SHA: 4b6c7939fbe8d38b780b99099e909452f16d36d5
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -873,6 +873,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Add tests with the *actual* published phrases, factual current batting and 3番 usage, explicit non-causal denials, recovery of facts while keeping selected candidates, and fail-closed rejection of mixed hard numeric errors.
 - Require Deliberation Final + Development Continuity CI before merge. Confirm deployed SHA after merge and verify next Live NATURAL_THIRD PRIMARY -> CROSS -> SECOND -> FINAL, including FINAL majorReasons; CI PASS is not enough if semantic problems remain. Avoid overlapping provider-heavy runs, quota hot loops, Drive/CSV writes or paid Vercel features.
 - Outstanding product objective still includes robust per-slot reasons across all nine players, actual authenticated iPhone Chrome full UI path with player review, tactics, comparison, direct stats and CLARIFY, and explaining honest 1–1–1 deadlocks without inventing a majority. Do not call MAGI complete from this single patch.
+
+## 2026-10-09: Live NATURAL_THIRD retains ungrounded team/role effects after first patch
+
+- Base main and production READY SHA `4b6c7939fbe8d38b780b99099e909452f16d36d5` (PR #147). Latest SHA-gated GitHub Production Live workflow `37868263222` passed all 4 classes: best-order, closer, natural-third and TEAM_REVIEW. Best-order FINAL was a valid `2-1` consensus group with 9 Evidence-qualified positions and 3番 嶋田 栄志／4番 中嶋 玲月. Its earlier SECOND MELCHIOR requests had two provider_rate_limit errors and then recovered via controlled retry; don't hot-loop or claim latency stability.
+- Exact NATURAL_THIRD job `113621164085` passed structural PRIMARY/CROSS/SECOND/FINAL, but **manual reading failed semantic quality**. BALTHASAR PRIMARY said `4番の大久保 陽翔につなぐ打順として十分に機能するはずだ`, `4番大久保 陽翔への接続を最適化する`, and `打率.485とOPS 1.120…3番に据えることが戦術上有利`; SECOND repeated `戦術上有利`. No recorded hit sequencing or controlled team-scoring outcomes proves next-batter efficacy.
+- CASPER PRIMARY/SECOND further extrapolated `チーム全体の経験の蓄積` and `積み上げてきた経験が今後のチームの力`, as well as `固定化が選手の負担に影響するおそれ` without a dated, case-matched human observation. MELCHIOR wrote `実際の出場詳細に基づく適合が確認できる`; starts prove deployment count, not an inferred role-suitability result.
+- Branch `fix/batting-slot-causal-strategy-and-burden-20261009`: extend the already-shared `BATTING_ORDER` semantic matcher with general evidence-to-effect families for next-batter success/optimization, batting stats -> tactical superiority/team attack influence, role starts -> team-growth/experience effects, unsupported fixed-slot injury/burden assumptions, and slot starts -> measured adaptation. No named-player special-cases. The existing batch sanitizer discards only unverified sentences and rechecks the original guard; verified stats, selected candidate ordering and recorded starts survive.
+- Add actual production phrase/negative disclaimer regressions and batch recovery proof with mixed hard failure held. Require Deliberation Final + Development Continuity CI before merge, plus exact Vercel READY SHA and NATURAL_THIRD Live stage/text inspection after merge. Avoid running additional Gemini load concurrently with current Live/Suite, and do not touch Google Drive, CSV or Vercel Hobby/free settings.
+- Even if this patch passes, final output must not advertise 3番 choice as proven to improve subsequent hitter productivity. Keep the independently grounded cross-examination, any legitimate deadlock, player-by-player 1–9 explanations, and real authenticated iPhone/Chrome nine-class UI E2E as open requirements.
 
 ## Next concrete work
 
