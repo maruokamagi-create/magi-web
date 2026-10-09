@@ -547,6 +547,20 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedLineupStabilityOrChance)issues.push('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している');
 
+    // A speculative outcome is still unsupported when hedged: an intended
+    // batting-order plan is not evidence that the lineup creates scoring
+    // opportunities, raises scoring power, or makes defense stable.
+    // The live smoke also rejects these formulations without any preceding
+    // explicit numerical cue ("このオーダーにより..." / "守備の安定を図る").
+    const unsupportedUnqualifiedLineupEffect=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:得点機会|得点機|得点力).{0,24}(?:創出|作る|作れる|増す|増える|増加|高める|上げる)/.test(sentence)
+        || /(?:守備|守備位置|捕手起用|標準守備).{0,45}安定/.test(sentence)
+      )
+    );
+    if(unsupportedUnqualifiedLineupEffect)issues.push('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している');
+
     const unsupportedDefenseEffect=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
