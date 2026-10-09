@@ -355,6 +355,6 @@ assert.equal(api.deadlockDisputeHtml({...differentResult,second:{
 // Public render path must accept the deadlock's zero lineup without inventing one.
 assert.match(uiSrc,/if\(finalNames\(r\)\.length!==9\)return renderDeadlock\(r\)/);
 assert.match(uiSrc,/html\+=recordedDisputeHtml\(entries,r\?\.case\?\.evidence\|\|\{\}\)/);
-assert.match(fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),/lineup-reasons-v415\.js\?v=422/);
+assert.match(fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),/lineup-reasons-v415\.js\?v=423/);
 
 console.log('LINEUP PERSONA GROUNDING: PASS');
