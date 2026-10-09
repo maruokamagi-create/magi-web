@@ -34,6 +34,15 @@ function injectStyle(){
   .magiLineupReasonLine b{color:#0c395d;font-weight:950}
   .magiLineupReasonAlternatives{margin-top:6px;padding-top:6px;border-top:1px dashed #d3e0e9;color:#60788a;font-size:10px;line-height:1.55;font-weight:750}
   .magiLineupReasonWarning{margin-top:9px;padding:9px 10px;border-radius:9px;background:#fff3df;border:1px solid #ead09b;color:#704b0d;font-size:10.5px;line-height:1.6;font-weight:850}
+  .magiRecordedDispute{margin:11px 0 13px;padding:12px;border:1px solid #c4d6e3;border-radius:11px;background:#f7fafc}
+  .magiRecordedDisputeTitle{font-size:13px;font-weight:950;color:#0b2742;margin-bottom:7px}
+  .magiRecordedDisputeGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}
+  .magiRecordedDisputePlayer{padding:10px;border:1px solid #d6e3ec;background:#fff;border-radius:9px;min-width:0}
+  .magiRecordedDisputePlayerName{font-weight:900;font-size:12px;margin-bottom:5px}
+  .magiRecordedDisputeLine{font-size:11px;line-height:1.65;overflow-wrap:anywhere;margin-top:4px;color:#254158}
+  .magiRecordedDisputeNote{font-size:11px;line-height:1.65;color:#465e71;margin-top:8px}
+  .magiRecordedDisputeOnly{border-top:2px solid #bad7ea;margin-top:12px;padding-top:10px}
+  @media(max-width:480px){.magiRecordedDisputeGrid{grid-template-columns:1fr}.magiRecordedDisputePlayer{padding:9px}.magiRecordedDisputeLine{font-size:11px}}
   @media(max-width:430px){
     .magiLineupReasonsTitle{font-size:16px}.magiLineupReasonsOverview{font-size:10.5px}.magiLineupReasonCard{padding:9px 10px}
     .magiLineupReasonName{font-size:12.5px}.magiLineupReasonLine{font-size:10.6px}.magiLineupReasonAlternatives{font-size:9.8px}
@@ -247,6 +256,165 @@ function adjacentSwapReviews(entries,names,statsMap){
   }
   return reviews;
 }
+// User-visible evidence is assembled exclusively from the authoritative
+// CASE packet, never from a persona's unverified prose. Validate the official
+// 14-player identity before treating a source's missing slot as a zero sample.
+function verifiedCurrentPlayerKeys(e){
+  const list=e?.allCurrentTeamCheck?.players;
+  if(e?.allCurrentTeamCheck?.status!=='COMPLETE'||!Array.isArray(list)||list.length!==14)return null;
+  const keys=list.map(x=>norm(x?.name)).filter(Boolean);
+  return new Set(keys).size===14?new Set(keys):null;
+}
+function verifiedSourcePlayers(e,key){
+  const roster=verifiedCurrentPlayerKeys(e),source=e?.[key],list=source?.players;
+  if(!roster||source?.status!=='COMPLETE'||!Array.isArray(list)||list.length!==14)return null;
+  const keys=list.map(x=>norm(x?.name));
+  if(new Set(keys).size!==14||keys.some(x=>!roster.has(x)))return null;
+  if(key==='appearanceFielding'&&source?.appearanceStatus!=='COMPLETE')return null;
+  return new Map(list.map(x=>[norm(x.name),x]));
+}
+function strictCount(v){
+  const s=String(v??'').trim();
+  if(!/^\d+$/.test(s))return null;
+  const n=Number(s);
+  return Number.isSafeInteger(n)?n:null;
+}
+function safeRate(v,kind){
+  const s=String(v??'').trim();
+  if(!/^(?:\d+|\d*\.\d+)$/.test(s))return null;
+  const n=Number(s);
+  if(!Number.isFinite(n)||n<0||(['AVG','OBP','SLG'].includes(kind)&&n>1)||n>5)return null;
+  return s;
+}
+function recordedSlotSample(e,name,slot){
+  const source=verifiedSourcePlayers(e,'battingOrderSplits');
+  if(!source||!source.has(norm(name)))return {status:'UNAVAILABLE',text:'打順別の標準試合成績は未確認'};
+  const slots=source.get(norm(name))?.slots;
+  if(!Array.isArray(slots)||new Set(slots.map(x=>x?.slot)).size!==slots.length||
+    slots.some(x=>!Number.isInteger(x?.slot)||x.slot<1||x.slot>9))
+    return {status:'UNAVAILABLE',text:'打順別の記録形式を確認できません'};
+  const row=slots.find(x=>x.slot===slot);
+  if(!row)return {status:'NO_PA',text:'標準試合でこの打順の打席記録なし（打撃能力の評価ではありません）'};
+  const b=row.standard?.batting||{};
+  const PA=strictCount(b.PA),AB=strictCount(b.AB),H=strictCount(b.H);
+  if(PA===null||AB===null||H===null||AB>PA||H>AB)
+    return {status:'UNAVAILABLE',text:'標準試合の打席・打数・安打を照合できません'};
+  const ch=strictCount(row.challenge?.batting?.PA);
+  const challenge=ch===null?'':('／練習第2試合 '+ch+'打席（別枠）');
+  if(PA===0)return {status:'NO_PA',text:'標準試合0打席・0打数'+challenge+'。結果の優劣は判定できません'};
+  const rates=['AVG','OBP','SLG','OPS'].map(k=>{
+    const raw=safeRate(b[k],k);
+    return raw===null?'':{AVG:'打率',OBP:'出塁率',SLG:'長打率',OPS:'OPS'}[k]+' '+raw;
+  }).filter(Boolean);
+  return {status:'RECORDED',PA,AB,H,text:'標準試合 '+PA+'打席・'+AB+'打数・'+H+'安打'
+    +(rates.length?'、'+rates.join('・'):'')+challenge};
+}
+function datedSlotStarts(e,name,slots){
+  const source=verifiedSourcePlayers(e,'appearanceFielding');
+  const a=source?.get(norm(name))?.appearance;
+  if(!source||a?.status!=='COMPLETE'||!Array.isArray(a.latestStarts))return '標準先発の日付は未確認';
+  const recent=a.latestStarts.filter(x=>slots.includes(x?.order)&&/^\d{4}-\d{2}-\d{2}$/.test(String(x.date||''))&&
+     (x.competitionType==='OFFICIAL'||(x.competitionType==='PRACTICE'&&x.practiceRole==='REGULAR_GAME_1')))
+    .slice(-3);
+  if(!recent.length)return '直近の先発履歴一覧に該当記録なし（全期間の不在を意味しません）';
+  return recent.map(x=>x.date+' '+x.order+'番／'+(x.competitionType==='OFFICIAL'?'公式戦':'練習第1試合')).join('、');
+}
+function datedSlotCoachObservation(e,name){
+  if(e?.normalizedObservationStatus!=='COMPLETE'||!Array.isArray(e.normalizedObservations))return '指導者観察は未取得または権限外';
+  const rows=e.normalizedObservations.filter(x=>norm(x?.player)===norm(name)&&x?.sourceType==='指導者'&&
+     /^20\d{2}[-/]\d{1,2}[-/]\d{1,2}(?:[ T]|$)/.test(String(x?.recordedAt||''))&&
+     typeof x?.statement==='string'&&x.statement.length<=280&&
+     /打順|打撃|打席|打率|出塁|打球|バッティング|スイング/.test(x.statement));
+  if(!rows.length)return '該当する日付付き指導者の打撃観察なし';
+  rows.sort((a,b)=>String(b.recordedAt).localeCompare(String(a.recordedAt)));
+  return rows[0].recordedAt+'（記録当時の観察・現在の固定方針ではありません）'+clipText(rows[0].statement,115);
+}
+// A full 1-1-1 split can still be 2-vs-1 at the disputed local 3/4 pair.
+// This *local* count is NEVER a final nine-player majority or selected lineup.
+function localAdjacentSwaps(entries){
+  const found=[];
+  if(!Array.isArray(entries)||entries.length!==3||entries.some(x=>x.order?.length!==9))return found;
+  for(let i=0;i<8;i++){
+    const votes=entries.map(x=>({label:x.label,a:x.order[i],b:x.order[i+1]}));
+    const first=votes[0];if(!first?.a||!first?.b||norm(first.a)===norm(first.b))continue;
+    const same=votes.filter(v=>norm(v.a)===norm(first.a)&&norm(v.b)===norm(first.b));
+    const flipped=votes.filter(v=>norm(v.a)===norm(first.b)&&norm(v.b)===norm(first.a));
+    if(same.length+flipped.length!==3||Math.min(same.length,flipped.length)!==1)continue;
+    const prevailing=same.length===2?same:flipped;
+    const dissenter=same.length===1?same:flipped;
+    found.push({firstSlot:i+1,secondSlot:i+2,left:prevailing[0].a,right:prevailing[0].b,
+      supporting:prevailing.map(v=>v.label),dissent:dissenter[0].label});
+  }
+  return found.sort((a,b)=>{
+    const priority=x=>(x.firstSlot>=3&&x.firstSlot<=5?0:1);
+    return priority(a)-priority(b)||a.firstSlot-b.firstSlot;
+  }).slice(0,3);
+}
+function recordedDisputeCards(entries,e){
+  const roster=verifiedCurrentPlayerKeys(e);
+  if(!roster)return [];
+  return localAdjacentSwaps(entries).filter(pair=>roster.has(norm(pair.left))&&roster.has(norm(pair.right))).map(pair=>{
+    const slots=[pair.firstSlot,pair.secondSlot];
+    const people=[pair.left,pair.right].map(name=>({
+      name,records:slots.map(slot=>({slot,...recordedSlotSample(e,name,slot)})),
+      starts:datedSlotStarts(e,name,slots),
+      coach:datedSlotCoachObservation(e,name)
+    }));
+    return {...pair,people};
+  });
+}
+function recordedDisputeHtml(entries,e){
+  const pairs=recordedDisputeCards(entries,e);
+  if(!pairs.length)return '<div class="magiRecordedDisputeNote">照合可能な隣接打順の対立記録がありません。判定を補完しません。</div>';
+  return pairs.map(pair=>{
+    const headline=pair.firstSlot+'・'+pair.secondSlot+'番：'+pair.supporting.join('・')+'の配置は'+
+      pair.firstSlot+'番'+pair.left+'／'+pair.secondSlot+'番'+pair.right+
+      '。'+pair.dissent+'は逆順（この部分の票数であり、全9人の多数決ではありません）。';
+    return '<section class="magiRecordedDispute" aria-label="'+pair.firstSlot+'・'+pair.secondSlot+'番の実打順比較">'+
+      '<div class="magiRecordedDisputeTitle">'+esc(pair.firstSlot+'・'+pair.secondSlot+'番　実打順と実起用の比較')+'</div>'+
+      '<div class="magiRecordedDisputeNote">'+esc(headline)+'</div>'+
+      '<div class="magiRecordedDisputeGrid">'+pair.people.map(player=>
+        '<div class="magiRecordedDisputePlayer"><div class="magiRecordedDisputePlayerName">'+esc(player.name)+'</div>'+
+        player.records.map(x=>'<div class="magiRecordedDisputeLine"><b>'+x.slot+'番の実績：</b>'+esc(x.text)+'</div>').join('')+
+        '<div class="magiRecordedDisputeLine"><b>日付付き標準先発：</b>'+esc(player.starts)+'</div>'+
+        '<div class="magiRecordedDisputeLine"><b>指導者観察：</b>'+esc(player.coach)+'</div></div>'
+      ).join('')+'</div>'+
+      '<div class="magiRecordedDisputeNote">公式戦＋練習第1試合と練習第2試合は別集計。打席数が少ない場合や未経験の打順では位置別の優劣は確定できず、この比較は得点・勝率への因果効果を示しません。</div></section>';
+  }).join('');
+}
+// Deadlock must not fabricate a chosen lineup or use the normal 1–9 cards.
+function deadlockDisputeHtml(r){
+  if(r?.final?.mode!=='FULL_LINEUP'||r?.final?.status!=='LINEUP_REVIEW_REQUIRED'||
+     r?.final?.finalVote!=='1-1-1'||Array.isArray(r?.final?.lineup)&&r.final.lineup.length!==0)return '';
+  const entries=secondEntries(r).filter(x=>x.order.length===9);
+  if(entries.length!==3)return '';
+  return '<div class="magiRecordedDisputeOnly" role="region" aria-label="未決定の打順対立の記録比較">'+
+   '<div class="magiLineupReasonsTitle">打順の対立・実記録の比較</div>'+
+   '<div class="magiRecordedDisputeNote">3賢人の全9人案は1対1対1で、最終オーダーは確定していません。以下は争点の記録比較であり、採用打順ではありません。</div>'+
+   recordedDisputeHtml(entries,r?.case?.evidence||{})+'</div>';
+}
+function renderDeadlock(r){
+  const html=deadlockDisputeHtml(r);
+  if(!html)return false;
+  injectStyle();
+  const host=document.querySelector('.magiFinalDecisionHero')||
+    document.querySelector('.final')||document.querySelector('#response');
+  if(!host)return false;
+  const signature=JSON.stringify([r?.final?.finalVote,r?.second?.melchior?.candidatePlayers,
+    r?.second?.balthasar?.candidatePlayers,r?.second?.casper?.candidatePlayers,
+    r?.case?.evidence?.battingOrderSplits?.source?.modifiedTime,
+    r?.case?.evidence?.appearanceFielding?.sources?.map(x=>x.modifiedTime)]);
+  const previous=host.querySelector('.magiRecordedDisputeOnly');
+  if(previous&&previous.dataset.signature===signature)return true;
+  if(previous)previous.remove();
+  const el=document.createElement('section');
+  el.innerHTML=html;
+  const panel=el.firstElementChild;
+  if(!panel)return false;
+  panel.dataset.signature=signature;
+  host.appendChild(panel);
+  return true;
+}
 function observationSummary(layers){
   if(layers?.observationStatus!=='COMPLETE')return'観察Evidenceはこの審議では利用不可または未取得です。';
   const latest=layers.observationLatest?'、最新記録 '+layers.observationLatest:'';
@@ -329,11 +497,12 @@ function render(r,data){
     section.innerHTML=html;
     const method=hero.querySelector('.magiFinalDecisionMethod'),field=hero.querySelector('.magiFinalFieldingNote');
     if(method)hero.insertBefore(section,method);else if(field)hero.insertBefore(section,field);else hero.appendChild(section);
-    lastSignature=signature;hero.dataset.magiLineupReasons='419';return true;
+    lastSignature=signature;hero.dataset.magiLineupReasons='422';return true;
   }
   for(const review of adjacentSwapReviews(entries,names,statsMap)){
     html+=`<div class="magiLineupReasonWarning"><b>${review.firstSlot}・${review.secondSlot}番の根拠を比較：</b> ${esc(review.text)}</div>`;
   }
+  html+=recordedDisputeHtml(entries,r?.case?.evidence||{});
   html+='<div class="magiLineupReasonList">';
   names.forEach((name,index)=>{
     const slot=index+1,support=exactSlotSupport(entries,slot,name),alts=slotAlternatives(entries,slot,name),st=statsMap.get(norm(name));
@@ -361,7 +530,7 @@ function render(r,data){
 async function apply(){
   const r=result();
   if(!r||String(r?.final?.mode||'').toUpperCase()!=='FULL_LINEUP')return false;
-  if(finalNames(r).length!==9)return false;
+  if(finalNames(r).length!==9)return renderDeadlock(r);
   const data=hasStructuredBattingEvidence(r)?null:await loadStats();
   return render(r,data);
 }
@@ -371,5 +540,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v421',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v422',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml});
 })();
