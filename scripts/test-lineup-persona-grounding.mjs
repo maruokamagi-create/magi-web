@@ -293,6 +293,65 @@ assert.equal(testHost.nodes.length,1,'a duplicate render must not repeat visible
 assert.equal(api.renderDeadlock({...deadlock,final:{...deadlock.final,status:'LINEUP_RESULT'}}),false);
 assert.equal(testHost.nodes.length,1,'do not replace previously mounted content for the wrong result');
 
+// A non-adjacent 1–1–1 disagreement must still show real alternative
+// hitters for the disputed batting POSITION, not demand a perfect inversion.
+const differentMiddle={
+ melchior:{candidatePlayers:ownSecondaryOrder},
+ balthasar:{candidatePlayers:[...ownSecondaryOrder.slice(0,2),
+    ownSecondaryOrder[3],ownSecondaryOrder[4],ownSecondaryOrder[2],...ownSecondaryOrder.slice(5)]},
+ casper:{candidatePlayers:[...ownSecondaryOrder.slice(0,2),
+    ownSecondaryOrder[4],ownSecondaryOrder[2],ownSecondaryOrder[3],...ownSecondaryOrder.slice(5)]}
+};
+const differentEntries=Object.entries(differentMiddle).map(([key,value])=>({
+ label:{melchior:'メルキオール',balthasar:'バルタザール',casper:'カスパー'}[key],
+ order:value.candidatePlayers
+}));
+assert.equal(api.localAdjacentSwaps(differentEntries).length,0,
+ 'all three different central triplets have no exact 2-vs-1 adjacent reversal');
+const individualSlots=api.localSlotDisputes(differentEntries);
+assert.equal(individualSlots.length,3);
+assert.deepEqual(Array.from(individualSlots,x=>x.slot),[3,4,5]);
+assert.equal(individualSlots[0].candidates.length,3);
+const differentResult={case:{evidence:withActualSources.evidence},second:differentMiddle,
+ final:{mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',finalVote:'1-1-1',lineup:[]}};
+const differentHtml=api.deadlockDisputeHtml(differentResult);
+assert.match(differentHtml,/3番　候補別の実績比較（打順は未確定）/);
+assert.match(differentHtml,/4番　候補別の実績比較（打順は未確定）/);
+assert.match(differentHtml,/5番　候補別の実績比較（打順は未確定）/);
+assert.match(differentHtml,/標準試合の4番：/);
+assert.match(differentHtml,/13打席・11打数・3安打/);
+assert.match(differentHtml,/標準試合の4番：<\/b>標準試合 4打席・3打数・2安打/);
+assert.match(differentHtml,/この位置だけでの支持/);
+assert.match(differentHtml,/全9人の多数決ではありません/);
+assert.doesNotMatch(differentHtml,/最終ベストオーダー/);
+assert.equal(api.renderDeadlock(differentResult),true);
+assert.equal(testHost.nodes.length,1);
+assert.match(testHost.nodes[0].html,/3番　候補別の実績比較/);
+assert.equal(api.renderDeadlock(differentResult),true);
+assert.equal(testHost.nodes.length,1,'same result should not create a duplicate');
+const newRows=withActualSources.evidence.battingOrderSplits.players.map(p=>p.name==='嶋田 栄志'
+  ?{...p,slots:p.slots.map(row=>row.slot===4
+    ?{...row,standard:{batting:{...row.standard.batting,PA:'14',AB:'12',H:'4'}}}:row)}
+  :p);
+const newerDifferent={...differentResult,case:{evidence:{
+ ...withActualSources.evidence,battingOrderSplits:{
+ ...withActualSources.evidence.battingOrderSplits,players:newRows}
+}}};
+assert.equal(api.renderDeadlock(newerDifferent),true);
+assert.equal(testHost.nodes.length,1);
+assert.match(testHost.nodes[0].html,/14打席・12打数・4安打/,
+ 'same nine and same modifiedTime still need fresh Evidence displayed');
+assert.doesNotMatch(testHost.nodes[0].html,/13打席・11打数・3安打/);
+const unavailableDifferent={...differentResult,case:{evidence:{
+ ...withActualSources.evidence,battingOrderSplits:{
+ ...withActualSources.evidence.battingOrderSplits,status:'PARTIAL'}
+}}};
+assert.match(api.deadlockDisputeHtml(unavailableDifferent),/打順別の標準試合成績は未確認/);
+assert.doesNotMatch(api.deadlockDisputeHtml(unavailableDifferent),/13打席・11打数・3安打/);
+assert.equal(api.deadlockDisputeHtml({...differentResult,second:{
+ melchior:differentMiddle.melchior,balthasar:differentMiddle.melchior,casper:differentMiddle.melchior
+}}),'','an incorrect 1-1-1 label must not produce a disputed comparison');
+
 // Public render path must accept the deadlock's zero lineup without inventing one.
 assert.match(uiSrc,/if\(finalNames\(r\)\.length!==9\)return renderDeadlock\(r\)/);
 assert.match(uiSrc,/html\+=recordedDisputeHtml\(entries,r\?\.case\?\.evidence\|\|\{\}\)/);
