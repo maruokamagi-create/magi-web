@@ -126,6 +126,9 @@ jobs:
       - name: Run persona evidence-language guard cases
         run: node --experimental-default-type=module scripts/test-persona-output-guard.mjs
 
+      - name: Verify production selection stage diagnostics
+        run: node --experimental-default-type=module scripts/test-production-selection-stage-diagnostics.mjs
+
       - name: Verify TEAM_REVIEW live-stage acceptance polarity
         run: node --experimental-default-type=module scripts/test-team-review-stage-polarity.mjs
 

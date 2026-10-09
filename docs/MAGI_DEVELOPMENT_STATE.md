@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: e7f89e27d750d3b1b376888e8e266efcfd03ef45
+- State base main SHA: bad7f5056e0e493451dd7bd04afba9b126004ad2
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -891,6 +891,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/batting-slot-win-rate-and-optimality-20261009` extends that **shared** `unsupportedBattingOrderEffect` matcher for next-batter `最適` (not only `最適化`) and metrics/slot choices -> win probability/odds. Existing validator+sanitizer remove the unsupported claims and recheck unchanged candidates and direct usage facts. No player-specific special cases or additional provider calls are needed for deterministic tests.
 - Add exact observed positive, direct-stat negative and explicit non-causality regressions in persona guard and batch recovery, including mixed hard error fail-closed checks. Require Deliberation Final + Continuity CI green, previous Live/Suite completion, READY production SHA and new Live NATURAL_THIRD prose review before semantic approval.
 - On the new base SHA `e7f89e27...`, Production Sequential Suite run `37869741947` independently **failed again** at the very first `selection / production-selection` job `113624833436` with only `Process completed with exit code 1` and **no printed offending field or gate stage**. All later stages skipped. Earlier SHA `4b6c7939...` run `37868889030` had the same opaque early selection failure. The problem is now reproducible in two recent deployments, but root cause is still unknown; do not claim selection acceptance is stable or classify this as provider quota without evidence. Next priority is safe stage-specific diagnostics in `.github/workflows/magi-production-selection-smoke.yml` and a tightly scoped rerun, not speculative changes to player data or generic validation. No Google Drive/CSV/score sheet changes and retain Vercel Hobby/free.
+
+## 2026-10-09: Exact TEAM_REVIEW SECOND disclaimer rejected by smoke, selection failure lacks stage
+
+- Starting canonical main and deployed Vercel READY SHA `bad7f5056e0e493451dd7bd04afba9b126004ad2`; latest GitHub Production Live run `37870135097` passed revision readiness, best-order, closer and natural-third stages. TEAM_REVIEW PRIMARY, CROSS and SECOND generated successfully, but job `113627073113` failed the SECOND **workflow assertion** before FINAL. BALTHASAR wrote `それだけでチーム全体の戦術的制約や勝敗への直接的な因果関係を断定することはできない`. The smoke's forbidden-terms regex matched `戦術的制約` because the narrow negation normalization did not include `断定することはできない` or enough same-sentence length. This is a test false-positive, not evidence of a harmful positive tactical conclusion.
+- Branch `fix/team-review-denial-and-selection-stage-diagnostics-20261009` extends **only** the acceptance filter's same-sentence, punctuation-bounded negation normalization to that explicit noncausality expression. It retains the full original forbidden-assertion regex and keeps positive or mixed positive+negative claims failing. Add exact production phrase and mixed-claim regression to `scripts/test-team-review-stage-polarity.mjs`; run that original jq acceptance filter in deterministic CI.
+- Production Sequential Suite `37869741947` on prior READY SHA `e7f89e27...` failed its initial `selection / production-selection` job `113624833436` silently after an exit code 1, without provider or JSON error. All later stages were skipped. Root cause is **unknown**: may be a shape, exact roster, candidate, CROSS, FINAL or persona-independence assertion. Do not assume provider quota, a player data problem, or a specific persona. New selection-smoke instrumentation tracks bounded stage IDs and line numbers via ERR trap (not raw player packets); no checks are relaxed. A static regression enforces diagnostics ordering and preservation of the original validation predicates.
+- The latest `bad7f505` Production Sequential Suite was skipped because Live TEAM_REVIEW was red. After merge and READY SHA, allow precisely one normal SHA-gated Live workflow and its downstream sequential suite to reveal or clear the original selection failure. Avoid unscheduled repeated Gemini requests, hot-looping, any paid Vercel upgrade or edits to Drive/CSV.
+- The full authenticated iPhone Chrome nine-class UI-path acceptance is still not done; previous backend green only proves a narrower path. All 1-1-1 deadlock safeguards and source/roster/fielding checks remain fail-closed, with coach records date-sensitive. No verified lineup is guaranteed optimal merely because it reached majority in one test.
 
 ## Next concrete work
 
