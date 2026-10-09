@@ -989,6 +989,41 @@ test('Live natural third preserves measured usage and negated success claims',()
   }
 });
 
+test('Live BATTING_ORDER blocks tactical, next-batter, development and burden effects without data',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番を誰にするか迷っている。4番へのつなぎを考えると？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チーム通算打率・OPSと実際の3番先発回数のみ。'}};
+  const samples=[
+    '俺は中嶋 玲月を3番に推す。通算打率.485にOPS 1.120という数字がある以上、4番の大久保 陽翔につなぐ打順として十分に機能するはずだ。',
+    '現チーム通算で打率.485、OPS 1.120を記録している中嶋 玲月を軸に、4番大久保 陽翔への接続を最適化する視点で選出する。',
+    '現チームで最高水準の打率.485とOPS 1.120を記録している中嶋 玲月を3番に据えることが戦術上有利だからだ。',
+    '中嶋 玲月の高い打率とOPSは攻撃の軸として機能する可能性がある。',
+    'これまでの試合で3番としての出場実績が最も多い嶋田 栄志を置きつつ、チーム全体の経験の蓄積を考慮する。',
+    '積み上げてきた経験が今後のチームの力になっていくと考えています。',
+    'これまでの出場実績と経験の蓄積とチーム全体のバランスを考慮する。',
+    '固定化が選手の負担に影響するおそれがある。',
+    '嶋田 栄志は3番でのスタメン起用実績が7試合あり、実際の出場詳細に基づく適合が確認できる。',
+    '嶋田 栄志の継続的な3番起用は、これまでのチーム構成における重要な役割を担っている。'
+  ];
+  for(const statement of samples){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',publicStatement:statement}),{focused:false});
+    assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+JSON.stringify(issues));
+  }
+});
+
+test('Live BATTING_ORDER leaves measured batting and explicit evidence-limit sentences alone',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番を誰にするか迷っている',evidence:{selectionKind:'BATTING_ORDER',summary:'打撃成績と打順記録のみ。'}};
+  for(const statement of [
+    '嶋田 栄志は3番として7試合にスタメン出場した。',
+    '中嶋 玲月の打率.485、OPS 1.120を記録で確認した。',
+    '4番につなぐ打順として十分に機能するかは確認できない。',
+    '過去の起用実績だけでは打順への適合は確認できない。',
+    '固定化が選手の負担に影響するかは根拠がない。',
+    '打率だけで戦術上有利とは断定できない。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'CASPER',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+JSON.stringify(issues));
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
