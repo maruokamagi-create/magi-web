@@ -71,8 +71,8 @@ jobs:
               if [ "$code" = "200" ] && jq -e --arg stage "$(echo "$stage" | tr '[:lower:]' '[:upper:]')" '.ok==true and .mode=="lineup" and .stage==$stage' "$out" >/dev/null 2>&1; then
                 return 0
               fi
-              if jq -e '((.error//"")|contains("provider_rate_limit")) and ((.error//"")|contains("[quota=DAY"))' "$out" >/dev/null 2>&1; then
-                echo "Daily provider quota exhausted for this stage; do not hot-loop." >&2
+              if jq -e '((.error//"")|contains("provider_rate_limit"))' "$out" >/dev/null 2>&1; then
+                echo "Provider rate limit on this stage; stop immediately without repeating the same Gemini call." >&2
                 return 1
               fi
               if [ "$attempt" -ge "$max_attempts" ]; then
@@ -169,8 +169,8 @@ jobs:
                 echo "Deterministic persona validation failure; do not retry the same stage." >&2
                 return 1
               fi
-              if jq -e '((.error//"")|contains("provider_rate_limit")) and ((.error//"")|contains("[quota=DAY"))' "$out" >/dev/null 2>&1; then
-                echo "Daily provider quota exhausted for this stage; do not hot-loop." >&2
+              if jq -e '((.error//"")|contains("provider_rate_limit"))' "$out" >/dev/null 2>&1; then
+                echo "Provider rate limit on this stage; stop immediately without repeating the same Gemini call." >&2
                 return 1
               fi
               if [ "$attempt" -ge "$max_attempts" ]; then
@@ -253,8 +253,8 @@ jobs:
                 echo "Deterministic persona validation failure; do not retry the same stage." >&2
                 return 1
               fi
-              if jq -e '((.error//"")|contains("provider_rate_limit")) and ((.error//"")|contains("[quota=DAY"))' "$out" >/dev/null 2>&1; then
-                echo "Daily provider quota exhausted for this stage; do not hot-loop." >&2
+              if jq -e '((.error//"")|contains("provider_rate_limit"))' "$out" >/dev/null 2>&1; then
+                echo "Provider rate limit on this stage; stop immediately without repeating the same Gemini call." >&2
                 return 1
               fi
               if [ "$attempt" -ge "$max_attempts" ]; then
@@ -333,8 +333,8 @@ jobs:
                 echo "Deterministic persona validation failure; do not retry the same team-review stage." >&2
                 return 1
               fi
-              if jq -e '((.error//"")|contains("provider_rate_limit")) and ((.error//"")|contains("[quota=DAY"))' "$out" >/dev/null 2>&1; then
-                echo "Daily provider quota exhausted for this stage; do not hot-loop." >&2
+              if jq -e '((.error//"")|contains("provider_rate_limit"))' "$out" >/dev/null 2>&1; then
+                echo "Provider rate limit on this stage; stop immediately without repeating the same Gemini call." >&2
                 return 1
               fi
               if [ "$attempt" -ge "$max_attempts" ]; then
