@@ -26,7 +26,7 @@ const DISPLAY_METRICS=[['AB','打数'],['AVG','打率'],['OBP','出塁率'],['SL
 function metricLiteral(value,key){
   if(value===null||value===undefined)return null;
   const raw=String(value).trim();
-  if(!/^(?:\\d+|\\d*\\.\\d+)$/.test(raw))return null;
+  if(!/^(?:\d+|\d*\.\d+)$/.test(raw))return null;
   const n=Number(raw);
   if(!Number.isFinite(n)||n<0||(key==='AB'&&!Number.isInteger(n)))return null;
   if(['AVG','OBP','SLG'].includes(key)&&n>1)return null;
