@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: fc9fdcb23de2711dff949afafb346bb51ac0d633
+- State base main SHA: fa0b30396e5a0f8bab71e4c6479bed0fccce92e1
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1200,3 +1200,10 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - CLOSER stage in the same run FAILED **PRIMARY content quality**, not provider timeout: BALTHASAR PUBLIC stated ambiguous `大久保くん` despite two distinct current 大久保 players plus unsupported generic win rhetoric and assumed `安定した成績` without role evidence. The strict staged smoke rejected output after a successful HTTP response. This is independent of the lineup soft-fallback.
 - A minimal PITCHING_ROLE batch-only post-validation pre-publication filter now discards full sentences with ambiguous current surname+くん, proven-unsuitable generic win-path rhetoric and positive `安定した(?:投球|成績)` claims. No entity resolution for an ambiguous nickname. Canonical candidatePlayers and number facts unaffected. A true dated `制球が安定しない` observation survives; any deleted explanation field is replaced only with evidence-bounded provisional comparative language. Lower recovered HIGH confidence to MEDIUM and warn. Re-run the original publish guard; do NOT relax quality-gate patterns. Other request kinds untouched. Add deterministic regression for source model phrasing, retained 2 SV, ambiguous 大久保/positive vs negative stability, idempotence. No fees, extra model calls, Drive edits or records modified.
 - This is not a promise the next stochastic LLM call will be perfect. Exact-SHA staged production still pending after CI merge, with provider capacity a known separate source of intermittent failure. Keep Vercel Hobby and original source readonly.
+
+
+## 2026-10-09: Guarded prose-only lineup recovery for unrelated outcome guarantees plus candidate/order contradiction
+
+- PR #184 merged app SHA fa0b30396e5a0f8bab71e4c6479bed0fccce92e1; its READY exact-SHA Live `37932515603` completed **5/5 SUCCESS** (including previously failing CLOSER, full lineup, natural third and TEAM_REVIEW). Importantly the provider stochastic behavior was favorable for that run only; production-wide robustness not certified.
+- The auto triggered same-code Sequential `37933124944` Selection succeeded but FULL_LINEUP failed at MELCHIOR PRIMARY guard with `ORDER_EXPLANATION_CONFLICT` plus `UNSUPPORTED_OUTCOME_PREDICTION`. The raw candidate order had 9 current members and 14 checked; the model's numbered explanation differed from its own candidatePlayers AND it included an unverified future/outcome guarantee. Guard correctly refused that raw answer, and pitching/general/repro were SKIPPED, **not passed**. The model's mistaken prose is NOT verified batting evidence and must not appear in public output.
+- This narrow correction adds three exact existing nonnumeric outcome/prose guard labels to the already existing `reconcileLineupOrderExplanation` allowlist, which is callable ONLY if independently identified order/prose contradiction exists. Then the *entire* inconsistent/unsupported original text, prediction and unsupported claims are discarded; the authoritative structured nine and exact verified current metrics from COMPLETE 14 rows remain unchanged; explicit warning says the chosen order does not prove game winning. All remaining numeric, roster, fielding and official data guards are reapplied and hard failures still refuse. No added model calls, retries, Drive edits, billing changes or future effects. Regression must prove the outcome is not discarded without independent ORDER conflict, and never with numeric/defense/roster/dataConflict errors. Require CI PASS and postmerge exact SHA production; don't falsely call 5/5 Sequential until seen.
