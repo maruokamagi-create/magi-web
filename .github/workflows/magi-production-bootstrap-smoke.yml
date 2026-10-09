@@ -244,7 +244,7 @@ jobs:
           grep -Fq 'if(finalNames(r).length!==9)return renderDeadlock(r)' /tmp/lineup-reasons-served.js
           grep -Fq 'function recordedSlotSample(e,name,slot)' /tmp/lineup-reasons-served.js
           grep -Fq 'for(const review of adjacentSwapReviews(entries,names,statsMap))' /tmp/lineup-reasons-served.js
-          grep -Fq "version:'lineup-reasons-v422'" /tmp/lineup-reasons-served.js
+          grep -Fq "version:'lineup-reasons-v423'" /tmp/lineup-reasons-served.js
           echo 'PRODUCTION VERIFIED DISPUTED LINEUP AND 1-1-1 ASSET: PASS'
 
       - name: Verify canonical click ownership guard

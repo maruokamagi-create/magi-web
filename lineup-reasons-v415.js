@@ -10,7 +10,7 @@ const PERSONAS=[
 ];
 const norm=s=>String(s??'').normalize('NFKC').replace(/[\s　・･_\-\/()（）\[\]【】]/g,'').toLowerCase();
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-let statsCache=null,statsPending=null,scheduled=false,lastSignature='';
+let statsCache=null,statsPending=null,scheduled=false,lastSignature='',lastDeadlockRenderedResult=null;
 
 function injectStyle(){
   if(document.getElementById('magi-lineup-reasons-v415-style'))return;
@@ -364,9 +364,48 @@ function recordedDisputeCards(entries,e){
     return {...pair,people};
   });
 }
+// When all three nine-player proposals differ in 3/4/5, a strict adjacent
+// two-person inversion may not exist. Show the slot contenders rather than
+// hiding the entire disputed decision. Never call a local vote a final lineup.
+function localSlotDisputes(entries){
+  if(!Array.isArray(entries)||entries.length!==3||entries.some(e=>e?.order?.length!==9))return [];
+  const out=[];
+  for(let slot=1;slot<=9;slot++){
+    const counts=new Map();
+    for(const e of entries){
+      const name=String(e.order[slot-1]||'').trim(),key=norm(name);
+      if(!key)return [];
+      const row=counts.get(key)||{name,personas:[],support:0};
+      row.support++;row.personas.push(e.label);
+      counts.set(key,row);
+    }
+    if(counts.size>1)out.push({slot,candidates:[...counts.values()]});
+  }
+  return out.sort((a,b)=>{
+    const priority=s=>s>=3&&s<=5?0:1;
+    return priority(a.slot)-priority(b.slot)||a.slot-b.slot;
+  }).slice(0,3);
+}
+function recordedSlotDisputeHtml(entries,e){
+  const roster=verifiedCurrentPlayerKeys(e);
+  if(!roster)return '';
+  return localSlotDisputes(entries).filter(d=>d.candidates.every(c=>roster.has(norm(c.name)))).map(d=>{
+    return '<section class="magiRecordedDispute" aria-label="'+d.slot+'番候補の実績比較">'+
+      '<div class="magiRecordedDisputeTitle">'+d.slot+'番　候補別の実績比較（打順は未確定）</div>'+
+      '<div class="magiRecordedDisputeNote">'+esc('3賢人が'+d.slot+'番に挙げた選手の記録を比較します。票数はこの位置だけでの支持であり、全9人の多数決ではありません。')+'</div>'+
+      '<div class="magiRecordedDisputeGrid">'+d.candidates.map(c=>
+        '<div class="magiRecordedDisputePlayer"><div class="magiRecordedDisputePlayerName">'+esc(c.name)+
+        '（'+c.support+'/3：'+esc(c.personas.join('・'))+'）</div>'+
+        '<div class="magiRecordedDisputeLine"><b>標準試合の'+d.slot+'番：</b>'+esc(recordedSlotSample(e,c.name,d.slot).text)+'</div>'+
+        '<div class="magiRecordedDisputeLine"><b>日付付き標準先発：</b>'+esc(datedSlotStarts(e,c.name,[d.slot]))+'</div>'+
+        '<div class="magiRecordedDisputeLine"><b>指導者観察：</b>'+esc(datedSlotCoachObservation(e,c.name))+'</div></div>'
+      ).join('')+'</div>'+
+      '<div class="magiRecordedDisputeNote">公式戦＋練習第1試合と練習第2試合は別集計。未経験や少数打席の選手を不利と決めつけず、勝敗への優位性をこの表から推定しません。</div></section>';
+  }).join('');
+}
 function recordedDisputeHtml(entries,e){
   const pairs=recordedDisputeCards(entries,e);
-  if(!pairs.length)return '';
+  if(!pairs.length)return recordedSlotDisputeHtml(entries,e);
   return pairs.map(pair=>{
     const headline=pair.firstSlot+'・'+pair.secondSlot+'番：'+pair.supporting.join('・')+'の配置は'+
       pair.firstSlot+'番'+pair.left+'／'+pair.secondSlot+'番'+pair.right+
@@ -388,7 +427,7 @@ function deadlockDisputeHtml(r){
   if(r?.final?.mode!=='FULL_LINEUP'||r?.final?.status!=='LINEUP_REVIEW_REQUIRED'||
      r?.final?.finalVote!=='1-1-1'||Array.isArray(r?.final?.lineup)&&r.final.lineup.length!==0)return '';
   const entries=secondEntries(r).filter(x=>x.order.length===9);
-  if(entries.length!==3)return '';
+  if(entries.length!==3||new Set(entries.map(e=>e.order.map(norm).join('|'))).size!==3)return '';
   return '<div class="magiRecordedDisputeOnly" role="region" aria-label="未決定の打順対立の記録比較">'+
    '<div class="magiLineupReasonsTitle">打順の対立・実記録の比較</div>'+
    '<div class="magiRecordedDisputeNote">3賢人の全9人案は1対1対1で、最終オーダーは確定していません。以下は争点の記録比較であり、採用打順ではありません。</div>'+
@@ -406,7 +445,7 @@ function renderDeadlock(r){
     r?.case?.evidence?.battingOrderSplits?.source?.modifiedTime,
     r?.case?.evidence?.appearanceFielding?.sources?.map(x=>x.modifiedTime)]);
   const previous=host.querySelector('.magiRecordedDisputeOnly');
-  if(previous&&previous.dataset.signature===signature)return true;
+  if(previous&&previous.dataset.signature===signature&&lastDeadlockRenderedResult===r)return true;
   if(previous)previous.remove();
   const el=document.createElement('section');
   el.innerHTML=html;
@@ -414,6 +453,7 @@ function renderDeadlock(r){
   if(!panel)return false;
   panel.dataset.signature=signature;
   host.appendChild(panel);
+  lastDeadlockRenderedResult=r;
   return true;
 }
 function observationSummary(layers){
@@ -541,5 +581,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v422',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml,renderDeadlock});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v423',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml,renderDeadlock,localSlotDisputes,recordedSlotDisputeHtml});
 })();
