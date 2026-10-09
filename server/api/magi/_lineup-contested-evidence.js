@@ -129,3 +129,54 @@ export function buildContestedAdjacentSlotEvidence(caseData,ownPrimary,cross){
   }
   return comparisons;
 }
+
+// The three independent FULL_LINEUP proposals may disagree on the PLAYER at
+// 3/4/5 without any two adjacent slots both being named in CROSS. In that case
+// the existing adjacent-swap packet is empty. Report only CROSS-mentioned
+// alternatives at an explicitly contested slot, never an invented opponent.
+export function buildContestedSingleSlotEvidence(caseData,ownPrimary,cross){
+  const checked=validateFullLineupOrder(ownPrimary?.candidatePlayers);
+  if(!checked.ok)return [];
+  const current=caseData?.evidence?.allCurrentTeamCheck;
+  const players=Array.isArray(current?.players)?current.players:[];
+  if(current?.status!=='COMPLETE'||!exactCurrentRoster(players))return [];
+  const text=[
+    ...(Array.isArray(cross?.disagreement)?cross.disagreement:[]),
+    ...(Array.isArray(cross?.challenges)?cross.challenges:[]),
+    ...(Array.isArray(cross?.challengeToSelf)?cross.challengeToSelf:[])
+  ].join(' ').normalize('NFKC');
+  const matches=[...text.matchAll(/([1-9])番/g)];
+  if(!matches.length)return [];
+  const slots=[...new Set(matches.map(m=>Number(m[1])))].sort((a,b)=>{
+    const priority=n=>(n>=3&&n<=5?0:1);
+    return priority(a)-priority(b)||a-b;
+  }).slice(0,3);
+  const currentMap=new Map(players.map(p=>[p.name,p]));
+  const recent=caseData?.evidence?.recentSix;
+  const recentMap=recent?.status==='COMPLETE'&&Array.isArray(recent.players)
+    ?new Map(recent.players.map(p=>[p.name,p])):null;
+  return slots.flatMap(slot=>{
+    const ownName=checked.order[slot-1];
+    // Restrict alternatives to a local sentence/window that actually mentions
+    // this slot: a name somewhere else in CROSS is not a slot challenger.
+    const contexts=matches.filter(m=>Number(m[1])===slot)
+      .map(m=>text.slice(Math.max(0,m.index-40),Math.min(text.length,m.index+95)));
+    const alternatives=CURRENT_ROSTER.filter(name=>
+      name!==ownName && contexts.some(context=>context.includes(name))
+    ).slice(0,2);
+    if(!alternatives.length)return [];
+    const items=[ownName,...alternatives].map(name=>({
+      name,
+      role:name===ownName?'OWN_PRIMARY_SLOT':'CROSS_MENTIONED_ALTERNATIVE_NOT_PROVEN_SLOT_CHOICE',
+      current:compactBatting(currentMap.get(name)),
+      ...(recentMap?{recentSix:compactBatting(recentMap.get(name))}:{}),
+      actualSlot:actualSlotEvidence(caseData,name,[slot])?.[0]??null,
+      recentEligibleStarts:recentVerifiedStarts(caseData,name,[slot]),
+      datedCoachBattingObservations:datedCoachBattingObservations(caseData,name)
+    }));
+    return items.some(p=>Object.keys(p.current).length===0)?[]:[{
+      slot,comparisonScope:'ONE_CONTESTED_SLOT_NOT_A_REORDERED_PAIR',
+      players:items
+    }];
+  });
+}
