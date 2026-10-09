@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 import { reconcileLineupOrderExplanation } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
+import { buildLineupOrderCorrectionContext, personaCorrectionDirective } from '../server/api/magi/persona.js';
 
 const CASE={
   question:'大野 竜暉をクローザー固定すべき？',
@@ -1162,6 +1163,35 @@ test('Live FULL_LINEUP rejects a truncated numbered player name while preserving
   const givenShort=result({persona:'MELCHIOR',candidatePlayers:lineup,
     publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月、9番晴琉翔です。'});
   assert.ok(!validatePersonaOutput(c,givenShort,{focused:false}).includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'));
+});
+
+test('Repro SECOND ORDER_CONFLICT gives own-persona nine-slot correction without changing chosen nine',()=>{
+  const names=['大野 竜暉','大久保 陽翔','中嶋 玲月','嶋田 栄志','坂田 暉馬','武澤 大翔','橋向 結都','井坂 悠聖','武田 晴琉翔'];
+  const caseData={question:'今のベストオーダーを守備位置込みで審議',mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP',summary:'現チーム14名から9人を選ぶ。'}};
+  const draft=result({
+    persona:'BALTHASAR',phase:'SECOND',candidatePlayers:names,
+    candidateBasis:'3番嶋田 栄志・4番中嶋 玲月・5番坂田 暉馬という俺の新しい案だ。',
+    publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月、4番嶋田 栄志にする。',
+    reviewRequested:false,dataConflict:false
+  });
+  const issues=validatePersonaOutput(caseData,draft,{focused:false});
+  assert.ok(issues.includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'),JSON.stringify(issues));
+  const original=JSON.stringify(draft);
+  const ctx=buildLineupOrderCorrectionContext(draft,issues);
+  assert.ok(ctx);
+  assert.equal(ctx.proposedSlots.length,9);
+  assert.deepEqual(ctx.proposedSlots.map(x=>x.name),names);
+  assert.deepEqual(ctx.proposedSlots.map(x=>x.slot),[1,2,3,4,5,6,7,8,9]);
+  assert.match(ctx.instruction,/If you KEEP candidatePlayers/);
+  assert.match(ctx.instruction,/If you REVISE candidatePlayers/);
+  assert.match(ctx.instruction,/Delete contradictory text/);
+  assert.equal(JSON.stringify(draft),original,'building guidance must not overwrite the draft');
+  assert.match(personaCorrectionDirective(issues),/exact SAME nine slots/);
+  assert.equal(buildLineupOrderCorrectionContext(draft,[]),null);
+  assert.equal(buildLineupOrderCorrectionContext({...draft,reviewRequested:true},issues),null);
+  assert.equal(buildLineupOrderCorrectionContext({...draft,dataConflict:true},issues),null);
+  assert.equal(buildLineupOrderCorrectionContext({...draft,candidatePlayers:[...names.slice(0,8),names[0]]},issues),null);
+  assert.equal(buildLineupOrderCorrectionContext({...draft,candidatePlayers:[...names,'上村 蓮']},issues),null);
 });
 
 test('Live closer must not label innings and ERA as measured stability',()=>{
