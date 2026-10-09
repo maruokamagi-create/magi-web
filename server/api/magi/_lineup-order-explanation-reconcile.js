@@ -16,7 +16,13 @@ const DISCARDABLE_UNGROUNDED_LANGUAGE=new Set([
   'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
   'BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している',
   'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している',
-  'BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'
+  'BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している',
+  // Only non-guarantee prose forecasting can be discarded, and ONLY
+  // when an independent numbered candidate/order conflict already exists;
+  // numeric mismatch, defense eligibility and roster errors remain hard.
+  // A hard outcome guarantee such as 「必ず勝てる」 is NEVER auto-recovered.
+  '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている',
+  '将来予測を不確実性の表現なしに確定結果として述べている'
 ]);
 
 // Recover *present records*, not a fabricated explanation of winning value.

@@ -157,6 +157,48 @@ assert.equal(reconcileLineupOrderExplanation(mixedMelchior,[...melchiorIssues,'F
 assert.equal(reconcileLineupOrderExplanation(mixedMelchior,[...melchiorIssues,'数値1 は supplied CASE/EVIDENCE の値と一致しない']),null);
 assert.equal(reconcileLineupOrderExplanation(mixedMelchior,melchiorIssues.filter(x=>x!==ORDER_EXPLANATION_CONFLICT)),null,'cannot discard unsupported claims absent an actual order mismatch');
 
+
+// Actual 2026-10-09 Sequential full-lineup failed at MELCHIOR PRIMARY with
+// ORDER_EXPLANATION_CONFLICT plus UNSUPPORTED_OUTCOME_PREDICTION only.
+// Both are assertions in discarded prose, not a license to overwrite the nine
+// structured candidates or to invent verified scores.
+const predictedWinner={
+  ...incompatible,
+  phase:'PRIMARY',
+  prediction:['この打順なら必ず勝てる。'],
+  publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番嶋田 栄志にすると必ず勝てる。'
+};
+const predictionIssues=validatePersonaOutput(lineupCase,predictedWinner,{focused:false});
+assert.ok(predictionIssues.includes(ORDER_EXPLANATION_CONFLICT),JSON.stringify(predictionIssues));
+assert.ok(predictionIssues.includes('Evidenceから保証できない結果を断定している'),JSON.stringify(predictionIssues));
+assert.ok(predictionIssues.every(x=>[
+  ORDER_EXPLANATION_CONFLICT,
+  'Evidenceから保証できない結果を断定している',
+  '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている',
+  '将来予測を不確実性の表現なしに確定結果として述べている'
+].includes(x)),JSON.stringify(predictionIssues));
+assert.equal(reconcileLineupOrderExplanation(predictedWinner,predictionIssues),null,
+  'a hard guarantee such as 必ず勝てる must remain fail-closed even with an order contradiction');
+const softFutureIssues=[
+  ORDER_EXPLANATION_CONFLICT,
+  '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
+];
+const softForecast={...incompatible,analysis:['この打順を継続すれば得点力が伸びる。']};
+const softened=reconcileLineupOrderExplanation(softForecast,softFutureIssues);
+assert.ok(softened,'non-guarantee future prose plus independently established order mismatch may be discarded');
+assert.deepEqual(softened.candidatePlayers,chosen);
+assert.deepEqual(softened.analysis,[]);
+assert.doesNotMatch(JSON.stringify(softened),/得点力が伸びる/);
+assert.deepEqual(validatePersonaOutput(lineupCase,softened,{focused:false}),[]);
+assert.equal(reconcileLineupOrderExplanation(predictedWinner,
+ predictionIssues.filter(x=>x!==ORDER_EXPLANATION_CONFLICT)),null,
+ 'outcome guarantees without a separate order mismatch must NOT be auto-rewritten');
+assert.equal(reconcileLineupOrderExplanation(predictedWinner,
+ predictionIssues.concat('FULL_LINEUP_STANDARD_DEFENSE: missing starter')),null);
+assert.equal(reconcileLineupOrderExplanation(predictedWinner,
+ predictionIssues.concat('数値.5 は supplied CASE/EVIDENCE の値と一致しない')),null);
+assert.equal(reconcileLineupOrderExplanation({...predictedWinner,dataConflict:true},predictionIssues),null);
+
 assert.equal(reconcileLineupOrderExplanation(incompatible,[ORDER_EXPLANATION_CONFLICT,'NUMERIC_MISMATCH']),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,dataConflict:true},[ORDER_EXPLANATION_CONFLICT]),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,reviewRequested:true},[ORDER_EXPLANATION_CONFLICT]),null);
