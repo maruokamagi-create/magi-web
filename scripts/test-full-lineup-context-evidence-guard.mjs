@@ -177,12 +177,19 @@ assert.ok(predictionIssues.every(x=>[
   '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている',
   '将来予測を不確実性の表現なしに確定結果として述べている'
 ].includes(x)),JSON.stringify(predictionIssues));
-const recoveredPrediction=reconcileLineupOrderExplanation(predictedWinner,predictionIssues);
-assert.ok(recoveredPrediction,'independent prose/order contradiction may discard an unprovable outcome');
-assert.deepEqual(recoveredPrediction.candidatePlayers,chosen);
-assert.deepEqual(recoveredPrediction.prediction,[]);
-assert.doesNotMatch(JSON.stringify(recoveredPrediction),/必ず勝てる/);
-assert.deepEqual(validatePersonaOutput(lineupCase,recoveredPrediction,{focused:false}),[]);
+assert.equal(reconcileLineupOrderExplanation(predictedWinner,predictionIssues),null,
+  'a hard guarantee such as 必ず勝てる must remain fail-closed even with an order contradiction');
+const softFutureIssues=[
+  ORDER_EXPLANATION_CONFLICT,
+  '分析・回答で将来結果を不確実性の表現なしに確定結果として述べている'
+];
+const softForecast={...incompatible,analysis:['この打順を継続すれば得点力が伸びる。']};
+const softened=reconcileLineupOrderExplanation(softForecast,softFutureIssues);
+assert.ok(softened,'non-guarantee future prose plus independently established order mismatch may be discarded');
+assert.deepEqual(softened.candidatePlayers,chosen);
+assert.deepEqual(softened.analysis,[]);
+assert.doesNotMatch(JSON.stringify(softened),/得点力が伸びる/);
+assert.deepEqual(validatePersonaOutput(lineupCase,softened,{focused:false}),[]);
 assert.equal(reconcileLineupOrderExplanation(predictedWinner,
  predictionIssues.filter(x=>x!==ORDER_EXPLANATION_CONFLICT)),null,
  'outcome guarantees without a separate order mismatch must NOT be auto-rewritten');
