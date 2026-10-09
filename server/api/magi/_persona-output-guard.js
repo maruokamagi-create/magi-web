@@ -502,6 +502,18 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       if(unsupportedFormLabel)issues.push('BATTING_ORDERで打撃数値の変化を勢い・低調・安定などの状態評価へ変換している');
     }
 
+    // Real starts establish that a coach used a batter at a slot, not that
+    // the same player is the certain/definitive choice now. This wording
+    // appeared in READY Live natural-third SECOND despite better peer OPS.
+    const unsupportedStartCountCertainty=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (
+        /(?:3番|実打順|打順|スタメン|起用(?:実績|数)|先発(?:出場|起用)?|実績).{0,100}(?:選択肢として確実|候補として確実|最も確実な選択肢|確実(?:な|である|です|だ).{0,18}(?:選択肢|候補|配置))/.test(sentence)
+        || /(?:これまでの起用実績|先発出場(?:数)?|実打順の起用).{0,70}(?:が確実|を確実|確実(?:である|です|だ))/.test(sentence)
+      )
+    );
+    if(unsupportedStartCountCertainty)issues.push('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定している');
+
     const unsupportedNoChangeClaim=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && /(?:他の記録が示されない限り|他の記録がない限り).{0,48}(?:判断|選択).{0,24}(?:変更|変える).{0,16}(?:理由は(?:ない|ありません)|必要は(?:ない|ありません))/.test(sentence)
