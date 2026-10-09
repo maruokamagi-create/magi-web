@@ -113,6 +113,81 @@ assert.equal(pairs[0].players[0].name,'嶋田 栄志');
 assert.equal(pairs[0].players[0].current.OPS,'.748');
 assert.equal(pairs[0].players[1].current.OPS,'.861');
 assert.equal(pairs[0].players[1].recentSix.OPS,'.775');
+
+const splitNames=disputedCurrent.evidence.allCurrentTeamCheck.players.map(p=>p.name);
+const withActualSources={
+ ...disputedCurrent,
+ evidence:{
+  ...disputedCurrent.evidence,
+  battingOrderSplits:{status:'COMPLETE',players:splitNames.map(name=>({
+    name,slots:name==='嶋田 栄志'?[{
+      slot:4,standard:{batting:{PA:'13',AB:'11',H:'3',AVG:'.273',OBP:'.385',SLG:'.364',OPS:'.749'}},challenge:{batting:{PA:'7'}}
+    },{
+      slot:5,standard:{batting:{PA:'0',AB:'0',H:'0'}},challenge:{batting:{PA:'3'}}
+    }]:name==='坂田 暉馬'?[{
+      slot:4,standard:{batting:{PA:'4',AB:'3',H:'2',AVG:'.667',OBP:'.750',OPS:'1.417'}},challenge:{batting:{PA:'1'}}
+    },{
+      slot:5,standard:{batting:{PA:'8',AB:'6',H:'2',AVG:'.333',OBP:'.500',OPS:'.833'}},challenge:{batting:{PA:'0'}}
+    }]:[]
+  }))},
+  appearanceFielding:{
+    status:'COMPLETE',appearanceStatus:'COMPLETE',players:splitNames.map(name=>({
+      name,appearance:{status:'COMPLETE',latestStarts:name==='嶋田 栄志'?
+      [{date:'2026-09-21',order:4,competitionType:'OFFICIAL'},
+       {date:'2026-09-27',order:5,competitionType:'PRACTICE',practiceRole:'CHALLENGE_GAME_2'},
+       {date:'2026-10-03',order:4,competitionType:'PRACTICE',practiceRole:'REGULAR_GAME_1'}]:
+      name==='坂田 暉馬'?[{date:'2026-09-25',order:5,competitionType:'OFFICIAL'}]:[]}
+    }))
+  },
+  normalizedObservationStatus:'COMPLETE',normalizedObservations:[
+    {recordedAt:'2026-09-26 08:12',sourceType:'指導者',player:'嶋田 栄志',statement:'打席でスイングを確認した。',handling:'観察'},
+    {recordedAt:'2026-08-02 12:15',sourceType:'指導者',player:'嶋田 栄志',statement:'打順の起用案。',handling:'観察'},
+    {recordedAt:'2026-09-26',sourceType:'保護者',player:'坂田 暉馬',statement:'打率が良くなっている。',handling:'観察'}
+  ]
+ }
+};
+const enriched=buildContestedAdjacentSlotEvidence(withActualSources,{candidatePlayers:ownSecondaryOrder},ownCross);
+assert.equal(enriched.length,1);
+const sh=enriched[0].players[0],sa=enriched[0].players[1];
+assert.deepEqual(enriched[0].slots,[4,5]);
+assert.equal(sh.actualBattingSlots[0].standard.PA,'13');
+assert.equal(sh.actualBattingSlots[0].standard.OPS,'.749');
+assert.equal(sh.actualBattingSlots[1].standard.status,'NO_RECORDED_PA');
+assert.equal(sh.actualBattingSlots[1].challengePA,'3');
+assert.deepEqual(sh.recentEligibleStarts.map(x=>x.date),['2026-09-21','2026-10-03']);
+assert.equal(sh.datedCoachBattingObservations.length,1);
+assert.equal(sh.datedCoachBattingObservations[0].recordedAt,'2026-09-26 08:12');
+assert.equal(sh.datedCoachBattingObservations[0].policyVerified,false);
+assert.equal(sa.actualBattingSlots[0].standard.PA,'4');
+assert.equal(sa.actualBattingSlots[1].standard.OPS,'.833');
+assert.deepEqual(sa.datedCoachBattingObservations,[]);
+const actualSecond=buildPersonaRequest({case:withActualSources,primarySelf:{candidatePlayers:ownSecondaryOrder},crossExamination:ownCross},'balthasar','SECOND').payload;
+assert.equal(actualSecond.contestedAdjacentSlotEvidence[0].players[0].actualBattingSlots[0].standard.PA,'13');
+assert.match(actualSecond.instruction,/actualBattingSlots.standard/);
+assert.match(actualSecond.instruction,/challengePA/);
+assert.match(actualSecond.instruction,/recordedAt/);
+const primaryActual=buildPersonaRequest({case:withActualSources},'balthasar','PRIMARY').payload;
+assert.equal('contestedAdjacentSlotEvidence' in primaryActual,false);
+// A missing, partial or corrupt source never creates a fictional zero rate.
+for(const badStatus of ['PARTIAL','UNAVAILABLE']){
+ const c={...withActualSources,evidence:{...withActualSources.evidence,
+  battingOrderSplits:{...withActualSources.evidence.battingOrderSplits,status:badStatus},
+  appearanceFielding:{...withActualSources.evidence.appearanceFielding,status:badStatus}}};
+ const r=buildContestedAdjacentSlotEvidence(c,{candidatePlayers:ownSecondaryOrder},ownCross);
+ assert.equal(r[0].players[0].actualBattingSlots,null);
+ assert.equal(r[0].players[0].recentEligibleStarts,null);
+}
+const withDuplicate={...withActualSources,evidence:{...withActualSources.evidence,battingOrderSplits:{
+ ...withActualSources.evidence.battingOrderSplits,
+ players:[...withActualSources.evidence.battingOrderSplits.players.slice(1),withActualSources.evidence.battingOrderSplits.players[1]]
+}}};
+assert.equal(buildContestedAdjacentSlotEvidence(withDuplicate,{candidatePlayers:ownSecondaryOrder},ownCross)[0].players[0].actualBattingSlots,null);
+const withImpossible={...withActualSources,evidence:{...withActualSources.evidence,battingOrderSplits:{
+ ...withActualSources.evidence.battingOrderSplits,
+ players:withActualSources.evidence.battingOrderSplits.players.map(p=>p.name==='嶋田 栄志'?{...p,slots:[{slot:4,standard:{batting:{PA:'2',AB:'4',H:'3'}},challenge:{batting:{PA:'0'}}}]}:p)
+}}};
+assert.equal(buildContestedAdjacentSlotEvidence(withImpossible,{candidatePlayers:ownSecondaryOrder},ownCross)[0].players[0].actualBattingSlots[0].standard.status,'UNVERIFIED');
+
 assert.deepEqual(buildContestedAdjacentSlotEvidence(disputedCurrent,{candidatePlayers:ownSecondaryOrder},{disagreement:['4番に意見があります']}),[]);
 assert.deepEqual(buildContestedAdjacentSlotEvidence({...disputedCurrent,evidence:{...disputedCurrent.evidence,allCurrentTeamCheck:{status:'UNAVAILABLE',players:disputedCurrent.evidence.allCurrentTeamCheck.players}}},{candidatePlayers:ownSecondaryOrder},ownCross),[]);
 const secondPayload=buildPersonaRequest({case:disputedCurrent,primarySelf:{candidatePlayers:ownSecondaryOrder},crossExamination:ownCross},'melchior','SECOND').payload;
