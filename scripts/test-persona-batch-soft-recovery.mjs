@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse } from '../server/api/magi/persona-batch.js';
+import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse, sanitizePublishedPitchingRoleProse } from '../server/api/magi/persona-batch.js';
 import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
@@ -1209,6 +1209,44 @@ function baseResult(overrides={}) {
   const batchSource=(await import('node:fs')).readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8');
   assert.match(batchSource,/recoverMissingBattingSelectionBasis\(result,body\.case\)/);
   assert.match(batchSource,/PERSONA_BATCH_SELECTION_EXPLANATION_MISSING/);
+}
+
+
+{
+  const caseData={selectionKind:'PITCHING_ROLE',question:'クローザーは誰がいい？',evidence:{selectionKind:'PITCHING_ROLE'}};
+  const result={
+    persona:'BALTHASAR',phase:'PRIMARY',candidatePlayers:['坂田 暉馬','大久保 陽翔'],confidence:'HIGH',
+    candidateBasis:'坂田 暉馬は登板3、投球回4、2セーブ。大久保 陽翔は防御率2.44。',
+    facts:['坂田 暉馬は2セーブ。','大久保 陽翔は奪三振21。'],
+    primaryReason:'現在確認できる投球成績で比較する。',
+    publicStatement:'どう勝ちに行くか。大久保くんの安定した成績を活用する。坂田 暉馬は2セーブを記録している。',
+    analysis:['防御率の比較で勝ちパターンを作れる。','確認できる指導者観察に制球への懸念がある。'],
+    warnings:[]
+  };
+  const order=[...result.candidatePlayers];
+  assert.equal(sanitizePublishedPitchingRoleProse(result,caseData),true);
+  assert.deepEqual(result.candidatePlayers,order);
+  assert.deepEqual(result.facts,['坂田 暉馬は2セーブ。','大久保 陽翔は奪三振21。']);
+  assert.equal(result.publicStatement,'坂田 暉馬は2セーブを記録している。');
+  assert.deepEqual(result.analysis,['確認できる指導者観察に制球への懸念がある。']);
+  assert.equal(result.confidence,'MEDIUM');
+  assert.match(result.warnings.join(' '),/曖昧な呼称/);
+  assert.doesNotMatch(JSON.stringify(result),/大久保くん|安定した成績|勝ちに行く|勝ちパターン/);
+  assert.equal(sanitizePublishedPitchingRoleProse(result,caseData),false);
+  const good={candidatePlayers:['坂田 暉馬'],confidence:'MEDIUM',candidateBasis:'坂田 暉馬は2セーブ。',
+    primaryReason:'セーブ2を確認した。',publicStatement:'制球が安定しないという指導者観察があります。',
+    facts:['坂田 暉馬は2セーブ。'],analysis:[],prediction:[],warnings:[]};
+  assert.equal(sanitizePublishedPitchingRoleProse(good,caseData),false);
+  assert.match(good.publicStatement,/制球が安定しない/);
+  const missing={candidatePlayers:['坂田 暉馬','大久保 陽翔'],confidence:'HIGH',
+    candidateBasis:'どう勝ちに行くか。',primaryReason:'安定した成績を見た。',
+    publicStatement:'大久保くんを推す。',facts:[],analysis:[],prediction:[],warnings:[]};
+  assert.equal(sanitizePublishedPitchingRoleProse(missing,caseData),true);
+  assert.match(missing.publicStatement,/坂田 暉馬、大久保 陽翔/);
+  assert.doesNotMatch(missing.publicStatement,/大久保くん/);
+  const unrelated={candidatePlayers:['坂田 暉馬'],publicStatement:'どう勝ちに行くか。'};
+  assert.equal(sanitizePublishedPitchingRoleProse(unrelated,{selectionKind:'BATTING_ORDER'}),false);
+  assert.match(unrelated.publicStatement,/どう勝ちに行くか/);
 }
 
 console.log('PERSONA BATCH SOFT RECOVERY RESULT: 58/58 PASS');

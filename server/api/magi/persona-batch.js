@@ -669,6 +669,42 @@ function normalizeCaseRosterHonorifics(value, caseData){
   };
   return walk(normalized);
 }
+// Remove narrow public PITCHING_ROLE overclaims and ambiguous current-team
+// surname honorifics after initial validation, never replacing a candidate.
+export function sanitizePublishedPitchingRoleProse(result,caseData){
+  const kind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  if(kind!=='PITCHING_ROLE'||!result||typeof result!=='object')return false;
+  const counts=new Map();
+  for(const name of CURRENT_ROSTER){
+    const surname=String(name).split(/\s+/)[0];
+    counts.set(surname,(counts.get(surname)||0)+1);
+  }
+  const ambiguous=[...counts].filter(([name,count])=>count>1&&/^[\p{Script=Han}ぁ-んァ-ン]+$/u.test(name)).map(([name])=>name);
+  const nickname=ambiguous.length?new RegExp('(?:'+ambiguous.join('|')+')(?:くん|君)'):null;
+  const overclaim=/(?:どう勝ちに行くか|勝ちに行くため|勝ちパターン|勝ち筋|勝負を分ける|勝ちに直結|勝利に直結|確実に締める|安定した(?:投球|投球内容|成績|ピッチング)|(?:抑え|クローザー)としても?強力|(?:高い|優れた)安定性)/;
+  const unsafe=sentence=>(nickname&&nickname.test(sentence))||overclaim.test(sentence);
+  const clean=value=>String(value||'').split(/(?<=[。！？!?])/).map(x=>x.trim()).filter(Boolean).filter(x=>!unsafe(x)).join('');
+  const cleanArray=a=>(Array.isArray(a)?a:[]).map(clean).filter(Boolean);
+  const fields=['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'];
+  const arrays=['facts','analysis','prediction','warnings'];
+  const prior=JSON.stringify({texts:fields.map(k=>result[k]),arrays:arrays.map(k=>result[k])});
+  for(const key of fields)if(typeof result[key]==='string')result[key]=clean(result[key]);
+  for(const key of arrays)if(Array.isArray(result[key]))result[key]=cleanArray(result[key]);
+  const after=JSON.stringify({texts:fields.map(k=>result[k]),arrays:arrays.map(k=>result[k])});
+  if(prior===after)return false;
+  const candidates=(Array.isArray(result.candidatePlayers)?result.candidatePlayers:[]).filter(n=>CURRENT_ROSTER.includes(n));
+  if(!String(result.candidateBasis||'').trim())
+    result.candidateBasis='候補は'+candidates.join('、')+'。提供された現チームの投球記録に基づく比較であり、役割適性や勝敗への効果は未判定です。';
+  if(!String(result.primaryReason||'').trim())
+    result.primaryReason='確認済みのセーブ数・投球回・防御率などを比較し、未確認の役割適性や試合結果は断定しません。';
+  if(!String(result.publicStatement||'').trim())
+    result.publicStatement='比較候補は'+candidates.join('、')+'です。実際の投球記録を基準に検討し、未確認の終盤適性は断定しません。';
+  result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),
+    '候補名が曖昧な呼称、または記録から証明できない役割・勝敗表現は判断根拠に採用しません。'])];
+  if(result.confidence==='HIGH')result.confidence='MEDIUM';
+  return true;
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -865,6 +901,8 @@ export default async function handler(req, res) {
       }
       if(finalized.candidateCase)sanitizeKnownSelectionProse(result,body.case);
       result=normalizeCaseRosterHonorifics(result,body.case);
+      // An ambiguous current-team nickname cannot identify one of two players.
+      if(finalized.candidateCase)sanitizePublishedPitchingRoleProse(result,body.case);
       if(finalized.candidateCase){
         // Only an empty batting candidateBasis with a completely confirmed
         // 14-player current-season packet may receive a numerical, explicitly

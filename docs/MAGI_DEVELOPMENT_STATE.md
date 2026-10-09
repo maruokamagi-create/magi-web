@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: b542918a3b2901cabc8f2f27176d76e97d65d341
+- State base main SHA: fc9fdcb23de2711dff949afafb346bb51ac0d633
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1192,3 +1192,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 
 - Existing `recoverSoftFullLineupLanguage` discards all facts and replaces model reasoning with a generic nine-name assertion when unsupported soft language is detected; this can make CASPER's SECOND appear baseless despite COMPLETE actual Evidence. This branch passes the authoritative `body.case` into that already-existing recovery and uses the strict canonical `verifiedLineupStats` implementation for exact official current 14-player rows; only literal AB, AVG, OBP, SLG and OPS values are retained, key 3–5 hitters explicitly compared, and the lack of proven scoring/winning effects and slot-specific advantage clearly disclosed. The invalid original analysis remains discarded, candidatePlayers unchanged, confidence HIGH reduced to MEDIUM, and official defense/roster hard guard still fail closed. Absent/PARTIAL/duplicated Evidence provides **no** numerical comparison, not invented zero. No new model calls or source writes, Vercel Hobby unchanged.
 - Base main `b542918a3b2901cabc8f2f27176d76e97d65d341` (#182). Its postmerge READY SHA was verified but heavy Live `37929840167` encountered SECOND provider retryable HTTP/rate limit and closer PRIMARY timeouts; these failures DO NOT prove a logic regression or success. Earlier PR #182 deterministic CI passed. Do not hammer Gemini with unrestricted retrials. PR CI regression for grounded soft fallback is required before merge; actual later Live/Sequential acceptance remains OPEN depending on provider availability. iPhone Chrome authenticated experience also remains untested.
+
+
+## 2026-10-09: Narrow batched closer PRIMARY public output repair
+
+- Current main fc9fdcb23de2711dff949afafb346bb51ac0d633 includes PR #183 strict grounded FULL_LINEUP soft-fallback. Production Live 37931275600 matched exact READY SHA and BEST_ORDER 5 stages SUCCESS. MELCHIOR and BALTHASAR SECOND cite actual current + recent and at-slot numbers; CASPER SECOND retained nine verified current batting statistics after unsupported raw language was removed. Correct 1-1-1 LINEUP_REVIEW_REQUIRED. No proven optimum.
+- CLOSER stage in the same run FAILED **PRIMARY content quality**, not provider timeout: BALTHASAR PUBLIC stated ambiguous `大久保くん` despite two distinct current 大久保 players plus unsupported generic win rhetoric and assumed `安定した成績` without role evidence. The strict staged smoke rejected output after a successful HTTP response. This is independent of the lineup soft-fallback.
+- A minimal PITCHING_ROLE batch-only post-validation pre-publication filter now discards full sentences with ambiguous current surname+くん, proven-unsuitable generic win-path rhetoric and positive `安定した(?:投球|成績)` claims. No entity resolution for an ambiguous nickname. Canonical candidatePlayers and number facts unaffected. A true dated `制球が安定しない` observation survives; any deleted explanation field is replaced only with evidence-bounded provisional comparative language. Lower recovered HIGH confidence to MEDIUM and warn. Re-run the original publish guard; do NOT relax quality-gate patterns. Other request kinds untouched. Add deterministic regression for source model phrasing, retained 2 SV, ambiguous 大久保/positive vs negative stability, idempotence. No fees, extra model calls, Drive edits or records modified.
+- This is not a promise the next stochastic LLM call will be perfect. Exact-SHA staged production still pending after CI merge, with provider capacity a known separate source of intermittent failure. Keep Vercel Hobby and original source readonly.
