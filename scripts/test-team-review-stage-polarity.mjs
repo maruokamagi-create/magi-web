@@ -33,6 +33,11 @@ check('primary','記録だけでは特定の選手に頼りすぎているとは
 check('primary','今のチームは一部の選手に頼りすぎている部分がある。',false);
 check('second','個別の数値から直ちにチーム全体の勝敗や戦術的制約の断定に繋げることはできない。',true);
 check('second','打撃成績の差はチーム全体に戦術的制約があることを示している。',false);
+// Exact-sha Live TEAM_REVIEW SECOND from run 37909170969: this sentence
+// DENIES the evidence for any scoring/tactical causal connection. The actual
+// test must not misclassify it as a proven tactical restriction.
+check('second','数値的な偏りがあることは確認できるが、それが試合の勝敗や戦術的制約に直結しているという直接的な記述や検証データはEvidenceにない。',true);
+check('second','打撃成績の差が戦術的制約をもたらす。数値的な偏りがあることは確認できるが、それが試合の勝敗や戦術的制約に直結しているという直接的な記述や検証データはEvidenceにない。',false);
 check('second','特定の選手に頼りすぎている。',false);
 check('second','記録だけでは特定の選手に頼りすぎているとは断定できない。',true);
 check('second','打撃成績の差はチーム全体に戦術的制約がある。戦術的制約の断定に繋げることはできない。',false);
@@ -45,4 +50,4 @@ check('second','打撃成績の差が戦術的制約をもたらす。さらに�
 check('primary','この記録だけではチーム全体の弱点や戦術的制約を直接証明するものではない。',true);
 check('second','直近の個別打撃記録だけでは戦術的制約を直接証明するものではない。',true);
 check('primary','記録上、チームに戦術的制約がある。だが戦術的制約を直接証明するものではない。',false);
-console.log('TEAM_REVIEW STAGED ACCEPTANCE POLARITY: 15/15 PASS');
+console.log('TEAM_REVIEW STAGED ACCEPTANCE POLARITY: 17/17 PASS');
