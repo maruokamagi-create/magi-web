@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import { sanitizeSuccessfulPersona } from '../server/api/magi/persona-resilient.js';
 import { personaFullLineupIssues, buildPersonaRequest } from '../server/api/magi/persona.js';
-import { buildContestedAdjacentSlotEvidence } from '../server/api/magi/_lineup-contested-evidence.js';
+import { buildContestedAdjacentSlotEvidence, buildContestedSingleSlotEvidence } from '../server/api/magi/_lineup-contested-evidence.js';
 
 const personaSrc=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
 assert.match(personaSrc,/PRIMARY publicStatement must not be only a nine-name announcement/);
@@ -114,6 +114,27 @@ assert.equal(pairs[0].players[0].current.OPS,'.748');
 assert.equal(pairs[0].players[1].current.OPS,'.861');
 assert.equal(pairs[0].players[1].recentSix.OPS,'.775');
 
+
+// Three different 3/4/5 candidates can be challenged with only a SINGLE
+// numbered slot in CROSS; the old adjacent-only packet was empty.
+const loneCross={disagreement:['3番に異論があります。'],challenges:['3番の中嶋 玲月と嶋田 栄志の実績を比較してほしい。']};
+assert.deepEqual(buildContestedAdjacentSlotEvidence(disputedCurrent,{candidatePlayers:ownSecondaryOrder},loneCross),[]);
+const singles=buildContestedSingleSlotEvidence(disputedCurrent,{candidatePlayers:ownSecondaryOrder},loneCross);
+assert.equal(singles.length,1);
+assert.equal(singles[0].slot,3);
+assert.equal(singles[0].players[0].name,'中嶋 玲月');
+assert.equal(singles[0].players[0].role,'OWN_PRIMARY_SLOT');
+assert.equal(singles[0].players[1].name,'嶋田 栄志');
+assert.match(singles[0].players[1].role,/CROSS_MENTIONED_ALTERNATIVE/);
+const oneSlotPayload=buildPersonaRequest({case:disputedCurrent,primarySelf:{candidatePlayers:ownSecondaryOrder},crossExamination:loneCross},'casper','SECOND').payload;
+assert.equal(oneSlotPayload.contestedSingleSlotEvidence[0].slot,3);
+assert.equal('contestedAdjacentSlotEvidence' in oneSlotPayload,false);
+assert.match(oneSlotPayload.instruction,/CROSS_MENTIONED_ALTERNATIVE_NOT_PROVEN_SLOT_CHOICE/);
+assert.equal('contestedSingleSlotEvidence' in buildPersonaRequest({case:disputedCurrent},'casper','PRIMARY').payload,false);
+assert.deepEqual(buildContestedSingleSlotEvidence(disputedCurrent,{candidatePlayers:ownSecondaryOrder},{disagreement:['3番が争点'],challenges:['3番の比較が必要']}),[]);
+assert.deepEqual(buildContestedSingleSlotEvidence({...disputedCurrent,evidence:{...disputedCurrent.evidence,allCurrentTeamCheck:{status:'PARTIAL',players:disputedCurrent.evidence.allCurrentTeamCheck.players}}},{candidatePlayers:ownSecondaryOrder},loneCross),[]);
+assert.deepEqual(buildContestedSingleSlotEvidence(disputedCurrent,{candidatePlayers:['旧チーム選手',...ownSecondaryOrder.slice(1)]},loneCross),[]);
+
 const splitNames=disputedCurrent.evidence.allCurrentTeamCheck.players.map(p=>p.name);
 const withActualSources={
  ...disputedCurrent,
@@ -163,6 +184,17 @@ assert.equal(sa.actualBattingSlots[1].standard.OPS,'.833');
 assert.deepEqual(sa.datedCoachBattingObservations,[]);
 const actualSecond=buildPersonaRequest({case:withActualSources,primarySelf:{candidatePlayers:ownSecondaryOrder},crossExamination:ownCross},'balthasar','SECOND').payload;
 assert.equal(actualSecond.contestedAdjacentSlotEvidence[0].players[0].actualBattingSlots[0].standard.PA,'13');
+const singleWithActual=buildPersonaRequest({case:withActualSources,primarySelf:{candidatePlayers:ownSecondaryOrder},crossExamination:{
+  disagreement:['4番について相談'],challenges:['4番の嶋田 栄志と坂田 暉馬の実打順の結果は？']
+}},'balthasar','SECOND').payload;
+assert.equal(singleWithActual.contestedSingleSlotEvidence.length,1);
+assert.equal(singleWithActual.contestedSingleSlotEvidence[0].slot,4);
+assert.equal(singleWithActual.contestedSingleSlotEvidence[0].players[0].actualSlot.standard.PA,'13');
+assert.equal(singleWithActual.contestedSingleSlotEvidence[0].players[1].actualSlot.standard.PA,'4');
+assert.equal(singleWithActual.contestedSingleSlotEvidence[0].players[0].actualSlot.challengePA,'7');
+assert.equal(singleWithActual.contestedSingleSlotEvidence[0].players[0].recentEligibleStarts.length,2);
+assert.equal(singleWithActual.contestedSingleSlotEvidence[0].players[0].datedCoachBattingObservations.length,1);
+
 assert.match(actualSecond.instruction,/actualBattingSlots.standard/);
 assert.match(actualSecond.instruction,/challengePA/);
 assert.match(actualSecond.instruction,/recordedAt/);
@@ -198,6 +230,7 @@ assert.match(secondPayload.instruction,/Total at-bats alone describe sample size
 const primaryPayload=buildPersonaRequest({case:disputedCurrent},'melchior','PRIMARY').payload;
 assert.equal('contestedAdjacentSlotEvidence' in primaryPayload,false);
 assert.match(fs.readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8'),/contestedAdjacentSlotEvidence: payload.contestedAdjacentSlotEvidence/);
+assert.match(fs.readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8'),/contestedSingleSlotEvidence: payload.contestedSingleSlotEvidence/);
 
 
 // A genuine 1-1-1 final has NO chosen nine. Display a *comparison*, not
