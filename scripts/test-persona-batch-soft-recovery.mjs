@@ -1091,7 +1091,7 @@ function baseResult(overrides={}) {
   assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
 }
 {
-  const c={mode:'selection',selectionKind:'PITCHING_ROLE',question:'今のクローザーは誰？',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投球回、防御率、セーブの一覧。'}};
+  const c={mode:'selection',selectionKind:'PITCHING_ROLE',question:'今のクローザーは誰？',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投球回、防御率の記録。坂田 暉馬はセーブ2を記録している。'}};
   const row=baseResult({
     persona:'MELCHIOR',
     candidatePlayers:['坂田 暉馬','橋向 結都'],
