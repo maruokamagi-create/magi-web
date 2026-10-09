@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 9d6645acd00ce3571639b88fda18017fd90d501d
+- State base main SHA: 154780a86ab414723bb860074d420619ba71613a
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -948,6 +948,13 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/live-lineup-second-melchior-soft-stability-20261009` makes the specific enum match precede generic scoring and adds **only** that known, output-prose-only guard to the existing conditional reconciliation allowlist. Recovery still requires an independent `ORDER_EXPLANATION_CONFLICT`, nine unique official players, no preexisting dataConflict/review request; it discards all suspect explanatory text, preserves the structured nine-person proposal unchanged and invokes original `validatePersonaOutput + personaFullLineupIssues + personaPitchingPlanIssues` again. Fielding, roster, numeric, or unrelated guard errors still fail closed.
 - Add regression containing four **simultaneous** simulated guard classes, unchanged candidate sequence, zero remaining output guard issues, and explicit negative numeric/fielding/absence-of-order-mismatch tests. Do not change player evaluations or Evidence to obtain a PASS.
 - Previous Live run should finish provider-heavy stages before merging; require CI/continuity green on PR head and Vercel READY matching main before interpreting new Live outcome. No additional manual provider requests. 9-class authenticated iPhone UI coverage and compelling, player-specific lineup explanations remain unresolved. Google Drive, CSV, all scores, free Vercel Hobby and deployment protection untouched.
+
+## 2026-10-09: CLOSER Live ungrounded ERA/IP stability wording after structural PASS
+
+- Pre-merge canonical main and READY production SHA `154780a86ab414723bb860074d420619ba71613a` (PR #155): the Live best-order job `113687789242`, run `37889719200`, completed all phases and returned `LINEUP_RESULT`, `CONSENSUS (3-0)`, with nine unique current-roster players and `fieldingStatus=COMPLETE`. MELCHIOR's and CASPER's SECOND prose was reconstructed after deterministic guards; this explains syntax acceptance but does not prove rich player-specific tactical rationale. MELCHIOR changed 3/4/5/7/8 from PRIMARY, `changedFromPrimary=true`, but `changeReason` used broad inferred scoring benefit: still review wording quality.
+- Earlier production closer run `37888251616` and latest `37889719200` both passed staged structural acceptance but repeated the unsupported SECOND MELCHIOR sentence `橋向 結都の投球回と防御率の安定性は事実`. Pitcher IP and ERA are numerical facts; together they do **not** independently prove stable performance. Source check found PITCHING_ROLE validator/sanitizer stability regex covered `安定した`, `安定して`, `安定感` but omitted `安定性`. The standalone `橋向の安定感も分かる` lacks a same-sentence numerical cue and is a separate issue; do not fabricate an observation to justify it.
+- Branch `fix/closer-innings-era-stability-overclaim-20261009` extends this established quantitative-inference guard by exactly `安定性` in the mirrored validator and known prose sanitizer, with direct tests that reject the observed sentence, allow explicit lack-of-evidence caveats, preserve candidate order and recorded saves, and re-run the original complete output guard after deterministic soft recovery. No baseball record or pitching role candidate is changed.
+- Wait for the current Live suite to finish before merge to avoid stacking provider calls. CI/continuity must pass; production READY SHA + manual semantic review still needed. No Google Drive/CSV modification, no paid Vercel changes. Entire authenticated mobile nine-class acceptance remains open.
 
 ## Next concrete work
 
