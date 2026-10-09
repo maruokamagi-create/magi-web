@@ -2,11 +2,7 @@
 // Never return raw persona text, player metrics, or rejected evidence excerpts.
 const PREFIX='回答文に、確認できた記録と合わない内容があるため再確認が必要です。';
 
-export function classifyLineupGuardIssues(reviewReason){
-  const reason=String(reviewReason??'');
-  if(!reason.startsWith(PREFIX))return [];
-  const issues=reason.slice(PREFIX.length).split('／').slice(0,3).filter(Boolean);
-  const classify=issue=>{
+function classify(issue){
     if(/^FULL_LINEUP_STANDARD_DEFENSE/.test(issue))return 'FIELDING_COVERAGE';
     if(/^FULL_LINEUP:/.test(issue))return 'LINEUP_STRUCTURE';
     if(/candidatePlayersと打順説明が矛盾/.test(issue))return 'ORDER_EXPLANATION_CONFLICT';
@@ -21,6 +17,13 @@ export function classifyLineupGuardIssues(reviewReason){
     if(/Evidenceから保証できない結果|将来結果|将来予測/.test(issue))return 'UNSUPPORTED_OUTCOME_PREDICTION';
     if(/SELECTIONでEvidenceにない成長|SELECTIONでEvidenceにない依存|負担の大きさ|具体的悪影響/.test(issue))return 'UNSUPPORTED_DEVELOPMENT_OR_BURDEN';
     return 'OTHER_GUARD';
-  };
-  return [...new Set(issues.map(classify))];
+}
+export function classifyLineupGuardIssueList(issues){
+  if(!Array.isArray(issues))return [];
+  return [...new Set(issues.map(issue=>classify(String(issue||''))))];
+}
+export function classifyLineupGuardIssues(reviewReason){
+  const reason=String(reviewReason??'');
+  if(!reason.startsWith(PREFIX))return [];
+  return classifyLineupGuardIssueList(reason.slice(PREFIX.length).split('／').slice(0,3).filter(Boolean));
 }
