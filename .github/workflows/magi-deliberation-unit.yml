@@ -102,6 +102,8 @@ on:
       - 'scripts/validate-production-full-lineup-final.jq'
       - 'scripts/test-production-full-lineup-smoke-contract.mjs'
       - '.github/workflows/magi-deliberation-unit.yml'
+      - '.github/workflows/magi-production-live-deliberation-selftest.yml'
+      - 'scripts/test-provider-quota-cooldown.mjs'
   workflow_dispatch:
 
 jobs:

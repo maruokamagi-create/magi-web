@@ -233,7 +233,7 @@ function recoverSoftTeamReviewDependency(result, issues) {
     const speculativeUsageConcern=
       /(?:負担|出場機会|起用).{0,40}(?:集中|偏).{0,24}(?:していないか|ないか|気にかか|懸念|心配)/.test(raw);
     const malformedUsageFragment=
-      /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(raw);
+      /(?:出場機会|打数|起用).{0,20}(?:の差して|の差いる|の偏りして|の差いないか)/.test(raw);
     if(unverifiedGrowthPrescription||speculativeUsageConcern||malformedUsageFragment)return '';
 
     raw=raw
@@ -247,6 +247,11 @@ function recoverSoftTeamReviewDependency(result, issues) {
       .replace(/負担.{0,12}(?:集中|偏(?:る|り|って|りがち)).{0,18}(?:一部|特定)(?:の)?選手/g,'選手間の出場機会の差')
       .replace(/特定(?:の)?選手への負担集中/g,'選手間の出場機会の差')
       .replace(/(?:試合に出ていない|試合に出場していない|出場していない)選手(?:たち)?/g,'出場記録の少ない選手');
+
+    // A substitution can create malformed Japanese even if the original
+    // sentence passed the earlier cleanup check. Reject it after rewriting
+    // rather than publishing a broken phrase or fabricating an alternate fact.
+    if(/(?:出場機会|打数|起用).{0,20}(?:の差して|の差いる|の偏りして|の差いないか)/.test(raw))return '';
 
     const unsupportedScoringConcentration=
       /(?:特定|一部|上位).{0,26}(?:選手|打者).{0,28}(?:得点力|得点源|得点).{0,26}(?:偏|集中|依存|限定)/

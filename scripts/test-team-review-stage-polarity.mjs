@@ -42,4 +42,7 @@ check('primary','打撃成績の差から戦術的制約がある。',false);
 check('primary','打撃成績の差から戦術的制約がある。戦術的制約と断定するだけの因果関係の記録はEvidenceにない。',false);
 check('second','確認済みの記録から、選手ごとの打撃成績や起用位置に違いがあることは把握できるが、それだけでチーム全体の戦術的制約や勝敗への直接的な因果関係を断定することはできない。',true);
 check('second','打撃成績の差が戦術的制約をもたらす。さらに、戦術的制約や勝敗への直接的な因果関係を断定することはできない。',false);
-console.log('TEAM_REVIEW STAGED ACCEPTANCE POLARITY: 12/12 PASS');
+check('primary','この記録だけではチーム全体の弱点や戦術的制約を直接証明するものではない。',true);
+check('second','直近の個別打撃記録だけでは戦術的制約を直接証明するものではない。',true);
+check('primary','記録上、チームに戦術的制約がある。だが戦術的制約を直接証明するものではない。',false);
+console.log('TEAM_REVIEW STAGED ACCEPTANCE POLARITY: 15/15 PASS');

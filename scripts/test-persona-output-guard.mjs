@@ -1108,6 +1108,16 @@ test('Live TEAM_REVIEW retains verified individual facts and explicit limitation
   }
 });
 
+test('TEAM_REVIEW blocks malformed usage wording created during a cleanup pass',()=>{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現在の出場回数や打数の一覧。'}};
+  const invalid=result({persona:'CASPER',analysis:['出場機会には差があり、選手間の出場機会の差いる状況が見受けられる。']});
+  const issues=validatePersonaOutput(c,invalid,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'),JSON.stringify(issues));
+  const valid=result({persona:'CASPER',analysis:['選手によって出場回数や打数に差がある。']});
+  const clean=validatePersonaOutput(c,valid,{focused:false});
+  assert.ok(!clean.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

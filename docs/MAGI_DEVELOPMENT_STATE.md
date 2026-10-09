@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: cc2eed3f3aed96ce0163dd203a8475054039f3f3
+- State base main SHA: 886c3cb08b3249fd243371a2a80a53e650b86cd6
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -925,6 +925,21 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/team-review-observed-outcome-leaks-20261009` adds a pure outcome classifier shared by TEAM_REVIEW `validatePersonaOutput` and existing deterministic batch prose recovery, using the **existing** scoring, burden and development soft-guard codes. No changed selection, names, metrics, or source Evidence. Only unsafe sentence-level prose can be discarded; the original complete output guard still re-runs and all numeric/roster/hard violations remain fail-closed.
 - Add regression for the exact published BALTHASAR/CASPER phrases, factual/negative examples, complete recovery preserving separately recorded facts, and no recovery on a hard mismatch. Require both Deliberation Final and Development Continuity CI green before any merge. Then wait for the exact SHA READY and inspect a single ordered production Live run including all 4 classes, especially TEAM_REVIEW PRIMARY, SECOND and FINAL language.
 - Previous SHA `f971ffab91e2c2de3ae35718d880d0db78284aed` passed its Live and Sequential suites but leaked NATURAL_THIRD bridging claims; current `cc2eed3f` resolved that class in unit tests but failed TEAM_REVIEW. The authenticated iPhone Chrome nine-class UI path and persuasive 1–9 player-specific rationale are still unverified. Keep Hobby/free; no edits to Google Drive/CSV or score sheets.
+
+## 2026-10-09: Runtime provider rate limit caused SECOND failure; stop outer retries for all limits
+
+- Pre-merge main and READY Vercel production SHA `886c3cb08b3249fd243371a2a80a53e650b86cd6` after PR #153. The current Live run `37888251616` successfully completed revision readiness, best-order PRIMARY and CROSS but **best-order SECOND failed** three times. All errors were `provider_rate_limit`, HTTP-503 class, e.g. `SECOND_BALTHASAR attempt 1 503`. This is a provider capacity incident, **not** proof of a numeric, roster, fielding or TEAM_REVIEW code problem. No final lineup may be claimed from this run.
+- The four staged jobs in `.github/workflows/magi-production-live-deliberation-selftest.yml` used outer request retries unless a rate limit included a literal `[quota=DAY` marker. Consequently the minute/retryable rate limit was retried three times while already resource constrained. This amplifies provider saturation and risks wasting the user's free quota. The selftest's nested model generation is already separately bounded; avoid more manual retries.
+- Branch `fix/live-any-provider-rate-limit-failfast-20261009` changes **only** the Live workflow predicate to stop immediately on any `provider_rate_limit` error across lineup, closer, natural-third and TEAM_REVIEW jobs. Other transient network/status failures retain their previously bounded retry behavior. Add deterministic test asserting exactly four same-class predicates and that each check precedes the job's backoff/sleep. Preserve SHA readiness, stage ordering, validation and negative classifications.
+- The earlier Live run may be executing downstream jobs; wait for it to finish before merging. After green CI, a workflow-only merge itself triggers a new SHA-gated Live workflow; choose timing mindful of Gemini usage and Vercel Hobby free. Do not interpret provider 503 as a reason to weaken numerical, semantic, or fielding Evidence validation. Google Drive/CSV untouched.
+
+## 2026-10-09: Current Live TEAM_REVIEW false-positive and malformed usage prose
+
+- Current main/Vercel `886c3cb08b3249fd243371a2a80a53e650b86cd6`, production Live run `37888251616`, TEAM_REVIEW job `113684555751`: PREPARE and PRIMARY returned successfully, then the PRIMARY workflow **assertion** failed before CROSS. The actual MELCHIOR analysis said `戦術的制約を直接証明するものではない`. Its explicit non-causal meaning is valid, but the broad prohibited-term regex rejected the substring `戦術的制約`. This is a smoke **polarity false positive**, not a verified assertion of team-wide tactical weakness.
+- The same PRIMARY output included a genuine malformed CASPER sentence, `選手間の出場機会の差いる状況`. The current prose cleanup can produce this fragment after earlier substitutions; the original final malformed-language check omitted `の差いる`. It is not acceptable user-facing Japanese regardless of the CI outcome.
+- Branch `fix/live-any-provider-rate-limit-failfast-20261009` now also normalizes the specific `を直接証明するものではない` **denial** at PRIMARY and SECOND in the original jq acceptance gate while still rejecting any separate affirmative `戦術的制約がある` sentence. Extend the actual jq polarity regression to cover both and the mixed contradictory case. Extend TEAM_REVIEW guard and sentence sanitizer's post-substitution check to reject `出場機会の差いる` without inventing a new fact. Add deterministic guard/recovery regression preserving separately confirmed records.
+- This revision is deliberately grouped with workflow-only provider-rate-limit fail-fast work (same failed production Live run) before **one** new main merge, to avoid two separate provider-heavy Live reruns. PR CI must rerun after the additional changes and be green. No user records, roster/order, billing, Vercel protection or Drive/CSV changes.
+- Because prior run `37888251616` failed best-order SECOND with provider rate limits, and TEAM_REVIEW only tested PRIMARY, do not claim the new branch is fully verified until READY production SHA and complete staged Live results. The authenticated mobile nine-class acceptance and player-specific explanation quality remain incomplete.
 
 ## Next concrete work
 

@@ -1076,4 +1076,18 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(row),before,'hard evidence errors cannot be bypassed by prose recovery');
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 55/55 PASS');
+{
+  const c={question:'今の丸岡中の弱点は何？',mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'先発出場回数、打数の記録のみ。'}};
+  const row=baseResult({persona:'CASPER',
+    facts:['現チームの個別成績には選手間の数値差がある。'],
+    analysis:['選手間の出場機会の差いる状況が見受けられる。'],
+    publicStatement:'出場機会や打数の差は記録で確認できる。'
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
+  assert.equal(recoverSoftPersonaBatchValidation(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.facts,['現チームの個別成績には選手間の数値差がある。']);
+  assert.ok(!/の差いる|の差して|の偏りして/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+}
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 56/56 PASS');
