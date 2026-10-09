@@ -128,6 +128,35 @@ assert.ok(!/最大化|連携を強化/.test(JSON.stringify(cleanCasper)),'unprov
 assert.deepEqual(validatePersonaOutput(lineupCase,cleanCasper,{focused:false}),[]);
 assert.equal(reconcileLineupOrderExplanation(recoverableCasper,recoverableIssues.concat('FULL_LINEUP_STANDARD_DEFENSE: unsupported starter')),null);
 
+// Production SECOND MELCHIOR (Live 37889151231) returned FOUR guard issues,
+ // but the enum-only diagnostic collapsed distinct scoring/stability issues.
+ // An isolated prose+order contradiction can be fixed by discarding ALL
+ // unsupported prose while keeping the authoritative candidate order.
+const mixedMelchior={
+  ...incompatible, persona:'MELCHIOR',phase:'SECOND',
+  analysis:['通算打率から得点効率が高まると判断する。','この打順なら得点機会が増加し、安定性が高まる。'],
+  warnings:['先発守備資格を満たすため、守備連携を強化できる。']
+};
+const melchiorIssues=validatePersonaOutput(lineupCase,mixedMelchior,{focused:false});
+assert.ok(melchiorIssues.includes(ORDER_EXPLANATION_CONFLICT),'mixed case must contain actual order contradiction');
+assert.ok(melchiorIssues.includes('BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している'));
+assert.ok(melchiorIssues.includes('BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'));
+assert.ok(melchiorIssues.includes('BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している'));
+assert.deepEqual(classifyLineupGuardIssueList(melchiorIssues),[
+  'UNSUPPORTED_SCORING_CLAIM','UNSUPPORTED_STABILITY_CLAIM',
+  'UNSUPPORTED_DEFENSE_EFFECT','ORDER_EXPLANATION_CONFLICT'
+], 'diagnostic must not collapse scoring-chance stability into generic scoring');
+const melchiorFixed=reconcileLineupOrderExplanation(mixedMelchior,melchiorIssues);
+assert.ok(melchiorFixed,'scoring/stability/fielding narrative must be discarded when order mismatch is independent');
+assert.deepEqual(melchiorFixed.candidatePlayers,chosen,'reconciliation must NEVER move the candidate sequence');
+assert.deepEqual(melchiorFixed.facts,[]);
+assert.deepEqual(melchiorFixed.analysis,[]);
+assert.deepEqual(melchiorFixed.prediction,[]);
+assert.deepEqual(validatePersonaOutput(lineupCase,melchiorFixed,{focused:false}),[],'all original evidence checks still apply');
+assert.equal(reconcileLineupOrderExplanation(mixedMelchior,[...melchiorIssues,'FULL_LINEUP_STANDARD_DEFENSE: no eligible starter']),null);
+assert.equal(reconcileLineupOrderExplanation(mixedMelchior,[...melchiorIssues,'数値1 は supplied CASE/EVIDENCE の値と一致しない']),null);
+assert.equal(reconcileLineupOrderExplanation(mixedMelchior,melchiorIssues.filter(x=>x!==ORDER_EXPLANATION_CONFLICT)),null,'cannot discard unsupported claims absent an actual order mismatch');
+
 assert.equal(reconcileLineupOrderExplanation(incompatible,[ORDER_EXPLANATION_CONFLICT,'NUMERIC_MISMATCH']),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,dataConflict:true},[ORDER_EXPLANATION_CONFLICT]),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,reviewRequested:true},[ORDER_EXPLANATION_CONFLICT]),null);
