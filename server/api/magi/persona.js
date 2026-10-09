@@ -5,7 +5,7 @@ import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js'
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
 import { classifyLineupGuardIssueList } from './_lineup-guard-issue-codes.js';
 import { assignEvidenceGroundedFielding, buildStandardDefenseEligibility } from './_lineup-fielding.js';
-import { reconcileLineupOrderExplanation } from './_lineup-order-explanation-reconcile.js';
+import { reconcileLineupOrderExplanation, verifiedLineupStats } from './_lineup-order-explanation-reconcile.js';
 import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
 import { buildContestedAdjacentSlotEvidence, buildContestedSingleSlotEvidence } from './_lineup-contested-evidence.js';
 
@@ -224,25 +224,40 @@ export function recoverSoftPitchingPlanLanguage(result, issues, pitchingPlanCase
   return true;
 }
 
-export function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
+export function recoverSoftFullLineupLanguage(result, issues, fullLineupCase, caseData=null) {
   if (!fullLineupCase || !Array.isArray(issues) || !issues.length) return false;
   const check = validateFullLineupOrder(result?.candidatePlayers);
   if (!check.ok) return false;
   const hard = issues.some(issue => /(?:FULL_LINEUP|正式ロスター|ロスター完全一致|対象外|9人の打順構成|candidatePlayers|打順構成エラー|数値.{0,30}(?:一致しない|存在しない)|選手名.{0,30}(?:存在しない|対象外)|supplied CASE\/EVIDENCE.{0,50}(?:値と一致しない|選手.*存在しない))/i.test(String(issue || '')));
   if (hard) return false;
-  result.candidatePlayers = check.order;
-  result.judgment = 'BLUE';
-  result.confidence = result.confidence === 'HIGH' ? 'HIGH' : 'MEDIUM';
-  result.reviewRequested = false;
-  result.reviewReason = '';
-  result.dataConflict = false;
-  result.facts = [];
-  result.analysis = [];
-  result.prediction = [];
-  result.candidateBasis = '確認できた今季通算成績と打数を基準に、現チーム14名から9人を比較してこの順番としました。';
-  result.primaryReason = '確認できた記録だけを使い、現在の成績と打順のつながりを比較した案です。';
-  result.publicStatement = `${check.order.map((name,index)=>`${index+1}番${name}`).join('、')} の順です。確認できた記録だけで比較しました。`;
-  result.warnings = ['説明のうち確認できない内容は判断に使っていません。'];
+  // Unsupported model prose is discarded. Where the CASE supplies a fully
+  // verified fourteen-player current table, restore ONLY its literal numbers.
+  // Never infer from aggregate rates why a player belongs at a specific slot.
+  const verified=verifiedLineupStats(check.order,caseData);
+  const measured=verified?verified.filter(row=>row.metrics.length):[];
+  const facts=measured.map(row=>`${row.slot}番${row.name}：今季通算${row.metrics.join('、')}`);
+  const middle=measured.filter(row=>row.slot>=3&&row.slot<=5);
+  const displayed=(middle.length>=2?middle:measured.slice(0,3))
+    .map(row=>`${row.slot}番${row.name}（${row.metrics.join('、')}）`).join('、');
+  const limitation='今季通算値や守備の起用実績だけで、この打順が得点や勝利に優れるとは判定できません。';
+  result.candidatePlayers=check.order;
+  result.judgment='BLUE';
+  // Since the original reasoning was invalid and deleted, a HIGH confidence
+  // for a proven tactical order cannot be preserved.
+  result.confidence=result.confidence==='LOW'?'LOW':'MEDIUM';
+  result.reviewRequested=false;
+  result.reviewReason='';
+  result.dataConflict=false;
+  result.facts=facts;
+  result.analysis=[];
+  result.prediction=[];
+  const order=check.order.map((name,index)=>`${index+1}番${name}`).join('、');
+  result.candidateBasis=`候補順は${order}です。${facts.length?' 今季通算の確認済み記録：'+facts.join('。')+'。':' この回答で比較に使える今季の数値記録は未確認です。'} ${limitation}`;
+  result.primaryReason=displayed
+    ?`確認済みの打撃記録：${displayed}。${limitation} 打順別の実打席成績・相手条件まで照合しない限り、順序の優位性は未確定です。`
+    :`選んだ9人の打順は提示しましたが、比較に必要な今季打撃数値は確認できていません。${limitation}`;
+  result.publicStatement=`候補順は${order}です。${displayed?' 比較できる今季記録は'+displayed+'です。':''} ${limitation} 根拠のない説明は採用しません。`;
+  result.warnings=['説明のうち根拠のない推測は採用していません。',facts.length?'通算成績だけでは打順ごとの優劣は判定できません。':'今季の打撃記録を確認できず、打順ごとの優劣は判定できません。'];
   return true;
 }
 
@@ -551,7 +566,7 @@ export default async function handler(req, res) {
     result.phase = phase;
 
     if (guardIssues.length
-      && !recoverSoftFullLineupLanguage(result, guardIssues, fullLineupCase)
+      && !recoverSoftFullLineupLanguage(result, guardIssues, fullLineupCase, body.case)
       && !recoverSoftPitchingPlanLanguage(result, guardIssues, pitchingPlanCase, body.case)) {
       failClosedPersona(result, guardIssues);
     }
