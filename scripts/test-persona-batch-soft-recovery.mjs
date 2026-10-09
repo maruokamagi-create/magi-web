@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse } from '../server/api/magi/persona-batch.js';
 import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
+import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
+import { recoverMissingBattingSelectionBasis } from '../server/api/magi/_selection-basis-recovery.js';
 
 function baseResult(overrides={}) {
   return {
@@ -1149,6 +1151,64 @@ function baseResult(overrides={}) {
   assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合先発。','坂田 暉馬はOPS .861。']);
   assert.ok(!JSON.stringify(row).includes('選択肢として確実'));
   assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+}
+
+
+// Reproduce the redacted production finding 37904400126:
+// CASPER PRIMARY had correct phase/roster, both visible reasons present, and
+// candidateBasis alone empty. A sourced comparison can recover the missing
+// field without claiming that either batting slot wins more games.
+{
+  const allCurrentTeamCheck={
+    status:'COMPLETE',
+    players:CURRENT_ROSTER.map(name=>({
+      name,batting:name==='嶋田 栄志'?{AVG:'.300',OPS:'.720'}:
+        name==='坂田 暉馬'?{AVG:'.250',OPS:'.650'}:{AVG:'.200',OPS:'.500'}
+    }))
+  };
+  const c={mode:'selection',question:'3番は誰がいい？',evidence:{allCurrentTeamCheck,selectionKind:''}};
+  const initial={
+    checkedPlayers:[...CURRENT_ROSTER],
+    candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    candidateBasis:'',
+    primaryReason:'今季通算の比較を踏まえた候補です。',
+    publicStatement:'僕は嶋田 栄志を候補にします。',
+    confidence:'HIGH',warnings:[]
+  };
+  const row=structuredClone(initial);
+  assert.equal(recoverMissingBattingSelectionBasis(row,c),true);
+  assert.deepEqual(row.candidatePlayers,initial.candidatePlayers);
+  assert.deepEqual(row.checkedPlayers,initial.checkedPlayers);
+  assert.match(row.candidateBasis,/嶋田 栄志（打率 \.300、OPS \.720）/);
+  assert.match(row.candidateBasis,/坂田 暉馬（打率 \.250、OPS \.650）/);
+  assert.match(row.candidateBasis,/打順位置の優位性や勝敗への効果を証明するものではありません/);
+  assert.equal(row.confidence,'MEDIUM');
+  assert.match(row.warnings.join(''),/元の候補選出理由が欠落/);
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  const already={...structuredClone(initial),candidateBasis:'元から存在する独立した根拠です。'};
+  assert.equal(recoverMissingBattingSelectionBasis(already,c),false);
+  assert.equal(already.candidateBasis,'元から存在する独立した根拠です。');
+  const extra={...structuredClone(initial),candidatePlayers:['宮嵜 翔']};
+  assert.equal(recoverMissingBattingSelectionBasis(extra,c),false);
+  assert.equal(extra.candidateBasis,'');
+  const duplicate={...structuredClone(initial),checkedPlayers:[...CURRENT_ROSTER.slice(1),CURRENT_ROSTER[1]]};
+  assert.equal(recoverMissingBattingSelectionBasis(duplicate,c),false);
+  const noEvidence={...c,evidence:{allCurrentTeamCheck:{...allCurrentTeamCheck,status:'UNAVAILABLE'}}};
+  assert.equal(recoverMissingBattingSelectionBasis(structuredClone(initial),noEvidence),false);
+  const noNumeric={...c,evidence:{allCurrentTeamCheck:{...allCurrentTeamCheck,players:CURRENT_ROSTER.map(name=>({name,batting:{AVG:'?',OPS:'fake'}}))}}};
+  assert.equal(recoverMissingBattingSelectionBasis(structuredClone(initial),noNumeric),false);
+  const invalidNumbers={...c,evidence:{allCurrentTeamCheck:{...allCurrentTeamCheck,players:allCurrentTeamCheck.players.map(p=>p.name==='嶋田 栄志'?{name:p.name,batting:{AVG:'300%',OPS:'??'}}:p)}}};
+  const onlyPeer=structuredClone(initial);
+  assert.equal(recoverMissingBattingSelectionBasis(onlyPeer,invalidNumbers),true);
+  assert.doesNotMatch(onlyPeer.candidateBasis,/300%|\?\?/);
+  assert.match(onlyPeer.candidateBasis,/嶋田 栄志（今季通算の打撃数値は未取得）/);
+  const fullLineup={...c,selectionKind:'FULL_LINEUP',question:'ベストオーダーを組んで'};
+  assert.equal(recoverMissingBattingSelectionBasis(structuredClone(initial),fullLineup),false);
+  const pitching={...c,selectionKind:'PITCHING_ROLE',question:'クローザーは？'};
+  assert.equal(recoverMissingBattingSelectionBasis(structuredClone(initial),pitching),false);
+  const batchSource=(await import('node:fs')).readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8');
+  assert.match(batchSource,/recoverMissingBattingSelectionBasis\(result,body\.case\)/);
+  assert.match(batchSource,/PERSONA_BATCH_SELECTION_EXPLANATION_MISSING/);
 }
 
 console.log('PERSONA BATCH SOFT RECOVERY RESULT: 58/58 PASS');
