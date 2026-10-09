@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 886c3cb08b3249fd243371a2a80a53e650b86cd6
+- State base main SHA: 9d6645acd00ce3571639b88fda18017fd90d501d
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -940,6 +940,14 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/live-any-provider-rate-limit-failfast-20261009` now also normalizes the specific `を直接証明するものではない` **denial** at PRIMARY and SECOND in the original jq acceptance gate while still rejecting any separate affirmative `戦術的制約がある` sentence. Extend the actual jq polarity regression to cover both and the mixed contradictory case. Extend TEAM_REVIEW guard and sentence sanitizer's post-substitution check to reject `出場機会の差いる` without inventing a new fact. Add deterministic guard/recovery regression preserving separately confirmed records.
 - This revision is deliberately grouped with workflow-only provider-rate-limit fail-fast work (same failed production Live run) before **one** new main merge, to avoid two separate provider-heavy Live reruns. PR CI must rerun after the additional changes and be green. No user records, roster/order, billing, Vercel protection or Drive/CSV changes.
 - Because prior run `37888251616` failed best-order SECOND with provider rate limits, and TEAM_REVIEW only tested PRIMARY, do not claim the new branch is fully verified until READY production SHA and complete staged Live results. The authenticated mobile nine-class acceptance and player-specific explanation quality remain incomplete.
+
+## 2026-10-09: Live SECOND MELCHIOR four-issue BEST_ORDER narrative failure
+
+- Canonical pre-merge main and Vercel READY production SHA `9d6645acd00ce3571639b88fda18017fd90d501d` (PR #154). Production Live `37889151231` passed SHA readiness, BEST_ORDER PREPARE/PRIMARY/CROSS and failed SECOND three times with deterministic `SECOND_MELCHIOR_INVALID`. Safe diagnostics: `reasonClass=EVIDENCE_OUTPUT_GUARD`, `guardIssueCount=4`, unique issueCodes `UNSUPPORTED_SCORING_CLAIM`, `UNSUPPORTED_DEFENSE_EFFECT`, `ORDER_EXPLANATION_CONFLICT`, `reviewRequested=true`, `dataConflict=false`, all nine candidates unique and in 14-player current roster. The four raw issue strings are not exposed; **the exact additional phrase is not known**.
+- Source analysis found an overlap in diagnostic classification: `BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している` was classified as `UNSUPPORTED_SCORING_CLAIM` because the generic scoring matcher (`得点`) came before the more specific `UNSUPPORTED_STABILITY_CLAIM` matcher. This is a plausible explanation of the four-issue/three-class mismatch, not a verified capture of the rejected private draft.
+- Branch `fix/live-lineup-second-melchior-soft-stability-20261009` makes the specific enum match precede generic scoring and adds **only** that known, output-prose-only guard to the existing conditional reconciliation allowlist. Recovery still requires an independent `ORDER_EXPLANATION_CONFLICT`, nine unique official players, no preexisting dataConflict/review request; it discards all suspect explanatory text, preserves the structured nine-person proposal unchanged and invokes original `validatePersonaOutput + personaFullLineupIssues + personaPitchingPlanIssues` again. Fielding, roster, numeric, or unrelated guard errors still fail closed.
+- Add regression containing four **simultaneous** simulated guard classes, unchanged candidate sequence, zero remaining output guard issues, and explicit negative numeric/fielding/absence-of-order-mismatch tests. Do not change player evaluations or Evidence to obtain a PASS.
+- Previous Live run should finish provider-heavy stages before merging; require CI/continuity green on PR head and Vercel READY matching main before interpreting new Live outcome. No additional manual provider requests. 9-class authenticated iPhone UI coverage and compelling, player-specific lineup explanations remain unresolved. Google Drive, CSV, all scores, free Vercel Hobby and deployment protection untouched.
 
 ## Next concrete work
 
