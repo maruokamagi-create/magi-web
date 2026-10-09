@@ -1,11 +1,6 @@
 name: MAGI Production Selection Smoke
 
-# TEMPORARY one-time production diagnostic; remove after the resulting main-push run.
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/magi-production-selection-smoke.yml'
   workflow_call:
   workflow_dispatch:
 
