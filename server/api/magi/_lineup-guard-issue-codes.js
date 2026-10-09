@@ -12,8 +12,10 @@ function classify(issue){
     if(/比較基準のない統計値|合成指標だけから|Evidenceにない(?:長打率|出塁率)/.test(issue))return 'METRIC_INFERENCE_OR_ABSENT';
     if(/BEST_ORDER.*打順固定/.test(issue))return 'UNSUPPORTED_FIXED_SLOT';
     if(/BEST_ORDER.*(?:守備安定性|連携効果)/.test(issue))return 'UNSUPPORTED_DEFENSE_EFFECT';
-    if(/BEST_ORDER.*(?:得点|勝利|勝ち|得点力)/.test(issue))return 'UNSUPPORTED_SCORING_CLAIM';
+    // Specific stability/chance issue must precede the generic scoring claim:
+    // its Japanese label includes 得点機会, which also matches generic 得点.
     if(/BEST_ORDER.*(?:得点機会|安定性)/.test(issue))return 'UNSUPPORTED_STABILITY_CLAIM';
+    if(/BEST_ORDER.*(?:得点|勝利|勝ち|得点力)/.test(issue))return 'UNSUPPORTED_SCORING_CLAIM';
     if(/Evidenceから保証できない結果|将来結果|将来予測/.test(issue))return 'UNSUPPORTED_OUTCOME_PREDICTION';
     if(/SELECTIONでEvidenceにない成長|SELECTIONでEvidenceにない依存|負担の大きさ|具体的悪影響/.test(issue))return 'UNSUPPORTED_DEVELOPMENT_OR_BURDEN';
     return 'OTHER_GUARD';

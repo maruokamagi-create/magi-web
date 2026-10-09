@@ -14,7 +14,8 @@ const DISCARDABLE_UNGROUNDED_LANGUAGE=new Set([
   // or numeric inconsistency is recoverable here.
   'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
   'BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している',
-  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している'
+  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している',
+  'BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'
 ]);
 
 export function reconcileLineupOrderExplanation(result,guardIssues){
