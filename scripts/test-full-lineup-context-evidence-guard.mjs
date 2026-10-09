@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { classifyLineupGuardIssues } from '../server/api/magi/_lineup-guard-issue-codes.js';
+import { classifyLineupGuardIssues, classifyLineupGuardIssueList } from '../server/api/magi/_lineup-guard-issue-codes.js';
 import { reconcileLineupOrderExplanation, ORDER_EXPLANATION_CONFLICT } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 
@@ -50,7 +50,19 @@ assert.deepEqual(
   'duplicate guard issues must be deduplicated'
 );
 const liveSelftest=fs.readFileSync(new URL('../api/magi-live-deliberation-selftest.js',import.meta.url),'utf8');
-assert.match(liveSelftest,/issueCodes:classifyLineupGuardIssues\(reason\)/,'live acceptance must expose safe guard categories');
+assert.match(liveSelftest,/issueCodes:Array\.isArray\(row\?\.guardIssueCodes\)/,'Live acceptance must prefer uncapped safe guard classes');
+assert.match(liveSelftest,/guardIssueCount:Number\.isInteger\(row\?\.guardIssueCount\)/);
+const safeCodes=classifyLineupGuardIssueList([
+  'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
+  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している',
+  'BEST_ORDERのcandidatePlayersと打順説明が矛盾している',
+  'FULL_LINEUP_STANDARD_DEFENSE: unsupported',
+  'unknown private text goes nowhere'
+]);
+assert.deepEqual(safeCodes,['UNSUPPORTED_SCORING_CLAIM','UNSUPPORTED_DEFENSE_EFFECT','ORDER_EXPLANATION_CONFLICT','FIELDING_COVERAGE','OTHER_GUARD']);
+assert.ok(safeCodes.every(code=>!code.includes('private')));
+const personaSource=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
+assert.match(personaSource,/guardIssueCodes = classifyLineupGuardIssueList\(issues\)/);
 
 // Regression: the nine structured candidate slots are authoritative; a
 // contradictory explanation may be discarded only if it is the sole failure.
@@ -120,7 +132,6 @@ assert.equal(reconcileLineupOrderExplanation(incompatible,[ORDER_EXPLANATION_CON
 assert.equal(reconcileLineupOrderExplanation({...incompatible,dataConflict:true},[ORDER_EXPLANATION_CONFLICT]),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,reviewRequested:true},[ORDER_EXPLANATION_CONFLICT]),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,candidatePlayers:chosen.slice(0,8)},[ORDER_EXPLANATION_CONFLICT]),null);
-const personaSource=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
 assert.match(personaSource,/const reconciled=reconcileLineupOrderExplanation\(/);
 assert.match(personaSource,/const rechecked=\[/);
 
