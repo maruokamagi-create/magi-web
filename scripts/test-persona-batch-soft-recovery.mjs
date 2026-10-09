@@ -937,4 +937,28 @@ function baseResult(overrides={}) {
   assert.ok(!/チームの安定|打順の安定|役割の継続性|つなぎとして有効|リスクとなる可能性/.test(JSON.stringify(row)));
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 48/48 PASS');
+{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番7試合先発、坂田 暉馬OPS.861、嶋田 栄志OPS.748。'}};
+  const row=baseResult({
+    persona:'BALTHASAR',
+    candidatePlayers:['坂田 暉馬','嶋田 栄志'],
+    facts:['嶋田 栄志は3番で7試合先発した。','坂田 暉馬のOPSは.861。'],
+    primaryReason:'坂田 暉馬は4番へつなぐ役割として期待できるはずだ。',
+    analysis:['嶋田 栄志は3番での起用実績が最も豊富であり、記録に基づく信頼性が高い。'],
+    warnings:['坂田 暉馬のOPSは.861。']
+  });
+  const originalOrder=row.candidatePlayers.slice();
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'));
+  assert.equal(recoverSoftSelectionInference(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.candidatePlayers,originalOrder,'recovery must never change actual choices or order');
+  assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合先発した。','坂田 暉馬のOPSは.861。']);
+  assert.ok(!/つなぐ役割として期待|信頼性が高い/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  const hard=baseResult({persona:'BALTHASAR',candidatePlayers:originalOrder.slice(),publicStatement:'4番へつなぐ役割として期待できるはずだ。'});
+  const before=JSON.stringify(hard);
+  assert.equal(recoverSoftSelectionInference(hard,issues.concat(['supplied CASE/EVIDENCE numerical mismatch']),c,{focused:false}),false);
+  assert.equal(JSON.stringify(hard),before);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 49/49 PASS');
