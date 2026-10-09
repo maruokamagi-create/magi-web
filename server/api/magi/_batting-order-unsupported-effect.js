@@ -4,6 +4,10 @@
 // This is a general BATTING_ORDER language class, never a player-name rule.
 export function unsupportedBattingOrderEffect(sentence){
   const s=String(sentence??'');
+  // Explicit uncertainty is not a claim of measured optimality. Restrict the
+  // carve-out to a denial joined directly to the claimed outcome, not a
+  // distant disclaimer that could mask an earlier positive assertion.
+  if(/(?:最適|有利|優位|勝つ確率|勝率|勝利確率).{0,20}(?:か(?:どうか)?は|とは).{0,20}(?:判断|確認|断定|証明)(?:は)?できない/.test(s))return false;
   return /(?:安定した選択肢|最も有効な戦術|役割に慣れて(?:いる|きた)|3番.{0,14}適性.{0,14}(?:豊富|高い))/.test(s)
     || /(?:3番|打順|起用|選手|実績).{0,80}チーム.{0,14}安定.{0,22}(?:つなが|繋が|維持|高め)/.test(s)
     || /(?:打順|起用).{0,28}(?:連続性|安定性).{0,28}(?:維持|高め|向上)/.test(s)
@@ -24,7 +28,11 @@ export function unsupportedBattingOrderEffect(sentence){
     || /(?:役割|打順).{0,22}(?:継続性|適応|経験値|安定性).{0,22}(?:確認できる|維持|強み|高い|豊富)/.test(s)
     // The user may ask us to consider the next batter. That is a tactical
     // constraint, not proof the chosen hitter will actually bridge successfully.
-    || /(?:4番|次打者|後続打者).{0,70}(?:つなぐ|つなげる|つなぎ|つながる|接続).{0,65}(?:機能|最適化|成功|確実|有利|優位)/.test(s)
+    || /(?:4番|次打者|後続打者).{0,70}(?:つなぐ|つなげる|つなぎ|つながる|接続).{0,65}(?:機能|最適(?:化)?|成功|確実|有利|優位)/.test(s)
+    // Current batting rates or slot choices cannot be converted into an
+    // improved win probability without matched team-level outcome evidence.
+    || /(?:打率|OPS|出塁率|長打率|打撃(?:成績|数値)|得点力|打順|[1-9１-９]番).{0,120}(?:勝つ確率|勝率|勝利確率|勝利の確率|勝ちやすさ).{0,25}(?:高め|上げ|上が|増や|優位|改善|大きく|高い|可能性)/.test(s)
+    || /(?:勝つ確率|勝率|勝利確率|勝利の確率).{0,25}(?:高め|上げ|上が|増や|優位|改善).{0,100}(?:打率|OPS|打撃(?:成績|数値)|打順|[1-9１-９]番)/.test(s)
     || /(?:打率|OPS|得点圏打率|打撃成績|高い数値).{0,100}戦術(?:上|的に|的な).{0,26}(?:有利|優位|最適|優れる|確実)/.test(s)
     || /(?:打率|OPS|打撃成績).{0,95}(?:攻撃の軸|攻撃オプション|攻撃力|打線力).{0,45}(?:機能|強力|有効|向上|高め|可能性|なり得る)/.test(s)
     // Starts show recorded participation. They do not establish adaptation,

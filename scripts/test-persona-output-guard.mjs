@@ -1024,6 +1024,31 @@ test('Live BATTING_ORDER leaves measured batting and explicit evidence-limit sen
   }
 });
 
+test('Live NATURAL_THIRD SECOND rejects next-batter optimality and statistics-to-win-probability leaps',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'今季個人打撃成績と実打順のみ。勝率への寄与は未測定。'}};
+  for(const statement of [
+    '中嶋 玲月の現チーム通算打率.485、OPS 1.120、得点圏打率.545という高い数値を最優先し、4番につなぐ打順として最適と判断する。',
+    'メルキオールの指摘する嶋田 栄志の3番起用実績は事実だが、得点力を最大化する観点では中嶋 玲月の打撃数値を上位に置く方が勝つ確率を高めると考えられる。',
+    'OPSが高い打者の3番起用は勝率を高める可能性がある。',
+    '4番の前につなぐ打順として最適だ。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' '+JSON.stringify(issues));
+  }
+});
+
+test('BATTING_ORDER still allows objective comparisons and explicit absence of win-rate evidence',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'今季のOPSと3番先発記録のみ。'}};
+  for(const statement of [
+    'OPSが.861の坂田 暉馬とOPSが1.120の中嶋 玲月を比較する。',
+    '今の資料から、4番につなぐ打順として最適かは判断できない。',
+    '打撃数値だけでは勝つ確率を高める効果は確認できない。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' '+JSON.stringify(issues));
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

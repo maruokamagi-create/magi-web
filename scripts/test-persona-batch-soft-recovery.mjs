@@ -987,4 +987,27 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(hard),snapshot);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 50/50 PASS');
+{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'今季の3番先発回数・OPSのみ。勝率や後続打者との因果は未確認。'}};
+  const row=baseResult({
+    persona:'BALTHASAR',candidatePlayers:['中嶋 玲月','嶋田 栄志','坂田 暉馬'],
+    facts:['嶋田 栄志は3番で7試合先発した。'],
+    candidateBasis:'中嶋 玲月は4番につなぐ打順として最適と判断する。',
+    analysis:['打撃数値を上位に置く方が勝つ確率を高めると考えられる。'],
+    publicStatement:'中嶋 玲月を3番候補とする。'
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'));
+  const before=row.candidatePlayers.slice();
+  assert.equal(recoverSoftSelectionInference(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.candidatePlayers,before);
+  assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合先発した。']);
+  assert.ok(!/4番につなぐ打順として最適|勝つ確率を高める/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+  const hard=baseResult({persona:'BALTHASAR',candidatePlayers:before,publicStatement:'勝つ確率を高める。'});
+  const snapshot=JSON.stringify(hard);
+  assert.equal(recoverSoftSelectionInference(hard,[...issues,'supplied CASE/EVIDENCE numerical mismatch'],c,{focused:false}),false);
+  assert.equal(JSON.stringify(hard),snapshot);
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 51/51 PASS');
