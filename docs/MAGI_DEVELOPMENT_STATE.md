@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 25b2b8e04e154c23898331040ff247ca7cf3a82f
+- State base main SHA: 680c53da9eec821e092128c114a4e3d7005a6c06
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -998,3 +998,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Production Live `37894765981` at `25b2b8e04e154c23898331040ff247ca7cf3a82f` completed **all five** stages successfully, with PREPARE matching `deployment.sha=25b2b8e...`, `env=production`. Reviewed the *complete* TEAM_REVIEW PRIMARY/SECOND/FINAL response and warnings: neither the unsupported opponent-countermeasure attack-narrowing assertion nor the hypothetical fixed-lineup team-strength-decline assertion survived. FINAL warnings and re-deliberation conditions now contain only verified individual spread and explicitly stated limitations. **PR #157 was effective for its exact two reported failure classes in real production.**
 - TEAM_REVIEW caution: BALTHASAR PRIMARY was deterministically soft-recovered, leaving conservative factual-limit prose with `facts=[]`; this demonstrates guard safety but not persuasive strategic analysis. All nine player-specific lineup reasons, fully grounded cross-persona change rationales, and the authenticated iPhone Chrome acceptance remain open and should not be reported complete.
 - Production Sequential Suite triggered by that Live success: `37895262427` on SHA `25b2b8e...`; **in progress** when this note was updated. Do not overlap its provider-heavy calls. PR #158 only contains deterministic guard/unit tests and this ledger update until the suite completes, CI re-passes, and the new merge/deployment/review gates can be evaluated.
+
+
+## 2026-10-09: Live #158 READY, new quality gap: disputed fourth/fifth order
+
+- Main SHA `680c53da9eec821e092128c114a4e3d7005a6c06` from merged PR #158. Production Live `37895873422` PREPARE explicitly matched this served SHA, and ALL 5 jobs succeeded. Production Sequential Suite `37896372954` also finished all five jobs SUCCESS. PRIMARY MELCHIOR ninth-name error `9番田です。` now became complete `9番武田 晴琉翔です。`, and the candidate nine/defense stayed unchanged.
+- Manual review of actual READY production BEST_ORDER PRIMARY/SECOND and FINAL reveals a **persistent unresolved justification gap**. The FINAL order was 4番嶋田 栄志, 5番坂田 暉馬 by 2–1, versus BALTHASAR 4番坂田 暉馬, 5番嶋田 栄志. Current evidence quoted by both sides: 嶋田 39 AB / AVG .282 / OPS .748, 坂田 26 AB / AVG .308 / OPS .861. MELCHIOR's SECOND invoked the different AB counts and “no structural contradiction” but did not explain why lower OPS justified fourth specifically. Defense eligibility is unchanged by swapping these two batting order slots. CASPER and BALTHASAR SECOND published conservative reconciled wording with `facts=[]`. Majority is a vote, not proof of superior batting order.
+- Narrow UI correction on `fix/lineup-adjacent-swap-grounded-comparison-20261009`: when two of three second-round proposals support an adjacent order and the minority swaps the exact two names, show a separate evidence-aware comparison using only present current-season batting data, identify the named minority, and explicitly distinguish numbers/vote from proof of optimum. If data unavailable, show unavailable, not fictional rates. This does NOT change or infer a winning batting order, official names, fielding, signed-in access, roster, CSV or Drive records; it exposes a still-open evidence/rationale dispute rather than masking it with unanimous-looking UI.
+- Browser helper VM regression added to `scripts/test-lineup-persona-grounding.mjs`; index cache query incremented for iPhone Chrome. Run unit/continuity PR CI before merge. After main deployment confirm HTML serves the new version; production deliberation selftests are structural evidence, not a replacement for authenticated iPhone Chrome nine-class UI testing. The 4/5 selection *rationale itself* remains for deeper server-side semantic work.

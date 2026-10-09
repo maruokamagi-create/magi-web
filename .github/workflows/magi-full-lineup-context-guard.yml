@@ -55,7 +55,7 @@ jobs:
           grep -Fq '<b>守備根拠：</b>' lineup-reasons-v415.js
           grep -Fq '全14名の今季通算・直近6試合・過去実績・実打順/守備起用を主Evidence' lineup-reasons-v415.js
           grep -Fq '3賢人の一致度そのものを打撃Evidenceの代わりにはしません' lineup-reasons-v415.js
-          grep -Fq '/lineup-reasons-v415.js?v=420' index.html
+          grep -Fq '/lineup-reasons-v415.js?v=421' index.html
           ! grep -Fq '最終${r.total}人中' lineup-reasons-v415.js
           ! grep -Fq '4番は3賢人の一致度を最優先' lineup-reasons-v415.js
       - name: Guard legacy fixed-order Evidence is not loaded

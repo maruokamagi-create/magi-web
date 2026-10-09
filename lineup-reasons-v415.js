@@ -217,6 +217,36 @@ function specificReason(slot,st,allStats){
   parts.push(rankText(st,'OBP','出塁率',allStats),rankText(st,'BB','四球',allStats,false),rankText(st,'SB','盗塁',allStats,false));
   return parts.filter(Boolean).join('、')+'。9番は1番への接続を意識しつつ、出塁・走塁と守備成立を確認します。';
 }
+function adjacentSwapReviews(entries,names,statsMap){
+  const reviews=[];
+  for(let i=0;i<names.length-1;i++){
+    const left=names[i],right=names[i+1];
+    const majority=entries.filter(e=>norm(e.order?.[i])===norm(left)&&norm(e.order?.[i+1])===norm(right));
+    const dissent=entries.filter(e=>norm(e.order?.[i])===norm(right)&&norm(e.order?.[i+1])===norm(left));
+    if(majority.length!==2||dissent.length!==1)continue;
+    const leftStats=statsMap?.get(norm(left)),rightStats=statsMap?.get(norm(right));
+    const statLine=st=>st
+      ? fmtInt(st.AB)+'打数、打率 '+fmtRate(st.AVG)+'、出塁率 '+fmtRate(st.OBP)+'、長打率 '+fmtRate(st.SLG)+'、OPS '+fmtRate(st.OPS)
+      : '今季通算の数値Evidence未取得';
+    const opsLeft=num(leftStats?.OPS),opsRight=num(rightStats?.OPS);
+    const slgLeft=num(leftStats?.SLG),slgRight=num(rightStats?.SLG);
+    let comparison='OPSと長打率の両方を確認できないため、数値による二案の優劣は保留します。';
+    if(opsLeft!==null&&opsRight!==null&&slgLeft!==null&&slgRight!==null){
+      if(opsLeft<opsRight&&slgLeft<slgRight)comparison='今季通算のOPS・長打率は'+right+'が高い記録です。';
+      else if(opsLeft>opsRight&&slgLeft>slgRight)comparison='今季通算のOPS・長打率は'+left+'が高い記録です。';
+      else comparison='今季通算のOPS・長打率は同じ選手が両方で上回る関係ではありません。';
+    }
+    reviews.push({
+      firstSlot:i+1,
+      secondSlot:i+2,
+      text:'二次審議の多数派（2名）は'+(i+1)+'番'+left+'・'+(i+2)+'番'+right+'、少数派（'+dissent[0].label+'）は順序を逆にしています。'
+        +'今季通算 '+left+'：'+statLine(leftStats)+'。'+right+'：'+statLine(rightStats)+'。'
+        +comparison+'これらの数値も2対1の票数も、この打順位置の優位性を証明しません。'
+        +'この2人の打順を交換しても9人の守備配置自体は変わらず、実打順・直近記録・得点圏実績などを含む位置別の説明が引き続き必要です。'
+    });
+  }
+  return reviews;
+}
 function observationSummary(layers){
   if(layers?.observationStatus!=='COMPLETE')return'観察Evidenceはこの審議では利用不可または未取得です。';
   const latest=layers.observationLatest?'、最新記録 '+layers.observationLatest:'';
@@ -301,6 +331,9 @@ function render(r,data){
     if(method)hero.insertBefore(section,method);else if(field)hero.insertBefore(section,field);else hero.appendChild(section);
     lastSignature=signature;hero.dataset.magiLineupReasons='419';return true;
   }
+  for(const review of adjacentSwapReviews(entries,names,statsMap)){
+    html+=`<div class="magiLineupReasonWarning"><b>${review.firstSlot}・${review.secondSlot}番の根拠を比較：</b> ${esc(review.text)}</div>`;
+  }
   html+='<div class="magiLineupReasonList">';
   names.forEach((name,index)=>{
     const slot=index+1,support=exactSlotSupport(entries,slot,name),alts=slotAlternatives(entries,slot,name),st=statsMap.get(norm(name));
@@ -338,5 +371,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v420',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v421',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews});
 })();
