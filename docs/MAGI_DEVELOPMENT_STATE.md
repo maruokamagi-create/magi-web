@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 554a026b354621d54ac61905bc456d886c8a1e09
+- State base main SHA: 8b4e0c79bc2b69ed869d21c0d773f5ec1b08d437
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1163,3 +1163,10 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Branch `fix/show-nonadjacent-lineup-deadlock-evidence-20261009`: retain the existing exact adjacent pair path; **fallback only** when no exact pair exists to at most three disputed individual batting slots, prioritizing 3/4/5. For each slot display all 2–3 valid, current-roster candidates actually named for that slot by the three SECOND proposals, the **slot-local** vote count/personas (NOT overall lineup majority), each candidate's verified standard-game PA, AB, H and actual rate at THAT slot (not season aggregate), dated eligible official/practice-first starting entries, and already authorized dated coach observations. Practice-second PA is separate. If source incomplete, explain unavailable, never fabricate performance; zero recorded PA does not infer player weakness or slot failure. Preserve a valid actual 1–1–1 final with `lineup=[]`; additionally verify three truly distinct structured nine orders before producing a deadlock comparison.
 - Fix stale UI when a NEW finalized result has the same 9-person debate and identical provider timestamps but changed numerical Evidence: in-place DOM refresh must use the new result object rather than treating the old panel as current. A repeat render of the SAME result remains idempotent. Script cache bust from v422 to v423, including index/production served-assets bootstrap test and full-lineup source guard.
 - Regression fixture covers a genuine 1–1–1 with three different 3/4/5 triplets **and no** adjacent inversion, local per-slot support and actual 4th-slot competing samples, bounded panel list, incomplete data, false 1–1–1 labels, and refreshing a new same-order result with updated verified counts; existing strict swap and HTML escaping tests retained. No authenticated browser or provider-heavy Live acceptance is implied by deterministic VM tests. All original Drive records strictly read-only, no Vercel plan change or new Gemini calls. Merge only after all triggered CI green; then require verified production served v423 assets; actual user iPhone Chrome session remains separately untested.
+
+
+## 2026-10-09: v423 HTTP bootstrap contract follow-up, not an app regression
+
+- PR #179 merged main SHA 8b4e0c79bc2b69ed869d21c0d773f5ec1b08d437 and Vercel connector independently lists matching production deployment dpl_8PFoQzLRECbJS88dzH27CW6a9Lxt READY, target production. PR head deterministic, context, control, continuity and cross guards all green; postmerge selftest and lineup stats smoke passed.
+- Postmerge Production Browser Bootstrap Smoke 37925610726 FAILED at the first served-asset assertion because workflow still grepped HTTP-served ?v=422, although #179 intentionally updated index.html to ?v=423. This is a stale test assertion, not evidence actual v423 logic fails. Do not call production bootstrap green until retest.
+- Branch fix/production-bootstrap-v423-comparison-20261009: only update the workflow to check served homepage ?v=423, GET the same versioned script, retain previous checks and version lineup-reasons-v423, and additionally confirm served localSlotDisputes, recordedSlotDisputeHtml and the fallback invocation. No model, app, credential, source or auth code touched. The workflow's main-push trigger will make one new GET-only bootstrap run after merge; require complete pass. This is not authenticated iPhone Chrome visual or staged LLM Live/Sequential acceptance.
