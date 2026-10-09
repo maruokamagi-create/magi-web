@@ -237,12 +237,15 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/" -o /tmp/lineup-reasons-index.html
-          grep -Fq '/lineup-reasons-v415.js?v=422' /tmp/lineup-reasons-index.html
-          curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/lineup-reasons-v415.js?v=422" -o /tmp/lineup-reasons-served.js
+          grep -Fq '/lineup-reasons-v415.js?v=423' /tmp/lineup-reasons-index.html
+          curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/lineup-reasons-v415.js?v=423" -o /tmp/lineup-reasons-served.js
           grep -Fq 'function adjacentSwapReviews(entries,names,statsMap)' /tmp/lineup-reasons-served.js
           grep -Fq 'function deadlockDisputeHtml(r)' /tmp/lineup-reasons-served.js
           grep -Fq 'if(finalNames(r).length!==9)return renderDeadlock(r)' /tmp/lineup-reasons-served.js
           grep -Fq 'function recordedSlotSample(e,name,slot)' /tmp/lineup-reasons-served.js
+          grep -Fq 'function localSlotDisputes(entries)' /tmp/lineup-reasons-served.js
+          grep -Fq 'function recordedSlotDisputeHtml(entries,e)' /tmp/lineup-reasons-served.js
+          grep -Fq 'if(!pairs.length)return recordedSlotDisputeHtml(entries,e)' /tmp/lineup-reasons-served.js
           grep -Fq 'for(const review of adjacentSwapReviews(entries,names,statsMap))' /tmp/lineup-reasons-served.js
           grep -Fq "version:'lineup-reasons-v423'" /tmp/lineup-reasons-served.js
           echo 'PRODUCTION VERIFIED DISPUTED LINEUP AND 1-1-1 ASSET: PASS'
