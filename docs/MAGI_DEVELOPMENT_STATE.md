@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 336ba9b65095a0b4dcd157e2a4b0a31bd82943ba
+- State base main SHA: 9dd6917a6e0aadc25df4258c3bd8fcfff9a180a4
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1092,3 +1092,10 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - This narrow change strengthens ONLY the already-existing one correction generation when a full-lineup output includes an explicit slot/prose contradiction: pass back that same persona's own structured nine as a slot-indexed comparison and require each affirmative numbered slot to agree after correction, whether the same order is kept or a valid independently chosen new order is returned. Do not force consensus or overwrite any model candidate list; no new correction/model calls. Continue full existing validation for numeric, roster, fielding, predicted benefits and other hard errors. Existing reconciler may handle an isolated language conflict and must still refuse hard numeric/defense inconsistencies.
 - Regression covers BALTHASAR SECOND with a mismatched 3/4-numbered explanation, valid nine, no mutation, reviewRequested/dataConflict/extraneous player negatives, and exact correction directive. Add **allowlisted enum-only** guardIssueCodes and guardIssueCount to existing redacted reproducibility FAILURE diagnostics (only shown if a future test still rejects). No player names, model prose, raw metrics or confidential Evidence logged.
 - Do not claim this solves the production incident until exact-SHA Live & Sequential postmerge run are both checked; failure with other hard guard issues must remain fail-closed. The real game-winning merits of 4/5 order and logged-in Chrome acceptance are separately pending. No Drive/CSV edits; no additional paid provider or Hobby resources.
+
+
+## 2026-10-09: Exact-SHA #170 Live TEAM_REVIEW negative-scoring-causality false positive
+
+- PR #170 merged main `9dd6917a6e0aadc25df4258c3bd8fcfff9a180a4`; pre-merge deterministic & continuity CI green. READY Live `37909170969`: production SHA matched, BEST_ORDER / CLOSER / natural-third all SUCCESS. TEAM_REVIEW reached PRIMARY / CROSS / SECOND HTTP OK and produced a BALTHASAR **explicit denial**: `数値的な偏りがあることは確認できるが、それが試合の勝敗や戦術的制約に直結しているという直接的な記述や検証データはEvidenceにない。`. However the shell SECOND acceptance filter falsely matched `戦術的制約` because its existing gsub polarity exceptions covered earlier denial suffixes but not this explicit `検証データはEvidenceにない` construction. TEAM_REVIEW job FAILED at the second-shell jq stage before FINAL. The Sequential Suite therefore was NOT started. **No new result yet on the original BALTHASAR SECOND repeatability ORDER_CONFLICT; do not claim that PR #170 fixes it.**
+- Branch `fix/team-review-negative-tactical-causality-contract-20261009`: change only the TEAM_REVIEW SECOND jq validation's same-sentence exception for the exactly observed denial form. A bare assertion of tactical restrictions remains rejected, and even an affirmative sentence followed by the later denial in a separate sentence remains rejected. Add 2 true-polarity regression tests to `scripts/test-team-review-stage-polarity.mjs`; deterministic CI runs that exact published jq extraction, not a reimplementation. No server or player logic, source data, Vercel settings, Gemini paid plan, or Drive originals changed.
+- Require PR CI pass, then exact main SHA, staged Live TEAM_REVIEW acceptance and resumed Sequential Suite result before making an overarching success claim. Note that the core 9-player correction and guard security do not change with this contract refinement.
