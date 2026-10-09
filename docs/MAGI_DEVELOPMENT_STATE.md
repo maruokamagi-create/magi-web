@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: de857b5811c69541985b36d6f0c60eb3e226e568
+- State base main SHA: fa96979caf4fe9cea43ece05f892747d7c193681
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1014,3 +1014,12 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - On post-merge main, Development Continuity, Deliberation Final, Full Lineup Context, Live Answer Unit, Cross Dialogue, Production Lineup Stats, and Production Browser Bootstrap workflows all completed SUCCESS. These existing checks do **not** explicitly verify the served `lineup-reasons-v415.js?v=421` comparison helper from the public Vercel URL; raw public JS retrieval via generic browsing was unavailable.
 - Next narrow regression on branch `test/production-lineup-reasons-v421-asset-20261009`: extend existing no-provider GitHub Production Browser Bootstrap Smoke to fetch the public production HTML and referenced JS, verify the `v421` asset query, actual `adjacentSwapReviews` helper, render call, and public version marker. Preserve existing other smoke steps and Vercel Hobby/free limits. Require CI/continuity green before merge, then this precise production step PASS; unlike a generic browser bootstrap PASS, this will confirm public delivery of the newly authored UI code.
 - This delivery check does not validate logged-in iPhone Chrome interaction or decide whether 4番嶋田 / 5番坂田 outperforms its reversed alternate. The unresolved choice still requires evidence-grounded explanation; neither a majority vote nor static public asset verification proves baseball effectiveness. Drive, CSV and score originals remain untouched.
+
+
+## 2026-10-09: Second-phase contested-slot numerical grounding (development)
+
+- Baseline main SHA `fa96979caf4fe9cea43ece05f892747d7c193681`. The Production Browser Bootstrap Smoke `37900073945` passed including newly added explicit served `v421` UI code verification. No authenticated iPhone Chrome acceptance yet.
+- Original READY production BEST_ORDER `37895873422` CROSS identified disagreement at 4/5. MELCHIOR SECOND used higher AB and lack of defensive contradiction to retain 4嶋田/5坂田, despite current raw OPS and SLG being higher for 坂田. That does not establish ordering advantage. Previously the model did not receive a separate deterministic, per-persona contested-pair numeric packet; UI now disclosed the issue, but SECOND did not substantively resolve it.
+- Branch `fix/second-contested-lineup-evidence-20261009` builds a minimal independent SECOND evidence packet **only** from that persona's own PRIMARY, its assigned CROSS disagreement/challenge, and the exact verified current/recent batters in CASE.evidence; limited to two adjacent disputed pairs. It does not show other personas' private FIRST/SECOND. It omits absent/invalid metrics and does not touch the authoritative roster, player stats, or Drive. Both the individually called persona endpoint and batch SECOND transport forward this same packet.
+- SECOND instruction requires explicit player-vs-player figures and either real role-specific corroboration of preferred batting direction or an explicit statement that slot-specific superiority is not demonstrated; AB differences and legal defense for the same nine cannot justify a 4/5 swap. OPS ranking alone does not prove game outcomes. No automated reorder, false confidence, fabricated runs, or forced convergence. Regression asserts exactly the reproduced 4/5 pair, missing pair/no current evidence, PRIMARY isolation, and batch forwarding.
+- This is an instructional/evidence transport improvement, **not yet proof** that the next real model output is persuasive. Require PR CI, merge, production READY exact SHA, full staged Live jobs and manual inspection of every SECOND and FINAL before claiming a semantic resolution. Maintain Hobby/free and read-only Google Drive. Do not run parallel provider-heavy suites.
