@@ -265,6 +265,21 @@ export function failClosedPersona(result, issues) {
   return result;
 }
 
+// Supply one persona's own exact structured proposal during its EXISTING
+// correction pass. This never chooses a lineup or overwrites candidatePlayers.
+// A model is free to revise its nine only if all normal Evidence/fielding guards
+// will accept the revised order and its complete explanation.
+export function buildLineupOrderCorrectionContext(draft,issues){
+  if(!Array.isArray(issues)||!issues.includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'))return null;
+  if(draft?.dataConflict===true||draft?.reviewRequested===true)return null;
+  const verified=validateFullLineupOrder(draft?.candidatePlayers);
+  if(!verified.ok)return null;
+  return {
+    proposedSlots:verified.order.map((name,index)=>({slot:index+1,name})),
+    instruction:'Your candidatePlayers list is the authoritative own-persona draft. Re-read every proposed numbered batting-slot sentence in candidateBasis, primaryReason and publicStatement against proposedSlots before returning. A historical/other-persona alternative or rejected earlier version must never be written as YOUR current proposed numbered order. If you KEEP candidatePlayers, every affirmative numbered slot MUST match proposedSlots; if you REVISE candidatePlayers independently, recompute all nine numbered claims to agree with that revised nine. Do not replace a candidate to satisfy text alone. Delete contradictory text rather than inventing a reason. Preserve only checked CASE numbers and exact standard fielding eligibility. If verified evidence cannot support a position-specific advantage, say its advantage is not established; do not invent a win/scoring effect.'
+  };
+}
+
 export function personaCorrectionDirective(issues) {
   const list = Array.isArray(issues) ? issues : [];
   const directives = [];
@@ -279,6 +294,9 @@ export function personaCorrectionDirective(issues) {
   }
   if (list.some(x => /長打力|出塁能力/.test(String(x)))) {
     directives.push('Do not decompose OPS into slugging power or on-base ability unless SLG/extra-base-hit evidence or OBP evidence is explicitly supplied. State the OPS value itself instead.');
+  }
+  if (list.includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している')) {
+    directives.push('Your previous prose incorrectly assigned at least one numbered batting position. The full order in candidatePlayers and your affirmative explanation MUST describe the exact SAME nine slots. Do not cite a rejected/other-persona/earlier order as the current recommendation. Compare exact own candidatePlayers[0..8] to the numbered prose BEFORE returning. Never solve this by an invented performance fact, by forcing agreement with another persona, or by ignoring any hard Evidence error.');
   }
   if (list.some(x => /BEST_ORDERで/.test(String(x)))) {
     directives.push('For this full-lineup answer, remove every unsupported claim that batting numbers or batting-order placement proves scoring efficiency, scoring chances, stability, runner conversion, win probability, a certain win path, or that this lineup is the one most likely to win. A recorded legal fielding start proves position eligibility only, not defensive stability, defensive quality, or improved team coordination. Use the exact recentSix.gameCount whenever you state a recent-game window. Do not call a batting slot fixed unless CASE.evidence explicitly states a current fixed policy. Keep the exact supplied evidence and explain only the present slot/order comparison it supports.');
@@ -472,8 +490,12 @@ export default async function handler(req, res) {
     const correctionLimit = fullLineupCase ? 1 : 3;
     for (let attempt = 0; guardIssues.length && attempt < correctionLimit; attempt++) {
       const issueDirective = personaCorrectionDirective(guardIssues);
+      const correctionOrderContext=fullLineupCase
+        ? buildLineupOrderCorrectionContext(result,guardIssues)
+        : null;
       const correctionPayload = {
         ...payload,
+        ...(correctionOrderContext ? { ownLineupOrderCorrection:correctionOrderContext } : {}),
         invalidDraft: result,
         correctionIssues: guardIssues,
         correctionAttempt: attempt + 1,
