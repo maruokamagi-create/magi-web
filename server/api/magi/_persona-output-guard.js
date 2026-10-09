@@ -1,4 +1,5 @@
 import { CURRENT_ROSTER } from './_roster.js';
+import { unsupportedOpponentScoringForecast, unsupportedScoringRouteConcentration, unsupportedUsageToLongTermSquadEffect } from './_team-review-unsupported-effects.js';
 import { validatePitchingPlanPersonaOutput } from './_pitching-plan-output-guard.js';
 import { unsupportedBattingOrderEffect } from './_batting-order-unsupported-effect.js';
 
@@ -303,6 +304,13 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedWinOrScoringRoute)
       issues.push('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している');
+    const opponentScoringLeap=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && (unsupportedOpponentScoringForecast(sentence)||unsupportedScoringRouteConcentration(sentence))
+    );
+    if(opponentScoringLeap && !issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'))
+      issues.push('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している');
+
 
 
 
@@ -365,7 +373,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // facts. Generic future/development coaching advice is not evidence.
     const unsupportedDevelopmentAdvice=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
-      && /(?:半年後|1年後|将来|これから.{0,24}チーム.{0,24}(?:成長|強く)|チーム全体.{0,24}(?:成長|底上げ|強く)|組織的な成長|組織全体.{0,24}育成|育成機会|見守りたい|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
+      && /(?:半年後|1年後|将来|長い目.{0,30}(?:強いチーム|チーム.{0,12}強く|成長)|チーム全体.{0,25}力をつけ.{0,25}(?:大切|必要|重要)|これから.{0,24}チーム.{0,24}(?:成長|強く)|チーム全体.{0,24}(?:成長|底上げ|強く)|組織的な成長|組織全体.{0,24}育成|育成機会|見守りたい|成長していく道筋|育成上の課題|選手層の育成を疎か|目先の勝敗|短期的な結果)/.test(sentence)
       && !groundingHedge.test(sentence)
     );
     // A question about current weaknesses cannot turn an unmeasured growth
@@ -411,7 +419,10 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
       && /(?:長期的.{0,28}(?:成長|チーム作り|選手層)|チーム全体.{0,25}成長|(?:他の)?選手.{0,18}経験機会|成長の機会)/.test(sentence)
       && /(?:影響|左右|つなが|繋が|結びつ|狭め|減ら|低下)/.test(sentence)
     );
-    if(unsupportedLongTermEffect)
+    const projectedSquadEffect=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)&&unsupportedUsageToLongTermSquadEffect(sentence)
+    );
+    if(unsupportedLongTermEffect||projectedSquadEffect)
       issues.push('TEAM_REVIEWで個別記録から長期的な成長・経験機会への効果を推定している');
 
   }
