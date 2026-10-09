@@ -136,7 +136,7 @@ const withActualSources={
       [{date:'2026-09-21',order:4,competitionType:'OFFICIAL'},
        {date:'2026-09-27',order:5,competitionType:'PRACTICE',practiceRole:'CHALLENGE_GAME_2'},
        {date:'2026-10-03',order:4,competitionType:'PRACTICE',practiceRole:'REGULAR_GAME_1'}]:
-      name==='坂田 暉馬'?[{date:'2026-09-25',order:5,competitionType:'OFFICIAL'}]:[]}}
+      name==='坂田 暉馬'?[{date:'2026-09-25',order:5,competitionType:'OFFICIAL'}]:[]}
     }))
   },
   normalizedObservationStatus:'COMPLETE',normalizedObservations:[
