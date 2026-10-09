@@ -94,7 +94,7 @@ const speculativeCasper={
   ...incompatible,persona:'CASPER',phase:'SECOND',
   primaryReason:'記録上の打撃数値を基準に得点力を最大化する。',
   warnings:['先発守備資格を満たせば守備連携を強化できる。'],
-  analysis:['打撃成績の数値差が試合結果を保証する。']
+  analysis:['確実に勝利できる。']
 };
 const mixedIssues=validatePersonaOutput(lineupCase,speculativeCasper,{focused:false});
 assert.ok(mixedIssues.includes(ORDER_EXPLANATION_CONFLICT),'raw order inconsistency must be detected');
