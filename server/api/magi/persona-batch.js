@@ -3,6 +3,7 @@ import { PERSONA_PROMPTS } from './_prompts.js';
 import { deterministicFullLineupCross, deterministicSelectionCross, isSelectionCase } from './orchestrate.js';
 import { validatePersonaOutput, hasUnhedgedOutcomePrediction, isHardOutcomeGuarantee } from './_persona-output-guard.js';
 import { unsupportedBattingOrderEffect } from './_batting-order-unsupported-effect.js';
+import { unsupportedTeamReviewOutcomeKind } from './_team-review-unsupported-outcomes.js';
 import { CURRENT_ROSTER, canonicalizePlayerData } from './_roster.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
@@ -205,6 +206,9 @@ function recoverSoftTeamReviewDependency(result, issues) {
   const rewriteOne=value=>{
     let raw=String(value||'').trim();
     if(!raw)return '';
+    // Discard only already classified, unsupported TEAM_REVIEW rhetoric.
+    // Do not manufacture an alternative causal claim or change recorded facts.
+    if(unsupportedTeamReviewOutcomeKind(raw))return '';
 
     // Remove an unsupported development/experience-opportunity proposition
     // before partial phrase substitutions. Otherwise a replacement in the

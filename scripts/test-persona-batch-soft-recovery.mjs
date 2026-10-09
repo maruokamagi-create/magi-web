@@ -1035,4 +1035,45 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(hard),before);
 }
 
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 52/52 PASS');
+{
+  const c={mode:'proposal',selectionKind:'TEAM_REVIEW',question:'今の丸岡中の弱点は何？',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'現チームの個人打撃成績と出場回数のみ。'}};
+  const row=baseResult({
+    persona:'BALTHASAR',
+    facts:['中嶋 玲月の打率.485が確認できる。','出場回数に選手間の差がある。'],
+    publicStatement:'相手に研究された時に点数が止まる。',
+    analysis:['得点を生み出すルートが特定の上位打線に偏っている。'],
+    warnings:['相手投手陣に対策された場合の攻撃力低下が戦術上の大きなリスクとなる。']
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.includes('TEAM_REVIEWで得点経路の制限や勝敗への未確認の因果を主張している'),JSON.stringify(issues));
+  assert.equal(recoverSoftPersonaBatchValidation(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.facts,['中嶋 玲月の打率.485が確認できる。','出場回数に選手間の差がある。']);
+  assert.ok(!/相手に研究|得点を生み出すルート|相手投手陣に対策/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+}
+{
+  const c={mode:'proposal',selectionKind:'TEAM_REVIEW',question:'今の丸岡中の弱点は何？',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'先発出場回数の記録のみ。'}};
+  const row=baseResult({
+    persona:'CASPER',
+    facts:['出場回数に選手間の差がある。'],
+    analysis:['打数や経験値に差が生じている。','一定の出場や投球の負荷がかかっていることが記録されている。'],
+    publicStatement:'長い目で見て強いチームになるための課題を見据えましょう。',
+    warnings:['過度な起用偏重がもたらす長期的なチーム編成への影響に注意する。']
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.some(x=>x.includes('負担集中')),JSON.stringify(issues));
+  assert.ok(issues.some(x=>x.includes('将来・育成')),JSON.stringify(issues));
+  assert.equal(recoverSoftPersonaBatchValidation(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.facts,['出場回数に選手間の差がある。']);
+  assert.ok(!/経験値に差|投球の負荷がかか|長い目で|長期的なチーム編成への影響/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+}
+{
+  const c={mode:'proposal',selectionKind:'TEAM_REVIEW',evidence:{reviewKind:'TEAM_REVIEW',selectionKind:'TEAM_REVIEW',summary:'個別記録のみ。'}};
+  const row=baseResult({persona:'BALTHASAR',publicStatement:'相手に研究された時に点数が止まる。'});
+  const before=JSON.stringify(row);
+  assert.equal(recoverSoftPersonaBatchValidation(row,['supplied CASE/EVIDENCE numerical mismatch'],c,{focused:false}),false);
+  assert.equal(JSON.stringify(row),before,'hard evidence errors cannot be bypassed by prose recovery');
+}
+
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 55/55 PASS');
