@@ -206,7 +206,7 @@ const api=browser.window.MAGI_LINEUP_REASONS_V415_API;
 const uiSecond={
   melchior:{candidatePlayers:ownSecondaryOrder},
   balthasar:{candidatePlayers:[...ownSecondaryOrder.slice(0,3),ownSecondaryOrder[4],ownSecondaryOrder[3],...ownSecondaryOrder.slice(5)]},
-  casper:{candidatePlayers:ownSecondaryOrder.map((name,i)=>i===6?ownSecondaryOrder[7]:i===7?ownSecondaryOrder[6]:name)}
+  casper:{candidatePlayers:ownSecondaryOrder.map((name,i)=>i===5?ownSecondaryOrder[7]:i===7?ownSecondaryOrder[5]:name)}
 };
 const uiEntries=Object.entries(uiSecond).map(([key,value])=>({
   key,label:{melchior:'メルキオール',balthasar:'バルタザール',casper:'カスパー'}[key],
