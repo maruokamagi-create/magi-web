@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 4d2cd101ffe98ae57b51beb434adae4261b69f46
+- State base main SHA: 2020aa0e7ad5fc9cde0ad86b8299c43dda2f1b64
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1061,3 +1061,9 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 ## 2026-10-09 one-off diagnostic trigger, PR #166
 
 - The existing private-response-safe Selection Smoke now has a temporary main push trigger restricted to editing its own workflow YAML. It will execute a single public production generic 3番 synthetic-selection validation using the PR #165 redacted flag logging. This is not meant to become a permanent provider-consuming push hook: remove the push trigger immediately after this single diagnostic, with a follow-up PR. It does not change runtime code, Vercel settings, scores or Drive originals. If the run passes, the previous CASPER failure was not reproducible on this one sample; do not infer which flag originally failed. If it fails, use the flags, not guessed raw response contents.
+
+
+## 2026-10-09 ONE-SHOT diagnostic concluded — exact CASPER PRIMARY field found
+
+- Production Selection Smoke `37904400126`, main SHA `2020aa0e7ad5fc9cde0ad86b8299c43dda2f1b64`, reproduced FAIL with privacy-safe machine-readable flags: `stage=PRIMARY_FIELDS, personaMatches=true, phaseMatches=true, acceptedWithoutReview=true, noDataConflict=true, checkedPlayerCount=14, candidateBasisPresent=false, primaryReasonPresent=true, publicStatementPresent=true`. The failure belonged to CASPER PRIMARY. This **proves** CASPER's candidateBasis was empty after successful batch publication; numeric/roster validation did not prevent a blank selection rationale. It does not by itself establish whether raw generation or deterministic prose sanitation erased that field. No raw text or player data was logged.
+- Remove the temporary workflow `on.push` trigger now to prevent repeated API/provider calls. Retain `workflow_call` and `workflow_dispatch`, plus the redacted field diagnostics. Next patch must make missing `candidateBasis` a server-side publish contract violation or construct a faithfully sourced and explicit evidence-limited explanation from selected verified candidates. Do not fabricate positional fit, future effects, private coach intent, or invent numbers. Add negative/success tests and confirm correct production behavior. The smoke gate must stay strict.
