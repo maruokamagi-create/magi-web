@@ -8,6 +8,11 @@ export function unsupportedBattingOrderEffect(sentence){
   // carve-out to a denial joined directly to the claimed outcome, not a
   // distant disclaimer that could mask an earlier positive assertion.
   if(/(?:最適|有利|優位|勝つ確率|勝率|勝利確率).{0,20}(?:か(?:どうか)?は|とは).{0,20}(?:判断|確認|断定|証明)(?:は)?できない/.test(s))return false;
+  // A direct statement that the proposed bridge role cannot be established
+  // is not evidence that it works. Scope the denial to the same sentence and
+  // to the specific bridge proposition, not to an unrelated disclaimer.
+  if(/(?:つなぐ|つなげる|つなぎ|つながり|接続)[^。！？!?]{0,60}(?:役割を担えるか|役割を果たせるか|効果があるか)[^。！？!?]{0,28}(?:判断|確認)(?:は)?できない/.test(s)
+    && !/(?:有効だ|成功する|最適だ|確実に)/.test(s))return false;
   return /(?:安定した選択肢|最も有効な戦術|役割に慣れて(?:いる|きた)|3番.{0,14}適性.{0,14}(?:豊富|高い))/.test(s)
     || /(?:3番|打順|起用|選手|実績).{0,80}チーム.{0,14}安定.{0,22}(?:つなが|繋が|維持|高め)/.test(s)
     || /(?:打順|起用).{0,28}(?:連続性|安定性).{0,28}(?:維持|高め|向上)/.test(s)
@@ -24,6 +29,11 @@ export function unsupportedBattingOrderEffect(sentence){
     // that role or the success of connecting a later hitter to an outcome.
     || /(?:3番|打順|起用|実績|経験|回数).{0,100}(?:信頼性|信頼度|確実性|信頼できる).{0,16}(?:高い|ある|十分|優れる)/.test(s)
     || /(?:4番|次打者|後続打者).{0,65}(?:つなぐ|つなげる|つなぎ|つながり).{0,45}(?:期待|有効|優位|適任|効果|可能性)/.test(s)
+    // Generic inferred batting-to-next-hitter "bridge role" as selection
+    // justification is also not established by a 3番 start count or OPS.
+    // Capture statements ending with なら/役割/ため, not only overt
+    // "advantage/optimality" claims; allow explicit non-assertions upstream.
+    || /(?:4番|次打者|後続打者)[^。！？!?]{0,72}(?:つなぐ|つなげる|つなぎ|つながり|接続)[^。！？!?]{0,42}(?:なら|役割|ため|として|選ぶ|候補|現実的|重視|起用|狙い)/.test(s)
     || /(?:3番|打順).{0,30}(?:起用(?:実績|経験)|経験).{0,35}(?:リスク|不安|問題)/.test(s)
     || /(?:役割|打順).{0,22}(?:継続性|適応|経験値|安定性).{0,22}(?:確認できる|維持|強み|高い|豊富)/.test(s)
     // The user may ask us to consider the next batter. That is a tactical

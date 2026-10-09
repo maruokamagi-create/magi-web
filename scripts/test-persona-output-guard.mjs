@@ -1049,6 +1049,30 @@ test('BATTING_ORDER still allows objective comparisons and explicit absence of w
   }
 });
 
+test('Live NATURAL_THIRD rejects 4th-hitter bridge as a selection rationale even without advantage keywords',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'現チームの3番先発回数・OPSのみ。次打者との得点因果は未検証。'}};
+  for(const statement of [
+    'じゃあ俺は、3番スタメンを7回経験している嶋田 栄志か、OPS .861の坂田 暉馬を推す。4番の大久保につなぐならこのどちらかだ。',
+    '4番の大久保 陽翔につなぐ役割として、3番でのスタメン実績が多い嶋田 栄志を維持する。',
+    '次打者につなぐためにこの3番候補を選ぶ。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',primaryReason:statement}),{focused:false});
+    assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+JSON.stringify(issues));
+  }
+});
+
+test('BATTING_ORDER accepts explicit bridge non-evidence statements and unrelated verified starts',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番で7試合スタメン。'}};
+  for(const statement of [
+    '嶋田 栄志の3番スタメンは7試合と記録されている。',
+    '4番へのつなぎの効果があるかどうかは確認できない。',
+    '4番の大久保 陽翔につなぐ役割を担えるかは現資料では判断できない。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+JSON.stringify(issues));
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
