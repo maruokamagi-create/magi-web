@@ -16,6 +16,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          STAGE=PREPARE
+          # Stage only; never emit raw requests or player evidence on assertion failure.
+          trap 'echo "SELECTION_SMOKE_STAGE_FAILURE stage=${STAGE:-UNKNOWN} line=${LINENO}" >&2' ERR
           BASE='https://magi-web.vercel.app'
           ORIGIN='https://magi-web.vercel.app'
 
@@ -122,6 +125,7 @@ jobs:
             cat "$outfile"; echo
           }
 
+          STAGE=PRIMARY_BATCH_REQUEST
           jq -n --slurpfile c /tmp/case.json '{phase:"PRIMARY",case:$c[0]}' > /tmp/primary-batch-body.json
           for batch_attempt in 1 2 3 4 5 6; do
             batch_status="$(curl -L -sS -D /tmp/primary-batch.headers -w '%{http_code}' \
@@ -141,10 +145,12 @@ jobs:
             sleep "$batch_wait"
           done
           [[ "$batch_status" =~ ^2 ]] || exit 22
+          STAGE=PRIMARY_BATCH_LAYOUT
           jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/primary-batch.json >/dev/null
           for p in melchior balthasar casper; do
             jq --arg p "$p" '.[$p]' /tmp/primary-batch.json > "/tmp/${p}-primary.json"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
+            STAGE="PRIMARY_${p}_FIELDS"
             jq -e --arg p "$expected" '
               .persona==$p and .phase=="PRIMARY" and
               (.reviewRequested==false) and (.dataConflict==false) and
@@ -153,10 +159,13 @@ jobs:
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|length>0)
             ' "/tmp/${p}-primary.json" >/dev/null
+            STAGE="PRIMARY_${p}_ROSTER"
             same_roster "/tmp/${p}-primary.json"
+            STAGE="PRIMARY_${p}_CANDIDATES"
             candidates_current_only "/tmp/${p}-primary.json"
           done
 
+          STAGE=CROSS_REQUEST
           jq -n \
             --slurpfile c /tmp/case.json \
             --slurpfile m /tmp/melchior-primary.json \
@@ -167,6 +176,7 @@ jobs:
             -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
             -d @/tmp/cross-body.json "$BASE/api/magi/orchestrate" -o /tmp/cross.json
           cat /tmp/cross.json; echo
+          STAGE=CROSS_FIELDS
           jq -e '
             (.agreement|type=="array") and (.disagreement|type=="array") and
             (.warnings|type=="array") and (.informationGaps|type=="array") and
@@ -176,6 +186,7 @@ jobs:
             (.reviewRequired != true)
           ' /tmp/cross.json >/dev/null
 
+          STAGE=SECOND_BATCH_REQUEST
           jq -n \
             --slurpfile c /tmp/case.json \
             --slurpfile pm /tmp/melchior-primary.json \
@@ -201,10 +212,12 @@ jobs:
             sleep "$retry_after"
           done
           [[ "$second_batch_status" =~ ^2 ]] || exit 22
+          STAGE=SECOND_BATCH_LAYOUT
           jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/second-batch.json >/dev/null
           for p in melchior balthasar casper; do
             jq --arg p "$p" '.[$p]' /tmp/second-batch.json > "/tmp/${p}-second.json"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
+            STAGE="SECOND_${p}_FIELDS"
             jq -e --arg p "$expected" '
               .persona==$p and .phase=="SECOND" and
               (.reviewRequested==false) and (.dataConflict==false) and
@@ -213,10 +226,13 @@ jobs:
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|length>0)
             ' "/tmp/${p}-second.json" >/dev/null
+            STAGE="SECOND_${p}_ROSTER"
             same_roster "/tmp/${p}-second.json"
+            STAGE="SECOND_${p}_CANDIDATES"
             candidates_current_only "/tmp/${p}-second.json"
           done
 
+          STAGE=FINAL_REQUEST
           jq -n \
             --slurpfile c /tmp/case.json \
             --slurpfile pm /tmp/melchior-primary.json \
@@ -232,6 +248,7 @@ jobs:
             -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
           cat /tmp/final.json; echo
 
+          STAGE=FINAL_FIELDS
           jq -e --slurpfile roster /tmp/roster.json '
             .mode=="SELECTION" and
             (.status|IN("SELECTION_RESULT","SELECTION_SPLIT")) and
@@ -244,9 +261,11 @@ jobs:
             ((.alternateCandidates|index("宮嵜 翔")) == null)
           ' /tmp/final.json >/dev/null
 
+          STAGE=PERSONA_INDEPENDENCE
           m=$(jq -r '.publicStatement' /tmp/melchior-second.json)
           b=$(jq -r '.publicStatement' /tmp/balthasar-second.json)
           c=$(jq -r '.publicStatement' /tmp/casper-second.json)
           [ "$m" != "$b" ] && [ "$m" != "$c" ] && [ "$b" != "$c" ]
 
+          STAGE=PASS
           echo 'PRODUCTION CANDIDATE-SELECTION DELIBERATION: PASS'
