@@ -199,4 +199,103 @@ const primaryPayload=buildPersonaRequest({case:disputedCurrent},'melchior','PRIM
 assert.equal('contestedAdjacentSlotEvidence' in primaryPayload,false);
 assert.match(fs.readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8'),/contestedAdjacentSlotEvidence: payload.contestedAdjacentSlotEvidence/);
 
+
+// A genuine 1-1-1 final has NO chosen nine. Display a *comparison*, not
+// misleading final-1-to-9 cards. A local 2:1 on 4/5 is not overall majority.
+const api=browser.window.MAGI_LINEUP_REASONS_V415_API;
+const uiSecond={
+  melchior:{candidatePlayers:ownSecondaryOrder},
+  balthasar:{candidatePlayers:[...ownSecondaryOrder.slice(0,3),ownSecondaryOrder[4],ownSecondaryOrder[3],...ownSecondaryOrder.slice(5)]},
+  casper:{candidatePlayers:ownSecondaryOrder.map((name,i)=>i===5?ownSecondaryOrder[7]:i===7?ownSecondaryOrder[5]:name)}
+};
+const uiEntries=Object.entries(uiSecond).map(([key,value])=>({
+  key,label:{melchior:'メルキオール',balthasar:'バルタザール',casper:'カスパー'}[key],
+  value,order:value.candidatePlayers
+}));
+assert.equal(api.version,'lineup-reasons-v422');
+const swaps=api.localAdjacentSwaps(uiEntries);
+assert.equal(swaps.length,1);
+assert.equal(swaps[0].firstSlot,4);
+assert.equal(swaps[0].secondSlot,5);
+assert.equal(swaps[0].left,'嶋田 栄志');
+assert.equal(swaps[0].right,'坂田 暉馬');
+assert.deepEqual(Array.from(swaps[0].supporting),['メルキオール','カスパー']);
+assert.equal(swaps[0].dissent,'バルタザール');
+const sample4=api.recordedSlotSample(withActualSources.evidence,'嶋田 栄志',4);
+assert.equal(sample4.status,'RECORDED');
+assert.equal(sample4.PA,13);
+assert.match(sample4.text,/標準試合 13打席・11打数・3安打/);
+assert.match(sample4.text,/OPS \.749/);
+assert.match(sample4.text,/練習第2試合 7打席（別枠）/);
+const noPA=api.recordedSlotSample(withActualSources.evidence,'嶋田 栄志',5);
+assert.equal(noPA.status,'NO_PA');
+assert.match(noPA.text,/標準試合0打席・0打数/);
+assert.match(noPA.text,/練習第2試合 3打席/);
+const panels=api.recordedDisputeCards(uiEntries,withActualSources.evidence);
+assert.equal(panels.length,1);
+assert.equal(panels[0].people.length,2);
+assert.equal(panels[0].people[0].records.length,2);
+assert.match(panels[0].people[0].starts,/2026-10-03 4番／練習第1試合/);
+assert.doesNotMatch(panels[0].people[0].starts,/2026-09-27/);
+assert.match(panels[0].people[0].coach,/2026-09-26 08:12/);
+assert.match(panels[0].people[0].coach,/現在の固定方針ではありません/);
+assert.doesNotMatch(panels[0].people[1].coach,/2026-09-26 08:12/);
+const deadlock={
+  case:{evidence:withActualSources.evidence},
+  second:uiSecond,
+  final:{mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',finalVote:'1-1-1',lineup:[]}
+};
+const html=api.deadlockDisputeHtml(deadlock);
+assert.match(html,/全9人案は1対1対1/);
+assert.match(html,/最終オーダーは確定していません/);
+assert.match(html,/バルタザールは逆順/);
+assert.match(html,/4番の実績/);
+assert.match(html,/5番の実績/);
+assert.match(html,/13打席/);
+assert.match(html,/標準試合0打席/);
+assert.match(html,/2026-10-03/);
+assert.match(html,/2026-09-26 08:12/);
+assert.match(html,/打席数が少ない場合/);
+assert.doesNotMatch(html,/最終ベストオーダー/);
+const escapedObs={...withActualSources.evidence,normalizedObservations:[
+ {recordedAt:'2026-10-08',sourceType:'指導者',player:'嶋田 栄志',statement:'打順 <img src=x onerror=bad()> を確認した。'}
+]};
+const injected=api.deadlockDisputeHtml({...deadlock,case:{evidence:escapedObs}});
+assert.match(injected,/&lt;img/);
+assert.doesNotMatch(injected,/<img/);
+const partialUi={...withActualSources.evidence,battingOrderSplits:{...withActualSources.evidence.battingOrderSplits,status:'PARTIAL'}};
+assert.equal(api.recordedSlotSample(partialUi,'嶋田 栄志',4).status,'UNAVAILABLE');
+const fakeUi={...withActualSources.evidence,battingOrderSplits:{...withActualSources.evidence.battingOrderSplits,players:withImpossible.evidence.battingOrderSplits.players}};
+assert.equal(api.recordedSlotSample(fakeUi,'嶋田 栄志',4).status,'UNAVAILABLE');
+const duplicateUi={...withActualSources.evidence,battingOrderSplits:withDuplicate.evidence.battingOrderSplits};
+assert.equal(api.recordedSlotSample(duplicateUi,'嶋田 栄志',4).status,'UNAVAILABLE');
+assert.equal(api.recordedSlotSample({...withActualSources.evidence,allCurrentTeamCheck:{status:'PARTIAL',players:withActualSources.evidence.allCurrentTeamCheck.players}},'嶋田 栄志',4).status,'UNAVAILABLE');
+assert.equal(api.deadlockDisputeHtml({...deadlock,final:{...deadlock.final,lineup:ownSecondaryOrder.map(name=>({name}))}}),'');
+assert.equal(api.deadlockDisputeHtml({...deadlock,final:{...deadlock.final,status:'LINEUP_RESULT'}}),'');
+assert.equal(api.deadlockDisputeHtml({...deadlock,final:{...deadlock.final,finalVote:'2-1'}}),'');
+// Exercise real DOM insertion/idempotence with a synthetic review container;
+// no actual team data or authentication is simulated by this fixture.
+const testHost={nodes:[],querySelector(selector){return selector==='.magiRecordedDisputeOnly'?this.nodes[0]||null:null;},
+ appendChild(n){this.nodes.push(n);}};
+browser.document.getElementById=()=>({id:'already-installed-styles'});
+browser.document.querySelector=selector=>selector==='.final'?testHost:null;
+browser.document.createElement=()=>{
+ const root={firstElementChild:null};
+ Object.defineProperty(root,'innerHTML',{set(html){root.firstElementChild={html,dataset:{},remove(){testHost.nodes=[];}};}});
+ return root;
+};
+assert.equal(api.renderDeadlock(deadlock),true);
+assert.equal(testHost.nodes.length,1);
+assert.match(testHost.nodes[0].html,/最終オーダーは確定していません/);
+assert.match(testHost.nodes[0].html,/2026-09-26 08:12/);
+assert.equal(api.renderDeadlock(deadlock),true);
+assert.equal(testHost.nodes.length,1,'a duplicate render must not repeat visible dispute cards');
+assert.equal(api.renderDeadlock({...deadlock,final:{...deadlock.final,status:'LINEUP_RESULT'}}),false);
+assert.equal(testHost.nodes.length,1,'do not replace previously mounted content for the wrong result');
+
+// Public render path must accept the deadlock's zero lineup without inventing one.
+assert.match(uiSrc,/if\(finalNames\(r\)\.length!==9\)return renderDeadlock\(r\)/);
+assert.match(uiSrc,/html\+=recordedDisputeHtml\(entries,r\?\.case\?\.evidence\|\|\{\}\)/);
+assert.match(fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),/lineup-reasons-v415\.js\?v=422/);
+
 console.log('LINEUP PERSONA GROUNDING: PASS');
