@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: f971ffab91e2c2de3ae35718d880d0db78284aed
+- State base main SHA: cc2eed3f3aed96ce0163dd203a8475054039f3f3
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -916,6 +916,15 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Branch `fix/batting-slot-fourth-hitter-linkage-20261009`: extend only that generic BATTING_ORDER matcher with a next-hitter linkage-as-selection-reason form (no player-name or question-literal special case). Its existing validator and batch sanitizer must reject/remove unsupported prose, retain candidate identity/order plus verified 3番 starts and OPS, and re-run original Evidence validation. Explicit `つなぎの効果は確認できない` limitations and actual start counts remain allowed; hard numeric mismatches remain fail-closed. Add exact published statement and negative/recovery regressions. No new provider calls for tests.
 - Require Deliberation Final and Development Continuity checks before merge, then Vercel READY SHA and production NATURAL_THIRD manual PRIMARY/SECOND/FINAL prose inspection. The Live `37878894406` TEAM_REVIEW and any triggered Sequential Suite may still be in progress: avoid overlapping provider-heavy calls or new deployment while in progress.
 - Even if green, the authenticated iPhone Chrome real nine-class UI execution path and persuasive grounded 1–9 rationale remain open. Keep Vercel Hobby/free and all Drive/CSV/score originals read-only.
+
+## 2026-10-09: TEAM_REVIEW current-production PRIMARY rejected for opponent and long-term impacts
+
+- Canonical pre-merge main and Vercel READY SHA `cc2eed3f3aed96ce0163dd203a8475054039f3f3` (after the third-batter next-hitter bridge guard change). GitHub production Live run `37880001337` passed SHA readiness, best-order, closer and natural-third; TEAM_REVIEW job `113658209269` failed **after PRIMARY**, before CROSS/SECOND/FINAL. This is an actual semantic smoke failure: not a build error or proof that four classes passed.
+- Exact BALTHASAR PRIMARY statements included `相手に研究された時に点数が止まる`, `試合に勝つための得点を生み出すルートが特定の上位打線に偏っており`, and `相手投手陣に対策された場合の攻撃力低下が戦術上の大きなリスク`. The records supplied as TEAM_REVIEW Evidence contain individual batting and usage figures but do not substantiate opponent preparation -> team runs or offensive route concentration. His claim `3人がチームの攻撃を牽引している` was also an inference, not a measured team scoring fact.
+- CASPER PRIMARY added `長い目で見て強いチームになるための課題`, `打数や経験値に差`, `出場や投球の負荷がかかっている`, and `過度な起用偏重がもたらす長期的なチーム編成への影響`. Recorded playing time is not a measured bodily effect, accumulated qualitative experience, or future development outcome. An explicit denial of such effects remains valid.
+- Branch `fix/team-review-observed-outcome-leaks-20261009` adds a pure outcome classifier shared by TEAM_REVIEW `validatePersonaOutput` and existing deterministic batch prose recovery, using the **existing** scoring, burden and development soft-guard codes. No changed selection, names, metrics, or source Evidence. Only unsafe sentence-level prose can be discarded; the original complete output guard still re-runs and all numeric/roster/hard violations remain fail-closed.
+- Add regression for the exact published BALTHASAR/CASPER phrases, factual/negative examples, complete recovery preserving separately recorded facts, and no recovery on a hard mismatch. Require both Deliberation Final and Development Continuity CI green before any merge. Then wait for the exact SHA READY and inspect a single ordered production Live run including all 4 classes, especially TEAM_REVIEW PRIMARY, SECOND and FINAL language.
+- Previous SHA `f971ffab91e2c2de3ae35718d880d0db78284aed` passed its Live and Sequential suites but leaked NATURAL_THIRD bridging claims; current `cc2eed3f` resolved that class in unit tests but failed TEAM_REVIEW. The authenticated iPhone Chrome nine-class UI path and persuasive 1–9 player-specific rationale are still unverified. Keep Hobby/free; no edits to Google Drive/CSV or score sheets.
 
 ## Next concrete work
 
