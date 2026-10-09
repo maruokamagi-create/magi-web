@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { classifyLineupGuardIssues } from '../server/api/magi/_lineup-guard-issue-codes.js';
+import { classifyLineupGuardIssues, classifyLineupGuardIssueList } from '../server/api/magi/_lineup-guard-issue-codes.js';
 import { reconcileLineupOrderExplanation, ORDER_EXPLANATION_CONFLICT } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 
@@ -50,7 +50,19 @@ assert.deepEqual(
   'duplicate guard issues must be deduplicated'
 );
 const liveSelftest=fs.readFileSync(new URL('../api/magi-live-deliberation-selftest.js',import.meta.url),'utf8');
-assert.match(liveSelftest,/issueCodes:classifyLineupGuardIssues\(reason\)/,'live acceptance must expose safe guard categories');
+assert.match(liveSelftest,/issueCodes:Array\.isArray\(row\?\.guardIssueCodes\)/,'Live acceptance must prefer uncapped safe guard classes');
+assert.match(liveSelftest,/guardIssueCount:Number\.isInteger\(row\?\.guardIssueCount\)/);
+const safeCodes=classifyLineupGuardIssueList([
+  'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
+  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している',
+  'BEST_ORDERのcandidatePlayersと打順説明が矛盾している',
+  'FULL_LINEUP_STANDARD_DEFENSE: unsupported',
+  'unknown private text goes nowhere'
+]);
+assert.deepEqual(safeCodes,['UNSUPPORTED_SCORING_CLAIM','UNSUPPORTED_DEFENSE_EFFECT','ORDER_EXPLANATION_CONFLICT','FIELDING_COVERAGE','OTHER_GUARD']);
+assert.ok(safeCodes.every(code=>!code.includes('private')));
+const personaSource=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
+assert.match(personaSource,/guardIssueCodes = classifyLineupGuardIssueList\(issues\)/);
 
 // Regression: the nine structured candidate slots are authoritative; a
 // contradictory explanation may be discarded only if it is the sole failure.
@@ -88,11 +100,38 @@ assert.deepEqual(casperReconciled.prediction,[]);
 assert.equal(reconcileLineupOrderExplanation(casperMixed,['SELECTIONでEvidenceにない成長・育成・負担影響を追加している']),null,'do not reinterpret unsupported prose without an order contradiction');
 assert.equal(reconcileLineupOrderExplanation(casperMixed,[ORDER_EXPLANATION_CONFLICT,'FULL_LINEUP_STANDARD_DEFENSE: unavailable']),null,'fielding eligibility cannot be recovered by prose edits');
 
+// Production SECOND CASPER can mix prose/order conflict with inferred scoring
+// and fielding effects; none of the effects may survive reconciliation.
+const speculativeCasper={
+  ...incompatible,persona:'CASPER',phase:'SECOND',
+  primaryReason:'記録上の打撃数値を基準に得点力を最大化する。',
+  warnings:['先発守備資格を満たせば守備連携を強化できる。'],
+  analysis:['確実に勝利できる。']
+};
+const mixedIssues=validatePersonaOutput(lineupCase,speculativeCasper,{focused:false});
+assert.ok(mixedIssues.includes(ORDER_EXPLANATION_CONFLICT),'raw order inconsistency must be detected');
+assert.ok(mixedIssues.includes('BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している'));
+assert.ok(mixedIssues.includes('BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している'));
+assert.equal(reconcileLineupOrderExplanation(speculativeCasper,mixedIssues),null,'unlisted causal or outcome issues cannot be silently discarded');
+const recoverableCasper={...speculativeCasper,analysis:[]};
+const recoverableIssues=validatePersonaOutput(lineupCase,recoverableCasper,{focused:false});
+assert.ok(recoverableIssues.every(issue=>[
+  ORDER_EXPLANATION_CONFLICT,
+  'BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している',
+  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している'
+].includes(issue)),'only enumerated prose-only issues may qualify');
+const cleanCasper=reconcileLineupOrderExplanation(recoverableCasper,recoverableIssues);
+assert.ok(cleanCasper,'SECOND CASPER text can be reconciled without making up a new batting order');
+assert.deepEqual(cleanCasper.candidatePlayers,chosen,'must not reorder 1-9 or substitute a player');
+assert.deepEqual(cleanCasper.analysis,[]);
+assert.ok(!/最大化|連携を強化/.test(JSON.stringify(cleanCasper)),'unproven effects cannot remain');
+assert.deepEqual(validatePersonaOutput(lineupCase,cleanCasper,{focused:false}),[]);
+assert.equal(reconcileLineupOrderExplanation(recoverableCasper,recoverableIssues.concat('FULL_LINEUP_STANDARD_DEFENSE: unsupported starter')),null);
+
 assert.equal(reconcileLineupOrderExplanation(incompatible,[ORDER_EXPLANATION_CONFLICT,'NUMERIC_MISMATCH']),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,dataConflict:true},[ORDER_EXPLANATION_CONFLICT]),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,reviewRequested:true},[ORDER_EXPLANATION_CONFLICT]),null);
 assert.equal(reconcileLineupOrderExplanation({...incompatible,candidatePlayers:chosen.slice(0,8)},[ORDER_EXPLANATION_CONFLICT]),null);
-const personaSource=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
 assert.match(personaSource,/const reconciled=reconcileLineupOrderExplanation\(/);
 assert.match(personaSource,/const rechecked=\[/);
 

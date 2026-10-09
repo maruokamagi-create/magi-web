@@ -3,6 +3,7 @@ import { PERSONA_PROMPTS } from './_prompts.js';
 import { validatePersonaOutput } from './_persona-output-guard.js';
 import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js';
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
+import { classifyLineupGuardIssueList } from './_lineup-guard-issue-codes.js';
 import { assignEvidenceGroundedFielding, buildStandardDefenseEligibility } from './_lineup-fielding.js';
 import { reconcileLineupOrderExplanation } from './_lineup-order-explanation-reconcile.js';
 import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
@@ -245,6 +246,10 @@ export function recoverSoftFullLineupLanguage(result, issues, fullLineupCase) {
 }
 
 export function failClosedPersona(result, issues) {
+  // Diagnostic metadata is enum/count only. Do not publish the rejected raw
+  // drafts or uncapped guard text through the Live selftest.
+  result.guardIssueCodes = classifyLineupGuardIssueList(issues);
+  result.guardIssueCount = Array.isArray(issues) ? issues.length : 0;
   const reason = `回答文に、確認できた記録と合わない内容があるため再確認が必要です。${issues.slice(0,3).join('／')}`;
   result.judgment = 'YELLOW';
   result.confidence = 'LOW';

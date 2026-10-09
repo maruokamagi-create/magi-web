@@ -8,7 +8,13 @@ export const ORDER_EXPLANATION_CONFLICT='BEST_ORDERのcandidatePlayersと打順�
 const DISCARDABLE_UNGROUNDED_LANGUAGE=new Set([
   'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
   'SELECTIONでEvidenceにない依存・役割集中を追加している',
-  'Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている'
+  'Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている',
+  // Soft text-only BEST_ORDER claims may be discarded together with an
+  // independently detected numbered-order mismatch; no eligibility, roster
+  // or numeric inconsistency is recoverable here.
+  'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
+  'BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している',
+  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している'
 ]);
 
 export function reconcileLineupOrderExplanation(result,guardIssues){
