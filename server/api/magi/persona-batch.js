@@ -233,7 +233,7 @@ function recoverSoftTeamReviewDependency(result, issues) {
     const speculativeUsageConcern=
       /(?:負担|出場機会|起用).{0,40}(?:集中|偏).{0,24}(?:していないか|ないか|気にかか|懸念|心配)/.test(raw);
     const malformedUsageFragment=
-      /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(raw);
+      /(?:出場機会|打数|起用).{0,20}(?:の差して|の差いる|の偏りして|の差いないか)/.test(raw);
     if(unverifiedGrowthPrescription||speculativeUsageConcern||malformedUsageFragment)return '';
 
     raw=raw
