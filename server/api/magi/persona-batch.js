@@ -5,6 +5,7 @@ import { validatePersonaOutput, hasUnhedgedOutcomePrediction, isHardOutcomeGuara
 import { unsupportedBattingOrderEffect } from './_batting-order-unsupported-effect.js';
 import { unsupportedTeamReviewOutcomeKind } from './_team-review-unsupported-outcomes.js';
 import { CURRENT_ROSTER, canonicalizePlayerData } from './_roster.js';
+import { recoverMissingBattingSelectionBasis } from './_selection-basis-recovery.js';
 import {
   PERSONA_RESPONSE_SCHEMA,
   buildPersonaRequest,
@@ -863,6 +864,26 @@ export default async function handler(req, res) {
       }
       if(finalized.candidateCase)sanitizeKnownSelectionProse(result,body.case);
       result=normalizeCaseRosterHonorifics(result,body.case);
+      if(finalized.candidateCase){
+        // Only an empty batting candidateBasis with a completely confirmed
+        // 14-player current-season packet may receive a numerical, explicitly
+        // non-proving reconstruction. Never sanitize away actual guard issues.
+        recoverMissingBattingSelectionBasis(result,body.case);
+        const present=key=>typeof result?.[key]==='string'&&result[key].trim().length>0;
+        if(!present('candidateBasis')||!present('primaryReason')||!present('publicStatement')){
+          return sendJson(res,503,{
+            error:phase+' の候補選出理由が不足しています。',
+            code:'PERSONA_BATCH_SELECTION_EXPLANATION_MISSING',
+            persona:persona.toUpperCase(),
+            retryExhausted:true,retryFreshRequest:false,
+            diagnostic:{
+              candidateBasisPresent:present('candidateBasis'),
+              primaryReasonPresent:present('primaryReason'),
+              publicStatementPresent:present('publicStatement')
+            }
+          });
+        }
+      }
       const publishIssues=validatePersonaOutput(body.case,result,{ focused: !finalized.candidateCase && !finalized.teamReviewCase });
       if(publishIssues.length){
         return sendJson(res,503,{
