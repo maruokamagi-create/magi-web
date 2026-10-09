@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 680c53da9eec821e092128c114a4e3d7005a6c06
+- State base main SHA: de857b5811c69541985b36d6f0c60eb3e226e568
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1006,3 +1006,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Manual review of actual READY production BEST_ORDER PRIMARY/SECOND and FINAL reveals a **persistent unresolved justification gap**. The FINAL order was 4番嶋田 栄志, 5番坂田 暉馬 by 2–1, versus BALTHASAR 4番坂田 暉馬, 5番嶋田 栄志. Current evidence quoted by both sides: 嶋田 39 AB / AVG .282 / OPS .748, 坂田 26 AB / AVG .308 / OPS .861. MELCHIOR's SECOND invoked the different AB counts and “no structural contradiction” but did not explain why lower OPS justified fourth specifically. Defense eligibility is unchanged by swapping these two batting order slots. CASPER and BALTHASAR SECOND published conservative reconciled wording with `facts=[]`. Majority is a vote, not proof of superior batting order.
 - Narrow UI correction on `fix/lineup-adjacent-swap-grounded-comparison-20261009`: when two of three second-round proposals support an adjacent order and the minority swaps the exact two names, show a separate evidence-aware comparison using only present current-season batting data, identify the named minority, and explicitly distinguish numbers/vote from proof of optimum. If data unavailable, show unavailable, not fictional rates. This does NOT change or infer a winning batting order, official names, fielding, signed-in access, roster, CSV or Drive records; it exposes a still-open evidence/rationale dispute rather than masking it with unanimous-looking UI.
 - Browser helper VM regression added to `scripts/test-lineup-persona-grounding.mjs`; index cache query incremented for iPhone Chrome. Run unit/continuity PR CI before merge. After main deployment confirm HTML serves the new version; production deliberation selftests are structural evidence, not a replacement for authenticated iPhone Chrome nine-class UI testing. The 4/5 selection *rationale itself* remains for deeper server-side semantic work.
+
+
+## 2026-10-09: PR #159 merged, deployed-browser contract tightening
+
+- PR #159 was squash merged after PR check runs `deterministic-deliberation`, `continuity`, `full-lineup-context`, `grounded-cross-dialogue`, `control-summary` passed. New main `de857b5811c69541985b36d6f0c60eb3e226e568`. The initial full-lineup-context PR check correctly failed on a legacy `v420` asset assertion; that workflow was updated to `v421` on the same PR, and all required checks then passed before merge.
+- On post-merge main, Development Continuity, Deliberation Final, Full Lineup Context, Live Answer Unit, Cross Dialogue, Production Lineup Stats, and Production Browser Bootstrap workflows all completed SUCCESS. These existing checks do **not** explicitly verify the served `lineup-reasons-v415.js?v=421` comparison helper from the public Vercel URL; raw public JS retrieval via generic browsing was unavailable.
+- Next narrow regression on branch `test/production-lineup-reasons-v421-asset-20261009`: extend existing no-provider GitHub Production Browser Bootstrap Smoke to fetch the public production HTML and referenced JS, verify the `v421` asset query, actual `adjacentSwapReviews` helper, render call, and public version marker. Preserve existing other smoke steps and Vercel Hobby/free limits. Require CI/continuity green before merge, then this precise production step PASS; unlike a generic browser bootstrap PASS, this will confirm public delivery of the newly authored UI code.
+- This delivery check does not validate logged-in iPhone Chrome interaction or decide whether 4番嶋田 / 5番坂田 outperforms its reversed alternate. The unresolved choice still requires evidence-grounded explanation; neither a majority vote nor static public asset verification proves baseball effectiveness. Drive, CSV and score originals remain untouched.
