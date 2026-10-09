@@ -231,6 +231,19 @@ jobs:
       - name: Wait for production deployment
         run: sleep 45
 
+      - name: Verify deployed fourth/fifth lineup comparison UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/" -o /tmp/lineup-reasons-index.html
+          grep -Fq '/lineup-reasons-v415.js?v=421' /tmp/lineup-reasons-index.html
+          curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/lineup-reasons-v415.js?v=421" -o /tmp/lineup-reasons-served.js
+          grep -Fq 'function adjacentSwapReviews(entries,names,statsMap)' /tmp/lineup-reasons-served.js
+          grep -Fq 'for(const review of adjacentSwapReviews(entries,names,statsMap))' /tmp/lineup-reasons-served.js
+          grep -Fq "version:'lineup-reasons-v421'" /tmp/lineup-reasons-served.js
+          echo 'PRODUCTION 4/5 LINEUP COMPARISON ASSET: PASS'
+
       - name: Verify canonical click ownership guard
         shell: bash
         run: |
