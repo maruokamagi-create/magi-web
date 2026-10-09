@@ -2,7 +2,7 @@
 // from individual batting/appearance differences. This classifier is shared
 // by the fail-closed validation gate and the prose-only batch sanitizer.
 // No roster, coach-intent, numeric or scoring claim is inferred here.
-const DENIAL=/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|根拠がない|裏付け(?:られない|がない)|とは言えない|とは言えません|保証(?:できない|しない)|実証されていない)/;
+const DENIAL=/(?:断定(?:しない|しません|できない|できません)|確認できない|未確認|根拠がない|裏付け(?:られない|がない)|とは言えない|とは言えません|保証(?:できない|しない)|実証されていない|不明|判断(?:できない|できません))/;
 
 export function unsupportedTeamReviewOutcomeKind(value){
   const sentence=String(value||'').trim();
