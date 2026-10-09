@@ -688,8 +688,8 @@ export function sanitizePublishedPitchingRoleProse(result,caseData){
   const fields=['candidateBasis','primaryReason','publicStatement','changeReason','reviewReason'];
   const arrays=['facts','analysis','prediction','warnings'];
   const prior=JSON.stringify({texts:fields.map(k=>result[k]),arrays:arrays.map(k=>result[k])});
-  for(const key of fields)result[key]=clean(result[key]);
-  for(const key of arrays)result[key]=cleanArray(result[key]);
+  for(const key of fields)if(typeof result[key]==='string')result[key]=clean(result[key]);
+  for(const key of arrays)if(Array.isArray(result[key]))result[key]=cleanArray(result[key]);
   const after=JSON.stringify({texts:fields.map(k=>result[k]),arrays:arrays.map(k=>result[k])});
   if(prior===after)return false;
   const candidates=(Array.isArray(result.candidatePlayers)?result.candidatePlayers:[]).filter(n=>CURRENT_ROSTER.includes(n));
