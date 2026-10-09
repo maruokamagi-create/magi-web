@@ -1130,4 +1130,25 @@ function baseResult(overrides={}) {
   assert.equal(JSON.stringify(hard),original);
 }
 
+
+{
+  const c={
+    question:'3番を誰にする？',mode:'selection',selectionKind:'BATTING_ORDER',
+    evidence:{selectionKind:'BATTING_ORDER',summary:'嶋田 栄志は3番先発7試合、OPS .748。坂田 暉馬はOPS .861。'}
+  };
+  const row=baseResult({
+    persona:'BALTHASAR',candidatePlayers:['嶋田 栄志','坂田 暉馬'],
+    facts:['嶋田 栄志は3番で7試合先発。','坂田 暉馬はOPS .861。'],
+    analysis:['3番としての起用実績がある嶋田 栄志を置くのが現状の選択肢として確実である。'],
+    publicStatement:'実際の起用回数と打撃成績を分けて比較します。'
+  });
+  const issues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(issues.some(v=>v.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')));
+  assert.equal(recoverSoftSelectionInference(row,issues,c,{focused:false}),true);
+  assert.deepEqual(row.candidatePlayers,['嶋田 栄志','坂田 暉馬']);
+  assert.deepEqual(row.facts,['嶋田 栄志は3番で7試合先発。','坂田 暉馬はOPS .861。']);
+  assert.ok(!JSON.stringify(row).includes('選択肢として確実'));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+}
+
 console.log('PERSONA BATCH SOFT RECOVERY RESULT: 58/58 PASS');
