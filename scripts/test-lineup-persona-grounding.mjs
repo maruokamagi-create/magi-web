@@ -212,7 +212,7 @@ const uiEntries=Object.entries(uiSecond).map(([key,value])=>({
   key,label:{melchior:'メルキオール',balthasar:'バルタザール',casper:'カスパー'}[key],
   value,order:value.candidatePlayers
 }));
-assert.equal(api.version,'lineup-reasons-v422');
+assert.equal(api.version,'lineup-reasons-v423');
 const swaps=api.localAdjacentSwaps(uiEntries);
 assert.equal(swaps.length,1);
 assert.equal(swaps[0].firstSlot,4);
