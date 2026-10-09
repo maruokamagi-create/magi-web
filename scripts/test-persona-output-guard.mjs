@@ -963,6 +963,32 @@ test('BATTING_ORDER retains measured starts, metrics and explicit lack of eviden
   }
 });
 
+test('Live natural third rejects slot starts to player trust and next-batter benefit claims',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'今季通算打率・OPSと3番先発起用回数の記録のみ。'}};
+  for(const statement of [
+    '今の数字なら坂田 暉馬の方が4番の大久保 陽翔へつなぐ役割として期待できるはずだ。',
+    '嶋田 栄志は3番での起用実績が最も豊富であり、記録に基づく信頼性が高いため候補を維持します。',
+    '3番起用実績が多く、打順での信頼度が高い。',
+    '4番へつなぐ役割として有効だと判断する。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+JSON.stringify(issues));
+  }
+});
+
+test('Live natural third preserves measured usage and negated success claims',()=>{
+  const c={mode:'selection',selectionKind:'BATTING_ORDER',question:'3番は誰がいい？',evidence:{selectionKind:'BATTING_ORDER',summary:'今季通算打率・OPSと3番先発起用回数の記録のみ。'}};
+  for(const statement of [
+    '嶋田 栄志は3番で7試合先発した記録がある。',
+    '坂田 暉馬のOPSは.861で、嶋田 栄志のOPSは.748。',
+    '3番での起用実績が多くても信頼性が高いとは断定できない。',
+    '4番へつなぐ役割として有効だとは断定できない。'
+  ]){
+    const issues=validatePersonaOutput(c,result({persona:'BALTHASAR',publicStatement:statement}),{focused:false});
+    assert.ok(!issues.includes('BATTING_ORDERで打順実績から未確認の役割適性・チーム効果を推定している'),statement+' -> '+JSON.stringify(issues));
+  }
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}

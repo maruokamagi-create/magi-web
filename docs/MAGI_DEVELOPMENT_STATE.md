@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 21555edfb46b21abb46560d11f5dedbb509cf9c2
+- State base main SHA: f0d5709fa84171f5b08dc2f7fd028e0806aacc00
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -862,6 +862,17 @@ For any PR that changes MAGI production behavior under the protected paths defin
 - Positive and negative validator regressions cover 10 real published variants and explicit Evidence limitations. Batch recovery regression checks the entire candidate array and verified AB/OPS facts are preserved and the recovered persona again passes all guards. Mixed hard errors remain fail-closed. Run deliberation CI + continuity before merge. Do not overlap with the running prior Live workflow; deploy only after READY with SHA match.
 - The same Live workflow `37860227100` later failed its TEAM_REVIEW PRIMARY job `113595712639`, separately from NATURAL_THIRD. BALTHASAR returned a **hard numeric Evidence mismatch** `防御率4 は supplied CASE/EVIDENCE の 防御率 値と一致しない` alongside soft unsupported reliance/spread claims. The fail-closed `PERSONA_BATCH_VALIDATION_FAILED` correctly stopped publication without retrying a deterministic bad result. **Do not soften numeric validation or silently replace the value**. Root-cause investigation of why TEAM_REVIEW introduced a pitching ERA not grounded in the supplied team-review case is independent follow-up, not part of this BATTING_ORDER-only patch.
 - Still unresolved: authenticated iPhone/Chrome real nine-class UI path, persuasive player-by-player reasons for slots 1–9, stability/reproducibility across samples. Never change Drive/CSV, coach observations or Vercel Hobby/free.
+
+## 2026-10-09: Residual batting-slot reliability and fourth-batter effect claims in verified Live output
+
+- Canonical main and Vercel production SHA before this change: `f0d5709fa84171f5b08dc2f7fd028e0806aacc00`. All four staged Production Live jobs from run `37861129581` passed (including authentic 1–1–1 FULL_LINEUP deadlock), and all five Production Sequential Suite jobs from run `37861746328` passed. These are backend/smoke results; **the real authenticated iPhone browser nine-class UI path is not yet confirmed**.
+- Manual inspection of NATURAL_THIRD production PRIMARY/SECOND and FINAL exposed two additional unsupported causal/role claims that the general 3番 matcher did not yet catch:
+  - BALTHASAR PRIMARY `今の数字なら坂田 暉馬の方が4番の大久保 陽翔へつなぐ役割として期待できるはずだ`. Batting records do not establish success in connecting to the next hitter.
+  - MELCHIOR FINAL rationale (via SECOND) `嶋田 栄志は3番での起用実績が最も豊富であり、記録に基づく信頼性が高いため候補を維持します`. Past starts establish usage count, not role reliability or superiority.
+- Branch `fix/batting-slot-success-and-trust-inference-20261009` extends the existing **shared BATTING_ORDER semantic claim matcher** to these two general forms, with no player-name special case. The existing output validator reports its exact soft guard, and the existing batch sanitizer discards unsupported sentences and revalidates against all original hard Evidence checks. Candidate identity/order, numeric facts, original source and coaching dates are preserved.
+- Add tests with the *actual* published phrases, factual current batting and 3番 usage, explicit non-causal denials, recovery of facts while keeping selected candidates, and fail-closed rejection of mixed hard numeric errors.
+- Require Deliberation Final + Development Continuity CI before merge. Confirm deployed SHA after merge and verify next Live NATURAL_THIRD PRIMARY -> CROSS -> SECOND -> FINAL, including FINAL majorReasons; CI PASS is not enough if semantic problems remain. Avoid overlapping provider-heavy runs, quota hot loops, Drive/CSV writes or paid Vercel features.
+- Outstanding product objective still includes robust per-slot reasons across all nine players, actual authenticated iPhone Chrome full UI path with player review, tactics, comparison, direct stats and CLARIFY, and explaining honest 1–1–1 deadlocks without inventing a majority. Do not call MAGI complete from this single patch.
 
 ## Next concrete work
 
