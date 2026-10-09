@@ -15,7 +15,10 @@ jobs:
       - name: Run one full candidate-selection deliberation
         shell: bash
         run: |
-          set -euo pipefail
+          set -Eeuo pipefail
+          gate=setup
+          # Report only gate and exit status; never the rejected persona or Evidence.
+          trap 'code=$?; echo "MAGI_SELECTION_SMOKE_FAILURE gate=$gate exit=$code" >&2' ERR
           BASE='https://magi-web.vercel.app'
           ORIGIN='https://magi-web.vercel.app'
 
@@ -122,6 +125,7 @@ jobs:
             cat "$outfile"; echo
           }
 
+          gate=primary_batch_request
           jq -n --slurpfile c /tmp/case.json '{phase:"PRIMARY",case:$c[0]}' > /tmp/primary-batch-body.json
           for batch_attempt in 1 2 3 4 5 6; do
             batch_status="$(curl -L -sS -D /tmp/primary-batch.headers -w '%{http_code}' \
@@ -141,9 +145,12 @@ jobs:
             sleep "$batch_wait"
           done
           [[ "$batch_status" =~ ^2 ]] || exit 22
+          gate=primary_batch_shape
           jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/primary-batch.json >/dev/null
           for p in melchior balthasar casper; do
+            gate="primary_${p}_extract"
             jq --arg p "$p" '.[$p]' /tmp/primary-batch.json > "/tmp/${p}-primary.json"
+            gate="primary_${p}_schema"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
             jq -e --arg p "$expected" '
               .persona==$p and .phase=="PRIMARY" and
@@ -153,20 +160,25 @@ jobs:
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|length>0)
             ' "/tmp/${p}-primary.json" >/dev/null
+            gate="primary_${p}_roster"
             same_roster "/tmp/${p}-primary.json"
+            gate="primary_${p}_candidates"
             candidates_current_only "/tmp/${p}-primary.json"
           done
 
+          gate=cross_payload
           jq -n \
             --slurpfile c /tmp/case.json \
             --slurpfile m /tmp/melchior-primary.json \
             --slurpfile b /tmp/balthasar-primary.json \
             --slurpfile s /tmp/casper-primary.json \
             '{phase:"CROSS_EXAMINATION",case:$c[0],primary:{melchior:$m[0],balthasar:$b[0],casper:$s[0]}}' > /tmp/cross-body.json
+          gate=cross_request
           curl -L --fail --retry 2 --retry-delay 3 -sS \
             -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
             -d @/tmp/cross-body.json "$BASE/api/magi/orchestrate" -o /tmp/cross.json
           cat /tmp/cross.json; echo
+          gate=cross_schema
           jq -e '
             (.agreement|type=="array") and (.disagreement|type=="array") and
             (.warnings|type=="array") and (.informationGaps|type=="array") and
@@ -176,6 +188,7 @@ jobs:
             (.reviewRequired != true)
           ' /tmp/cross.json >/dev/null
 
+          gate=second_payload
           jq -n \
             --slurpfile c /tmp/case.json \
             --slurpfile pm /tmp/melchior-primary.json \
@@ -183,6 +196,7 @@ jobs:
             --slurpfile pc /tmp/casper-primary.json \
             --slurpfile x /tmp/cross.json \
             '{phase:"SECOND",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},crossExamination:{melchior:$x[0],balthasar:$x[0],casper:$x[0]}}' > /tmp/second-batch-body.json
+          gate=second_batch_request
           for second_batch_attempt in 1 2 3; do
             second_batch_status="$(curl -L -sS -D /tmp/second-batch.headers -w '%{http_code}' \
               -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
@@ -201,9 +215,12 @@ jobs:
             sleep "$retry_after"
           done
           [[ "$second_batch_status" =~ ^2 ]] || exit 22
+          gate=second_batch_shape
           jq -e '(.melchior|type=="object") and (.balthasar|type=="object") and (.casper|type=="object")' /tmp/second-batch.json >/dev/null
           for p in melchior balthasar casper; do
+            gate="second_${p}_extract"
             jq --arg p "$p" '.[$p]' /tmp/second-batch.json > "/tmp/${p}-second.json"
+            gate="second_${p}_schema"
             expected=$(echo "$p" | tr '[:lower:]' '[:upper:]')
             jq -e --arg p "$expected" '
               .persona==$p and .phase=="SECOND" and
@@ -213,10 +230,13 @@ jobs:
               ((.primaryReason//"")|length>0) and
               ((.publicStatement//"")|length>0)
             ' "/tmp/${p}-second.json" >/dev/null
+            gate="second_${p}_roster"
             same_roster "/tmp/${p}-second.json"
+            gate="second_${p}_candidates"
             candidates_current_only "/tmp/${p}-second.json"
           done
 
+          gate=final_payload
           jq -n \
             --slurpfile c /tmp/case.json \
             --slurpfile pm /tmp/melchior-primary.json \
@@ -227,11 +247,13 @@ jobs:
             --slurpfile sc /tmp/casper-second.json \
             --slurpfile x /tmp/cross.json \
             '{phase:"FINAL",case:$c[0],primary:{melchior:$pm[0],balthasar:$pb[0],casper:$pc[0]},second:{melchior:$sm[0],balthasar:$sb[0],casper:$sc[0]},crossExamination:$x[0]}' > /tmp/final-body.json
+          gate=final_request
           curl -L --fail --retry 2 --retry-delay 3 -sS \
             -H "Origin: $ORIGIN" -H 'Content-Type: application/json' \
             -d @/tmp/final-body.json "$BASE/api/magi/orchestrate" -o /tmp/final.json
           cat /tmp/final.json; echo
 
+          gate=final_schema
           jq -e --slurpfile roster /tmp/roster.json '
             .mode=="SELECTION" and
             (.status|IN("SELECTION_RESULT","SELECTION_SPLIT")) and
@@ -244,6 +266,7 @@ jobs:
             ((.alternateCandidates|index("宮嵜 翔")) == null)
           ' /tmp/final.json >/dev/null
 
+          gate=persona_distinctness
           m=$(jq -r '.publicStatement' /tmp/melchior-second.json)
           b=$(jq -r '.publicStatement' /tmp/balthasar-second.json)
           c=$(jq -r '.publicStatement' /tmp/casper-second.json)
