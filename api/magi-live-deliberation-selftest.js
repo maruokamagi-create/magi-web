@@ -222,7 +222,8 @@ export function lineupPersonaFailureDiagnostic(row){
     :'INVALID_CANDIDATES';
   return {
     reasonClass,
-    issueCodes:classifyLineupGuardIssues(reason),
+    issueCodes:Array.isArray(row?.guardIssueCodes)?row.guardIssueCodes:classifyLineupGuardIssues(reason),
+    guardIssueCount:Number.isInteger(row?.guardIssueCount)?row.guardIssueCount:null,
     reviewRequested:row?.reviewRequested===true,
     dataConflict:row?.dataConflict===true,
     candidateCount:names.length,
