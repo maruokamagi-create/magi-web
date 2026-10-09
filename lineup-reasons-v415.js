@@ -541,5 +541,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v422',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v422',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml,renderDeadlock});
 })();
