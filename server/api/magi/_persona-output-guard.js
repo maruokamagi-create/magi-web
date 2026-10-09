@@ -408,7 +408,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     // A previous phrase-level cleanup could leave a nonsensical fragment.
     // These fragments cannot count as a valid user-facing judgment.
     const malformedUsageFragment=parts.find(sentence=>
-      /(?:出場機会|打数|起用).{0,20}(?:の差して|の偏りして|の差いないか)/.test(sentence)
+      /(?:出場機会|打数|起用).{0,20}(?:の差して|の差いる|の偏りして|の差いないか)/.test(sentence)
     );
     if(unsupportedDevelopmentAdvice||unsupportedGrowthPriority||unsupportedGrowthConcern||unsupportedGrowthPrescription||malformedUsageFragment)
       issues.push('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している');
