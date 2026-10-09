@@ -528,7 +528,7 @@ export default async function handler(req, res) {
     // isolated prose/order mismatch, then rerun the complete evidence and
     // fielding guards. All other issues remain fail-closed.
     if(fullLineupCase && guardIssues.length){
-      const reconciled=reconcileLineupOrderExplanation({...result,persona:persona.toUpperCase()},guardIssues);
+      const reconciled=reconcileLineupOrderExplanation({...result,persona:persona.toUpperCase()},guardIssues,body.case);
       if(reconciled){
         const rechecked=[
           ...validatePersonaOutput(body.case,reconciled,{focused:!candidateCase&&!isTeamReviewCase(body)}),

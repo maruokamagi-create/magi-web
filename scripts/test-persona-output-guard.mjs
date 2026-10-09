@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
-import { reconcileLineupOrderExplanation } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
+import { reconcileLineupOrderExplanation, verifiedLineupStats } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 import { buildLineupOrderCorrectionContext, personaCorrectionDirective } from '../server/api/magi/persona.js';
 
 const CASE={
@@ -1163,6 +1163,51 @@ test('Live FULL_LINEUP rejects a truncated numbered player name while preserving
   const givenShort=result({persona:'MELCHIOR',candidatePlayers:lineup,
     publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月、9番晴琉翔です。'});
   assert.ok(!validatePersonaOutput(c,givenShort,{focused:false}).includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'));
+});
+
+test('Reconciled FULL_LINEUP SECOND keeps exact verified 3/4 records, not generic-only reasoning',()=>{
+  const order=['大野 竜暉','大久保 陽翔','中嶋 玲月','嶋田 栄志','坂田 暉馬','武澤 大翔','橋向 結都','井坂 悠聖','武田 晴琉翔'];
+  const roster=['井坂 悠聖','大久保 陽翔','大野 竜暉','坂田 暉馬','嶋田 栄志','武澤 大翔','橋向 結都','上村 蓮','大久保 夢翔','長侶 穹','中嶋 玲月','吉田 真翔','鰐渕 将太','武田 晴琉翔'];
+  const rows=roster.map(name=>({name,batting:name==='中嶋 玲月'
+    ?{AB:'33',AVG:'.485',OBP:'.514',SLG:'.606',OPS:'1.120'}
+    :name==='嶋田 栄志'?{AB:'39',AVG:'.282',OBP:'.364',SLG:'.385',OPS:'.748'}
+    :name==='坂田 暉馬'?{AB:'26',AVG:'.308',OBP:'.438',SLG:'.423',OPS:'.861'}
+    :{AB:'12',AVG:'.250',OPS:'.700'}}));
+  const c={question:'今のベストオーダーは？',mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP',allCurrentTeamCheck:{status:'COMPLETE',players:rows}}};
+  const original=result({
+    persona:'BALTHASAR',phase:'SECOND',candidatePlayers:order,
+    candidateBasis:'3番嶋田 栄志、4番中嶋 玲月が俺の候補順だ。',
+    publicStatement:'1番大野 竜暉、2番大久保 陽翔、3番嶋田 栄志、4番中嶋 玲月の順だ。',
+    confidence:'HIGH',judgment:'BLUE',reviewRequested:false,dataConflict:false
+  });
+  const issues=validatePersonaOutput(c,original,{focused:false});
+  assert.ok(issues.includes('BEST_ORDERのcandidatePlayersと打順説明が矛盾している'),JSON.stringify(issues));
+  const before=JSON.stringify(original);
+  const revised=reconcileLineupOrderExplanation(original,issues,c);
+  assert.ok(revised);
+  assert.equal(JSON.stringify(original),before,'must not mutate model-selected positions or evidence');
+  assert.deepEqual(revised.candidatePlayers,order);
+  assert.equal(revised.confidence,'MEDIUM');
+  assert.match(revised.primaryReason,/3番中嶋 玲月（打数33、打率\.485、出塁率\.514、長打率\.606、OPS1\.120）/);
+  assert.match(revised.primaryReason,/4番嶋田 栄志（打数39、打率\.282、出塁率\.364、長打率\.385、OPS\.748）/);
+  assert.match(revised.publicStatement,/打順位置が勝敗や得点に与える優位性は証明できません/);
+  assert.ok(revised.facts.some(x=>x.includes('3番中嶋 玲月：今季通算打数33')));
+  assert.ok(!JSON.stringify(revised).includes('3番嶋田 栄志'));
+  assert.deepEqual(validatePersonaOutput(c,revised,{focused:false}),[]);
+  const missingCase={...c,evidence:{...c.evidence,allCurrentTeamCheck:{status:'UNAVAILABLE',players:rows}}};
+  const noStats=reconcileLineupOrderExplanation(original,issues,missingCase);
+  assert.ok(noStats);
+  assert.deepEqual(noStats.facts,[]);
+  assert.match(noStats.primaryReason,/優位性は未判定/);
+  assert.deepEqual(verifiedLineupStats(order,missingCase),null);
+  const duplicateCase={...c,evidence:{...c.evidence,allCurrentTeamCheck:{status:'COMPLETE',players:[...rows.slice(1),rows[1]]}}};
+  assert.equal(verifiedLineupStats(order,duplicateCase),null);
+  const fakeStats={...c,evidence:{...c.evidence,allCurrentTeamCheck:{status:'COMPLETE',players:rows.map(p=>p.name==='中嶋 玲月'?{name:p.name,batting:{AB:'five',AVG:'500%',OPS:'?',OBP:'2.1'}}:p)}}};
+  const filtered=verifiedLineupStats(order,fakeStats);
+  assert.ok(filtered);
+  assert.deepEqual(filtered.find(x=>x.name==='中嶋 玲月').metrics,[]);
+  const numericError=[...issues,'数値3 は supplied CASE/EVIDENCE の値と一致しない'];
+  assert.equal(reconcileLineupOrderExplanation(original,numericError,c),null);
 });
 
 test('Repro SECOND ORDER_CONFLICT gives own-persona nine-slot correction without changing chosen nine',()=>{
