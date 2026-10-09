@@ -1090,4 +1090,20 @@ function baseResult(overrides={}) {
   assert.ok(!/の差いる|の差して|の偏りして/.test(JSON.stringify(row)));
   assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
 }
-console.log('PERSONA BATCH SOFT RECOVERY RESULT: 56/56 PASS');
+{
+  const c={mode:'selection',selectionKind:'PITCHING_ROLE',question:'今のクローザーは誰？',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チームの投球回、防御率の記録。坂田 暉馬はセーブ2を記録している。',pitching:{saves:2}}};
+  const row=baseResult({
+    persona:'MELCHIOR',
+    candidatePlayers:['坂田 暉馬','橋向 結都'],
+    facts:['坂田 暉馬はセーブ2を記録している。'],
+    publicStatement:'橋向 結都の投球回と防御率の安定性は事実ですが、坂田 暉馬を候補にします。'
+  });
+  const guardIssues=validatePersonaOutput(c,row,{focused:false});
+  assert.ok(guardIssues.includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している'));
+  assert.equal(recoverSoftSelectionInference(row,guardIssues,c,{focused:false}),true);
+  assert.deepEqual(row.candidatePlayers,['坂田 暉馬','橋向 結都']);
+  assert.deepEqual(row.facts,['坂田 暉馬はセーブ2を記録している。']);
+  assert.ok(!/防御率の安定性は事実/.test(JSON.stringify(row)));
+  assert.deepEqual(validatePersonaOutput(c,row,{focused:false}),[]);
+}
+console.log('PERSONA BATCH SOFT RECOVERY RESULT: 57/57 PASS');

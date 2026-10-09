@@ -375,8 +375,8 @@ export function sanitizeKnownSelectionProse(result, caseData, {allowGenericSelec
   const hasPressureEvidence=/(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面|高レバレッジ)/.test(evidenceText);
 
   const pitchingStability=sentence=>
-    /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
-    ||/(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
+    /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感|性)|信頼でき|信頼性|任せられ)/.test(sentence)
+    ||/(?:安定(?:した|して|感|性)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
     ||/(?:長い|多くの?)イニング.{0,18}(?:任せ|投げら|投げ切)/.test(sentence);
   const pressureInference=sentence=>
     /(?:セーブ|締める実績|終盤).{0,42}(?:競った場面|高圧場面|プレッシャー|勝負どころ|重要な場面)/.test(sentence)

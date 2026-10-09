@@ -438,8 +438,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const unsupportedPitchingStability=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
-        /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ)/.test(sentence)
-        || /(?:安定(?:した|して|感)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
+        /(?:防御率|WHIP|登板|投球回|イニング).{0,45}(?:安定(?:した|して|感|性)|信頼でき|信頼性|任せられ)/.test(sentence)
+        || /(?:安定(?:した|して|感|性)|信頼でき|信頼性|任せられ).{0,45}(?:防御率|WHIP|登板|投球回|イニング)/.test(sentence)
         || /(?:長い|多くの?)イニング.{0,18}(?:任せ|投げら|投げ切)/.test(sentence)
       )
     );

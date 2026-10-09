@@ -1118,6 +1118,15 @@ test('TEAM_REVIEW blocks malformed usage wording created during a cleanup pass',
   assert.ok(!clean.includes('TEAM_REVIEWでEvidenceにない将来・育成・一般論を現在の弱点評価へ追加している'));
 });
 
+test('Live closer must not label innings and ERA as measured stability',()=>{
+  const c={question:'今のクローザー候補は？',mode:'selection',selectionKind:'PITCHING_ROLE',evidence:{selectionKind:'PITCHING_ROLE',summary:'現チーム投球回と防御率、セーブ数の記録。'}};
+  const statement='橋向 結都の投球回と防御率の安定性は事実ですが、セーブ実績を比較します。';
+  const issues=validatePersonaOutput(c,result({persona:'MELCHIOR',publicStatement:statement}),{focused:false});
+  assert.ok(issues.includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している'),JSON.stringify(issues));
+  const allowed=result({persona:'MELCHIOR',publicStatement:'投球回と防御率の記録は確認できますが、それだけでは安定性を断定できません。'});
+  assert.ok(!validatePersonaOutput(c,allowed,{focused:false}).includes('PITCHING_ROLEで投手数値から安定・信頼・長いイニング適性を断定している'));
+});
+
 let passed=0;
 for(const {name,fn} of tests){
   try{await fn();passed++;console.log(`PASS ${name}`);}catch(error){console.error(`FAIL ${name}`);console.error(error);process.exitCode=1;break;}
