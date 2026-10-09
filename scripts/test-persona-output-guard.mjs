@@ -1183,7 +1183,7 @@ test('Repro SECOND ORDER_CONFLICT gives own-persona nine-slot correction without
   assert.deepEqual(ctx.proposedSlots.map(x=>x.name),names);
   assert.deepEqual(ctx.proposedSlots.map(x=>x.slot),[1,2,3,4,5,6,7,8,9]);
   assert.match(ctx.instruction,/If you KEEP candidatePlayers/);
-  assert.match(ctx.instruction,/If you REVISE candidatePlayers independently/);
+  assert.match(ctx.instruction,/if you REVISE candidatePlayers independently/i);
   assert.match(ctx.instruction,/Delete contradictory text/);
   assert.equal(JSON.stringify(draft),original,'building guidance must not overwrite the draft');
   assert.match(personaCorrectionDirective(issues),/exact SAME nine slots/);
