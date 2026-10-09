@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-09
-- State base main SHA: 2020aa0e7ad5fc9cde0ad86b8299c43dda2f1b64
+- State base main SHA: 52c234f5fa756a3df771d6375e3c9a8b984a0c48
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1067,3 +1067,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 
 - Production Selection Smoke `37904400126`, main SHA `2020aa0e7ad5fc9cde0ad86b8299c43dda2f1b64`, reproduced FAIL with privacy-safe machine-readable flags: `stage=PRIMARY_FIELDS, personaMatches=true, phaseMatches=true, acceptedWithoutReview=true, noDataConflict=true, checkedPlayerCount=14, candidateBasisPresent=false, primaryReasonPresent=true, publicStatementPresent=true`. The failure belonged to CASPER PRIMARY. This **proves** CASPER's candidateBasis was empty after successful batch publication; numeric/roster validation did not prevent a blank selection rationale. It does not by itself establish whether raw generation or deterministic prose sanitation erased that field. No raw text or player data was logged.
 - Remove the temporary workflow `on.push` trigger now to prevent repeated API/provider calls. Retain `workflow_call` and `workflow_dispatch`, plus the redacted field diagnostics. Next patch must make missing `candidateBasis` a server-side publish contract violation or construct a faithfully sourced and explicit evidence-limited explanation from selected verified candidates. Do not fabricate positional fit, future effects, private coach intent, or invent numbers. Add negative/success tests and confirm correct production behavior. The smoke gate must stay strict.
+
+
+## 2026-10-09: Recover missing CASPER PRIMARY selection basis from CURRENT facts, not inference
+
+- The one-time production Selection Smoke `37904400126` established the exact previously unknown failure was `CASPER PRIMARY candidateBasisPresent=false`; all other required field flags true. PR #167 removed the one-off push trigger and retained workflow_call/dispatch plus redacted diagnostic fields; canonical base main SHA `52c234f5fa756a3df771d6375e3c9a8b984a0c48`.
+- The batch API currently may return HTTP 200 after validation even when selection `candidateBasis` is empty, because `validatePersonaOutput` guards factual correctness and inferences but does not require every user-facing selection explanation field. The precise source of the missing text (LLM vs deterministic cleanup) is not provable from the restricted previous log; do not invent it.
+- Branch `fix/casper-missing-selection-basis-20261009`: only when a batting-order candidateBasis is **empty**, exact all-current-team 14 rows are COMPLETE, result.checkedPlayers covers 14 valid unique players, chosen candidates are official distinct members, and at least one candidate has an explicitly numeric verified current AVG/OPS/OBP/SLG/AB, rebuild a bounded *comparison disclosure* listing candidate order and the literal supplied metrics. State explicitly that those stats do not prove lineup-position superiority or game outcomes. Cap HIGH confidence to MEDIUM, add warning that raw reason was missing. No ranking, player, score, Drive, policy or defense changes. For any remaining candidate selection missing required `candidateBasis`/`primaryReason`/`publicStatement`, return 503 `PERSONA_BATCH_SELECTION_EXPLANATION_MISSING` with safe booleans instead of publishing an apparently valid answer. Preserve all existing semantic/numeric guard checks; run them again after recovery.
+- Test both the actual synthetic 3番-style case and fail-closed negative cases (missing roster, historical candidate, no numerical evidence, bad numeric labels, already-present rationale, other selection kinds). Keep one-time paid/provider calls off, validate through deterministic PR CI first. Production acceptance on exact new SHA and all staged synthetic selection fields is still required before marking fixed.
