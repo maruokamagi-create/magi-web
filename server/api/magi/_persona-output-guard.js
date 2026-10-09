@@ -589,6 +589,19 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
         const mismatch=slotClaims.find(({slot,player})=>text(proposedOrder[slot-1])!==player);
         if(mismatch)issues.push('BEST_ORDERのcandidatePlayersと打順説明が矛盾している');
       }
+      // A truncated name such as "9番田です" used to pass because it did
+      // not contain any full registered player name. Only inspect short
+      // *named slots* inside an actual multi-player numbered explanation.
+      // A surname or given-name shorthand is valid only for that exact slot.
+      if(slotClaims.length>=3){
+        const shortNames=[...proposalText.normalize('NFKC').matchAll(/(?:^|[、。\s])([1-9])番([\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]{1,3})(?=です(?:[。！？!?\s]|$))/gu)];
+        const truncatedOrWrong=shortNames.some(([,slotValue,name])=>{
+          const expected=text(proposedOrder[Number(slotValue)-1]);
+          const [surname,given]=expected.split(/[\s　]+/);
+          return name!==surname&&name!==given&&name!==expected.replace(/[\s　]/g,'');
+        });
+        if(truncatedOrWrong)issues.push('BEST_ORDERのcandidatePlayersと打順説明が矛盾している');
+      }
     }
 
     const recentGameCount=Number(caseData?.evidence?.recentSix?.gameCount);
