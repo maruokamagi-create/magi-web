@@ -793,7 +793,8 @@ export default async function handler(req, res) {
         instruction: payload.instruction,
         ...(phase === 'SECOND' ? {
           ownPrimaryJudgment: payload.ownPrimaryJudgment || null,
-          crossExamination: payload.crossExamination || null
+          crossExamination: payload.crossExamination || null,
+          ...(Array.isArray(payload.contestedAdjacentSlotEvidence) && payload.contestedAdjacentSlotEvidence.length ? { contestedAdjacentSlotEvidence: payload.contestedAdjacentSlotEvidence } : {})
         } : {})
       }];
     }));
