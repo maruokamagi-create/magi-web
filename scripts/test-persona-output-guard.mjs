@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 import { recoverSoftFullLineupLanguage } from '../server/api/magi/persona.js';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
@@ -1323,6 +1324,29 @@ test('G-live161-natural-third 3番 starts do not establish certain player select
   }
   const permitted=validatePersonaOutput(battingCase,result({analysis:['嶋田 栄志は3番で7試合先発している。','坂田 暉馬はOPS .861である。','出場実績のみで嶋田 栄志の3番起用が確実とは断定できません。']}),{focused:false});
   assert.ok(!permitted.some(x=>x.includes('BATTING_ORDERで起用回数から固定・継続優位・戦術適合を推定')),permitted.join(';'));
+});
+
+test('G-live-15-game BALTHASAR unverified scoring and defensive effects are refused, negated scoring remains valid',()=>{
+  const c={question:'今の丸岡中のベストオーダーを守備位置込みで審議',mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP',summary:'現チームの15試合出場詳細および打撃実績'}};
+  for(const [field,sentence] of [
+    ['candidateBasis','3番を配置し、中軸で得点を生み出す形を組んだ。'],
+    ['primaryReason','この9人は最も得点に結びつきやすい打線だ。'],
+    ['prediction','この打順で得点機を拡大できる可能性がある。'],
+    ['analysis','この守備配置なら守備の破綻を防ぐ構成にできる。'],
+    ['publicStatement','この9人で守備の連係ミスを軽減できる。']
+  ]){
+    const v=field==='prediction'||field==='analysis' ? result({[field]:[sentence]}) : result({[field]:sentence});
+    const issues=validatePersonaOutput(c,v,{focused:false});
+    assert.ok(issues.some(issue=>issue.includes('BEST_ORDERで')),field+': '+sentence+' => '+issues.join(';'));
+  }
+  const gap='提示したオーダーによる得点効率の変動は、現在の記録から直接確約できるものではない。';
+  const issues=validatePersonaOutput(c,result({prediction:[gap]}),{focused:false});
+  assert.ok(!issues.some(x=>x.includes('BEST_ORDERで')),issues.join(';'));
+  const smoke=fs.readFileSync(new URL('../.github/workflows/magi-production-live-deliberation-selftest.yml',import.meta.url),'utf8');
+  const overclaim=/得点効率.{0,24}(?:高め|上げ|向上|改善|最大化|良く|上が|優位)/;
+  assert.ok(smoke.includes(overclaim.source),'Live smoke must inspect asserted scoring improvement');
+  assert.doesNotMatch(gap,overclaim,'uncertainty about scoring efficiency is not an improvement claim');
+  assert.match('この打順は得点効率を高める',overclaim);
 });
 
 let passed=0;
