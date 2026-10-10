@@ -24,11 +24,13 @@ export const EVIDENCE_SOURCES=Object.freeze({
       Object.freeze({id:'1ultP0jfzYyyYIHsJxNeVE-ydIBhTjIrZ',category:'PRACTICE',date:'2026-08-11',opponent:'坂井中',gameNo:2,label:'第2試合'}),
       Object.freeze({id:'1yhk_29PoPWEeb6anChJkYAO1zWJ-37Bj',category:'PRACTICE',date:'2026-09-12',opponent:'藤島中',gameNo:1,label:'第1試合'}),
       Object.freeze({id:'1DcDL5cut_YqvslzGvoSgqYM146zVvZdS',category:'PRACTICE',date:'2026-09-12',opponent:'藤島中',gameNo:2,label:'第2試合'}),
-      Object.freeze({id:'1dMSy3mUZtXJrUDgOsERONydU3vFgGAXo',category:'OFFICIAL',date:'2026-09-20',opponent:'丸岡南',appearanceOpponent:'丸岡南クラブ',stage:'1回戦',label:'1回戦'}),
-      Object.freeze({id:'1dkDMubqWaKOTwe1maheNcxNOIvPReb-D',category:'OFFICIAL',date:'2026-09-21',opponent:'三国',appearanceOpponent:'三国クラブ',stage:'準決勝',label:'準決勝'}),
+      Object.freeze({id:'1dMSy3mUZtXJrUDgOsERONydU3vFgGAXo',category:'OFFICIAL',date:'2026-09-20',opponent:'丸岡南',appearanceOpponent:'丸岡南中',stage:'1回戦',label:'1回戦'}),
+      Object.freeze({id:'1dkDMubqWaKOTwe1maheNcxNOIvPReb-D',category:'OFFICIAL',date:'2026-09-21',opponent:'三国',appearanceOpponent:'三国中',stage:'準決勝',label:'準決勝'}),
       Object.freeze({id:'1pLXiQiN_VRsygjCU_0hjWdszAbJQoyF6',category:'OFFICIAL',date:'2026-09-26',opponent:'三国',appearanceOpponent:'三国中',stage:'準決勝',label:'準決勝'}),
-      Object.freeze({id:'1C-MzeD7v5c1cC_t6oymJkIBBqyFs0GtV',category:'PRACTICE',date:'2026-10-03',opponent:'金津クラブ',gameNo:1,label:'第1試合'}),
-      Object.freeze({id:'1g9BsjOb2PgKdMyb6zB8sDkpK85INvmNm',category:'PRACTICE',date:'2026-10-03',opponent:'金津クラブ',gameNo:2,label:'第2試合'})
+      Object.freeze({id:'13F9NgSW2qTkx4ZqM7S2FIc1u6p6ZM8iH',category:'PRACTICE',date:'2026-10-03',opponent:'金津・芦原',gameNo:1,label:'第1試合'}),
+      Object.freeze({id:'1NCrXY4uRpTcYqlpkKVsG76dS6_kS9-dP',category:'PRACTICE',date:'2026-10-03',opponent:'金津・芦原',gameNo:2,label:'第2試合'}),
+      Object.freeze({id:'1LG09b-jUWCIb1TAgGwy82c53zCHinqiZ',category:'PRACTICE',date:'2026-10-10',opponent:'春江中',gameNo:1,label:'第1試合'}),
+      Object.freeze({id:'1aGeGQl0jpam-4YPp_qzzTgQj_k5UDTf_',category:'PRACTICE',date:'2026-10-10',opponent:'春江中',gameNo:2,label:'第2試合'})
     ])
   }),
   COACH_OBSERVATIONS:Object.freeze({id:'15_dUUu6V2okcjHo-0Wnrgqrb9LbGvTBSs_0B66v3NWM',type:'OBSERVATION',authority:'COACH_OBSERVATION'}),

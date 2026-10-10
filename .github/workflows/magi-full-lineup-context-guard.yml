@@ -74,5 +74,7 @@ jobs:
           grep -Fq "mode==='teamReview'&&['primary','cross','second','final'].includes(stagedStage)" api/magi-live-deliberation-selftest.js
           grep -Fq "if(stagedStage==='prepare')" api/magi-live-deliberation-selftest.js
           grep -Fq "TEAM_REVIEW_FINAL',{maxAttempts:1}" api/magi-live-deliberation-selftest.js
+      - name: Verify fifteen score originals and identity mapping
+        run: node scripts/test-score-sheet-registry.mjs
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
