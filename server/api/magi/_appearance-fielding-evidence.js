@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import pdfParse from 'pdf-parse/lib/pdf-parse.js';
 import { fetchDriveFileContent, getDriveFileMetadata, googleDriveFetch } from '../drive/_service.js';
 import { CURRENT_ROSTER } from './_roster.js';
+import { dateKey } from './_appearance-date-key.js';
 import { evidenceSource } from './_evidence-source-map.js';
 import { decodeCsv, parseCsv } from './_recent-batting-form.js';
 
@@ -15,10 +16,6 @@ let SCORE_ORIGINALS_PROMISE=null;
 const SCORE_POSITION_LABEL=Object.freeze({'1':'投','2':'捕','3':'一','4':'二','5':'三','6':'遊','7':'左','8':'中','9':'右',DH:'DH',PH:'PH',PR:'PR'});
 
 function pick(row,names){for(const name of names){const value=text(row?.[name]);if(value)return value;}return'';}
-function dateKey(value){
-  const m=text(value).normalize('NFKC').match(/(\d{4})[\/-](\d{1,2})[\/-](\d{1,2})/);
-  return m?`${m[1]}-${String(Number(m[2])).padStart(2,'0')}-${String(Number(m[3])).padStart(2,'0')}`:'';
-}
 function competitionType(row){
   const value=pick(row,['大会名','試合種別','区分']);
   if(/公式戦/.test(value))return'OFFICIAL';
