@@ -9,8 +9,8 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-10
-- State base main SHA: ef77a399371f3402282571d825b5bc9b680c521c
+- State updated: 2026-10-11
+- State base main SHA: dd82677b4f67e6ef3873584e6406334d28dcb4c9
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1235,3 +1235,13 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Postmerge Production Live run `38060839456`: revision-ready FAILED, all four provider-dependent staged jobs SKIPPED. Five PREPARE responses show a transitional rollout: attempts 1–3 `appearanceStatus=UNAVAILABLE,integrityStatus=PARTIAL` (old behavior); attempts 4–5 `appearanceStatus=COMPLETE,appearanceFieldingStatus=COMPLETE,integrityStatus=COMPLETE,recoveryStatus=NOT_USED` (new Excel date parsing in production). However `scoreSheetVerificationStatus=PARTIAL` remains, so **no exact deployed SHA READY / full Live success can be claimed from this run**. Do not rerun expensive LLM stages while this read-only source discrepancy exists.
 - Verified **eighth** game date contradiction through three separate paths: canonical CSV group `8試合目` `対戦日=46278` = `2026-09-13`; authoritative mapped source metadata filename `2026-09-12_藤島中_第2試合_スコア原本.pdf`; extracted PDF body header explicitly `2026/09/12 (土)` and `【練習試合】 vs 藤島中 第2試合`. Game seven `46277=2026-09-12` matches its first-game score original. Reconcile **only after** authorized owner verifies/corrects original source record or a fully sourced, strict discrepancy resolution is designed; never silently rewrite date, fake COMPLETE, bypass source matching, or mutate Drive original without explicit permission.
 - Open technical need: source conflict should be reported clearly to the human operator; generic `APPEARANCE_EVIDENCE_NOT_READY` currently does not disclose the game/date from its public diagnostic. Avoid conveying user-private raw file contents in public logs. Keep original files and IDs unchanged, Vercel Hobby/free, no repeat Gemini attempts. Re-test full Live on the exact new SHA only when authoritative discrepancy is resolved, then authenticated iPhone Chrome acceptance.
+
+
+## 2026-10-11: Fifteen-game original-score registry after owner-authorized CSV repair
+
+- Investigated against GitHub main SHA `dd82677b4f67e6ef3873584e6406334d28dcb4c9`; this is the PR base, **not** an assertion that new code is in production.
+- Owner-authorized canonical Google Drive `出場詳細2026-2027.csv` (original ID `1qjCyNhl49x7DYwa6FajUsvQJ1DkSLx5V`) was previously repaired in place; its current 2026-10-10 16:22 UTC+0 revision contains **15 games / 173 player rows**, including 2026-10-10 春江中 first and second games. The original filename, Drive folder and file ID were preserved; revision history was kept. This GitHub change does **not** edit any Drive files.
+- Read-only comparison of CSV game/date/opponent keys with original PDF metadata identified why registering only the new two PDFs is insufficient: `_appearance-fielding-evidence.js` hard-failed unless exactly 13 originals; the 2026-10-03 12th and 13th CSV opponents are `金津・芦原`, but the old source map pointed to different `金津クラブ` PDFs, and 2026-09-20/21 official CSV opponent labels are `丸岡南中` and `三国中` rather than the stale club aliases. The old PDF files are not deleted/renamed/modified.
+- Narrow source-map correction: keep the existing ten earlier game IDs plus the 9/26 official PDF, register 10/03 original PDFs `13F9NgSW2qTkx4ZqM7S2FIc1u6p6ZM8iH` and `1NCrXY4uRpTcYqlpkKVsG76dS6_kS9-dP` with name `金津・芦原`, and add 10/10 PDFs `1LG09b-jUWCIb1TAgGwy82c53zCHinqiZ` and `1aGeGQl0jpam-4YPp_qzzTgQj_k5UDTf_` with `春江中`. Correct the two official `appearanceOpponent` fields to the literal CSV values; do not change the PDF-naming `opponent` identifiers. All PDFs were observed read-only as actual original Drive files under the practice or official folder.
+- Increase the fail-closed source count from 13 to **15**, adjust the count in human diagnostic/recovery explanations, retain strict metadata MIME/type, exact basename, date, opponent, round/game number and no duplicate Evidence vote. Regression `scripts/test-score-sheet-registry.mjs` is part of the pull-request full-lineup-context guard.
+- Remaining acceptance: PR CI must pass; merge only after inspecting checks. Exact post-merge GitHub main SHA and production PREPARE `scoreSheetVerificationStatus=COMPLETE`, 15 original count, 15 matched games must be observed before any provider-heavy deliberation; Vercel Hobby, no paid upgrades. An actual authenticated iPhone Chrome interaction is separately unverified. Do not claim production smoke or full Live passed until jobs report success.
