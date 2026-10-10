@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 import { recoverSoftFullLineupLanguage } from '../server/api/magi/persona.js';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
