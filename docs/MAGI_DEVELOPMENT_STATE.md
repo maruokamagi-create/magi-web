@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: dd82677b4f67e6ef3873584e6406334d28dcb4c9
+- State base main SHA: bca2ce92eadb5c9ded5b95b1f654d972e2e9949b
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1245,3 +1245,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Narrow source-map correction: keep the existing ten earlier game IDs plus the 9/26 official PDF, register 10/03 original PDFs `13F9NgSW2qTkx4ZqM7S2FIc1u6p6ZM8iH` and `1NCrXY4uRpTcYqlpkKVsG76dS6_kS9-dP` with name `金津・芦原`, and add 10/10 PDFs `1LG09b-jUWCIb1TAgGwy82c53zCHinqiZ` and `1aGeGQl0jpam-4YPp_qzzTgQj_k5UDTf_` with `春江中`. Correct the two official `appearanceOpponent` fields to the literal CSV values; do not change the PDF-naming `opponent` identifiers. All PDFs were observed read-only as actual original Drive files under the practice or official folder.
 - Increase the fail-closed source count from 13 to **15**, adjust the count in human diagnostic/recovery explanations, retain strict metadata MIME/type, exact basename, date, opponent, round/game number and no duplicate Evidence vote. Regression `scripts/test-score-sheet-registry.mjs` is part of the pull-request full-lineup-context guard.
 - Remaining acceptance: PR CI must pass; merge only after inspecting checks. Exact post-merge GitHub main SHA and production PREPARE `scoreSheetVerificationStatus=COMPLETE`, 15 original count, 15 matched games must be observed before any provider-heavy deliberation; Vercel Hobby, no paid upgrades. An actual authenticated iPhone Chrome interaction is separately unverified. Do not claim production smoke or full Live passed until jobs report success.
+
+
+## 2026-10-11: Follow-up acceptance regression after merged PR #189
+
+- PR #189 merged at exact GitHub main SHA `bca2ce92eadb5c9ded5b95b1f654d972e2e9949b`; PR CI 3/3 SUCCESS, postmerge Full Lineup Context, Development Continuity and deterministic selftest SUCCESS, Browser Bootstrap SUCCESS. **Production Live Run `38068317114` FAILED its `production-revision-ready` gate** after five PREPARE checks; four provider-heavy jobs were SKIPPED. This is not a passing end-to-end verification.
+- Run logs observed `scoreSheetVerificationStatus=PARTIAL` initially, advancing to **COMPLETE** for attempts 4 and 5 after rollout. Other observed diagnostics: `appearanceFieldingStatus=COMPLETE`, `appearanceStatus=COMPLETE`, `fieldingStatus=COMPLETE`, `sourceIntegrity=COMPLETE`, `appearanceSourceMode=CURRENT_CSV`. PREPARE nevertheless remained `APPEARANCE_EVIDENCE_NOT_READY` because `api/magi-live-deliberation-selftest.js` had a separate `scoreAccounted` requirement fixed at **13**, while both the live canonical CSV and original register now correctly have **15** games. Do not call this source mismatch or weaken original verification.
+- Follow-up patch changes only the three numeric `13` checks inside the existing live `scoreAccounted` contract to `15` (originalCount, appearanceGameCount, verifiedCount+sourceMismatchCount). The `unverifiedCount===0` requirement and all existing score source checks remain. Extended `scripts/test-score-sheet-registry.mjs` rejects stale live gates; workflow already executes this regression on pull requests and main.
+- Gate after merge: verify exact new deployment SHA, `scoreSheetVerificationStatus=COMPLETE` plus `scoreSheetOriginalCount=15`, `scoreSheetAppearanceGameCount=15`, `scoreSheetVerifiedCount=15`, `scoreSheetUnverifiedCount=0`, `scoreSheetSourceMismatchCount=0`. Only then allow staged provider-heavy tests. GitHub Actions results are authoritative for public exact-SHA validation; Vercel management API still gives 403 under the connector. Do not modify Drive, silently bypass any conflict, trigger wasteful LLM retries, or claim live passed before confirmation.
