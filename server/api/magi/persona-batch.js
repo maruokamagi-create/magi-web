@@ -705,6 +705,37 @@ export function sanitizePublishedPitchingRoleProse(result,caseData){
   return true;
 }
 
+
+// Expand only an unambiguous partial given-name spelling in a numbered
+// FULL_LINEUP sentence. The verified candidate at that exact slot supplies
+// the official spelling; never alter candidatePlayers or infer another name.
+export function normalizeVerifiedLineupSlotNames(result,caseData){
+  const kind=String(caseData?.selectionKind||caseData?.evidence?.selectionKind||'').toUpperCase();
+  const candidates=result?.candidatePlayers;
+  if(kind!=='FULL_LINEUP'||!Array.isArray(candidates)||candidates.length!==9
+     ||new Set(candidates).size!==9||!candidates.every(name=>CURRENT_ROSTER.includes(name)))return false;
+  const compact=name=>String(name).replace(/[\s　]/g,'');
+  const fields=['candidateBasis','primaryReason','publicStatement','changeReason'];
+  let changed=false;
+  const rx=/(^|[、。・，,\s])([1-9]番(?:打者)?)([\p{Script=Han}]{3,8})(?=[、。・，,\s]|$)/gu;
+  for(const field of fields){
+    if(typeof result[field]!=='string')continue;
+    result[field]=result[field].replace(rx,(whole,lead,slotText,alias)=>{
+      const slot=Number(slotText[0]);
+      const expected=candidates[slot-1];
+      const surname=String(expected).split(/[\s　]+/)[0];
+      if(alias===compact(expected)||alias.length<=surname.length
+         ||!compact(expected).startsWith(alias)
+         ||CURRENT_ROSTER.filter(name=>compact(name).startsWith(alias)).length!==1)return whole;
+      changed=true;
+      return lead+slotText+expected;
+    });
+  }
+  if(changed)result.warnings=[...new Set([...(Array.isArray(result.warnings)?result.warnings:[]),
+    '打順に付随する省略選手名を、確認済みの候補順位と正式な現チーム登録名に照合して補正しました。'])];
+  return changed;
+}
+
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req, res) || !rateLimit(req, res)) return;
   try {
@@ -901,6 +932,7 @@ export default async function handler(req, res) {
       }
       if(finalized.candidateCase)sanitizeKnownSelectionProse(result,body.case);
       result=normalizeCaseRosterHonorifics(result,body.case);
+      if(finalized.candidateCase)normalizeVerifiedLineupSlotNames(result,body.case);
       // An ambiguous current-team nickname cannot identify one of two players.
       if(finalized.candidateCase)sanitizePublishedPitchingRoleProse(result,body.case);
       if(finalized.candidateCase){

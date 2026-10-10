@@ -9,8 +9,8 @@
 ## Ledger metadata
 
 - Ledger schema: 1
-- State updated: 2026-10-09
-- State base main SHA: fa0b30396e5a0f8bab71e4c6479bed0fccce92e1
+- State updated: 2026-10-10
+- State base main SHA: 90802a4b0709d0ccd26b36f9c21752eed393a2cd
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1209,3 +1209,12 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - This narrow correction adds three exact existing nonnumeric outcome/prose guard labels to the already existing `reconcileLineupOrderExplanation` allowlist, which is callable ONLY if independently identified order/prose contradiction exists. Then the *entire* inconsistent/unsupported original text, prediction and unsupported claims are discarded; the authoritative structured nine and exact verified current metrics from COMPLETE 14 rows remain unchanged; explicit warning says the chosen order does not prove game winning. All remaining numeric, roster, fielding and official data guards are reapplied and hard failures still refuse. No added model calls, retries, Drive edits, billing changes or future effects. Regression must prove the outcome is not discarded without independent ORDER conflict, and never with numeric/defense/roster/dataConflict errors. Require CI PASS and postmerge exact SHA production; don't falsely call 5/5 Sequential until seen.
 
 - PR #185 initial attempt was **rejected by the existing full-lineup context regression**: accepting `Evidenceから保証できない結果を断定している` let an outright guarantee `必ず勝てる` pass after rewriting text. That is unacceptable. The exact hard-outcome label was removed from recovery allowlist. Test now explicitly REQUIRES `null` (fail closed) for hard guarantees even with simultaneous order conflict. Only the distinct non-guarantee future-inference guard labels qualify for prose discard alongside independently verified numbered-order discrepancy; roster, numeric and defense still hard. **Do not claim PR #185 fixes the observed Sequential MELCHIOR failure if its hidden raw text includes a hard guarantee.**
+
+
+## 2026-10-10: Verify current #185 acceptance; repair one exact published lineup-name truncation
+
+- Fresh GitHub `refs/heads/main` at investigation start: `90802a4b0709d0ccd26b36f9c21752eed393a2cd` (PR #185), 53 commits beyond prior chat handoff `b7363c8c...`. The earlier Run `37749266961` is historical, though all 5 jobs eventually succeeded. No current source data was edited.
+- Exact served production SHA `90802a4b0709d0ccd26b36f9c21752eed393a2cd` was verified by `production-revision-ready` in Live Run `37934095200`; all 5 jobs succeeded, including staged FULL_LINEUP, CLOSER, NATURAL_THIRD, TEAM_REVIEW. Sequential Suite `37934722057` completed 5/5 SUCCESS, including two accepted same-CASE/same-Evidence replay stages. These are structural test observations; they do not prove all user questions, all device UI behavior, or batting-order winning advantage.
+- Actual FULL_LINEUP FINAL in Live `37934095200` is **1-1-1 DEADLOCK / LINEUP_REVIEW_REQUIRED**, correctly leaving lineup empty and preserving three differing lineups; earlier 2-1 majority on older SHA must not be presented as today's final answer. SECOND uses the actual standard batting-slot sample: 坂田 暉馬 4番 only 1 PA and 嶋田 栄志 no standard 4/5 PA, so 4/5 directional benefit remains unproven. TEAM_REVIEW also completed PRIMARY/CROSS/SECOND/FINAL and did not assert batting-rate spread -> scoring restriction as causal fact.
+- Exact published BEST_ORDER PRIMARY/MELCHIOR `publicStatement` used `2番大久保陽` while its structured candidate at slot 2 correctly identified `大久保 陽翔`. This is a visible name fidelity defect, not a candidate or numeric mismatch. Narrow fix in this PR: only for FULL_LINEUP with nine unique current official candidates, expand a Han-only numbered-slot partial name when it uniquely prefixes that slot's verified registered name and no other roster name; no forced candidate changes, invented nicknames, inferred runs or normalization of ambiguous surnames. Regression tests cover the real example, idempotence, bad slot, shared surname, incomplete nine, non-lineup modes. Keep final publish evidence guard unchanged.
+- Vercel management connector currently returns 404 for supplied project scope / 403 for deployments, and public browser access through this runtime was unavailable. The GitHub production-revision-ready exact-SHA check is positive read-only production evidence, but **authenticated iPhone Chrome rendering and human touch/readability are still unverified**. After merge, require exact READY Live and Sequential checks; do not mark mobile acceptance done. Provider free-only / Vercel Hobby, readonly Drive/CSV and original scores stay unchanged.

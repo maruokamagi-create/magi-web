@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse, sanitizePublishedPitchingRoleProse } from '../server/api/magi/persona-batch.js';
+import { recoverSoftPersonaBatchValidation, recoverSoftSelectionInference, recoverMismatchedSelectionMetricSentences, recoverUnsupportedComponentMetricLabels, sanitizeKnownSelectionProse, sanitizePublishedPitchingRoleProse, normalizeVerifiedLineupSlotNames } from '../server/api/magi/persona-batch.js';
 import { canonicalizePlayerData } from '../server/api/magi/_roster.js';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
@@ -1250,3 +1250,28 @@ function baseResult(overrides={}) {
 }
 
 console.log('PERSONA BATCH SOFT RECOVERY RESULT: 58/58 PASS');
+
+
+{
+  // Exact real-production 2026-10-09 primary output regression: the official
+  // structured 2番 name is 大久保 陽翔, not the truncated "大久保陽".
+  const candidates=['大野 竜暉','大久保 陽翔','中嶋 玲月','坂田 暉馬','嶋田 栄志','井坂 悠聖','武澤 大翔','橋向 結都','武田 晴琉翔'];
+  const c={selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP'}};
+  const row=baseResult({
+    candidatePlayers:candidates.slice(),
+    publicStatement:'1番大野 竜暉、2番大久保陽、3番中嶋 玲月。'
+  });
+  assert.equal(normalizeVerifiedLineupSlotNames(row,c),true);
+  assert.equal(row.publicStatement,'1番大野 竜暉、2番大久保 陽翔、3番中嶋 玲月。');
+  assert.deepEqual(row.candidatePlayers,candidates,'candidate order must not change');
+  assert.equal(normalizeVerifiedLineupSlotNames(row,c),false,'recovery must be idempotent');
+  const wrong=baseResult({candidatePlayers:candidates.slice(),publicStatement:'2番大久保夢、3番中嶋 玲月。'});
+  assert.equal(normalizeVerifiedLineupSlotNames(wrong,c),false,'wrong player cannot be rewritten into slot candidate');
+  assert.equal(wrong.publicStatement,'2番大久保夢、3番中嶋 玲月。');
+  const ambiguous=baseResult({candidatePlayers:candidates.slice(),publicStatement:'2番大久保、3番中嶋 玲月。'});
+  assert.equal(normalizeVerifiedLineupSlotNames(ambiguous,c),false,'shared surname is ambiguous');
+  const noRoster=baseResult({candidatePlayers:candidates.slice(0,8),publicStatement:'2番大久保陽、3番中嶋 玲月。'});
+  assert.equal(normalizeVerifiedLineupSlotNames(noRoster,c),false);
+  const otherKind=baseResult({candidatePlayers:candidates.slice(),publicStatement:'2番大久保陽、3番中嶋 玲月。'});
+  assert.equal(normalizeVerifiedLineupSlotNames(otherKind,{selectionKind:'BATTING_ORDER'}),false);
+}
