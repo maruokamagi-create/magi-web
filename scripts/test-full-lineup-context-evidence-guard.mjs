@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { dateKey } from '../server/api/magi/_appearance-fielding-evidence.js';
+import { dateKey } from '../server/api/magi/_appearance-date-key.js';
 import { EVIDENCE_SOURCES } from '../server/api/magi/_evidence-source-map.js';
 import { classifyLineupGuardIssues, classifyLineupGuardIssueList } from '../server/api/magi/_lineup-guard-issue-codes.js';
 import { reconcileLineupOrderExplanation, ORDER_EXPLANATION_CONFLICT } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
