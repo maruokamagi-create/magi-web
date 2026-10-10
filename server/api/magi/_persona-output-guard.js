@@ -567,7 +567,8 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     const unsupportedUnqualifiedLineupEffect=parts.find(sentence=>
       !isEvidenceGapStatement(sentence)
       && (
-        /(?:得点機会|得点機|得点力).{0,24}(?:創出|作る|作れる|増す|増える|増加|高める|上げる)/.test(sentence)
+        /(?:得点機会|得点機|得点力).{0,24}(?:創出|作る|作れる|増す|増える|増加|拡大|高める|上げる)/.test(sentence)
+        || /(?:得点を生み出す|最も得点に結びつきやすい)/.test(sentence)
         || /(?:守備|守備位置|捕手起用|標準守備).{0,45}安定/.test(sentence)
       )
     );
@@ -579,6 +580,7 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
         /(?:守備|守備位置|先発守備資格|標準先発守備資格).{0,70}(?:安定(?:して|した|感|性)|連携.{0,18}(?:深め|高め|向上|強化))/.test(sentence)
         || /(?:安定(?:して|した|感|性)|連携.{0,18}(?:深め|高め|向上|強化)).{0,70}(?:守備|守備位置|先発守備資格|標準先発守備資格)/.test(sentence)
         || /(?:この打順|この配置|この構成).{0,50}(?:チームの)?連携.{0,18}(?:深め|高め|向上|強化)/.test(sentence)
+        || /(?:守備.{0,18}破綻を防ぐ|連係ミス.{0,18}軽減)/.test(sentence)
       )
     );
     if(unsupportedDefenseEffect)issues.push('BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している');
