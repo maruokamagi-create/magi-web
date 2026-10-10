@@ -17,9 +17,15 @@ const historicalStarts={
   '武田 晴琉翔':['左','右'],
   '武澤 大翔':['右']
 };
+// Artificial weights select a unique legal assignment in this regression;
+// they are NOT asserted to be actual game-start counts.
+const fixturePriority={
+  '大久保 陽翔':'遊','橋向 結都':'投','井坂 悠聖':'三',
+  '武田 晴琉翔':'左','武澤 大翔':'右'
+};
 const packet={status:'COMPLETE',players:Object.entries(historicalStarts).map(([name,positions])=>({
   name,
-  appearance:{officialStartingPositions:Object.fromEntries(positions.map(position=>[position,1])),practiceFirstStartingPositions:{}},
+  appearance:{officialStartingPositions:Object.fromEntries(positions.map(position=>[position,fixturePriority[name]===position?6:1])),practiceFirstStartingPositions:{}},
   fielding:{positions:{}}
 }))};
 const eligibility=buildStandardDefenseEligibility(packet);
