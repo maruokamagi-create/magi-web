@@ -72,7 +72,7 @@ function scoreSourcePath(meta,def){
   return 'CANONICAL_SCORE_SHEETS/'+category+'/'+text(meta?.name);
 }
 async function loadCanonicalScoreSheetOriginals(){
-  if(SCORE_FILE_DEFS.length!==13)throw new Error('canonical_score_sheet_count_mismatch:'+SCORE_FILE_DEFS.length);
+  if(SCORE_FILE_DEFS.length!==15)throw new Error('canonical_score_sheet_count_mismatch:'+SCORE_FILE_DEFS.length);
   if(SCORE_ORIGINALS_PROMISE)return SCORE_ORIGINALS_PROMISE;
   SCORE_ORIGINALS_PROMISE=Promise.all(SCORE_FILE_DEFS.map(async def=>{
     const meta=await getDriveFileMetadata(def.id);
@@ -204,7 +204,7 @@ async function recoverAppearanceFromScoreSheets(originals,fieldingRows){
     games:games.map(({rows:ignored,...game})=>game),
     gameCount:games.length,
     completeGameCount:games.filter(game=>game.battingComplete&&game.startersSupported&&game.participantCoverage).length,
-    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み13試合のスコア原本PDFから先発打順・先発守備を復旧する。途中出場は、守備詳細CSVでその試合に実出場した全選手からスコア原本で確定した先発選手を除いた差集合として確定する。先発全員が守備詳細CSVの実出場集合に存在し、復旧後の全参加選手数が一致した試合だけCOMPLETE扱いする。PDFとCSVを独立票として二重加点しない。'
+    rule:'出場詳細CSVが構造破損または守備詳細CSVとの同一内容化で利用不能な場合だけ、登録済み15試合のスコア原本PDFから先発打順・先発守備を復旧する。途中出場は、守備詳細CSVでその試合に実出場した全選手からスコア原本で確定した先発選手を除いた差集合として確定する。先発全員が守備詳細CSVの実出場集合に存在し、復旧後の全参加選手数が一致した試合だけCOMPLETE扱いする。PDFとCSVを独立票として二重加点しない。'
   };
 }
 
@@ -416,7 +416,7 @@ export async function buildAppearanceFieldingEvidence(){
   const warnings=[];
   if(duplicateSourceContent)warnings.push('現在の出場詳細CSVは守備詳細CSVと内容SHA-256が一致しており、出場詳細の正本としては利用していない。');
   if(canonicalIntegrity.status!=='COMPLETE')warnings.push('現在の出場詳細CSVの打順1〜9が揃う試合は '+canonicalIntegrity.completeGameCount+'/'+canonicalIntegrity.gameCount+'。');
-  if(appearanceSourceMode==='SCORE_SHEET_RECOVERY')warnings.push('登録済み13試合のスコア原本PDFから先発打順・先発守備・途中出場を読み取り、守備詳細CSVの参加選手集合と照合して代替Evidenceを構成した。');
+  if(appearanceSourceMode==='SCORE_SHEET_RECOVERY')warnings.push('登録済み15試合のスコア原本PDFから先発打順・先発守備・途中出場を読み取り、守備詳細CSVの参加選手集合と照合して代替Evidenceを構成した。');
   if(!appearanceUsable)issues.push('出場詳細CSVが利用不能で、スコア原本からの復旧も完全成立しなかったため、スタメン/途中出場・実打順は未確認扱い。');
 
   return {
@@ -444,7 +444,7 @@ export async function buildAppearanceFieldingEvidence(){
     scoreSheets,
     players,
     rule:appearanceSourceMode==='SCORE_SHEET_RECOVERY'
-      ? '現在の出場詳細CSVは構造破損を検出したため判断に使用せず、登録済み13試合のスコア原本PDFを代替正本としてスタメン・途中出場・実打順・先発守備位置を復旧した。復旧結果は守備詳細CSVの各試合参加選手集合と一致した場合だけCOMPLETEとし、PDFとCSVを独立票として二重加点しない。'
+      ? '現在の出場詳細CSVは構造破損を検出したため判断に使用せず、登録済み15試合のスコア原本PDFを代替正本としてスタメン・途中出場・実打順・先発守備位置を復旧した。復旧結果は守備詳細CSVの各試合参加選手集合と一致した場合だけCOMPLETEとし、PDFとCSVを独立票として二重加点しない。'
       : '出場詳細CSVをスタメン・途中出場・実打順・スタメン守備位置の最優先Evidenceとする。守備詳細CSVの実守備位置は別系統の実績として利用し、スコア原本は一次照合資料として用いる。'
   };
 }
