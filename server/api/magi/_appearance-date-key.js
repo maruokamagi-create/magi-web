@@ -5,7 +5,7 @@ export function dateKey(value){
   // The read-only CSV may contain Excel's integer day serial, as verified
   // against 2026-08-02 (46236) and 2026-10-03 (46298) score originals.
   // Convert the date format, NOT the source's calendar day: an original
-  // 2026-09-11 record must still disagree with a 2026-09-12 score sheet.
+  // 2026-09-13 record must still disagree with a 2026-09-12 score sheet.
   if(/^\d{5}$/.test(normalized)){
     const serial=Number(normalized);
     if(serial>=36526&&serial<=73050)
