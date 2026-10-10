@@ -595,7 +595,7 @@ export default async function handler(req,res){
     });const players=packet?.allCurrentTeamCheck?.players||[];
     const ready=packet?.selectionKind==='FULL_LINEUP'&&Number(packet?.count)===14&&players.length===14&&CURRENT_ROSTER.every(name=>players.some(p=>p?.name===name));if(!ready)throw new Error('LIVE_EVIDENCE_NOT_READY');
     const scoreCheck=packet?.appearanceFielding?.scoreSheets||{};
-    const scoreAccounted=Number(scoreCheck.originalCount)===13&&Number(scoreCheck.appearanceGameCount)===13&&Number(scoreCheck.unverifiedCount)===0&&Number(scoreCheck.verifiedCount)+Number(scoreCheck.sourceMismatchCount)===13;
+    const scoreAccounted=Number(scoreCheck.originalCount)===15&&Number(scoreCheck.appearanceGameCount)===15&&Number(scoreCheck.unverifiedCount)===0&&Number(scoreCheck.verifiedCount)+Number(scoreCheck.sourceMismatchCount)===15;
     const appearanceSourceMode=packet?.appearanceFielding?.appearanceSourceMode||'';
     const sourceIntegrityStatus=packet?.appearanceFielding?.sourceIntegrity?.status||'';
     const sourceReady=sourceIntegrityStatus==='COMPLETE'||(sourceIntegrityStatus==='RECOVERED_FROM_SCORE_SHEETS'&&appearanceSourceMode==='SCORE_SHEET_RECOVERY'&&packet?.appearanceFielding?.recovery?.status==='COMPLETE');
