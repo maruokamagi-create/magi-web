@@ -47,4 +47,9 @@ assert.match(builder,/SOURCE_MISMATCH_OPPONENT/,'must reject opponent mismatch')
 assert.match(builder,/UNVERIFIED_SCORE_SHEET/,'must reject missing original');
 assert.match(builder,/登録済み15試合/,'recovery explanation should reflect current coverage');
 assert.doesNotMatch(builder,/登録済み13試合/);
+const live=fs.readFileSync(new URL('../api/magi-live-deliberation-selftest.js',import.meta.url),'utf8');
+assert.match(live,/scoreCheck\.originalCount\)===15/,'live gate must require 15 originals');
+assert.match(live,/scoreCheck\.appearanceGameCount\)===15/,'live gate must require 15 appearance games');
+assert.match(live,/scoreCheck\.verifiedCount\)\+Number\(scoreCheck\.sourceMismatchCount\)===15/,'live gate must account for 15 games');
+assert.doesNotMatch(live,/scoreCheck\.originalCount\)===13/,'stale thirteen-game live gate must be removed');
 console.log('PASS: fifteen score originals, exact mappings, strict guard retained');
