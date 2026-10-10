@@ -1,8 +1,27 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
+import { dateKey } from '../server/api/magi/_appearance-fielding-evidence.js';
+import { EVIDENCE_SOURCES } from '../server/api/magi/_evidence-source-map.js';
 import { classifyLineupGuardIssues, classifyLineupGuardIssueList } from '../server/api/magi/_lineup-guard-issue-codes.js';
 import { reconcileLineupOrderExplanation, ORDER_EXPLANATION_CONFLICT } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
+
+// Actual 2026-10-10 read-only Drive CSV stores dates as Excel serials.
+assert.equal(dateKey('46236'),'2026-08-02');
+assert.equal(dateKey('46243'),'2026-08-09');
+assert.equal(dateKey(46277),'2026-09-11');
+assert.equal(dateKey(46278),'2026-09-12');
+assert.equal(dateKey('46298'),'2026-10-03');
+assert.equal(dateKey('2026/10/03'),'2026-10-03');
+assert.equal(dateKey('2026-10-03'),'2026-10-03');
+assert.equal(dateKey('46236.5'),'','do not silently round a fractional/ambiguous date');
+assert.equal(dateKey('12345'),'','non-current invalid serial must remain unverified');
+assert.equal(dateKey('not a date'),'');
+const originalDefinitions=EVIDENCE_SOURCES.CURRENT_SCORE_SHEETS.files;
+assert.equal(originalDefinitions[6].date,'2026-09-12');
+assert.equal(dateKey('46277'),'2026-09-11','do not silently rewrite the seventh CSV game to score-original date');
+assert.notEqual(dateKey('46277'),originalDefinitions[6].date,'source disagreement must remain visible and block complete verification');
+assert.equal(dateKey('46278'),originalDefinitions[7].date,'eighth game matches its exact score original');
 
 const core=fs.readFileSync(new URL('../server/api/magi/core.js',import.meta.url),'utf8');
 const selection=fs.readFileSync(new URL('../server/api/magi/_selection-live-evidence.js',import.meta.url),'utf8');
