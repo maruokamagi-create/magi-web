@@ -64,11 +64,16 @@ export function buildStandardDefenseEligibility(appearanceFielding){
     position,
     byPlayer.filter(row=>row.positions.includes(position)).map(row=>row.name)
   ]));
+  // Strictly evidence-derived constrained choices, not a preferred lineup.
+  // A player eligible at two positions can fill only ONE starting assignment.
+  const constrainedPositions=Object.fromEntries(Object.entries(byPosition)
+    .filter(([,eligible])=>eligible.length<=2));
   return {
     rule:'STANDARD_DEFENSE_ONE_TO_ONE_MATCHING',
     positions:[...STANDARD_POSITIONS],
     byPlayer,
-    byPosition
+    byPosition,
+    constrainedPositions
   };
 }
 

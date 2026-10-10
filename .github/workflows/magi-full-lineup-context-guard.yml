@@ -76,5 +76,7 @@ jobs:
           grep -Fq "TEAM_REVIEW_FINAL',{maxAttempts:1}" api/magi-live-deliberation-selftest.js
       - name: Verify fifteen score originals and identity mapping
         run: node scripts/test-score-sheet-registry.mjs
+      - name: Verify one-to-one defense bottlenecks against observed BALTHASAR rejection
+        run: node scripts/test-full-lineup-defensive-constraints.mjs
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
