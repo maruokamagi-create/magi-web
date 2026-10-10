@@ -1,3 +1,5 @@
+const text=value=>String(value??'').trim();
+
 export function dateKey(value){
   const normalized=text(value).normalize('NFKC');
   // The read-only CSV may contain Excel's integer day serial, as verified
