@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-10
-- State base main SHA: aa24ae078b59b4b5fafed31ec82e1325041b7358
+- State base main SHA: ef77a399371f3402282571d825b5bc9b680c521c
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1227,3 +1227,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - **Independently verified separate discrepancy is game EIGHT, not seven:** `46277` in game 7 = 2026-09-12, matching the mapped `2026-09-12_藤島中_第1試合_スコア原本.pdf`. CSV game 8 date `46278` = 2026-09-13, but mapped score original `2026-09-12_藤島中_第2試合_スコア原本.pdf` says 2026-09-12. Both source PDF metadata were independently read from Drive. Neither source has been corrected or selected as arbitrarily authoritative on that discrepancy. A previous investigative remark incorrectly ascribed the mismatch to game seven; this sentence supersedes it.
 - Minimal repair is a dependency-free strict dateKey parser for 5-digit modern Excel serials, imported into the existing appearance builder. No date adjustment beyond literal UTC Excel epoch conversion; verification against score-sheet dates remains EXACT and fails closed for game eight. Node-only regression tests cover conversion, invalid inputs, and the preserved game-eight date disagreement. This may reveal an actual mismatch after date parsing, which must remain unresolved rather than be papered over. All original 14-player records, scoring, dates, votes and original CSV/PDF files stay unchanged.
 - Require CI PASS, merge if safe, exact postmerge READY; an unresolved game-eight score date discrepancy will prevent full-production Live acceptance. No extra provider-heavy retries, Vercel paid plan, CSV/Drive writes, or evidence guard weakening. Authenticated iPhone Chrome DOM/touch use remains unverified.
+
+
+## 2026-10-10: PR #187 live split-stage observation; score original date conflict remains a hard block
+
+- PR #187 exact squash merged SHA `ef77a399371f3402282571d825b5bc9b680c521c`. Postmerge deterministic selftest `38060839454` SUCCESS, full-lineup context/Evidence guard `38060839478` SUCCESS, development continuity `38060839464` SUCCESS, public browser bootstrap smoke `38060839450` SUCCESS. These check scripted browser/assets and deterministic behavior; **not authenticated iPhone Chrome touch/layout**.
+- Postmerge Production Live run `38060839456`: revision-ready FAILED, all four provider-dependent staged jobs SKIPPED. Five PREPARE responses show a transitional rollout: attempts 1–3 `appearanceStatus=UNAVAILABLE,integrityStatus=PARTIAL` (old behavior); attempts 4–5 `appearanceStatus=COMPLETE,appearanceFieldingStatus=COMPLETE,integrityStatus=COMPLETE,recoveryStatus=NOT_USED` (new Excel date parsing in production). However `scoreSheetVerificationStatus=PARTIAL` remains, so **no exact deployed SHA READY / full Live success can be claimed from this run**. Do not rerun expensive LLM stages while this read-only source discrepancy exists.
+- Verified **eighth** game date contradiction through three separate paths: canonical CSV group `8試合目` `対戦日=46278` = `2026-09-13`; authoritative mapped source metadata filename `2026-09-12_藤島中_第2試合_スコア原本.pdf`; extracted PDF body header explicitly `2026/09/12 (土)` and `【練習試合】 vs 藤島中 第2試合`. Game seven `46277=2026-09-12` matches its first-game score original. Reconcile **only after** authorized owner verifies/corrects original source record or a fully sourced, strict discrepancy resolution is designed; never silently rewrite date, fake COMPLETE, bypass source matching, or mutate Drive original without explicit permission.
+- Open technical need: source conflict should be reported clearly to the human operator; generic `APPEARANCE_EVIDENCE_NOT_READY` currently does not disclose the game/date from its public diagnostic. Avoid conveying user-private raw file contents in public logs. Keep original files and IDs unchanged, Vercel Hobby/free, no repeat Gemini attempts. Re-test full Live on the exact new SHA only when authoritative discrepancy is resolved, then authenticated iPhone Chrome acceptance.
