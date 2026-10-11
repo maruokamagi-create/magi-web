@@ -204,8 +204,12 @@ function buildFullLineup(result){
   const decisiveReasons=decisionType==='DEADLOCK'
     ? entries.map(e=>{const reason=cleanReason(e.value,result,e.label);return reason?`${e.label}：${reason}`:'';}).filter(Boolean)
     : unique(supportGroup.rows.map(e=>cleanReason(e.value,result,e.label))).filter(Boolean).slice(0,2);
-  const disputed=result?.final?.deadlockComparison?.slots;
-  const contested=Array.isArray(disputed)?[3,4,5,6,7,8,9,1,2].map(slot=>disputed.find(x=>x.slot===slot&&x.agreementCount!==3)).filter(Boolean):[];
+  const evidenceSlots=result?.final?.deadlockComparison?.slots;
+  const disputed=Array.isArray(evidenceSlots)?evidenceSlots:Array.from({length:9},(_,i)=>{
+    const choices=Object.fromEntries(entries.map(e=>[e.persona.key,e.order[i]]));
+    return {slot:i+1,choices,agreementCount:new Set(Object.values(choices).map(norm)).size===1?3:0};
+  });
+  const contested=[3,4,5,6,7,8,9,1,2].map(slot=>disputed.find(x=>x.slot===slot&&x.agreementCount!==3)).filter(Boolean);
   const mainDisagreement=decisionType==='DEADLOCK'&&contested.length
     ? contested.slice(0,2).map(x=>`${x.slot}番：${PERSONAS.map(p=>`${p.label} ${txt(x.choices?.[p.key])||'未確認'}`).join('／')}`).join('。')
     : compactSummaryText(conflictText(supportGroup.order,others),150);
