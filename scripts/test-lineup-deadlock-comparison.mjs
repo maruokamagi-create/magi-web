@@ -89,4 +89,40 @@ assert.match(html,/守備9位置の実績照合：成立/);
 assert.ok(!html.includes('最終オーダーを採用'));
 const htmlWithoutPacket=api.deadlockFullProposalsHtml({final:{}},entries);
 assert.equal(htmlWithoutPacket,'','unverified result must not invent source-backed proposal comparison');
+
+// Production final-summary code must treat all three proposals as unadopted
+// and never leak raw guard identifiers from prior API responses.
+const summaryContext={};
+vm.runInNewContext(fs.readFileSync(new URL('../magi-control-summary-v377.js',import.meta.url),'utf8'),summaryContext);
+const summaryApi=summaryContext.MAGI_CONTROL_SUMMARY_V377;
+assert.ok(typeof summaryApi?.build==='function');
+const summary=summaryApi.build({
+  case:{question:'ベストオーダーを組んで',evidence:{}},
+  second,
+  final:{
+    mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',deliberationDecision:'DEADLOCK',
+    finalVote:'1-1-1',lineup:[],deadlockComparison:comparison,
+    reDeliberationConditions:[
+      'FULL_LINEUP_STANDARD_DEFENSE',
+      'NO_COMPLETE_STANDARD_STARTING_MATCHING',
+      '標準ベストオーダーとして暫定採用。',
+      '新しい試合記録や指導者の最新方針が得られ、3案の争点を検証できるときに見直す。'
+    ]
+  }
+});
+assert.equal(summary.decisionType,'DEADLOCK');
+assert.match(summary.decisionLead,/いずれも正式採用していません/);
+assert.ok(!summary.decisionLead.includes('参考案（暫定）'));
+assert.equal(summary.decisiveReasons.length,3,'all three independent evidence explanations stay visible');
+assert.match(summary.mainDisagreement,/番：/);
+assert.ok(!summary.mainDisagreement.includes('基準案'),'never privilege arbitrary first persona on deadlock');
+assert.deepEqual(Array.from(summary.reDeliberationConditions),[
+  '新しい試合記録や指導者の最新方針が得られ、3案の争点を検証できるときに見直す。'
+]);
+const chatSource=fs.readFileSync(new URL('../chat-ui-canonical-v387.js',import.meta.url),'utf8');
+assert.match(chatSource,/各賢人の判断理由（採用理由ではありません）/);
+const engineSource=fs.readFileSync(new URL('../engine-ui-v187.js',import.meta.url),'utf8');
+assert.match(engineSource,/再検討の目安/);
+assert.ok(!engineSource.includes("const conds=list(result.final.reDeliberationConditions);\\n          $('next').textContent=conds.length?\\`再検討条件"));
+
 console.log('PASS: deadlock comparison preserves three proposals, individual fielding proof, and no adopted lineup');

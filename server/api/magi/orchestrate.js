@@ -217,6 +217,37 @@ export function deterministicSelectionCross(primary) {
   return { agreement, disagreement, domainConflicts:[], warnings:[], informationGaps:[], challenges };
 }
 
+// FINAL disclosure policy: keep original diagnostics in warnings/reviewReason,
+ // but never treat a guard identifier, an individual persona's adoption wording,
+ // or a demand for vote convergence as a user-facing re-deliberation condition.
+export function publicLineupReviewConditions(raw, {deadlock=false}={}) {
+  const values=Array.isArray(raw)?raw:[];
+  const out=[];
+  const add=value=>{if(value&&!out.includes(value))out.push(value);};
+  if(deadlock){
+    add('新しい試合記録や指導者の最新方針が得られ、3案の争点を検証できるときに見直す。現時点で一致するまで再実行しない。');
+  }
+  for(const entry of values) {
+    const s=String(entry??'').trim();
+    if(!s||/(?:暫定採用|正式採用|ベストオーダーとして採用|一致するまで|到達するまで再審議)/.test(s))continue;
+    if(/FULL_LINEUP_STANDARD_DEFENSE|NO_COMPLETE_STANDARD_STARTING_MATCHING|POSITION_WITHOUT_STANDARD_START_EVIDENCE|SELECTED_PLAYER_EVIDENCE_MISSING|APPEARANCE_FIELDING_EVIDENCE_UNAVAILABLE|MULTIPLE_EQUAL_EVIDENCE_ASSIGNMENTS|FIELDING_COVERAGE|先発Evidenceから9守備位置|守備配置|守備位置を.*確定できない/.test(s)){
+      add('公式戦・練習第1試合の先発記録で、9人が9つの守備位置を重複なく担当できるか確認する。');
+    } else if(/FULL_LINEUP_DEADLOCK|LINEUP_DEADLOCK|3賢人の二次打順案が1対1対1|1対1対1/.test(s)){
+      // Vote split alone is a valid held conclusion, not a reason to rerun.
+    } else if(/(?:候補|打順|ロスター|選手).*(?:矛盾|不整合|食い違い)|LINEUP_STRUCTURE|ROSTER_MISMATCH|ORDER_EXPLANATION_CONFLICT|NUMERIC_EVIDENCE_MISMATCH/.test(s)){
+      add('選手・打順と確認済み記録に食い違いがないか原本を確認する。');
+    } else if(/(?:直近6試合|打順別|今季通算|打撃成績|OPS|打数|サンプル|試合数)/.test(s)){
+      add('今季通算・直近6試合・実際の打順別記録に変化があったときに比較し直す。');
+    } else if(/(?:指導者|意向|方針)/.test(s)){
+      add('指導者の最新の起用方針を確認できたときに判断材料へ反映する。');
+    } else if(/(?:試合記録|出場詳細|守備実績|追加資料|根拠資料)/.test(s)){
+      add('新しい試合記録や先発守備実績を確認できたときに見直す。');
+    }
+  }
+  if(!out.length)add('新しい試合記録・守備実績・指導者の方針が確認できたときに見直す。');
+  return out.slice(0,deadlock?2:3);
+}
+
 export function buildFullLineupResult(second, cross, caseData={}) {
   const normalizedSecond = canonicalizePlayerData(second);
   const normalizedCross = canonicalizePlayerData(cross || {});
@@ -234,7 +265,7 @@ export function buildFullLineupResult(second, cross, caseData={}) {
       mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',recommendation:'1〜9番を確定せず、未解決の確認事項を解消して再審議する。',
       lineup:[],personaLineups:Object.fromEntries(entries.map(([k,v])=>[k,Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),slotConflicts:[],playerSupport:[],
       confidence:'LOW',majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
-      reDeliberationConditions:compactUnique([...informationGaps,...warnings],5),reviewReason:crossReviewReason||String(critical?.[1]?.reviewReason||'MELCHIOR detected an unresolved DATA CONFLICT.'),
+      reDeliberationConditions:publicLineupReviewConditions([...informationGaps,...warnings]),reviewReason:crossReviewReason||String(critical?.[1]?.reviewReason||'MELCHIOR detected an unresolved DATA CONFLICT.'),
       crossDiscussion:crossDiscussion(normalizedCross)
     });
   }
@@ -245,7 +276,7 @@ export function buildFullLineupResult(second, cross, caseData={}) {
       mode:'FULL_LINEUP',status:'LINEUP_REVIEW_REQUIRED',recommendation:'3賢人の二次案に9人の打順として不完全な案があるため、打順を確定しない。',
       lineup:[],personaLineups:Object.fromEntries(entries.map(([k,v])=>[k,Array.isArray(v?.candidatePlayers)?v.candidatePlayers:[]])),slotConflicts:[],playerSupport:[],
       confidence:'LOW',majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),warnings,
-      reDeliberationConditions:compactUnique(['各賢人が現チームの異なる9選手を1番〜9番の順で再提示する',...informationGaps,...warnings],5),reviewReason:'二次打順案の構造が不完全',
+      reDeliberationConditions:publicLineupReviewConditions(['打順とロスターの不整合',...informationGaps,...warnings]),reviewReason:'二次打順案の構造が不完全',
       crossDiscussion:crossDiscussion(normalizedCross)
     });
   }
@@ -271,7 +302,7 @@ export function buildFullLineupResult(second, cross, caseData={}) {
       confidence:'LOW',
       majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
       warnings:compactUnique([...warnings,'3賢人の二次打順案が1対1対1。合意度スコアで1案を恣意的に選ばずDEADLOCKとする。']),
-      reDeliberationConditions:compactUnique(['3賢人のうち少なくとも2賢人が同一の1〜9番案に到達するまで再審議する',...informationGaps,...warnings],5),
+      reDeliberationConditions:publicLineupReviewConditions([...informationGaps,...warnings],{deadlock:true}),
       reviewReason:'FULL_LINEUP_DEADLOCK_1_1_1',
       crossDiscussion:crossDiscussion(normalizedCross)
     });
@@ -303,7 +334,7 @@ export function buildFullLineupResult(second, cross, caseData={}) {
       confidence:'LOW',
       majorReasons:compactUnique(entries.map(([,v])=>v?.primaryReason)),
       warnings:compactUnique([...warnings,fieldingReason]),
-      reDeliberationConditions:compactUnique([fieldingReason,...informationGaps,...warnings],5),
+      reDeliberationConditions:publicLineupReviewConditions([fieldingReason,...informationGaps,...warnings]),
       reviewReason:fieldingReason,
       crossDiscussion:crossDiscussion(normalizedCross)
     });
