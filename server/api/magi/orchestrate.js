@@ -736,8 +736,10 @@ export function buildReviewResult(second, cross, caseData={}) {
 
 export default async function handler(req, res) {
   if (!requirePost(req, res) || !requireSameOrigin(req,res) || !rateLimit(req,res))return;
+  let failurePhase='';
   try {
     const body = await readBody(req);
+    failurePhase=String(body?.phase||'');
     if (!validCase(body)) return sendJson(res, 400, { error: 'CASE is missing or invalid' });
 
     if (body.phase === 'CROSS_EXAMINATION') {
@@ -854,10 +856,13 @@ export default async function handler(req, res) {
     const tooLarge = error?.message === 'Request body too large';
     const transient = error?.timedOut === true || error?.retryable === true || [408,429,500,502,503,504].includes(Number(error?.status));
     const status = tooLarge ? 413 : (transient ? 503 : 500);
+    const isFinal=failurePhase==='FINAL';
     console.error('[MAGI orchestrate]', error?.message || error);
     return sendJson(res, status, {
-      error: tooLarge ? '送信データが大きすぎます。' : (transient ? '相互検証を一時的に取得できませんでした。' : '相互検証を作成できませんでした。'),
-      code: tooLarge ? 'REQUEST_TOO_LARGE' : 'CROSS_EXAMINATION_FAILED',
+      error: tooLarge ? '送信データが大きすぎます。' : (isFinal
+        ? (transient ? '最終判断の集約を一時的に完了できませんでした。' : '最終判断の集約に失敗しました。')
+        : (transient ? '相互検証を一時的に取得できませんでした。' : '相互検証を作成できませんでした。')),
+      code: tooLarge ? 'REQUEST_TOO_LARGE' : (isFinal ? 'FINAL_AGGREGATION_FAILED' : 'CROSS_EXAMINATION_FAILED'),
       retryExhausted: transient
     });
   }
