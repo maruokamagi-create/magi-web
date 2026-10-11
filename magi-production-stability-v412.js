@@ -41,25 +41,15 @@ function install(){
  if(baseRunner.__magiStableV417)return true;
  const wrapped=async function(args={}){
    await window.MAGI_PRODUCTION_PREFLIGHT_V412();
-   const k=key(args.question,args.evidence,args.selectionKind);
-   const cached=get(k);
-   // Cache is used as a deterministic recovery source only. Normal UI runs still execute
-   // the full PRIMARY -> CROSS -> SECOND -> FINAL sequence so intermediate MAGI CONTROL
-   // and three-wise-men progress never disappears.
-   let last;
-   for(let attempt=1;attempt<=2;attempt++){
-     try{
-       const result=await baseRunner(args);
-       if(!complete(result))throw new Error('審議結果が途中で欠落したため公開しません');
-       if(hasLegacySecondFallback(result))throw new Error('旧式の暫定二次判定を検出したため、審議を最初から再実行します');
-       put(k,result);
-       return result;
-     }catch(e){last=e;if(attempt<2){window.MAGI_PROGRESS_V358?.update?.(20,'初回通信を再準備して審議を最初から再実行します','RECOVERY');await sleep(1200);}}
-   }
-   if(cached){window.MAGI_LAST_DELIBERATION_RESULT=JSON.parse(JSON.stringify(cached));document.dispatchEvent(new CustomEvent('magi:deliberation-result',{detail:JSON.parse(JSON.stringify(cached))}));return cached;}
-   throw last||new Error('MAGI審議を完了できませんでした');
+   // A late FINAL error cannot authorize restarting the three paid persona
+   // generations. Leave the current failure and previous logs intact.
+   // No silent cached decision may stand in for a failed live deliberation.
+   const result=await baseRunner(args);
+   if(!complete(result))throw new Error('審議結果が途中で欠落したため公開しません');
+   if(hasLegacySecondFallback(result))throw new Error('旧式の暫定二次判定を検出しました。再実行は利用者の確認後に行ってください');
+   return result;
  };
- wrapped.meta=Object.freeze({...baseRunner.meta,productionStability:'v417',sameInputReplay:true,wholeRunRetry:true,preflight:true});
+ wrapped.meta=Object.freeze({...baseRunner.meta,productionStability:'v418',sameInputReplay:false,wholeRunRetry:false,preflight:true});
  wrapped.__magiStableV417=true;
  window.MAGI_FORMAL_UI_RUNNER_V2=wrapped;
  window.MAGI_FORMAL_UI_RUNNER_V3=wrapped;
