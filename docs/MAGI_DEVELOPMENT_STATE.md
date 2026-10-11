@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: efba9c7a123422bbd5f4850d716ceb77c2890111
+- State base main SHA: 3ece002c698e9add767c5674ba78bea4fb558fd4
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1269,3 +1269,13 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - In that same live PRIMARY, BALTHASAR still produced genuinely ungrounded causal interpretations not adequately caught: `得点を生み出す`, `最も得点に結びつきやすい`, `得点機を拡大`, `守備の破綻を防ぐ` and `連係ミスを軽減`. A plan, a recorded OPS/OBP, or a legal defensive nine does not prove scoring improvement or defense outcomes.
 - Narrow follow-up: strengthen `_persona-output-guard.js` with those exact assertion classes so the existing one-shot full-lineup prose recovery/correction (and fail-closed paths for hard issues) gets a chance to strip unsupported claims. Add tests for each production phrase plus the benign negation. Narrow the **Live smoke only** bare `得点効率` keyword to assertive-improvement predicate `得点効率.{0,24}(高め|上げ|向上|改善|最大化|良く|上が|優位)`; all other smoke checks remain. Do not treat the mere noun `得点効率` in an explicit no-proof disclaimer as an invented causal benefit.
 - Requirement after PR CI and merge: exact SHA PREPARE, full PRIMARY/CROSS/SECOND/FINAL (including true deadlock permitted), then other Live and Sequential jobs. Do not overclaim success before seeing jobs; avoid repeat provider calls and Vercel paid plan. Google Drive originals and 15-game appearance CSV remain unchanged.
+
+
+## 2026-10-11: Evidence-only comparison for best-order 1-1-1 deadlock
+
+- The canonical production starting point is merged main SHA `3ece002c698e9add767c5674ba78bea4fb558fd4`, with Production Live workflow `38070177885` **SUCCESS in all five jobs**: exact SHA PREPARE, BEST_ORDER PRIMARY→CROSS→SECOND→FINAL, closer, natural 3rd, TEAM_REVIEW. The BEST_ORDER sample concluded valid `LINEUP_REVIEW_REQUIRED`, `DEADLOCK`, `1-1-1` (no selected nine); it did not establish an optimal batting order. The owner requested continuing from that point.
+- The existing UI already compared limited contested slots with dated standard-vs-challenge batting samples, but did not show all three complete nine-player orders and independent legitimate starting defensive assignments in one view.
+- New deterministic `buildLineupDeadlockComparison` is called **only** from the validated 1-1-1 branch of `buildFullLineupResult`. It preserves each Wise Man's exact SECOND batting order, reports the positions that agree/differ, and checks each order separately using `assignEvidenceGroundedFielding` against current official/practice-first starting-position evidence. Without COMPLETE evidence it returns no guessed positions. It does **not** choose, merge, average, normalize away differences, or assert an effect on runs/wins. The FINAL itself retains `lineup: []`, `fieldingStatus: NOT_EVALUATED` and `reviewReason: FULL_LINEUP_DEADLOCK_1_1_1`.
+- Existing `lineup-reasons-v415.js` deadlock panel now displays three expandable full nine-player proposals with per-proposal defensive status and positions, the count/identity of agreed and disputed slots, and the original grounded slot-comparison/dated observation panels. Mobile typography is legible and dynamic names are HTML-escaped. When verified comparison is absent it shows only the existing cautious record comparison.
+- Tests `scripts/test-lineup-deadlock-comparison.mjs` require three genuine distinct full orders, no elected lineup, legal separate fielding proof, NO invented defense when packet missing/incomplete, and exact UI output for 27 nine-player rows. CI `magi-full-lineup-context-guard.yml` runs the test and new source syntax guard. No changes to Google Drive originals/CSV, no paid Vercel features and no additional Gemini generations.
+- Acceptance: all PR tests pass; merge and verify exact SHA on Vercel and a full staged Live run. An observed 1-1-1 still means **unresolved**, not a finalized recommended lineup. Browser appearance on authenticated iPhone is not proven merely by CI and remains a separate user-side test.
