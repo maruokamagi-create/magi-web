@@ -148,8 +148,20 @@
   function historyKey(label){return/否決/.test(label)?'reject':/保留|不足|不一致|確認/.test(label)?'hold':/条件付き/.test(label)?'conditional':'pass'}
   async function health(){const r=await fetch('/api/magi/health',{method:'POST',headers:{'content-type':'application/json'},body:'{}'});const data=await r.json().catch(()=>({}));if(!r.ok||!data.ok)throw new Error(data.reason||data.error||`Gemini設定確認に失敗しました（${r.status}）`);return data}
 
+  // The server exposes only a limited failure class. Report it without any
+  // prompt, request payload, provider key, model token or private Evidence.
+  function formalErrorContext(error){
+    const stages={PRIMARY:'一次審議',CROSS:'クロス審議',SECOND:'二次審議',INDEPENDENCE_RECHECK:'独立性再確認',FINAL:'最終判定'};
+    const failureClasses={provider_rate_limit:'AI提供元の利用制限',model_unavailable:'AIモデルの一時利用不可',provider_retryable_http:'AI提供元の一時的な通信障害',provider_http:'AI提供元の通信障害',empty_text:'AI回答が空でした',invalid_structured_json:'AI回答の形式不正',timeout:'AI回答の時間切れ',other:'原因の詳細は未確認'};
+    const stage=stages[String(error?.magiStage||'')]||'';
+    const type=failureClasses[String(error?.failureClass||'')]||'';
+    const status=Number(error?.status||0);
+    return [stage,type,status>=400&&status<=599?'HTTP '+status:''].filter(Boolean).join(' ／ ');
+  }
+
   runMagi=async function(){
     const q=$('q').value.trim();if(!q){setStatus('相談内容を入力してください。');return}
+    window.MAGI_LAST_UI_DELIBERATION_ERROR=null;
     const route=routeQuestion(q);if(route.type==='advanced'){setStatus('高度相談向けの内容です。引継ぎパネルを開きました。');openAdvanced();return}
     if(!window.MAGI_ENGINE_V1){setStatus('正式審議エンジンを読み込めませんでした。');return}
     const kind=selectionKind(q),isSelection=kind!=='proposal';
@@ -224,7 +236,9 @@
       }
       $('response').scrollIntoView({behavior:'smooth',block:'start'});
     }catch(error){
-      console.error('[MAGI engine UI]',error);protocol.insertAdjacentHTML('beforeend',`<div class="engineError"><b>正式審議を完了できませんでした。</b><br>${esc(error?.message||error)}<br>完了済みの公開審議ログは上に残しています。ローカル判定への自動切替は行っていません。</div>`);setStatus('MAGI正式審議エラー — 完了済みの審議ログを保持しました。');
+      window.MAGI_LAST_UI_DELIBERATION_ERROR=error;
+      const failureDetails=formalErrorContext(error);
+      console.error('[MAGI engine UI]',error);protocol.insertAdjacentHTML('beforeend',`<div class="engineError"><b>正式審議を完了できませんでした。</b><br>${esc(error?.message||error)}${failureDetails?`<br>停止地点・原因分類：${esc(failureDetails)}`:''}<br>完了済みの公開審議ログは上に残しています。ローカル判定への自動切替は行っていません。</div>`);setStatus('MAGI正式審議エラー — 完了済みの審議ログを保持しました。');
     }finally{setBusy(false)}
   };
   window.MAGI_ENGINE_UI_V187=true;

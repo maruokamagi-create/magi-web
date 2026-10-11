@@ -119,6 +119,14 @@ export function markTransientPersonaRetryable(body, payload) {
   const phase = String(body?.phase || '').toUpperCase();
   if (phase !== 'PRIMARY' && phase !== 'SECOND') return payload;
   if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return payload;
+  // A provider quota failure has already exhausted the configured model/fallback
+  // budget. Repeating the same request immediately wastes the free quota.
+  if (payload?.diagnostic?.failureClass === 'provider_rate_limit') return {
+    ...payload,
+    retryExhausted: true,
+    retryFreshRequest: false,
+    retryScope: 'PROVIDER_QUOTA'
+  };
   return {
     ...payload,
     retryExhausted: false,

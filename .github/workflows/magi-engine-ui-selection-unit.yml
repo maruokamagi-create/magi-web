@@ -4,6 +4,10 @@ on:
   push:
     paths:
       - 'engine-ui-v187.js'
+      - 'deliberation-integrity-v348.js'
+      - 'magi-ui-runner-guard-v359.js'
+      - 'magi-formal-runner-v373.js'
+      - 'scripts/test-formal-error-visibility.mjs'
       - 'scripts/test-engine-ui-selection-mode.mjs'
       - 'scripts/test-client-server-selection-alignment.mjs'
       - 'server/api/magi/orchestrate.js'
@@ -24,3 +28,5 @@ jobs:
         run: node scripts/test-engine-ui-selection-mode.mjs
       - name: Test client server selection alignment
         run: node scripts/test-client-server-selection-alignment.mjs
+      - name: Check sanitized SECOND failure classification and propagation
+        run: node scripts/test-formal-error-visibility.mjs

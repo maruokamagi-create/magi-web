@@ -10,6 +10,11 @@ window.runMagi=async function(...args){
   if(/MAGI正式審議エラー|正式審議を完了できませんでした/.test(status)){
     const errBox=document.querySelector('.engineError');
     const detail=String(errBox?.textContent||status).replace(/\s+/g,' ').trim();
+    // The UI catches the actual persona HTTP error to preserve public logs.
+    // Propagate that same Error to the formal runner instead of losing its
+    // stage, sanitized failure class and HTTP status in a text-only wrapper.
+    const underlying=window.MAGI_LAST_UI_DELIBERATION_ERROR;
+    if(underlying&&typeof underlying==='object'&&typeof underlying.message==='string')throw underlying;
     throw new Error(detail||'正式3賢人UIが審議エラーを検出しました');
   }
   return result;

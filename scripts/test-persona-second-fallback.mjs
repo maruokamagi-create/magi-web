@@ -24,4 +24,10 @@ assert.equal('secondFallbackUsed' in primary, false);
 
 assert.equal(markSecondTransientRetryable({ phase: 'SECOND' }, null), null);
 
+const quota={...transient,diagnostic:{failureClass:'provider_rate_limit'}};
+const blocked=markSecondTransientRetryable({phase:'SECOND'},quota);
+assert.equal(blocked.retryExhausted,true,'quota must not be immediately retried');
+assert.equal(blocked.retryFreshRequest,false);
+assert.equal(blocked.retryScope,'PROVIDER_QUOTA');
+assert.deepEqual(blocked.diagnostic,quota.diagnostic,'do not erase safe reason');
 console.log('PERSONA PRIMARY/SECOND FRESH-REQUEST RETRY: PASS');
