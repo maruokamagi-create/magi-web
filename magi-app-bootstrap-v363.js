@@ -31,7 +31,7 @@ async function boot(){
   await load(`/magi-ui-runner-guard-v359.js?v=${REV}`);await waitCapability(uiRunnerGuardReady);
   await load(`/magi-formal-runner-v373.js?v=${REV}`);await waitCapability(formalReady);
   await load(`/magi-core-client-guard-v363.js?v=${REV}`);await waitCapability(coreGuardReady);
-  await load(`/main-live-answer-v362.js?v=${REV}`);await waitCapability(semanticReady);
+  await load(`/main-live-answer-v362.js?v=${REV}-team-game-v1`);await waitCapability(semanticReady);
   ready=true;activateButton();
   window.MAGI_APP_RUNTIME=Object.freeze({version:'canonical-app-v377',clientVersion:363,runtimeVersion:363,ready:true,entry:'BOOTSTRAP_CAPTURE_SEMANTIC_V2',formalRunner:'V373_SINGLE_PATH',progress:'EVENT_DRIVEN_ONLY',rawPacketValidated:true,numericFailClosed:true,structuredValidationOnly:true,proseBlocking:false,authoritativeEvidenceVisible:true,staleClientFailClosed:true,bootstrapLast:true,localFallback:false,teamPolicy:'MARUOKA_PRACTICAL_LINEUP_POLICY_20260916',controlSummary:'V377_STRUCTURED',engineVersion:String(window.MAGI_ENGINE_V1?.version||'')});
   document.dispatchEvent(new CustomEvent('magi:app-ready',{detail:window.MAGI_APP_RUNTIME}));
