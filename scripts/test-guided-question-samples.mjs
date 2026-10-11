@@ -1,0 +1,41 @@
+import fs from 'node:fs';
+import vm from 'node:vm';
+import assert from 'node:assert/strict';
+
+const sample=fs.readFileSync('question-sample-routes-v394.js','utf8');
+const page=fs.readFileSync('index.html','utf8');
+assert.match(page,/\/question-sample-routes-v394\.js\?v=394/,'production loads new sample UI');
+assert.doesNotMatch(page,/\/question-sample-routes-v393\.js/,'old sample UI is not simultaneously loaded');
+assert.doesNotMatch(sample,/\.click\(\)|MAGI_SEMANTIC_RUN_V2\(/,'sample must not start a costly formal run');
+
+const harness=sample.replace(/\}\)\(\);\s*$/, 'window.__sampleTest={build,ROSTER,SAMPLES};})();');
+assert.notEqual(harness,sample,'test harness injection');
+const window={addEventListener(){}};
+const document={getElementById(){return null},documentElement:{}};
+class MutationObserver{observe(){} disconnect(){}}
+vm.runInNewContext(harness,{window,document,MutationObserver});
+const {build,ROSTER,SAMPLES}=window.__sampleTest;
+assert.equal(window.MAGI_QUESTION_SAMPLE_ROUTES_META.version,'v394');
+assert.equal(SAMPLES.length,12);
+assert.equal(SAMPLES.filter(x=>x.guided).length,6);
+assert.equal(ROSTER.length,14);
+assert.ok(ROSTER.includes('鰐渕 将太'));
+assert.ok(!ROSTER.includes('鰐淵 将太'));
+const team=build('TEAM_RECORD',{start:'2026-09-20',end:'2026-10-10'});
+assert.match(team,/2026年09月20日から2026年10月10日まで/);
+assert.match(team,/試合.*一覧表/);
+assert.match(team,/推測で補わない/);
+assert.throws(()=>build('TEAM_RECORD',{start:'2026-10-11',end:'2026-10-01'}),/開始日以降/);
+assert.throws(()=>build('TEAM_RECORD',{start:'',end:'2026-10-01'}),/開始日と終了日/);
+const batting=build('PLAYER_BATTING',{player:'大野 竜暉',period:'通算'});
+assert.match(batting,/大野 竜暉の通算打撃成績一覧/);
+assert.match(build('PLAYER_BATTING',{playerText:'大野竜暉',period:'現チーム'}),/大野 竜暉の現チーム打撃成績一覧/);
+assert.match(build('PLAYER_PITCHING',{player:'橋向 結都',period:'旧チーム'}),/橋向 結都の旧チーム投手成績一覧/);
+assert.match(build('PLAYER_FIELDING',{player:'鰐渕 将太'}),/鰐渕 将太の現チームの守備成績一覧/);
+assert.throws(()=>build('PLAYER_BATTING',{playerText:'存在しない選手'}),/正式名/);
+assert.match(build('PLAYER_COMPARE',{player:'大野 竜暉',player2:'大久保 陽翔',axis:'打撃'}),/大野 竜暉と大久保 陽翔/);
+assert.throws(()=>build('PLAYER_COMPARE',{player:'大野 竜暉',player2:'大野竜暉'}),/異なる選手/);
+assert.match(build('BATTING_SLOT',{slot:'3'}),/3番打者/);
+assert.throws(()=>build('BATTING_SLOT',{slot:'10'}),/1〜9番/);
+for(const id of ['BEST_ORDER','ACE_SELECTION','PITCHING_PLAN_7','TEAM_REVIEW','STARTER_EVAL'])assert.ok(SAMPLES.find(s=>s.id===id),'original sample retained '+id);
+console.log('GUIDED QUESTION SAMPLES: 21/21 PASS (no provider or Drive access)');
