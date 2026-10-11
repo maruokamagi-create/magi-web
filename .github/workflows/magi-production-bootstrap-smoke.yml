@@ -53,7 +53,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          grep -q '/magi-app-bootstrap-v363.js?v=429' index.html
+          grep -q '/magi-app-bootstrap-v363.js?v=430' index.html
           grep -q '/chat-ui-canonical-v387.js?v=434' index.html
           grep -q '/wise-men-chat-repair-v389.js?v=434' index.html
           grep -q 'magi-formal-runner-v373.js' magi-app-bootstrap-v363.js
@@ -237,8 +237,8 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/" -o /tmp/lineup-reasons-index.html
-          grep -Fq '/lineup-reasons-v415.js?v=424' /tmp/lineup-reasons-index.html
-          curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/lineup-reasons-v415.js?v=424" -o /tmp/lineup-reasons-served.js
+          grep -Fq '/lineup-reasons-v415.js?v=425' /tmp/lineup-reasons-index.html
+          curl -L --fail --retry 4 --retry-delay 3 --retry-all-errors -sS "$BASE/lineup-reasons-v415.js?v=425" -o /tmp/lineup-reasons-served.js
           grep -Fq 'function adjacentSwapReviews(entries,names,statsMap)' /tmp/lineup-reasons-served.js
           grep -Fq 'function deadlockDisputeHtml(r)' /tmp/lineup-reasons-served.js
           grep -Fq 'function deadlockFullProposalsHtml(r,entries)' /tmp/lineup-reasons-served.js
@@ -262,9 +262,9 @@ jobs:
           grep -Fq '/stats-direct-click-v314.js?v=318' /tmp/index.html
           curl -L --fail -sS 'https://magi-web.vercel.app/stats-direct-click-v314.js?v=318' -o /tmp/stats-direct-click.js
           grep -Fq "if(typeof window.MAGI_SEMANTIC_RUN_V2==='function')return;" /tmp/stats-direct-click.js
-          grep -Fq '/magi-app-bootstrap-v363.js?v=429' /tmp/index.html
-          curl -L --fail -sS 'https://magi-web.vercel.app/magi-app-bootstrap-v363.js?v=429' -o /tmp/bootstrap.js
-          curl -L --fail -sS 'https://magi-web.vercel.app/main-live-answer-v362.js?v=429' -o /tmp/main-live-answer-check.js
+          grep -Fq '/magi-app-bootstrap-v363.js?v=430' /tmp/index.html
+          curl -L --fail -sS 'https://magi-web.vercel.app/magi-app-bootstrap-v363.js?v=430' -o /tmp/bootstrap.js
+          curl -L --fail -sS 'https://magi-web.vercel.app/main-live-answer-v362.js?v=430' -o /tmp/main-live-answer-check.js
           grep -Fq "window.MAGI_SEMANTIC_RUN_V2(b)" /tmp/bootstrap.js
           grep -Fq "entry:'BOOTSTRAP_CAPTURE_SEMANTIC_V2'" /tmp/bootstrap.js
           ! grep -Fq "window.addEventListener('click',event=>{const btn=mainButton" /tmp/main-live-answer-check.js
@@ -283,7 +283,7 @@ jobs:
           grep -Fq '/pitching-direct-report-v317.js?v=330' /tmp/index.html
           curl -L --fail -sS https://magi-web.vercel.app/stats-server-bridge-v315.js?v=319 -o /tmp/stats-bridge.js
           curl -L --fail -sS https://magi-web.vercel.app/pitching-direct-report-v317.js?v=330 -o /tmp/pitching-report.js
-          curl -L --fail -sS https://magi-web.vercel.app/main-live-answer-v362.js?v=429 -o /tmp/main-live-answer-check.js
+          curl -L --fail -sS https://magi-web.vercel.app/main-live-answer-v362.js?v=430 -o /tmp/main-live-answer-check.js
           grep -Fq "typeof window.MAGI_SEMANTIC_RUN_V2==='function'" /tmp/stats-bridge.js
           grep -Fq "typeof window.MAGI_SEMANTIC_RUN_V2==='function'" /tmp/pitching-report.js
 
@@ -354,7 +354,7 @@ jobs:
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 3 --retry-delay 3 -sS "$BASE/" -o /tmp/index.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=429' /tmp/index.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=430' /tmp/index.html
           grep -Fq '/chat-ui-canonical-v387.js?v=434' /tmp/index.html
           echo 'PRODUCTION BOOTSTRAP ASSETS: PASS'
 

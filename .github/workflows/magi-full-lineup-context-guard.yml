@@ -14,6 +14,11 @@ on:
       - 'server/api/magi/_lineup-deadlock-comparison.js'
       - 'server/api/magi/orchestrate.js'
       - 'scripts/test-lineup-deadlock-comparison.mjs'
+      - 'scripts/test-no-client-lineup-finalizer.mjs'
+      - 'magi-app-bootstrap-v363.js'
+      - 'lineup-finalizer-v350.js'
+      - 'final-decision-emphasis-v340.js'
+      - 'magi-control-summary-v377.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
   pull_request:
@@ -29,6 +34,11 @@ on:
       - 'server/api/magi/_lineup-deadlock-comparison.js'
       - 'server/api/magi/orchestrate.js'
       - 'scripts/test-lineup-deadlock-comparison.mjs'
+      - 'scripts/test-no-client-lineup-finalizer.mjs'
+      - 'magi-app-bootstrap-v363.js'
+      - 'lineup-finalizer-v350.js'
+      - 'final-decision-emphasis-v340.js'
+      - 'magi-control-summary-v377.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
 
@@ -65,7 +75,7 @@ jobs:
           grep -Fq '<b>守備根拠：</b>' lineup-reasons-v415.js
           grep -Fq '全14名の今季通算・直近6試合・過去実績・実打順/守備起用を主Evidence' lineup-reasons-v415.js
           grep -Fq '3賢人の一致度そのものを打撃Evidenceの代わりにはしません' lineup-reasons-v415.js
-          grep -Fq '/lineup-reasons-v415.js?v=424' index.html
+          grep -Fq '/lineup-reasons-v415.js?v=425' index.html
           ! grep -Fq '最終${r.total}人中' lineup-reasons-v415.js
           ! grep -Fq '4番は3賢人の一致度を最優先' lineup-reasons-v415.js
       - name: Guard legacy fixed-order Evidence is not loaded
@@ -88,5 +98,7 @@ jobs:
         run: node scripts/test-full-lineup-defensive-constraints.mjs
       - name: Verify deadlock proposal comparison remains evidence-only and unselected
         run: node scripts/test-lineup-deadlock-comparison.mjs
+      - name: Prevent browser from replacing genuine unresolved FULL_LINEUP with invented final
+        run: node scripts/test-no-client-lineup-finalizer.mjs
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
