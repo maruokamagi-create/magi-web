@@ -905,7 +905,7 @@ export default async function handler(req, res) {
         && !recoverSoftSelectionInference(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverMismatchedSelectionMetricSentences(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
         && !recoverUnsupportedComponentMetricLabels(result, guardIssues, body.case, { focused: !finalized.candidateCase && !finalized.teamReviewCase })
-        && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase)
+        && !recoverSoftFullLineupLanguage(result, guardIssues, finalized.fullLineupCase, body.case)
         && !recoverSoftPitchingPlanLanguage(result, guardIssues, finalized.pitchingPlanCase, body.case)) {
         return sendJson(res, 503, {
           error: phase + ' batch response failed persona validation',
