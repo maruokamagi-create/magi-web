@@ -14,7 +14,6 @@ function setError(message){failed=true;ready=false;quarantineButton();const b=fi
 function legacyUiReady(){return Boolean(window.MAGI_ACTIVE_VERSION&&window.MAGI_ENGINE_UI_V187===true&&window.MAGI_ENGINE_V1&&typeof window.MAGI_ENGINE_V1.deliberate==='function'&&typeof window.runMagi==='function');}
 async function waitLegacyUi(){while(!legacyUiReady()){quarantineButton();await sleep(50);}}
 function integrityReady(){return window.MAGI_DELIBERATION_INTEGRITY_V349===true&&window.MAGI_DELIBERATION_SERIAL_V374===true&&window.MAGI_ENGINE_V1&&typeof window.MAGI_ENGINE_V1.deliberate==='function'&&/serial-integrity/i.test(String(window.MAGI_ENGINE_V1.version||''));}
-function finalizerReady(){return window.MAGI_LINEUP_FINALIZER_V350===true&&window.MAGI_ENGINE_V1&&typeof window.MAGI_ENGINE_V1.deliberate==='function'&&/lineup-finalizer-v350/i.test(String(window.MAGI_ENGINE_V1.version||''));}
 function progressReady(){return window.MAGI_PROGRESS_V358?.version==='progress-v358-event-driven';}
 function uiRunnerGuardReady(){return window.MAGI_UI_RUNNER_GUARD_V359_META?.propagatesErrors===true;}
 function formalReady(){return window.MAGI_FORMAL_RUNNER_V373_READY===true&&typeof window.MAGI_FORMAL_UI_RUNNER_V2==='function'&&window.MAGI_FORMAL_UI_RUNNER_V2?.meta?.structuredValidationOnly===true;}
@@ -26,7 +25,8 @@ async function boot(){
   document.addEventListener('click',blockLegacyClick,true);quarantineButton();
   await waitLegacyUi();
   await load(`/deliberation-integrity-v348.js?v=${REV}`);await waitCapability(integrityReady);
-  await load(`/lineup-finalizer-v350.js?v=${REV}`);await waitCapability(finalizerReady);
+  // Server FINAL is authoritative. Never load the obsolete client consensus
+  // finalizer: it turned LINEUP_REVIEW_REQUIRED / 1-1-1 into LINEUP_RESULT.
   await load(`/engine-progress-v358.js?v=${REV}`);await waitCapability(progressReady);
   await load(`/magi-ui-runner-guard-v359.js?v=${REV}`);await waitCapability(uiRunnerGuardReady);
   await load(`/magi-formal-runner-v373.js?v=${REV}`);await waitCapability(formalReady);
