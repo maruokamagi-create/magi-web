@@ -50,5 +50,5 @@ assert.match(reasons,/\/\^\[1-9\]\$\/\.test\(slot\)/,'invalid null batting order
 const html=readFileSync(new URL('../index.html',import.meta.url),'utf8');
 assert.match(html,/lineup-reasons-v415\.js\?v=425/);
 assert.match(html,/final-decision-emphasis-v340\.js\?v=381/);
-assert.match(html,/magi-app-bootstrap-v363\.js\?v=430/);
+assert.match(html,/magi-app-bootstrap-v363\.js\?v=431/);
 console.log('PASS: true 1-1-1 server deadlock stays unresolved, no selected nine or fake defensive assignments');

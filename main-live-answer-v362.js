@@ -40,7 +40,43 @@ function hidePanel(){const p=$('magiLiveAnswerV362');if(p)p.style.display='none'
 function ensureClarifyModal(){let m=$('magiClarifyModalV362');if(m)return m;m=document.createElement('div');m.id='magiClarifyModalV362';m.style.cssText='display:none;position:fixed;inset:0;z-index:2147483000;background:rgba(2,10,18,.72);padding:18px;align-items:center;justify-content:center';m.innerHTML='<div role="dialog" aria-modal="true" aria-labelledby="magiClarifyTitleV362" style="width:min(560px,100%);max-height:82vh;overflow:auto;background:#0a1b2e;color:#f7f9fc;border:1px solid #426786;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.45);padding:20px"><div id="magiClarifyTitleV362" style="font-size:12px;letter-spacing:.12em;color:#8db0d1;margin-bottom:8px">MAGIから確認</div><div id="magiClarifyQuestionV362" style="font-size:18px;font-weight:850;line-height:1.65;margin-bottom:14px"></div><textarea id="magiClarifyInputV362" rows="3" placeholder="ここに回答を入力" style="box-sizing:border-box;width:100%;resize:vertical;border-radius:12px;border:1px solid #426786;background:#071522;color:#fff;padding:12px;font:inherit;line-height:1.5"></textarea><div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px"><button type="button" id="magiClarifyCancelV362" style="padding:10px 14px;border-radius:10px;border:1px solid #426786;background:transparent;color:#dce8f3">閉じる</button><button type="button" id="magiClarifySubmitV362" style="padding:10px 14px;border:0;border-radius:10px;background:#fff;color:#0a1b2e;font-weight:850">回答して続ける</button></div></div>';document.body.appendChild(m);return m}
 function askClarification(result,originalQuestion){return new Promise(resolve=>{const m=ensureClarifyModal(),q=$('magiClarifyQuestionV362'),input=$('magiClarifyInputV362'),submit=$('magiClarifySubmitV362'),cancel=$('magiClarifyCancelV362');q.textContent=txt(result?.clarificationQuestion||result?.answer)||'確認したいことがあります。';input.value='';m.style.display='flex';setRouter('MAGIから確認','CLARIFY','分からないまま進めず、回答を受けて元の相談を続けます。');if($('status'))$('status').textContent='確認事項に回答してください。';setTimeout(()=>input.focus(),0);const finish=value=>{m.style.display='none';submit.onclick=null;cancel.onclick=null;input.onkeydown=null;resolve(value)};submit.onclick=()=>{const a=txt(input.value);if(!a){input.focus();return}finish(a)};cancel.onclick=()=>finish('');input.onkeydown=e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Enter')submit.click()};})}
 async function resolveClarification(first,originalQuestion){let r=first;for(let turn=0;turn<3&&(r?.action==='CLARIFY'||r?.route==='CLARIFY');turn++){const answer=await askClarification(r,originalQuestion);if(!answer)return null;contextPush('assistant',txt(r?.clarificationQuestion||r?.answer));contextPush('user',answer);if($('status'))$('status').textContent='回答を反映して質問を再確認しています…';r=await requestCore(originalQuestion)}return r}
-function showAnswer(result,totalMs){const p=ensurePanel();if(!p)return;const answer=txt(result?.answer||result?.clarificationQuestion)||'回答を取得できませんでした。',semantic=result?.semantic||{},understood=txt(semantic?.understoodRequest||result?.understoodRequest);$('magiUnderstoodV362').textContent=understood?`質問理解：${understood}`:'';$('magiLiveAnswerTextV362').textContent=answer;const bits=[];if(semantic?.mode)bits.push(`意図：${semantic.mode}`);if(result?.source?.name)bits.push(`参照：${result.source.name}`);if(result?.answerEngineVersion)bits.push(`回答：${result.answerEngineVersion}`);if(Number.isFinite(totalMs))bits.push(`処理：${(totalMs/1000).toFixed(1)}秒`);$('magiLiveAnswerMetaV362').textContent=bits.join(' ｜ ');$('response')?.classList.remove('show');p.style.display='block';if($('status'))$('status').textContent='MAGI 回答完了';setRouter('質問理解 → 検証回答','ACCURACY','質問の意味を先に確認し、その意図に合うデータ処理を実行しました。');p.scrollIntoView({behavior:'smooth',block:'center'});contextPush('assistant',`${understood?understood+'。':''}${answer}`)}
+function renderTeamGameTable(result){
+ const panel=ensurePanel();
+ if(!panel)return;
+ panel.querySelector('#magiTeamGamesV362')?.remove();
+ if(result?.route!=='TEAM_GAME_RANGE'||!Array.isArray(result?.teamGames))return;
+ const box=document.createElement('section');box.id='magiTeamGamesV362';
+ box.style.cssText='margin-top:15px;padding-top:12px;border-top:1px solid #365575';
+ const heading=document.createElement('div');heading.textContent='試合別スコア（丸岡の得点 − 相手の得点）';
+ heading.style.cssText='font-size:15px;font-weight:900;margin-bottom:10px';
+ box.appendChild(heading);
+ const scroll=document.createElement('div');scroll.style.cssText='width:100%;overflow-x:auto';
+ const table=document.createElement('table');table.style.cssText='width:100%;border-collapse:collapse;min-width:340px;font-size:13px;line-height:1.5';
+ const thead=document.createElement('thead'),headRow=document.createElement('tr');
+ for(const label of ['日付','相手・試合','スコア','結果']){
+   const th=document.createElement('th');th.textContent=label;th.scope='col';
+   th.style.cssText='padding:9px 6px;text-align:left;white-space:nowrap;border-bottom:2px solid #799bb9;color:#b4cee0';
+   headRow.appendChild(th);
+ }
+ thead.appendChild(headRow);table.appendChild(thead);
+ const tbody=document.createElement('tbody');
+ for(const game of result.teamGames){
+   const row=document.createElement('tr');
+   const values=[String(game.date||''),String(game.opponent||'')+' '+String(game.game||''),
+     String(game.runs)+' − '+String(game.allowed),String(game.outcome||'')];
+   for(let i=0;i<values.length;i++){
+     const td=document.createElement('td');td.textContent=values[i];
+     td.style.cssText='padding:10px 6px;border-bottom:1px solid #29455d;vertical-align:top'+(i===2?';white-space:nowrap;font-weight:850':'');
+     row.appendChild(td);
+   }
+   tbody.appendChild(row);
+ }
+ table.appendChild(tbody);scroll.appendChild(table);box.appendChild(scroll);
+ const note=document.createElement('p');note.style.cssText='font-size:12px;line-height:1.65;color:#b4cee0;margin:12px 0 0';
+ note.textContent=String(result?.teamRange?.coverage||'登録済みスコア原本の範囲に限る。未登録の試合は含みません。');
+ box.appendChild(note);panel.appendChild(box);
+}
+function showAnswer(result,totalMs){const p=ensurePanel();if(!p)return;const answer=txt(result?.answer||result?.clarificationQuestion)||'回答を取得できませんでした。',semantic=result?.semantic||{},understood=txt(semantic?.understoodRequest||result?.understoodRequest);$('magiUnderstoodV362').textContent=understood?`質問理解：${understood}`:'';$('magiLiveAnswerTextV362').textContent=answer;renderTeamGameTable(result);const bits=[];if(semantic?.mode)bits.push(`意図：${semantic.mode}`);if(result?.source?.name)bits.push(`参照：${result.source.name}`);if(result?.answerEngineVersion)bits.push(`回答：${result.answerEngineVersion}`);if(Number.isFinite(totalMs))bits.push(`処理：${(totalMs/1000).toFixed(1)}秒`);$('magiLiveAnswerMetaV362').textContent=bits.join(' ｜ ');$('response')?.classList.remove('show');p.style.display='block';if($('status'))$('status').textContent='MAGI 回答完了';setRouter('質問理解 → 検証回答','ACCURACY','質問の意味を先に確認し、その意図に合うデータ処理を実行しました。');p.scrollIntoView({behavior:'smooth',block:'center'});contextPush('assistant',`${understood?understood+'。':''}${answer}`)}
 async function requestCore(question){const c=new AbortController(),t=setTimeout(()=>c.abort(),70000);try{const r=await fetch('/api/magi/core',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json','X-MAGI-Client-Version':CLIENT_VERSION,'X-MAGI-Runtime-Version':RUNTIME_VERSION},body:JSON.stringify({question,context:contextLoad()}),signal:c.signal});const d=await r.json().catch(()=>({}));if(!r.ok)throw Object.assign(new Error(txt(d?.error)||`CORE ${r.status}`),{status:r.status,requiredClientVersion:d?.requiredClientVersion||null});return d}finally{clearTimeout(t)}}
 function packetPlayers(packet){return Array.isArray(packet?.allCurrentTeamCheck?.players)?packet.allCurrentTeamCheck.players:[]}
 function fullLineupPacketReady(packet){return Number(packet?.count)===14&&packetPlayers(packet).length===14&&Array.isArray(packet?.files)&&packet.files.some(name=>/2026-2027.*\.xlsm$/i.test(String(name)))}
@@ -108,6 +144,7 @@ function semanticFormalErrorDetails(error){
   return details?'停止地点・原因分類：'+details:'停止地点・原因分類：未確認（診断情報を取得できませんでした）';
 }
 function clearPreviousResult(){
+ document.getElementById('magiTeamGamesV362')?.remove();
   hidePanel();
   const response=$('response');
   if(response){
