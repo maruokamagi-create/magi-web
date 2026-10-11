@@ -4,9 +4,6 @@ if(window.MAGI_PRODUCTION_STABILITY_V412)return;
 window.MAGI_PRODUCTION_STABILITY_V412=true;
 const txt=v=>String(v??'').trim();
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
-const stable=v=>{if(Array.isArray(v))return v.map(stable);if(v&&typeof v==='object'){const o={};Object.keys(v).sort().forEach(k=>{if(!['id','createdAt'].includes(k))o[k]=stable(v[k])});return o}return v};
-function hash(s){let h=2166136261;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,16777619)}return(h>>>0).toString(36)}
-function key(question,evidence,kind){return 'magi:stable:v417:'+hash(JSON.stringify(stable({question:txt(question).normalize('NFKC'),evidence,kind:txt(kind).toUpperCase()})))}
 function hasLegacySecondFallback(result){
  const second=result?.second;
  if(!second||typeof second!=='object')return false;
@@ -23,9 +20,6 @@ function hasLegacySecondFallback(result){
  return false;
 }
 function complete(result){return Boolean(result?.primary&&result?.crossExamination&&result?.second&&result?.final)}
-function usable(result){return complete(result)&&!hasLegacySecondFallback(result)}
-function get(k){try{const v=JSON.parse(localStorage.getItem(k)||'null');const result=v?.result||null;return usable(result)?result:null}catch(_){return null}}
-function put(k,result){if(!usable(result))return;try{localStorage.setItem(k,JSON.stringify({savedAt:Date.now(),result}))}catch(_){}}
 function ready(){return window.MAGI_APP_RUNTIME?.ready===true&&typeof window.MAGI_FORMAL_UI_RUNNER_V2==='function'&&window.MAGI_PROGRESS_V358?.version==='progress-v358-event-driven'&&window.MAGI_DELIBERATION_SERIAL_V374===true}
 async function warm(){const start=Date.now();while(!ready()&&Date.now()-start<30000)await sleep(100);if(!ready())throw new Error('MAGIの全機能が準備完了していないため審議を開始しません');}
 const base=window.fetch.bind(window);
