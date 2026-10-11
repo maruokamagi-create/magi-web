@@ -29,12 +29,14 @@ function injectStyle(){
 function structuredLineup(){
  const root=window.MAGI_LAST_DELIBERATION_RESULT||{};
  const final=root?.final&&typeof root.final==='object'?root.final:root;
- if(final?.status!=='LINEUP_RESULT')return null;
+ if(final?.status!=='LINEUP_RESULT'||final?.fieldingStatus!=='COMPLETE')return null;
  const rows=Array.isArray(final?.lineup)?final.lineup.slice():[];
  if(rows.length!==9)return null;
  rows.sort((a,b)=>Number(a?.slot)-Number(b?.slot));
  if(rows.some((r,i)=>Number(r?.slot)!==i+1||!String(r?.name||'').trim()))return null;
  if(new Set(rows.map(r=>String(r.name).normalize('NFKC').replace(/[\s　]/g,''))).size!==9)return null;
+ const defense=rows.map(r=>String(r?.position||'').trim());
+ if(new Set(defense).size!==9||!['投','捕','一','二','三','遊','左','中','右'].every(p=>defense.includes(p)))return null;
  return {lineup:rows.map(r=>({no:Number(r.slot),name:String(r.name).trim()})),remainder:''};
 }
 
@@ -71,8 +73,14 @@ function emphasize(){
  const response=document.getElementById('response');
  const final=response?.querySelector?.('.final');
  if(!final||final.dataset.magiFinalDecisionEmphasis==='1')return false;
+ const serverFinal=window.MAGI_LAST_DELIBERATION_RESULT?.final;
+ const isFullLineup=String(serverFinal?.mode||'').toUpperCase()==='FULL_LINEUP';
+ // Never reconstruct a best-order hero from written text when the server
+ // explicitly returned DEADLOCK or could not prove nine starting positions.
+ if(isFullLineup&&(serverFinal.status!=='LINEUP_RESULT'||serverFinal.fieldingStatus!=='COMPLETE'))return false;
  const structured=structuredLineup();
- const found=structured?{parsed:structured,note:null}:findLineup(final);
+ if(isFullLineup&&!structured)return false;
+ const found=isFullLineup?{parsed:structured,note:null}:(structured?{parsed:structured,note:null}:findLineup(final));
  if(!found)return false;
  const {parsed,note}=found;
  const verdict=final.querySelector('.verdict');
