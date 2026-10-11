@@ -382,7 +382,7 @@ export function normalizeStandardFullLineupDecision(result, caseData) {
   }
   if (String(result?.judgment || '').toUpperCase() === 'YELLOW' && result?.reviewRequested !== true && !hardBlock) {
     result.judgment = 'BLUE';
-    result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), '標準ベストオーダーとして暫定採用。相手投手や追加試合の情報が入れば見直す。'])];
+    result.warnings = [...new Set([...(Array.isArray(result.warnings) ? result.warnings : []), '各賢人の打順案は二次審議で比較する。相手投手や追加試合の記録が入れば、この案を見直す。'])];
   }
   result.candidatePlayers = check.order;
   return result;
