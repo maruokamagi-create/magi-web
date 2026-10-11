@@ -3,7 +3,7 @@
 if(window.MAGI_QUESTION_SAMPLE_ROUTES_V395)return;
 window.MAGI_QUESTION_SAMPLE_ROUTES_V395=true;
 // Season membership comes from server/api/magi/_roster.js, checked by a CI source-of-truth test.
-const ROSTERS=Object.freeze({'2025-2026':Object.freeze(["北 淳志","坂本 陸","櫻川 莉大","佐々木 悠成","下田 涼歩","前川 夢斗","増田 晃大","宮嵜 翔","宮村 龍","井坂 悠聖","大久保 陽翔","大野 竜暉","坂田 暉馬","嶋田 栄志","武澤 大翔","橋向 結都","上村 蓮","大久保 夢翔","長侶 穹","中嶋 玲月","吉田 真翔","鰐渕 将太","武田 晴琉翔"]),'2026-2027':Object.freeze(["井坂 悠聖","大久保 陽翔","大野 竜暉","坂田 暉馬","嶋田 栄志","武澤 大翔","橋向 結都","上村 蓮","大久保 夢翔","長侶 穹","中嶋 玲月","吉田 真翔","鰐渕 将太","武田 晴琉翔"])});
+const ROSTERS=Object.freeze({'2025-2026':Object.freeze(["北 淳志","坂本 陸","櫻川 莉大","佐々木 悠成","下田 涼歩","前川 夢斗","増田 晃大","宮嵜 翔","宮村 龍","井坂 悠聖","大久保 陽翔","大野 竜暉","坂田 暉馬","嶋田 栄志","武澤 大翔","橋向 結都","上村 蓮","大久保 夢翔","武田 晴琉翔","長侶 穹","中嶋 玲月","吉田 真翔","鰐渕 将太"]),'2026-2027':Object.freeze(["井坂 悠聖","大久保 陽翔","大野 竜暉","坂田 暉馬","嶋田 栄志","武澤 大翔","橋向 結都","上村 蓮","大久保 夢翔","武田 晴琉翔","長侶 穹","中嶋 玲月","吉田 真翔","鰐渕 将太"])});
 const SAMPLES=[
  {id:'TEAM_RECORD',label:'チームの試合成績を教えて',guided:true},
  {id:'PLAYER_BATTING',label:'選手の通算打撃成績を教えて',guided:true},
