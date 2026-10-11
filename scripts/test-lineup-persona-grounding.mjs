@@ -245,7 +245,7 @@ const uiEntries=Object.entries(uiSecond).map(([key,value])=>({
   key,label:{melchior:'メルキオール',balthasar:'バルタザール',casper:'カスパー'}[key],
   value,order:value.candidatePlayers
 }));
-assert.equal(api.version,'lineup-reasons-v423');
+assert.equal(api.version,'lineup-reasons-v424');
 const swaps=api.localAdjacentSwaps(uiEntries);
 assert.equal(swaps.length,1);
 assert.equal(swaps[0].firstSlot,4);
@@ -388,6 +388,6 @@ assert.equal(api.deadlockDisputeHtml({...differentResult,second:{
 // Public render path must accept the deadlock's zero lineup without inventing one.
 assert.match(uiSrc,/if\(finalNames\(r\)\.length!==9\)return renderDeadlock\(r\)/);
 assert.match(uiSrc,/html\+=recordedDisputeHtml\(entries,r\?\.case\?\.evidence\|\|\{\}\)/);
-assert.match(fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),/lineup-reasons-v415\.js\?v=423/);
+assert.match(fs.readFileSync(new URL('../index.html',import.meta.url),'utf8'),/lineup-reasons-v415\.js\?v=424/);
 
 console.log('LINEUP PERSONA GROUNDING: PASS');
