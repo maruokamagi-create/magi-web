@@ -13,7 +13,7 @@ const seasonRosters=key=>{
 const grade3=seasonRosters('THIRD_YEAR_ROSTER');
 const grade2=seasonRosters('SECOND_YEAR_ROSTER');
 const grade1=seasonRosters('FIRST_YEAR_ROSTER');
-assert.match(html,/\/question-sample-routes-v395\.js\?v=395/);
+assert.match(html,/\/question-sample-routes-v395\.js\?v=396/);
 assert.doesNotMatch(html,/\/question-sample-routes-v394\.js/);
 assert.doesNotMatch(sample,/name="playerText|type="text"|name="period"/,'no manual player-name field or disconnected season menu');
 assert.doesNotMatch(sample,/\.click\(\)|MAGI_SEMANTIC_RUN_V2\(/,'no automatic semantic/deliberation run');
