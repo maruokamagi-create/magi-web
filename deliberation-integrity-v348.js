@@ -53,7 +53,12 @@ async function postJSON(url,payload,options={}){
       const res=await fetch(url,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
       const body=await res.json().catch(()=>({}));
       if(res.ok)return body;
-      const err=new Error(body?.error||`MAGI API error ${res.status}`);err.status=res.status;err.code=String(body?.code||'');err.apiEndpoint=url;err.retryExhausted=body?.retryExhausted===true;lastError=err;
+      const err=new Error(body?.error||`MAGI API error ${res.status}`);err.status=res.status;err.code=String(body?.code||'');err.apiEndpoint=url;err.retryExhausted=body?.retryExhausted===true;
+      // Preserve only public, allow-listed failure diagnostics. Never store request or provider secrets.
+      const classes=new Set(['provider_rate_limit','model_unavailable','provider_retryable_http','provider_http','empty_text','invalid_structured_json','timeout','other']);
+      const diagnostic=String(body?.diagnostic?.failureClass||res.headers?.get?.('x-magi-gemini-failure')||'');
+      err.failureClass=classes.has(diagnostic)?diagnostic:'';
+      lastError=err;
       if(err.retryExhausted||!(res.status===408||res.status===429||res.status>=500))throw err;
     }catch(error){lastError=error;if(error?.retryExhausted)throw error;if(error?.status&&!(error.status===408||error.status===429||error.status>=500))throw error}
   }
