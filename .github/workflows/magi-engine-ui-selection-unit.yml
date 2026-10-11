@@ -7,6 +7,9 @@ on:
       - 'question-sample-routes-v394.js'
       - 'server/api/magi/_live-answer.js'
       - 'scripts/test-guided-team-range-guard.mjs'
+      - 'server/api/magi/_team-game-range.js'
+      - 'scripts/test-team-game-range.mjs'
+      - 'server/api/magi/core.js'
       - 'scripts/test-guided-question-samples.mjs'
       - 'scripts/test-semantic-formal-error-display.mjs'
       - 'engine-ui-v187.js'
@@ -26,6 +29,9 @@ on:
       - 'question-sample-routes-v394.js'
       - 'server/api/magi/_live-answer.js'
       - 'scripts/test-guided-team-range-guard.mjs'
+      - 'server/api/magi/_team-game-range.js'
+      - 'scripts/test-team-game-range.mjs'
+      - 'server/api/magi/core.js'
       - 'scripts/test-guided-question-samples.mjs'
       - 'scripts/test-semantic-formal-error-display.mjs'
       - 'magi-app-bootstrap-v363.js'
@@ -41,6 +47,13 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test canonical score sheet team results (no provider)
+        run: node scripts/test-team-game-range.mjs
+      - name: Syntax-check live team results and semantic route
+        run: |
+          node --check server/api/magi/_team-game-range.js
+          node --check server/api/magi/core.js
+          node --check main-live-answer-v362.js
       - name: Test guided question samples (no provider)
         run: node scripts/test-guided-question-samples.mjs
       - name: Reject unsupported team date-range aggregates
