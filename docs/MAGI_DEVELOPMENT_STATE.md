@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: ff1ab60b019de7f45c06d7c2d9d72f9606d38418
+- State base main SHA: 389632ac6cf07855b078653c879c265845f3af3d
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1361,3 +1361,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Fix on feature branch `fix/lineup-deadlock-review-copy-20261011`: preserve 1-1-1 -> `LINEUP_REVIEW_REQUIRED` with empty `lineup`, retain raw internal warnings/reviewReason as diagnostics, but generate bounded Japanese public re-review conditions. Never automatically rerun simply to manufacture a majority. Replace individual persona adoption copy with neutral proposal wording. Let mobile summary present the three unadopted viewpoints, their independently authored verified explanations and two key disputed slots without privileging one as a provisional selection. Keep each proposal's strict standard-start defense check and the no-winning-proposal presentation.
 - Regression test additions cover synthetic deadlock, diagnostic preservation without raw-code disclosure, adoption-text exclusion, nonconvergence policy, and unbiased browser summary. No real baseball numbers, player eligibility or coaching wishes were fabricated. No Google Drive writes and no changes to FreeTier billing or quota were made.
 - Acceptance boundary: deterministic PR checks must pass; main must then be explicitly updated and verified, production must match the merged exact SHA, and real iPhone UI text must be inspected. Source modifications alone are **not** a completed deployment. Original broad multi-question UI-path reliability remains an unresolved product objective.
+
+## 2026-10-11: Post-#202 production evidence and stale lineup-stats smoke
+
+- PR #202 was merged to main `389632ac6cf07855b078653c879c265845f3af3d`, and the production `PREPARE` selftest reported that exact same `deployment.sha`, `env=production`, and `ref=main` in GitHub workflow run `38141975962` after initial previous-SHA checks.
+- The actual production phased FULL_LINEUP E2E then completed PRIMARY, CROSS, SECOND and FINAL with a legitimate 1-1-1 DEADLOCK: `LINEUP_REVIEW_REQUIRED`, `lineup=[]`; production browser bootstrap run `38141975959` passed. Real iPhone screen reading/UX after this change remains unverified.
+- A **separate existing** lineup-stats smoke, run `38141976046`, successfully fetched the official batting endpoint, lineup-rate formatter and canonical name bridge; its later static asset assertion failed because it expected old `magi-app-bootstrap-v363.js?v=427` while main/index serves v430. Not a demonstrated data/batting failure.
+- Minimal follow-up: update those stale smoke asset keys (bootstrap and main-live-answer) to v430, add a read-only production exact-main SHA gate at the beginning of that smoke using PREPARE only. This gate never runs PRIMARY, CROSS, SECOND or FINAL and therefore does not consume additional Gemini generation requests. No MAGI judgment, Drive files, billing or player statistics change.
+- Require smoke PASS and exact production SHA after this follow-up merge. Do not conflate source-integrity smoke PASS with an authenticated iPhone quality test.
