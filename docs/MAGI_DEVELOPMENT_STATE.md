@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: f1b74950eb69e3f2a097937bbde85fabbcda2b97
+- State base main SHA: 34224c95a53835f3fe28a81a8b85efd1c18a8faf
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1294,3 +1294,14 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - After merging UI cache-bust PR #194 at main SHA `f1b74950eb69e3f2a097937bbde85fabbcda2b97`, the `MAGI Production Browser Bootstrap Smoke` run `38105303119` failed only its **static asset verification step**: the workflow was still looking for `/lineup-reasons-v415.js?v=423` and `lineup-reasons-v423`, while the current index and client correctly use `v=424`. The earlier unit/guard checks in that job passed. This is not evidence of a broken browser, but the newer page was not yet validated by that workflow.
 - Narrow correction: update both workflow URL checks to `v=424`, update its client API marker expectation and assert the browser-served script exports `deadlockFullProposalsHtml`. No application logic change, no GitHub main history rewrite, no Drive edits, no provider calls, no paid settings.
 - Re-run browser smoke on the new production SHA; only report success if this exact updated workflow passes. Authenticated device rendering is still separate from this CI gate.
+
+
+## 2026-10-11: Diagnose real iPhone SECOND-stage persona generation failure
+
+- Owner supplied a real mobile screenshot from `magi-web.vercel.app`: progress stopped at **72% ERROR** after ~39 seconds, with `正式審議を完了できませんでした。3賢人の回答を一時的に取得できませんでした。` and no local fallback. The visible local-history row refers to a four-role pitching-plan question; that row alone does NOT prove the current failing prompt. This is a genuine user-facing failure, not contradicted by passing GitHub Actions E2E.
+- Source-grounded meaning of 72%: `magi-formal-runner-v373.js` maps the start of SECOND to 72%. The error literal comes from `server/api/magi/persona.js` (individual persona transient 503), not from the clean successful deterministic FINAL. Whether the original provider cause was quota, model timeout, HTTP failure, or provider capacity remains UNKNOWN: the Vercel runtime-log connector returned 403 Forbidden, so logs were not accessible. Do not invent an observed 429 or pretend this edit repairs all transient provider failures.
+- Root of missing diagnostics: server already sends allow-listed `diagnostic.failureClass`, but `deliberation-integrity-v348.js` discarded it when constructing the HTTP Error. `engine-ui-v187.js` swallowed that Error into visible HTML; `magi-ui-runner-guard-v359.js` then threw a **new text-only** Error, losing `magiStage`, `code` and `status` before `magi-formal-runner-v373.js` can record them.
+- Narrow correction: carry ONLY approved failure classes, preserve the exact Error across UI runner guard, clear stale UI error at the start of each question, display a concise escaped Japanese stage/cause/HTTP diagnostic, and include the sanitized failure class in `MAGI_LAST_FORMAL_ERROR`. Keep the actual failed SECOND marked ERROR; never synthesize a valid SECOND or switch to local judgment. No CASE/Evidence/prompt/request payload, secrets, player statistics or raw provider response are exposed.
+- Quota budget safeguard: `persona-resilient.js` no longer turns explicit `provider_rate_limit` errors into immediate fresh-request retries. Other bounded transient SECOND retries stay intact; no provider calls added. Regression simulates HTTP 503 with retryExhausted and checks exactly one attempt, original Error propagation, sanitized stage message, quota stop, and unchanged review behavior.
+- Reload updated UI assets on iPhone by versioning loader URL and engine-ui URL separately, and bootstrap/serialized integrity/runner URLs from v427 to v428. Update reproducibility/final selftests with the exact new asset IDs; do not change any scoring/Drive file or raise Vercel costs.
+- Acceptance: CI must pass, merge only after review; verify exact SHA on Vercel and browser asset serving. A **fresh actual iPhone run** is still needed to see which provider failureClass is returned and whether SECOND now completes. Avoid automatically spamming Gemini with repeated whole-deliberation runs when provider capacity is limited.
