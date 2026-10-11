@@ -31,8 +31,8 @@ jobs:
           node --check selection-polish-v218.js
           node --check magi-formal-runner-v373.js
           node --check magi-app-bootstrap-v363.js
-          grep -Fq '/magi-control-summary-v377.js?v=395' index.html
-          grep -Fq '/chat-ui-canonical-v387.js?v=434' index.html
+          grep -Fq '/magi-control-summary-v377.js?v=396' index.html
+          grep -Fq '/chat-ui-canonical-v387.js?v=435' index.html
           ! grep -Fq '/chat-ui-v196.js' index.html
           ! grep -Fq '/cross-dialogue-ui-v380.js' index.html
           grep -Fq '/result-layout-v189.js?v=201' index.html
@@ -44,7 +44,7 @@ jobs:
           grep -Fq "label='3対0 CONSENSUS'" magi-control-summary-v377.js
           grep -Fq "label='3人の意見が分かれました'" magi-control-summary-v377.js
           grep -Fq 'function sanitizeSpeech(value,result)' magi-control-summary-v377.js
-          grep -Fq "summarySection('決め手'" chat-ui-canonical-v387.js
+          grep -Fq "model.decisionType==='DEADLOCK'?'各賢人の判断理由（採用理由ではありません）':'決め手'" chat-ui-canonical-v387.js
           grep -Fq "summarySection('最大の争点'" chat-ui-canonical-v387.js
           grep -Fq '少数意見：${model.minorityPersona}' chat-ui-canonical-v387.js
           grep -Fq "if(isDirectDebate(hydrated))renderFullLineup(body,items,hydrated);else renderGeneric(body,items,hydrated)" chat-ui-canonical-v387.js
@@ -98,8 +98,8 @@ jobs:
           };
           const d=api.build(deadlock);
           if(d?.label!=='3人の意見が分かれました')throw new Error('deadlock label failed');
-          if((d?.decisiveReasons||[]).length!==0)throw new Error('deadlock must not have decisive reasons: '+JSON.stringify(d.decisiveReasons));
-          if(!String(d?.decisionLead).includes('正式採用ではありません'))throw new Error('deadlock provisional notice missing: '+d?.decisionLead);
+          if((d?.decisiveReasons||[]).length!==3)throw new Error('deadlock must disclose three separate persona reasons: '+JSON.stringify(d.decisiveReasons));
+          if(!String(d?.decisionLead).includes('いずれも正式採用していません'))throw new Error('deadlock held decision notice missing: '+d?.decisionLead);
           if(/俺|僕|私は/.test([d?.decisionLead,...(d?.decisiveReasons||[])].join(' ')))throw new Error('persona voice leaked into CONTROL deadlock summary');
           if(!d?.mainDisagreement)throw new Error('deadlock disagreement missing');
           console.log('MAGI CONTROL SUMMARY GUARD: PASS');
