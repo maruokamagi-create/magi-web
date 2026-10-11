@@ -6,11 +6,11 @@ const source=await readFile(new URL('../magi-formal-runner-v373.js',import.meta.
 const bootstrap=await readFile(new URL('../magi-app-bootstrap-v363.js',import.meta.url),'utf8');
 const html=await readFile(new URL('../index.html',import.meta.url),'utf8');
 const reproducibility=await readFile(new URL('../.github/workflows/magi-production-reproducibility-smoke.yml',import.meta.url),'utf8');
-assert.match(reproducibility,/magi-app-bootstrap-v363\.js\?v=427/);
-assert.match(reproducibility,/magi-formal-runner-v373\.js\?v=427/);
-assert.match(bootstrap,/const REV='427'/,'new bootstrap should load fresh UI assets');
+assert.match(reproducibility,/magi-app-bootstrap-v363\.js\?v=428/);
+assert.match(reproducibility,/magi-formal-runner-v373\.js\?v=428/);
+assert.match(bootstrap,/const REV='428'/,'new bootstrap should load fresh UI assets');
 assert.match(bootstrap,/magi-formal-runner-v373\.js\?v=\$\{REV\}/);
-assert.match(html,/magi-app-bootstrap-v363\.js\?v=427/,'iPhone should receive the refreshed bootstrap');
+assert.match(html,/magi-app-bootstrap-v363\.js\?v=428/,'iPhone should receive the refreshed bootstrap');
 
 const players=Array.from({length:14},(_,i)=>'選手'+String(i+1).padStart(2,'0'));
 const first=players.slice(0,9);
