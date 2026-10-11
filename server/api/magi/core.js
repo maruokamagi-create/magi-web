@@ -348,6 +348,36 @@ export default async function handler(req,res){
       return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',answer,clarificationQuestion:answer,needsClarification:true,semantic,fastPath:false});
     }
 
+    // Gemini semantic intent remains authoritative. Date filtering never overrides
+    // a player lookup, comparison, or deliberation request.
+    const teamRangeEligible=['SINGLE_VALUE','SUMMARY','FULL_REPORT'].includes(semantic.mode)
+      &&Array.isArray(semantic.domains)&&semantic.domains.includes('TEAM')
+      &&Array.isArray(semantic.players)&&semantic.players.length===0
+      &&/(?:試合成績|勝敗|戦績|試合結果)/.test(question)
+      &&/(?:丸岡中|チーム)/.test(question)
+      &&!/(?:審議|比較|評価|考えて)/.test(question);
+    if(teamRangeEligible){
+      const {teamDateRangeFromQuestion,loadTeamGameRange}=await import('./_team-game-range.js');
+      const range=teamDateRangeFromQuestion(question);
+      const hasDateCue=/(?:19|20)\d{2}年\d{1,2}月\d{1,2}日|(?:19|20)\d{2}[-/]\d{1,2}[-/]\d{1,2}/.test(question);
+      if(hasDateCue&&!range){
+        const answer='開始日と終了日を正しい順番で指定してください。例：2026年10月1日から2026年10月10日まで';
+        return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,route:'CLARIFY',action:'CLARIFY',
+          answer,clarificationQuestion:answer,needsClarification:true,semantic,fastPath:false});
+      }
+      if(range){
+        const records=await loadTeamGameRange(range);
+        const answer=records.gameCount
+          ? '指定期間に該当する登録済みスコア原本は'+records.gameCount+'試合です。'+records.wins+'勝'+records.losses+'敗'+records.draws+'分。各試合の得点・失点と結果は下の一覧で確認できます。'
+          : '指定期間に該当する試合は、MAGIに登録されている現チームのスコア原本15試合の中にはありません。未登録の試合がないとは断定しません。';
+        return sendJson(res,200,{ok:true,handled:true,coreVersion:CORE_VERSION,
+          route:'TEAM_GAME_RANGE',action:'ANSWER',understoodRequest:semantic.understoodRequest,
+          answer,teamGames:records.games,teamRange:{from:range.from,to:range.to,gameCount:records.gameCount,
+            wins:records.wins,losses:records.losses,draws:records.draws,coverage:records.coverage},
+          semantic,refusedToInvent:false,fastPath:false});
+      }
+    }
+
     if(hasPdfModifier(question)){
       return sendJson(res,200,{ok:true,handled:false,coreVersion:CORE_VERSION,reason:'OUTPUT_FORMAT_FALLBACK_AFTER_SEMANTIC',semantic,fastPath:false});
     }
