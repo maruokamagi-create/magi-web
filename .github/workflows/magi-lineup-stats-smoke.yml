@@ -28,6 +28,27 @@ jobs:
       - name: Wait for production deployment
         run: sleep 40
 
+      - name: Verify this main revision is live without a provider generation
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='https://magi-web.vercel.app'
+          for attempt in 1 2 3 4 5 6; do
+            status=$(curl -L --max-time 35 -sS -w '%{http_code}' "$BASE/api/magi-live-deliberation-selftest?mode=lineup&stage=prepare&session=${GITHUB_RUN_ID}-stats-sha" -o /tmp/stats-live-sha.json || true)
+            if [ "$status" = "200" ] && jq -e --arg expected_sha "$GITHUB_SHA" '
+                .ok==true and .stage=="PREPARE" and
+                .deployment.sha==$expected_sha and .deployment.env=="production"
+              ' /tmp/stats-live-sha.json >/dev/null 2>&1; then
+              echo 'PRODUCTION EXACT MAIN SHA: PASS'
+              break
+            fi
+            if [ "$attempt" -eq 6 ]; then
+              echo 'Production main SHA is not yet ready' >&2
+              exit 1
+            fi
+            sleep 12
+          done
+
       - name: Verify authoritative batting stats endpoint
         shell: bash
         run: |
@@ -75,9 +96,9 @@ jobs:
           BASE='https://magi-web.vercel.app'
           curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/" -o /tmp/index-main.html
           grep -Fq '/stats-server-bridge-v315.js?v=319' /tmp/index-main.html
-          grep -Fq '/magi-app-bootstrap-v363.js?v=427' /tmp/index-main.html
+          grep -Fq '/magi-app-bootstrap-v363.js?v=430' /tmp/index-main.html
           curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/stats-server-bridge-v315.js?v=319" -o /tmp/stats-bridge-main.js
-          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/main-live-answer-v362.js?v=427" -o /tmp/main-live-answer.js
+          curl -L --fail --retry 5 --retry-delay 3 --retry-all-errors -sS "$BASE/main-live-answer-v362.js?v=430" -o /tmp/main-live-answer.js
           grep -Fq 'window.MAGI_STATS_SERVER_HYDRATE=hydrate' /tmp/stats-bridge-main.js
           grep -Fq "const hydrate=await waitFor('MAGI_STATS_SERVER_HYDRATE')" /tmp/main-live-answer.js
           grep -Fq 'const hydrated=await hydrate(synthetic)' /tmp/main-live-answer.js
