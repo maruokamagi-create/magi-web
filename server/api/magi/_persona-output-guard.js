@@ -548,6 +548,14 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedLineupOptimization)issues.push('BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している');
 
+    // A player OBP is a measured rate, not proof that this proposed order
+    // maximizes team OBP. Catch this separate live BALTHASAR formulation.
+    const unsupportedOnBaseMaximization=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:出塁率|上位(?:打線)?の出塁率).{0,25}(?:最大化|最大に(?:する|できる)|最も高める)/.test(sentence)
+    );
+    if(unsupportedOnBaseMaximization)issues.push('BEST_ORDERで個人出塁率から打順全体の最大化を断定している');
+
     // Hedging does not make unsupported lineup causality acceptable. Raw rates,
     // slot placement and legal fielding starts establish present facts only.
     const unsupportedLineupStabilityOrChance=parts.find(sentence=>
@@ -585,14 +593,17 @@ export function validatePersonaOutput(caseData,result,{focused=false}={}){
     );
     if(unsupportedDefenseEffect)issues.push('BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している');
 
+    // A dated coach preference may be Evidence, but a proposed best order is
+    // not itself a permanent fixed-slot directive. Even with a historical
+    // "1番固定" note, the persona must not turn its candidate into a lock.
     const hasExplicitFixedPolicy=/(?:[1-9１-９]番.{0,18}固定|固定.{0,18}[1-9１-９]番)/.test(evidenceText);
-    if(!hasExplicitFixedPolicy){
-      const unsupportedFixedSlot=parts.find(sentence=>
-        !isEvidenceGapStatement(sentence)
-        && /(?:[1-9１-９]番(?:打者)?(?:に|で)?[^。！？]{0,24}固定(?:する|します|した|とする)?|固定(?:する|します|した|とする)?[^。！？]{0,24}[1-9１-９]番)/.test(sentence)
-      );
-      if(unsupportedFixedSlot)issues.push('BEST_ORDERでEvidenceにない打順固定を断定している');
-    }
+    const unsupportedFixedSlot=parts.find(sentence=>
+      !isEvidenceGapStatement(sentence)
+      && /(?:[1-9１-９]番(?:打者)?(?:に|で)?[^。！？]{0,24}固定(?:する|します|した|とする)?|固定(?:する|します|した|とする)?[^。！？]{0,24}[1-9１-９]番)/.test(sentence)
+    );
+    if(unsupportedFixedSlot)issues.push(hasExplicitFixedPolicy
+      ?'BEST_ORDERで候補打順を一律固定と断定している'
+      :'BEST_ORDERでEvidenceにない打順固定を断定している');
 
     // candidatePlayers is the authoritative proposed batting order. When the
     // user-facing proposal fields spell out multiple numbered slots, those slot
