@@ -131,7 +131,8 @@ function practicalConditions(result,order){
   const deadlock=result?.final?.status==='LINEUP_REVIEW_REQUIRED'||result?.final?.deliberationDecision==='DEADLOCK';
   const filtered=unique(raw).filter(s=>{
     if(/TEAM_REVIEW/.test(s))return false; // A separate evaluation domain, not a batting-order condition.
-    if(deadlock&&/(?:暫定採用|正式採用|ベストオーダーとして採用)/.test(s))return false;
+    if(deadlock&&/(?:暫定採用|正式採用|ベストオーダーとして採用|一致するまで|到達するまで再審議)/.test(s))return false;
+    if(/\b[A-Z][A-Z0-9_]{5,}\b/.test(s))return false;
     if(!qAsksHand&&handRe.test(s))return false;
     if(allEnough&&sampleRe.test(s))return false;
     return true;
@@ -198,10 +199,16 @@ function buildFullLineup(result){
   let decisionLead='';
   if(decisionType==='CONSENSUS')decisionLead='3賢人が二次判定で同一の打順案を支持しました。';
   else if(decisionType==='MAJORITY')decisionLead=`${supportingLabels.join('と')}が同一の二次打順案を支持し、${minority?.label||'少数側'}は別案を維持しました。`;
-  else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立しませんでした。表示中の打順は比較のための参考案（暫定）で、正式採用ではありません。';
+  else decisionLead='3賢人の二次打順案は3つに分かれ、正式な多数派は成立しませんでした。3案は比較資料であり、いずれも正式採用していません。守備が成立する案でも打撃面の優位性は別に検証します。';
 
-  const decisiveReasons=decisionType==='DEADLOCK'?[]:unique(supportGroup.rows.map(e=>cleanReason(e.value,result,e.label))).filter(Boolean).slice(0,2);
-  const mainDisagreement=compactSummaryText(conflictText(supportGroup.order,others),150);
+  const decisiveReasons=decisionType==='DEADLOCK'
+    ? entries.map(e=>{const reason=cleanReason(e.value,result,e.label);return reason?`${e.label}：${reason}`:'';}).filter(Boolean)
+    : unique(supportGroup.rows.map(e=>cleanReason(e.value,result,e.label))).filter(Boolean).slice(0,2);
+  const disputed=result?.final?.deadlockComparison?.slots;
+  const contested=Array.isArray(disputed)?[3,4,5,6,7,8,9,1,2].map(slot=>disputed.find(x=>x.slot===slot&&x.agreementCount!==3)).filter(Boolean):[];
+  const mainDisagreement=decisionType==='DEADLOCK'&&contested.length
+    ? contested.slice(0,2).map(x=>`${x.slot}番：${PERSONAS.map(p=>`${p.label} ${txt(x.choices?.[p.key])||'未確認'}`).join('／')}`).join('。')
+    : compactSummaryText(conflictText(supportGroup.order,others),150);
   const minorityOpinion=minority?compactSummaryText(cleanReason(minority.value,result,minority.label),160):'';
   const majorChanges=primarySecondChanges(result,entries);
   const reDeliberationConditions=practicalConditions(result,supportGroup.order);
