@@ -94,6 +94,19 @@ async function deliberate(result){
   contextPush('assistant',`${txt(result?.understoodRequest)||question}について正本成績を使って3賢人審議を実行した。`);
   return out;
 }
+// The semantic executor owns the visible status and must not discard the
+// sanitized error provenance already attached by the formal/engine layers.
+function semanticFormalErrorDetails(error){
+  const formal=window.MAGI_LAST_FORMAL_ERROR||{};
+  const stages={PRIMARY:'一次審議',CROSS:'クロス審議',SECOND:'二次審議',INDEPENDENCE_RECHECK:'独立性再確認',FINAL:'最終判定'};
+  const classes={provider_rate_limit:'AI提供元の利用制限',model_unavailable:'AIモデルの一時利用不可',provider_retryable_http:'AI提供元の一時的な通信障害',provider_http:'AI提供元の通信障害',empty_text:'AI回答が空',invalid_structured_json:'AI回答の形式不正',timeout:'AI回答の時間切れ',other:'原因詳細は未確認'};
+  const stage=stages[String(error?.magiStage||formal.stage||'')]||'';
+  const reason=classes[String(error?.failureClass||formal.failureClass||'')]||'';
+  const http=Number(error?.status||formal.status||0);
+  const httpLabel=http>=400&&http<=599?'HTTP '+http:'';
+  const details=[stage,reason,httpLabel].filter(Boolean).join(' ／ ');
+  return details?'停止地点・原因分類：'+details:'停止地点・原因分類：未確認（診断情報を取得できませんでした）';
+}
 function clearPreviousResult(){
   hidePanel();
   const response=$('response');
@@ -113,10 +126,11 @@ function clearPreviousResult(){
   const status=$('status');if(status)status.textContent='新しい質問を準備中…';
   window.MAGI_LAST_DELIBERATION_RESULT=null;
   window.MAGI_LAST_FORMAL_ERROR=null;
+  window.MAGI_LAST_UI_DELIBERATION_ERROR=null;
   document.dispatchEvent(new CustomEvent('magi:new-question'));
   window.MAGI_PROGRESS_V358?.reset?.('質問全体の意味を理解中');
 }
-async function execute(btn){const q=txt($('q')?.value);if(!q){if($('status'))$('status').textContent='相談内容を入力してください。';return}if(busy)return;clearPreviousResult();busy=true;window.MAGI_LAST_SEMANTIC_EXECUTION={question:q,startedAt:new Date().toISOString(),phase:'QUESTION_UNDERSTANDING',completed:false};const started=performance.now(),oldText=btn?.textContent;contextPush('user',q);try{hidePanel();if(btn){btn.disabled=true;btn.textContent='質問を理解中…'}setRouter('質問を理解しています','THINK','単語一致ではなく、質問全体の意味・対象・期間・目的を確認しています。');if($('status'))$('status').textContent='質問内容を理解しています…';let r=await requestCore(q);if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){r=await resolveClarification(r,q);if(!r){if($('status'))$('status').textContent='確認を中止しました。';return}if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){showAnswer(r,performance.now()-started);return}}window.MAGI_LAST_SEMANTIC_EXECUTION={...window.MAGI_LAST_SEMANTIC_EXECUTION,phase:'ROUTED',action:txt(r?.action),route:txt(r?.route),selectionKind:txt(r?.selectionKind),reportKind:txt(r?.reportKind)};if(r?.action==='FULL_REPORT')return await runFullReport(r,q,btn);if(r?.action==='DELIBERATE'||r?.route==='DELIBERATION')return await deliberate(r);if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){showAnswer(r,performance.now()-started);return}if(r?.handled!==false){showAnswer(r,performance.now()-started);return}throw new Error('安全に処理経路を確定できませんでした')}catch(e){console.warn('[MAGI semantic v362]',e?.message||e);$('response')?.classList.remove('show');if(e?.status===401){if($('status'))$('status').textContent='LINEログインを確認してください。'}else if(e?.status===403){if($('status'))$('status').textContent='利用承認を確認してください。'}else if(e?.status===426){if($('status'))$('status').textContent='MAGIが更新されました。ページを再読み込みしてください。';setRouter('更新が必要','UPDATE','古い画面では審議結果を出しません。')}else{if($('status'))$('status').textContent=`処理を停止しました：${txt(e?.message)||'正本データ処理を完了できませんでした'}`;setRouter('処理停止','RETRY','正本Evidenceが揃わない、または画面と一致しない場合は結果を出しません。')}}finally{if(window.MAGI_LAST_SEMANTIC_EXECUTION)window.MAGI_LAST_SEMANTIC_EXECUTION={...window.MAGI_LAST_SEMANTIC_EXECUTION,completed:true,finishedAt:new Date().toISOString()};if(btn){btn.disabled=false;if(/質問を理解中|審議中/.test(btn.textContent||''))btn.textContent=oldText||'MAGI実行'}busy=false}}
+async function execute(btn){const q=txt($('q')?.value);if(!q){if($('status'))$('status').textContent='相談内容を入力してください。';return}if(busy)return;clearPreviousResult();busy=true;window.MAGI_LAST_SEMANTIC_EXECUTION={question:q,startedAt:new Date().toISOString(),phase:'QUESTION_UNDERSTANDING',completed:false};const started=performance.now(),oldText=btn?.textContent;contextPush('user',q);try{hidePanel();if(btn){btn.disabled=true;btn.textContent='質問を理解中…'}setRouter('質問を理解しています','THINK','単語一致ではなく、質問全体の意味・対象・期間・目的を確認しています。');if($('status'))$('status').textContent='質問内容を理解しています…';let r=await requestCore(q);if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){r=await resolveClarification(r,q);if(!r){if($('status'))$('status').textContent='確認を中止しました。';return}if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){showAnswer(r,performance.now()-started);return}}window.MAGI_LAST_SEMANTIC_EXECUTION={...window.MAGI_LAST_SEMANTIC_EXECUTION,phase:'ROUTED',action:txt(r?.action),route:txt(r?.route),selectionKind:txt(r?.selectionKind),reportKind:txt(r?.reportKind)};if(r?.action==='FULL_REPORT')return await runFullReport(r,q,btn);if(r?.action==='DELIBERATE'||r?.route==='DELIBERATION')return await deliberate(r);if(r?.action==='CLARIFY'||r?.route==='CLARIFY'){showAnswer(r,performance.now()-started);return}if(r?.handled!==false){showAnswer(r,performance.now()-started);return}throw new Error('安全に処理経路を確定できませんでした')}catch(e){console.warn('[MAGI semantic v362]',e?.message||e);const diagnostic=semanticFormalErrorDetails(e);$('response')?.classList.remove('show');if(e?.status===401){if($('status'))$('status').textContent='LINEログインを確認してください。'}else if(e?.status===403){if($('status'))$('status').textContent='利用承認を確認してください。'}else if(e?.status===426){if($('status'))$('status').textContent='MAGIが更新されました。ページを再読み込みしてください。';setRouter('更新が必要','UPDATE','古い画面では審議結果を出しません。')}else{if($('status'))$('status').textContent=`処理を停止しました：${txt(e?.message)||'正本データ処理を完了できませんでした'}\n${diagnostic}`;setRouter('処理停止','RETRY','正本Evidenceが揃わない、または画面と一致しない場合は結果を出しません。')}}finally{if(window.MAGI_LAST_SEMANTIC_EXECUTION)window.MAGI_LAST_SEMANTIC_EXECUTION={...window.MAGI_LAST_SEMANTIC_EXECUTION,completed:true,finishedAt:new Date().toISOString()};if(btn){btn.disabled=false;if(/質問を理解中|審議中/.test(btn.textContent||''))btn.textContent=oldText||'MAGI実行'}busy=false}}
 
 window.MAGI_SEMANTIC_RUN_V2=execute;
 window.MAGI_SEMANTIC_RUN_V1=execute;

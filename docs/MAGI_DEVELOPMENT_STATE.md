@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: 34224c95a53835f3fe28a81a8b85efd1c18a8faf
+- State base main SHA: 2683c44784ded742d82a5d7f236ffc3a7d08f485
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1305,3 +1305,12 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Quota budget safeguard: `persona-resilient.js` no longer turns explicit `provider_rate_limit` errors into immediate fresh-request retries. Other bounded transient SECOND retries stay intact; no provider calls added. Regression simulates HTTP 503 with retryExhausted and checks exactly one attempt, original Error propagation, sanitized stage message, quota stop, and unchanged review behavior.
 - Reload updated UI assets on iPhone by versioning loader URL and engine-ui URL separately, and bootstrap/serialized integrity/runner URLs from v427 to v428. Update reproducibility/final selftests with the exact new asset IDs; do not change any scoring/Drive file or raise Vercel costs.
 - Acceptance: CI must pass, merge only after review; verify exact SHA on Vercel and browser asset serving. A **fresh actual iPhone run** is still needed to see which provider failureClass is returned and whether SECOND now completes. Avoid automatically spamming Gemini with repeated whole-deliberation runs when provider capacity is limited.
+
+
+## 2026-10-11: User's 12:21 mobile screenshot still fails at 72% — outer semantic status dropped diagnostic
+
+- The user retried the long current-team 15-game best-order question in real iPhone Chrome and supplied a second screenshot, showing `72%`, 23 seconds, `処理を停止しました：3賢人の回答を一時的に取得できませんでした。`, **without the new failure classification**. This is a real failure even though prior automated Live tests passed. Do not claim that the server quota or timeout root cause is established.
+- Inspected GitHub main `2683c44784ded742d82a5d7f236ffc3a7d08f485`. The preceding PR #196 correctly preserves the `magiStage` and allow-listed `failureClass` through individual persona, formal runner, and engine-ui layers. The remaining missing link is the outer canonical `main-live-answer-v362.js` catch: it runs after formal error, hides the output and overwrites status with **only** the generic error message, discarding the prior classification. The 72% progress status observer then collapses to '処理を停止しました'.
+- Narrow fix: `semanticFormalErrorDetails(error)` uses only allow-listed stage, failureClass and HTTP 4xx/5xx from either the propagated Error or the already recorded formal error, and renders it on the actual visible status line. If no classified diagnosis exists, explicitly show UNKNOWN rather than claiming a quota issue. Clear previous UI + formal error state on each new question. Preserve failed state, no local substitutions, no ungrounded answer, no Gemini retries and no user payload in diagnostic.
+- Regression `scripts/test-semantic-formal-error-display.mjs` covers SECOND quota/timeout/other, PRIMARY, formal fallback, whitelist rejection, UNKNOWN, status text wiring, stale metadata reset and unchanged fail-closed guard. Pull-request engine UI unit runs it; bootstrap cache revision goes from 428 to 429 with corresponding four existing workflow/test version assertions, for iPhone Chrome to fetch fresh code.
+- Acceptance: PR checks, exact deployed main SHA, verify production browser serves `magi-app-bootstrap-v363.js?v=429` and includes `semanticFormalErrorDetails`. An actual authenticated iPhone rerun after provider recovery is still needed; passing CI does not prove the original upstream Gemini SECOND call will succeed. Vercel runtime log access remains 403 Forbidden. Do not modify Google Drive.
