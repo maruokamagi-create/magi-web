@@ -13,7 +13,7 @@ const seasonRosters=key=>{
 const grade3=seasonRosters('THIRD_YEAR_ROSTER');
 const grade2=seasonRosters('SECOND_YEAR_ROSTER');
 const grade1=seasonRosters('FIRST_YEAR_ROSTER');
-assert.match(html,/\/question-sample-routes-v395\.js\?v=396/);
+assert.match(html,/\/question-sample-routes-v395\.js\?v=397/);
 assert.doesNotMatch(html,/\/question-sample-routes-v394\.js/);
 assert.doesNotMatch(sample,/name="playerText|type="text"|name="period"/,'no manual player-name field or disconnected season menu');
 assert.doesNotMatch(sample,/\.click\(\)|MAGI_SEMANTIC_RUN_V2\(/,'no automatic semantic/deliberation run');
@@ -27,8 +27,16 @@ const {build,ROSTERS,SAMPLES,playerOptions,formFields,refreshPlayerOptions,start
 assert.equal(window.MAGI_QUESTION_SAMPLE_ROUTES_META.version,'v395');
 assert.equal(SAMPLES.length,12,'preserve all sample prompts');
 assert.equal(SAMPLES.filter(x=>x.guided).length,7,'seven prompts use a guided dialog');
-assert.deepEqual(Array.from(ROSTERS['2025-2026']),[...grade3,...grade2,...grade1]);
-assert.deepEqual(Array.from(ROSTERS['2026-2027']),[...grade2,...grade1]);
+// Server registry is the identity/source-of-truth; picker uses user-approved display order.
+const orderedGrade1=['上村 蓮','大久保 夢翔','武田 晴琉翔','長侶 穹','中嶋 玲月','吉田 真翔','鰐渕 将太'];
+assert.deepEqual(Array.from(ROSTERS['2025-2026']).slice(0,9),grade3,'former third-year order');
+assert.deepEqual(Array.from(ROSTERS['2025-2026']).slice(9,16),grade2,'former second-year order');
+assert.deepEqual(Array.from(ROSTERS['2025-2026']).slice(16),orderedGrade1,'former first-year approved order');
+assert.deepEqual(Array.from(ROSTERS['2026-2027']).slice(0,7),grade2,'current second-year order');
+assert.deepEqual(Array.from(ROSTERS['2026-2027']).slice(7),orderedGrade1,'current first-year approved order');
+for(const [year,canonicalNames] of [['2025-2026',[...grade3,...grade2,...grade1]],['2026-2027',[...grade2,...grade1]]]){
+ assert.deepEqual(Array.from(ROSTERS[year]).sort(),[...canonicalNames].sort(),'canonical roster membership '+year);
+}
 assert.equal(ROSTERS['2025-2026'].length,23,'former team includes all 23 enrolled players');
 assert.equal(ROSTERS['2026-2027'].length,14,'current team includes the active 14');
 assert.ok(ROSTERS['2025-2026'].includes('宮村 龍'));
