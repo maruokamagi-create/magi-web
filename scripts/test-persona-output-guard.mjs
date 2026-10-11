@@ -1285,6 +1285,22 @@ test('Soft FULL_LINEUP recovery retains only verified current batting figures an
   assert.equal(recoverSoftFullLineupLanguage(draft,issue,true,c),true);
   assert.deepEqual(draft.candidatePlayers,order);
   assert.equal(draft.confidence,'MEDIUM');
+  // Reproduce the actual best-order PRIMARY regression: raw OBP was used
+  // to assert team-wide maximization, and one proposed batter was "fixed".
+  // Even a free-text historical coach-policy note must not make the draft
+  // itself a permanent fixation. Roster, numbers and candidate order survive.
+  const withPolicy={...c,evidence:{...c.evidence,coachMemo:'2025-2026年当時の1番固定という記述'}};
+  const liveClaim=result({persona:'BALTHASAR',candidatePlayers:order,confidence:'HIGH',
+    primaryReason:'大野 竜暉を1番に固定し、大久保 陽翔を2番に置くことで上位の出塁率を最大化する。',
+    publicStatement:'1番は大野 竜暉、2番は大久保 陽翔とします。'});
+  const liveIssues=validatePersonaOutput(withPolicy,liveClaim,{focused:false});
+  assert.ok(liveIssues.includes('BEST_ORDERで個人出塁率から打順全体の最大化を断定している'),liveIssues.join(';'));
+  assert.ok(liveIssues.includes('BEST_ORDERで候補打順を一律固定と断定している'),liveIssues.join(';'));
+  assert.equal(recoverSoftFullLineupLanguage(liveClaim,liveIssues,true,withPolicy),true,'only removable prose may be recovered');
+  assert.deepEqual(liveClaim.candidatePlayers,order,'never change batting order in prose recovery');
+  assert.equal(liveClaim.confidence,'MEDIUM','remove unwarranted optimization certainty');
+  assert.doesNotMatch(JSON.stringify(liveClaim),/出塁率を最大化|1番に固定/);
+  assert.deepEqual(validatePersonaOutput(withPolicy,liveClaim,{focused:false}),[]);
   assert.ok(draft.facts.some(x=>/3番中嶋 玲月：今季通算打数33、打率.485/.test(x)));
   assert.match(draft.primaryReason,/4番嶋田 栄志（打数39、打率.282/);
   assert.match(draft.publicStatement,/勝利に優れるとは判定できません/);
@@ -1304,6 +1320,7 @@ test('Soft FULL_LINEUP recovery retains only verified current batting figures an
   assert.deepEqual(duplicate.facts,[]);
   const hard=result({persona:'CASPER',phase:'SECOND',candidatePlayers:order});
   assert.equal(recoverSoftFullLineupLanguage(hard,['FULL_LINEUP_STANDARD_DEFENSE: unsupported'],true,c),false);
+  assert.equal(recoverSoftFullLineupLanguage(hard,['BEST_ORDERで個人出塁率から打順全体の最大化を断定している','数値がEvidenceと一致しない'],true,c),false,'mixed numeric hard issue must not be sanitized');
   assert.equal(recoverSoftFullLineupLanguage(result({candidatePlayers:order}),issue,false,c),false);
   assert.equal(recoverSoftFullLineupLanguage(result({candidatePlayers:[...order.slice(0,8),order[0]]}),issue,true,c),false);
 });
