@@ -104,9 +104,10 @@ async function scoreSheetText(original){
 }
 // Read-only score text reuse for verified game-by-game record extraction.
 // Each registered PDF keeps its exact Drive ID/name check from the canonical loader.
-export async function loadCanonicalTeamScoreTexts(){
+export async function loadCanonicalTeamScoreTexts({from='',to=''}={}){
   const originals=await loadCanonicalScoreSheetOriginals();
-  return Promise.all(originals.map(async original=>({
+  const selected=originals.filter(o=>(!from||o.key.date>=from)&&(!to||o.key.date<=to));
+  return Promise.all(selected.map(async original=>({
     def:original.def,
     file:{id:original.file.id,name:original.file.name},
     body:await scoreSheetText(original)
