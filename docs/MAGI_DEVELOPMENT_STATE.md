@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: 389632ac6cf07855b078653c879c265845f3af3d
+- State base main SHA: 09c7c26a7526b86a452ff9c1667c7f6f7e2803ae
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1369,3 +1369,9 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - A **separate existing** lineup-stats smoke, run `38141976046`, successfully fetched the official batting endpoint, lineup-rate formatter and canonical name bridge; its later static asset assertion failed because it expected old `magi-app-bootstrap-v363.js?v=427` while main/index serves v430. Not a demonstrated data/batting failure.
 - Minimal follow-up: update those stale smoke asset keys (bootstrap and main-live-answer) to v430, add a read-only production exact-main SHA gate at the beginning of that smoke using PREPARE only. This gate never runs PRIMARY, CROSS, SECOND or FINAL and therefore does not consume additional Gemini generation requests. No MAGI judgment, Drive files, billing or player statistics change.
 - Require smoke PASS and exact production SHA after this follow-up merge. Do not conflate source-integrity smoke PASS with an authenticated iPhone quality test.
+
+## 2026-10-11: Workflow-only commit does not require a new app build
+
+- Follow-up smoke on main `09c7c26a7526b86a452ff9c1667c7f6f7e2803ae` failed only at the newly introduced SHA equality check (run `38142355555`). This commit changed only a smoke workflow and the ledger. An unchanged production app may legitimately continue serving the previous app-source SHA; requiring HEAD for such a non-app commit misclassifies a healthy deployment as stale.
+- Correct the gate using the nearest commit touching actual app source, excluding `.github/**` and `docs/**`, resolved through full Git history at Actions checkout. Accept exact production identity when it equals either the workflow HEAD (if redeployed) or that nearest app-source SHA. Continue requiring `env=production` and a valid read-only evidence `PREPARE`. No extra Gemini calls, source mutations, relaxed fielding eligibility or paid services.
+- At this point the last independently verified deployed app commit remains `389632ac6cf07855b078653c879c265845f3af3d`. The server and UI code in `09c7c26a...` are unchanged; the new smoke must prove that unchanged source is what production serves.

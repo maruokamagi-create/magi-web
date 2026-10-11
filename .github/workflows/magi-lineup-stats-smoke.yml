@@ -21,6 +21,8 @@ jobs:
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Run browser-path batting report regression
         run: node scripts/test-stats-report-browser-path.mjs
@@ -33,13 +35,18 @@ jobs:
         run: |
           set -euo pipefail
           BASE='https://magi-web.vercel.app'
+          # GitHub Actions-only and ledger-only pushes need not produce a new Vercel build.
+          # A production SHA matching the last app-source commit is still exact code parity.
+          APP_SOURCE_SHA="$(git log -1 --format=%H -- . ':(exclude)docs/**' ':(exclude).github/**')"
+          if [ -z "$APP_SOURCE_SHA" ]; then echo 'Cannot resolve last app source commit' >&2; exit 1; fi
           for attempt in 1 2 3 4 5 6; do
             status=$(curl -L --max-time 35 -sS -w '%{http_code}' "$BASE/api/magi-live-deliberation-selftest?mode=lineup&stage=prepare&session=${GITHUB_RUN_ID}-stats-sha" -o /tmp/stats-live-sha.json || true)
-            if [ "$status" = "200" ] && jq -e --arg expected_sha "$GITHUB_SHA" '
+            jq -c '{ok,stage,deployment}' /tmp/stats-live-sha.json 2>/dev/null || true
+            if [ "$status" = "200" ] && jq -e --arg head_sha "$GITHUB_SHA" --arg source_sha "$APP_SOURCE_SHA" '
                 .ok==true and .stage=="PREPARE" and
-                .deployment.sha==$expected_sha and .deployment.env=="production"
+                (.deployment.sha==$head_sha or .deployment.sha==$source_sha) and .deployment.env=="production"
               ' /tmp/stats-live-sha.json >/dev/null 2>&1; then
-              echo 'PRODUCTION EXACT MAIN SHA: PASS'
+              echo 'PRODUCTION CURRENT APP SOURCE SHA: PASS'
               break
             fi
             if [ "$attempt" -eq 6 ]; then
