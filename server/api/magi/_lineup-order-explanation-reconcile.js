@@ -59,6 +59,42 @@ export function verifiedLineupStats(order,caseData){
   return rows.some(row=>row.metrics.length)?rows:null;
 }
 
+// Batting order samples are not pooled with challenge games, substitute
+// appearances, or current-season aggregate stats. Report only samples with
+// consistent PA/AB/H from a COMPLETE fourteen-player exact-roster split.
+export function verifiedLineupSlotSamples(order,caseData){
+  const block=caseData?.evidence?.battingOrderSplits;
+  if(block?.status!=='COMPLETE'||!Array.isArray(block.players)||block.players.length!==CURRENT_ROSTER.length)return null;
+  const allowed=new Set(CURRENT_ROSTER.map(playerKey)),lookup=new Map();
+  for(const player of block.players){
+    const key=playerKey(player?.name);
+    if(!allowed.has(key)||lookup.has(key)||!Array.isArray(player.slots))return null;
+    const slots=new Map();
+    for(const record of player.slots){
+      const slot=Number(record?.slot);
+      if(!Number.isInteger(slot)||slot<1||slot>9||slots.has(slot))return null;
+      slots.set(slot,record);
+    }
+    lookup.set(key,slots);
+  }
+  if(lookup.size!==allowed.size)return null;
+  const rows=[];
+  for(let i=0;i<order.length;i++){
+    const row=lookup.get(playerKey(order[i]))?.get(i+1)?.standard?.batting;
+    if(!row)continue;
+    const PA=metricLiteral(row.PA,'PA'),AB=metricLiteral(row.AB,'AB'),H=metricLiteral(row.H,'H');
+    if(PA===null||AB===null||H===null
+      ||![PA,AB,H].every(v=>Number.isSafeInteger(Number(v)))
+      ||Number(H)>Number(AB)||Number(AB)>Number(PA))continue;
+    if(Number(PA)===0)continue;
+    const samples=[`打席${PA}`,`打数${AB}`,`安打${H}`];
+    const OPS=metricLiteral(row.OPS,'OPS');
+    if(OPS!==null)samples.push(`OPS${OPS}`);
+    rows.push({slot:i+1,name:order[i],metrics:samples});
+  }
+  return rows.length?rows:null;
+}
+
 export function reconcileLineupOrderExplanation(result,guardIssues,caseData=null){
   if(!result||result.reviewRequested===true||result.dataConflict===true)return null;
   if(!Array.isArray(guardIssues)||!guardIssues.includes(ORDER_EXPLANATION_CONFLICT))return null;
