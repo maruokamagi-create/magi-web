@@ -192,10 +192,13 @@ const runner=async function({question,evidence=null,selectionKind='',semantic=nu
     const stage=text(error?.magiStage||'');
     const code=text(error?.code||'');
     const status=Number(error?.status||0);
-    const diagnostic=[stage,code||(status?`HTTP ${status}`:'')].filter(Boolean).join(' / ');
+    const failureClass=text(error?.failureClass||'');
+    const safeFailure=['provider_rate_limit','model_unavailable','provider_retryable_http','provider_http','empty_text','invalid_structured_json','timeout','other'].includes(failureClass)?failureClass:'';
+    const diagnostic=[stage,code||(status?`HTTP ${status}`:''),safeFailure].filter(Boolean).join(' / ');
     window.MAGI_LAST_FORMAL_ERROR={
       stage:stage||null,
       code:code||null,
+      failureClass:safeFailure||null,
       status:status||null,
       endpoint:text(error?.apiEndpoint||'')||null,
       message:text(error?.message||'')||null,
