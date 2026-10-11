@@ -278,7 +278,7 @@ export function recoverSoftFullLineupLanguage(result, issues, fullLineupCase, ca
   result.candidateBasis=`候補順は${order}です。 ${currentFacts.length?'確認済みの今季通算成績：'+currentFacts.join('。')+'。':'今季通算打撃数値は未確認です。'} ${limitation}`;
   result.primaryReason=shown
     ?`${top.length===2?'1・2番の出塁率・OPSの記録：'+top.join('、')+'。 ':''}3〜5番の今季通算記録：${shown}。${recentFacts.length?' 直近6試合：'+recentFacts.slice(0,3).join('。')+'。':''}${recorded?' 実際の標準試合打順：'+recorded+'。':''} ${limitation}`
-    :`9人の候補順を提示しましたが、比較に必要な今季通算打撃数値は未確認です。${limitation}`;
+    :`9人の候補順を提示しましたが、比較に必要な今季打撃数値は確認できていません。${limitation}`;
   result.publicStatement=`候補順は${order}です。 ${top.length===2?'1・2番は'+top.join('、')+'を比較しました。 ':''}${shown?'3〜5番の通算記録は'+shown+'です。 ':''}${recorded?'公式戦・練習第1試合の同じ打順では'+recorded+'。 ':''}${limitation}`;
   result.warnings=['元の説明にあった未確認の将来効果は採用していません。','数値差は、打順を変えた際の得点・勝敗の因果効果を示しません。'];
   const rechecked=[
