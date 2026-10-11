@@ -453,7 +453,7 @@ function deadlockFullProposalsHtml(r,entries){
     const safeStatus=p.fieldingStatus==='COMPLETE'
       ? '守備9位置の実績照合：成立'
       : '守備配置：未確定';
-    return '<details class="magiDeadlockProposal"'+(key==='balthasar'?' open':'')+'>'+
+    return '<details class="magiDeadlockProposal">'+
       '<summary><span>'+esc(byLabel.get(key)||key)+'の1〜9番</span><span class="magiDeadlockStatus">'+esc(safeStatus)+'</span></summary>'+
       '<ol class="magiDeadlockNine">'+order.map((name,index)=>{
         const pos=positions.find(row=>row.slot===index+1&&norm(row.name)===norm(name));
