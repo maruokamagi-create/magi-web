@@ -1,5 +1,13 @@
 import assert from 'node:assert/strict';
-import { buildLiveAnswer } from '../server/api/magi/_live-answer.js';
+import fs from 'node:fs';
+// This test imports the real live-answer module with only the Drive adapter stubbed;
+// no xlsx install, network, provider, original source file or Drive read is needed.
+const original=fs.readFileSync('server/api/magi/_live-answer.js','utf8');
+const statement="import { runDriveLiveAudit } from './_drive-live-audit.js';";
+assert.ok(original.includes(statement),'expected production Drive adapter import');
+const isolated=original.replace(statement,"const runDriveLiveAudit=async()=>{throw Error('unexpected real Drive adapter call')};");
+const { buildLiveAnswer }=await import('data:text/javascript;base64,'+Buffer.from(isolated).toString('base64'));
+
 
 const routed={route:'TEAM_LOOKUP',timeScope:'CURRENT_SEASON',players:[],domains:['TEAM'],understoodRequest:'指定期間のチーム成績'};
 let auditCalls=0;
