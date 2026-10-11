@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import vm from 'node:vm';
-import { buildFullLineupResult } from '../server/api/magi/orchestrate.js';
+import { buildConsensusLineup } from '../server/api/magi/_full-lineup.js';
 import { buildLineupDeadlockComparison } from '../server/api/magi/_lineup-deadlock-comparison.js';
 
 const sameNine=['大久保 陽翔','大野 竜暉','中嶋 玲月','嶋田 栄志','坂田 暉馬','井坂 悠聖','橋向 結都','武澤 大翔','武田 晴琉翔'];
@@ -24,7 +24,19 @@ const second=Object.fromEntries(Object.entries(orders).map(([key,order])=>[key,{
   persona:key.toUpperCase(),candidatePlayers:order,primaryReason:'確認済み記録を比較しました。',
   warnings:[],reviewRequested:false,dataConflict:false,confidence:'MEDIUM'
 }]));
-const result=buildFullLineupResult(second,{warnings:[],informationGaps:[]},{evidence:{appearanceFielding:packet}});
+const consensus=buildConsensusLineup(second);
+const result={
+  status:consensus.decisionStatus==='DEADLOCK'?'LINEUP_REVIEW_REQUIRED':'LINEUP_RESULT',
+  finalVote:consensus.finalVote,
+  deliberationDecision:consensus.decisionStatus,
+  lineup:consensus.lineup,
+  fieldingStatus:'NOT_EVALUATED',
+  deadlockComparison:buildLineupDeadlockComparison(second,packet)
+};
+const orchestrate=fs.readFileSync(new URL('../server/api/magi/orchestrate.js',import.meta.url),'utf8');
+assert.match(orchestrate,/if\(consensus\.decisionStatus==='DEADLOCK'\)/);
+assert.match(orchestrate,/deadlockComparison:buildLineupDeadlockComparison\(normalizedSecond,caseData\?\.evidence\?\.appearanceFielding\)/);
+assert.match(orchestrate,/lineup:\[\],\s*battingOrder:\[\]/,'deadlock final MUST retain an empty lineup');
 assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
 assert.equal(result.finalVote,'1-1-1');
 assert.equal(result.deliberationDecision,'DEADLOCK');
