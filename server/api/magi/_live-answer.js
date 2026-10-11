@@ -9,6 +9,11 @@ function text(value) {
 function seasonFromRequest(routed, question) {
   const q = text(question);
   const specific = text(routed?.specificSeason);
+  const oldExplicit = /2025\s*[-–—〜~]\s*2026|旧チーム/.test(q);
+  const currentExplicit = /2026\s*[-–—〜~]\s*2027|現チーム/.test(q);
+  // An explicitly selected *single* school year wins over the ambiguous word 通算.
+  // Two years mentioned together still retain the full-career path.
+  if (oldExplicit !== currentExplicit) return oldExplicit ? 'old' : 'current';
   if (/通算|全期間/.test(q) || routed?.timeScope === 'CAREER') return 'career';
   if (/2025\s*[-–—〜~]\s*2026/.test(specific) || /2025\s*[-–—〜~]\s*2026/.test(q) || /旧チーム/.test(q)) return 'old';
   if (/2026\s*[-–—〜~]\s*2027/.test(specific) || /2026\s*[-–—〜~]\s*2027/.test(q) || /現チーム/.test(q)) return 'current';

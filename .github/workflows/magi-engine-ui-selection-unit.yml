@@ -12,6 +12,7 @@ on:
       - 'scripts/test-team-game-range.mjs'
       - 'server/api/magi/core.js'
       - 'scripts/test-guided-question-samples.mjs'
+      - 'scripts/test-season-lookup-priority.mjs'
       - 'scripts/test-semantic-formal-error-display.mjs'
       - 'engine-ui-v187.js'
       - 'deliberation-integrity-v348.js'
@@ -35,6 +36,7 @@ on:
       - 'scripts/test-team-game-range.mjs'
       - 'server/api/magi/core.js'
       - 'scripts/test-guided-question-samples.mjs'
+      - 'scripts/test-season-lookup-priority.mjs'
       - 'scripts/test-semantic-formal-error-display.mjs'
       - 'magi-app-bootstrap-v363.js'
       - 'index.html'
@@ -58,6 +60,8 @@ jobs:
           node --check main-live-answer-v362.js
       - name: Test guided question samples (no provider)
         run: node scripts/test-guided-question-samples.mjs
+      - name: Test selected season survives fallback semantic scope
+        run: node scripts/test-season-lookup-priority.mjs
       - name: Reject unsupported team date-range aggregates
         run: node scripts/test-guided-team-range-guard.mjs
       - name: Test client selection routing
