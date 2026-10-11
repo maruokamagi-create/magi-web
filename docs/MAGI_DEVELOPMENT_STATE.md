@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: cfbadbef7701fc3a2267884c1745b88582d2a9de
+- State base main SHA: 85c6b02ef54296505749dff69c941e09b063d785
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1324,3 +1324,10 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - No AI prompt, stats/scoring data, Evidence threshold, guard, provider budget, GitHub history or Google Drive CSV/PDF is modified. User should see *未決定* and all three independent lineup proposals, with defense status reported independently and never inferred on the client. The first two shared batting slots **are slot coincidences**, not 3賢人 consensus on entire nine or an authorized final.
 - Regression `scripts/test-no-client-lineup-finalizer.mjs` reproduces the real 1-1-1 proposal shape, guards obsolete client loading/overwriting, requires empty server lineup, rejects incomplete/duplicate defensive assignments, and verifies mobile asset references. It runs in Full Lineup Context Guard. Cache-bust index bootstrap to v430, lineup reasons to v425, final hero to v381, control summary query key to v395, with preexisting tests/workflows version checks aligned.
 - Acceptance: PR CI pass then merge; production exact SHA + browser bootstrap serves the new assets. Existing production E2E verdict `DEADLOCK` with `lineup:[]` is expected and **correct**. An actual authenticated iPhone view still needed before claiming layout is fixed on the device. The client must never synthesize a final nine even if the provider or original source reports only a reference proposal.
+
+
+## 2026-10-11: PR #198 browser smoke version assertion correction
+
+- PR #198 merged at main SHA `85c6b02ef54296505749dff69c941e09b063d785` after six PR checks passed. It permanently deactivates the obsolete client-selected 1-1-1 best-order finalizer and requires verified server fielding for the final hero, addressing the user's nine real iPhone screenshots.
+- The postmerge `MAGI Production Browser Bootstrap Smoke` run `38110610414` failed the static `lineup-reasons` asset check because its workflow still looked for the internal API marker `version:'lineup-reasons-v424'` while both real script and index now use **v425**. This is an obsolete smoke expectation; it does not by itself prove a broken browser.
+- Change only that one smoke marker to v425; keep the actual app code, server original-score source map, 15-game CSV, client fail-closed behavior and provider budgets unchanged. After merge, require browser verification on the new exact deployed SHA before declaring completion. An authenticated iPhone screenshot is the separate UI acceptance proof.
