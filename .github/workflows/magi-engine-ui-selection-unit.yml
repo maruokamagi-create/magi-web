@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - 'main-live-answer-v362.js'
+      - 'question-sample-routes-v394.js'
+      - 'scripts/test-guided-question-samples.mjs'
       - 'scripts/test-semantic-formal-error-display.mjs'
       - 'engine-ui-v187.js'
       - 'deliberation-integrity-v348.js'
@@ -19,6 +21,8 @@ on:
   pull_request:
     paths:
       - 'main-live-answer-v362.js'
+      - 'question-sample-routes-v394.js'
+      - 'scripts/test-guided-question-samples.mjs'
       - 'scripts/test-semantic-formal-error-display.mjs'
       - 'magi-app-bootstrap-v363.js'
       - 'index.html'
@@ -33,6 +37,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test guided question samples (no provider)
+        run: node scripts/test-guided-question-samples.mjs
       - name: Test client selection routing
         run: node scripts/test-engine-ui-selection-mode.mjs
       - name: Test client server selection alignment
