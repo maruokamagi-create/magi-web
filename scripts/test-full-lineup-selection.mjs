@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 import { buildConsensusLineup, isFullLineupQuestion, validateFullLineupOrder } from '../server/api/magi/_full-lineup.js';
-import { buildFullLineupResult, isSelectionCase } from '../server/api/magi/orchestrate.js';
+import { buildFullLineupResult, isSelectionCase, publicLineupReviewConditions } from '../server/api/magi/orchestrate.js';
 import { buildCurrentSelectionEvidence, selectionEvidenceKind } from '../server/api/magi/_selection-live-evidence.js';
 
 const tests=[];function test(name,fn){tests.push({name,fn});}
@@ -124,6 +124,37 @@ test('L09 incomplete second-round order fails closed',()=>{
   const result=buildFullLineupResult(broken,CROSS);
   assert.equal(result.status,'LINEUP_REVIEW_REQUIRED');
   assert.equal(result.lineup.length,0);
+});
+
+test('L11 held 1-1-1 order requires new evidence, never artificial vote convergence',()=>{
+  const stale={
+    ...CROSS,
+    warnings:[
+      '標準ベストオーダーとして暫定採用。相手投手や追加試合の情報が入れば見直す。',
+      'FULL_LINEUP_STANDARD_DEFENSE: 守備照合未成立',
+      'NO_COMPLETE_STANDARD_STARTING_MATCHING'
+    ],
+    informationGaps:['3賢人のうち少なくとも2賢人が同一の1〜9番案に到達するまで再審議する']
+  };
+  const held=buildFullLineupResult(SECOND,stale,SYNTHETIC_FIELDING_CASE);
+  assert.equal(held.status,'LINEUP_REVIEW_REQUIRED');
+  assert.equal(held.deliberationDecision,'DEADLOCK');
+  assert.deepEqual(held.lineup,[]);
+  assert.equal(held.finalVote,'1-1-1');
+  assert.ok(held.reDeliberationConditions.some(s=>s.includes('新しい試合記録')));
+  assert.ok(held.reDeliberationConditions.some(s=>s.includes('守備9位置')));
+  assert.ok(held.reDeliberationConditions.every(s=>!/(?:FULL_LINEUP_STANDARD_DEFENSE|NO_COMPLETE_STANDARD_STARTING_MATCHING|暫定採用|到達するまで再審議)/.test(s)));
+  assert.ok(held.warnings.some(s=>s.includes('FULL_LINEUP_STANDARD_DEFENSE')),'internal diagnostics stay available');
+});
+
+test('L12 user-facing guard messages retain strict eligibility checks',()=>{
+  const c=publicLineupReviewConditions([
+    'NO_COMPLETE_STANDARD_STARTING_MATCHING','FULL_LINEUP_STANDARD_DEFENSE: standard starts',
+    '候補と打順に矛盾がある','標準ベストオーダーとして暫定採用'
+  ]);
+  assert.ok(c.some(s=>s.includes('公式戦・練習第1試合')));
+  assert.ok(c.some(s=>s.includes('食い違い')));
+  assert.ok(c.every(s=>!/[A-Z][A-Z0-9_]{5,}/.test(s)));
 });
 
 test('L10 live evidence marks full lineup and keeps old team reference-only',async()=>{
