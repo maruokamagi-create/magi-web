@@ -1417,3 +1417,12 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Cache bust `question-sample-routes-v395.js` to `v=396` and main app bootstrap to `v=432`, with unique live-answer inner query `-year-v1`. Align smoke/test asset assertions only; do not rewrite stats inputs or Google Drive originals.
 - Dedicated provider-free regression `scripts/test-season-lookup-priority.mjs` deliberately supplies semantic timeScope=CAREER but explicitly selects one school year and asserts one specific-season audit and the correct reportQuery output; ordinary true career question remains career. Registered in Engine UI Selection Unit.
 - Require PR checks passing before merge and Vercel exact-production SHA after. Authenticated iPhone output must be verified separately; no unsupported claims of real-data UI acceptance from deterministic tests alone.
+
+
+## 2026-10-12: Verified first-year dropdown ordering correction (list only)
+
+- User approved the all-grade surname-order review, but live client player dropdown still had seven first-year names in canonical registry insertion order rather than the approved display order.
+- Change only the 7 first-year names in the 2025-2026 and 2026-2027 picker arrays to: 上村 蓮 → 大久保 夢翔 → 武田 晴琉翔 → 長侶 穹 → 中嶋 玲月 → 吉田 真翔 → 鰐渕 将太. Former 3rd- and 2nd-year sequences are unchanged. The explicit user approval, not an unverified automatic kanji reading, governs this exact ordering.
+- Keep server/api/magi/_roster.js official canonical registry and all Google Drive originals unchanged. Unit test checks canonical membership, player counts, and approved grade-specific display order. Cache-bust the loaded picker path only from ?v=396 to ?v=397.
+- Separate pre-existing best-order live quality concern: latest production best-order PRIMARY returned ok but used unsupported optimization phrasing (including 出塁率を最大化する), causing its quality gate to fail; closer/third-batter/team-review job tests and browser/stats smoke passed. Do not conflate this with picker functionality or claim the full live deliberation suite passed.
+- Required shipping proof: PR deterministic CI and postmerge exact-production browser smoke. Authenticated iPhone display acceptance requires an independent user check.
