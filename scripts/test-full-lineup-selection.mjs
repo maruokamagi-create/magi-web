@@ -142,7 +142,7 @@ test('L11 held 1-1-1 order requires new evidence, never artificial vote converge
   assert.deepEqual(held.lineup,[]);
   assert.equal(held.finalVote,'1-1-1');
   assert.ok(held.reDeliberationConditions.some(s=>s.includes('新しい試合記録')));
-  assert.ok(held.reDeliberationConditions.some(s=>s.includes('守備9位置')));
+  assert.ok(held.reDeliberationConditions.some(s=>s.includes('守備位置')));
   assert.ok(held.reDeliberationConditions.every(s=>!/(?:FULL_LINEUP_STANDARD_DEFENSE|NO_COMPLETE_STANDARD_STARTING_MATCHING|暫定採用|到達するまで再審議)/.test(s)));
   assert.ok(held.warnings.some(s=>s.includes('FULL_LINEUP_STANDARD_DEFENSE')),'internal diagnostics stay available');
 });
