@@ -102,6 +102,17 @@ async function scoreSheetText(original){
   if(SCORE_TEXT_CACHE.size>16)SCORE_TEXT_CACHE.delete(SCORE_TEXT_CACHE.keys().next().value);
   try{return await task;}catch(error){SCORE_TEXT_CACHE.delete(cacheKey);throw error;}
 }
+// Read-only score text reuse for verified game-by-game record extraction.
+// Each registered PDF keeps its exact Drive ID/name check from the canonical loader.
+export async function loadCanonicalTeamScoreTexts(){
+  const originals=await loadCanonicalScoreSheetOriginals();
+  return Promise.all(originals.map(async original=>({
+    def:original.def,
+    file:{id:original.file.id,name:original.file.name},
+    body:await scoreSheetText(original)
+  })));
+}
+
 function scoreStarterMatches(body){
   const matches=[];
   SCORE_STARTER_RE.lastIndex=0;
