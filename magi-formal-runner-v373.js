@@ -131,7 +131,7 @@ function bufferedOptions(original){
     FINAL:[88,'最終判断を集約中','FINAL DECISION']
   };
   const options={...original};
-  options.onStage=s=>{const v=stageMap[String(s?.stage||'')];if(v)progress(v[0],v[1],v[2]);};
+  options.onStage=s=>{const v=stageMap[String(s?.stage||'')];if(v)progress(v[0],v[1],v[2]);if(s?.stage==='FINAL')original?.onStage?.(s);};
   options.onPrimaryLocked=()=>{};
   options.onCrossComplete=()=>{};
   options.onSecondComplete=()=>{};
