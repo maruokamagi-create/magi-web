@@ -248,6 +248,19 @@ export async function buildLiveAnswer({ question, routed, auditProvider = runDri
     return resultBase({ routed, answer:'その質問は現在のMAGI成績回答の対象外です。', refusedToInvent:true, limitation:'UNSUPPORTED_ROUTE' });
   }
 
+  // Date-ranged TEAM_LOOKUP needs individual game results, not a season-master total.
+  // Until a score-original game-by-game resolver is installed, refuse rather than
+  // silently reporting the entire season for an explicitly selected date range.
+  const dateMentions = q.match(/(?:19|20)\d{2}年\d{1,2}月\d{1,2}日|(?:19|20)\d{2}[-/]\d{1,2}[-/]\d{1,2}/g) || [];
+  if (routed?.route === 'TEAM_LOOKUP' && dateMentions.length >= 2) {
+    return resultBase({
+      routed,
+      answer:'指定した開始日から終了日までのチーム戦績は、現在のMAGIでは試合別スコア原本から安全に集計できません。シーズン全体の勝敗で代用せず、指定期間の勝敗数と試合一覧は表示しません。',
+      refusedToInvent:true,
+      limitation:'TEAM_DATE_RANGE_NOT_YET_CONNECTED'
+    });
+  }
+
   const season = seasonFromRequest(routed, q);
   if (season === 'career') {
     if (routed?.route === 'BATTING_LOOKUP') return buildCareerBatting({ question:q, routed, auditProvider });
