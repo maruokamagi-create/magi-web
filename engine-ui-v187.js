@@ -197,8 +197,9 @@
           const held=result.final.status==='LINEUP_REVIEW_REQUIRED';
           $('verdict').textContent=held?'打順 確定保留':'1〜9番 打順案';
           $('reason').textContent=result.final.recommendation||(held?'確認事項を解消して再審議します。':'1番から9番までの打順案を確認してください。');
-          const conds=list(result.final.reDeliberationConditions);
-          $('next').textContent=conds.length?`再検討条件：${conds.join('／')}`:(result.final.reviewReason||'選手状態や相手条件が変われば再審議します。');
+          const publicConditions=window.MAGI_CONTROL_SUMMARY_V377?.build?.(result)?.reDeliberationConditions;
+          const conds=Array.isArray(publicConditions)?publicConditions:list(result.final.reDeliberationConditions).filter(v=>!/[A-Z][A-Z0-9_]{5,}/.test(String(v)));
+          $('next').textContent=conds.length?`再検討の目安：${conds.slice(0,2).join('／')}`:'新しい試合記録や指導者の方針が確認できたときに見直します。';
         }else if(result.final.status==='SELECTION_REVIEW_REQUIRED'){
           $('verdict').textContent='候補確定保留';
           $('reason').textContent=result.final.reviewReason||result.final.recommendation||'確認事項を解消して再審議します。';
