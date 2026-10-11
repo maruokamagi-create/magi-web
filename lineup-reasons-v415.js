@@ -199,7 +199,7 @@ function usageEvidence(name,layers){
   const row=layers?.usageMap?.get(norm(name));
   const a=row?.appearance||{};
   if(String(a.status||'')==='UNAVAILABLE')return'実打順・先発起用は未確認です。';
-  const orders=Object.entries(a.battingOrders||{}).sort((x,y)=>Number(x[0])-Number(y[0])).map(([slot,count])=>slot+'番×'+count).join('、');
+  const orders=Object.entries(a.battingOrders||{}).filter(([slot,count])=>/^[1-9]$/.test(slot)&&Number.isFinite(Number(count))&&Number(count)>0).sort((x,y)=>Number(x[0])-Number(y[0])).map(([slot,count])=>slot+'番×'+count).join('、');
   const standard=[...new Set([...Object.keys(a.officialStartingPositions||{}),...Object.keys(a.practiceFirstStartingPositions||{})])].join('・');
   return '先発 '+(Number(a.starts)||0)+'試合（公式戦 '+(Number(a.officialStarts)||0)+'／練習第1試合 '+(Number(a.practiceFirstStarts)||0)+'）、実打順 '+(orders||'記録なし')+'、標準先発守備資格 '+(standard||'なし')+'。';
 }
@@ -625,6 +625,9 @@ function render(r,data){
 async function apply(){
   const r=result();
   if(!r||String(r?.final?.mode||'').toUpperCase()!=='FULL_LINEUP')return false;
+  // Never render a chosen nine from a review-required final, even when
+  // an earlier/cached script fabricated nine display rows.
+  if(r?.final?.status!=='LINEUP_RESULT'||r?.final?.fieldingStatus!=='COMPLETE')return renderDeadlock(r);
   if(finalNames(r).length!==9)return renderDeadlock(r);
   const data=hasStructuredBattingEvidence(r)?null:await loadStats();
   return render(r,data);
