@@ -108,6 +108,8 @@ jobs:
         run: node scripts/test-lineup-deadlock-comparison.mjs
       - name: Prevent browser from replacing genuine unresolved FULL_LINEUP with invented final
         run: node scripts/test-no-client-lineup-finalizer.mjs
+      - name: Install pinned production runtime dependencies for persona validator tests
+        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
       - name: Check all verified persona-prose recoveries against strict original Evidence
         run: node scripts/test-persona-output-guard.mjs
       - name: Context leakage regression guard
