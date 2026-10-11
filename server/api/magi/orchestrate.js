@@ -231,7 +231,7 @@ export function publicLineupReviewConditions(raw, {deadlock=false}={}) {
     const s=String(entry??'').trim();
     if(!s||/(?:暫定採用|正式採用|ベストオーダーとして採用|一致するまで|到達するまで再審議)/.test(s))continue;
     if(/FULL_LINEUP_STANDARD_DEFENSE|NO_COMPLETE_STANDARD_STARTING_MATCHING|POSITION_WITHOUT_STANDARD_START_EVIDENCE|SELECTED_PLAYER_EVIDENCE_MISSING|APPEARANCE_FIELDING_EVIDENCE_UNAVAILABLE|MULTIPLE_EQUAL_EVIDENCE_ASSIGNMENTS|FIELDING_COVERAGE|先発Evidenceから9守備位置|守備配置|守備位置を.*確定できない/.test(s)){
-      add('公式戦・練習第1試合の先発記録で、9人が9守備位置を重複なく担当できるか確認する。');
+      add('公式戦・練習第1試合の先発記録で、9人が9つの守備位置を重複なく担当できるか確認する。');
     } else if(/FULL_LINEUP_DEADLOCK|LINEUP_DEADLOCK|3賢人の二次打順案が1対1対1|1対1対1/.test(s)){
       // Vote split alone is a valid held conclusion, not a reason to rerun.
     } else if(/(?:候補|打順|ロスター|選手).*(?:矛盾|不整合|食い違い)|LINEUP_STRUCTURE|ROSTER_MISMATCH|ORDER_EXPLANATION_CONFLICT|NUMERIC_EVIDENCE_MISMATCH/.test(s)){
