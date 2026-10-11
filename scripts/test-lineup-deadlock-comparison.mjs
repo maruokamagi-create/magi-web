@@ -83,6 +83,7 @@ const html=api.deadlockFullProposalsHtml({final:{deadlockComparison:comparison}}
 assert.match(html,/3案を比較（採用オーダーではありません）/);
 assert.match(html,/3案とも選手9人は共通/);
 assert.equal((html.match(/magiDeadlockProposal"/g)||[]).length,3);
+assert.ok(!html.includes('magiDeadlockProposal" open'),'no persona gets privileged expanded state');
 assert.equal((html.match(/class="slot"/g)||[]).length,27);
 assert.match(html,/守備9位置の実績照合：成立/);
 assert.ok(!html.includes('最終オーダーを採用'));
