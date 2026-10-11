@@ -4,6 +4,7 @@ import { failClosedCross, validateCrossOutput } from './_cross-output-guard.js';
 import { canonicalizePlayerData, playerKey } from './_roster.js';
 import { buildConsensusLineup, isFullLineupQuestion } from './_full-lineup.js';
 import { assignEvidenceGroundedFielding } from './_lineup-fielding.js';
+import { buildLineupDeadlockComparison } from './_lineup-deadlock-comparison.js';
 import { buildConsensusPitchingPlan, isPitchingPlanQuestion } from './_pitching-plan.js';
 
 const crossSchema = {
@@ -259,6 +260,7 @@ export function buildFullLineupResult(second, cross, caseData={}) {
       fieldingStatus:'NOT_EVALUATED',
       fieldingReason:'LINEUP_DEADLOCK',
       personaLineups:consensus.personaLineups,
+      deadlockComparison:buildLineupDeadlockComparison(normalizedSecond,caseData?.evidence?.appearanceFielding),
       slotConflicts:consensus.slotConflicts,
       playerSupport:consensus.playerSupport,
       proposalGroups:consensus.proposalGroups,
