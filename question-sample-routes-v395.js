@@ -69,7 +69,7 @@ function build(id,form){
   if(id==='STARTER_EVAL')return starterQuestion(name,year);
   if(id==='PLAYER_FIELDING')return name+'の'+label+'の守備成績一覧を見せてください。守備位置・刺殺・捕殺・失策・守備機会など、原本で確認できる項目のみを示してください。';
   const kind=id==='PLAYER_BATTING'?'打撃':'投手';
-  return name+'の'+label+'のシーズン通算'+kind+'成績一覧を見せてください。原本で確認できる数値のみ表にしてください。';
+  return name+'の'+label+'のシーズン全体の'+kind+'成績一覧を見せてください。原本で確認できる数値のみ表にしてください。';
  }
  throw Error('質問を選び直してください。');
 }
