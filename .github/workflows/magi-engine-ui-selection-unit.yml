@@ -5,6 +5,7 @@ on:
     paths:
       - 'main-live-answer-v362.js'
       - 'question-sample-routes-v394.js'
+      - 'question-sample-routes-v395.js'
       - 'server/api/magi/_live-answer.js'
       - 'scripts/test-guided-team-range-guard.mjs'
       - 'server/api/magi/_team-game-range.js'
@@ -27,6 +28,7 @@ on:
     paths:
       - 'main-live-answer-v362.js'
       - 'question-sample-routes-v394.js'
+      - 'question-sample-routes-v395.js'
       - 'server/api/magi/_live-answer.js'
       - 'scripts/test-guided-team-range-guard.mjs'
       - 'server/api/magi/_team-game-range.js'
