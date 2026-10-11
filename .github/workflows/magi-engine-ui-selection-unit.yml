@@ -3,6 +3,8 @@ name: MAGI Engine UI Selection Unit
 on:
   push:
     paths:
+      - 'main-live-answer-v362.js'
+      - 'scripts/test-semantic-formal-error-display.mjs'
       - 'engine-ui-v187.js'
       - 'deliberation-integrity-v348.js'
       - 'magi-ui-runner-guard-v359.js'
@@ -13,6 +15,13 @@ on:
       - 'server/api/magi/orchestrate.js'
       - 'server/api/magi/_pitching-plan.js'
       - 'server/api/magi/_full-lineup.js'
+      - '.github/workflows/magi-engine-ui-selection-unit.yml'
+  pull_request:
+    paths:
+      - 'main-live-answer-v362.js'
+      - 'scripts/test-semantic-formal-error-display.mjs'
+      - 'magi-app-bootstrap-v363.js'
+      - 'index.html'
       - '.github/workflows/magi-engine-ui-selection-unit.yml'
   workflow_dispatch:
 
@@ -30,3 +39,5 @@ jobs:
         run: node scripts/test-client-server-selection-alignment.mjs
       - name: Check sanitized SECOND failure classification and propagation
         run: node scripts/test-formal-error-visibility.mjs
+      - name: Check user-visible semantic error classification
+        run: node scripts/test-semantic-formal-error-display.mjs
