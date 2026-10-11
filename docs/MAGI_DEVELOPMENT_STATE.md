@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: 38cdae49c6a8517f85c026d941af006516d0cd49
+- State base main SHA: f1b74950eb69e3f2a097937bbde85fabbcda2b97
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1287,3 +1287,10 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - A postmerge audit of `index.html` confirmed the linked browser static asset still used `/lineup-reasons-v415.js?v=423`; client API marker likewise reported `lineup-reasons-v423`. Since iPhone Chrome caches script URLs, a new feature can be hidden behind an old cached response even when server code is correct.
 - Change only the script query version to `v=424`, matching the internal client API marker and the full-lineup CI guard. No new API calls or engine changes. Existing HTML script load order and filenames stay unchanged. The original Google Drive data remains untouched.
 - After merge, verify the exact Vercel production SHA and browser bootstrap; user-authenticated iPhone appearance still requires a separate real-device confirmation and should not be inferred from server PREPARE alone.
+
+
+## 2026-10-11: Production browser smoke asset version parity
+
+- After merging UI cache-bust PR #194 at main SHA `f1b74950eb69e3f2a097937bbde85fabbcda2b97`, the `MAGI Production Browser Bootstrap Smoke` run `38105303119` failed only its **static asset verification step**: the workflow was still looking for `/lineup-reasons-v415.js?v=423` and `lineup-reasons-v423`, while the current index and client correctly use `v=424`. The earlier unit/guard checks in that job passed. This is not evidence of a broken browser, but the newer page was not yet validated by that workflow.
+- Narrow correction: update both workflow URL checks to `v=424`, update its client API marker expectation and assert the browser-served script exports `deadlockFullProposalsHtml`. No application logic change, no GitHub main history rewrite, no Drive edits, no provider calls, no paid settings.
+- Re-run browser smoke on the new production SHA; only report success if this exact updated workflow passes. Authenticated device rendering is still separate from this CI gate.
