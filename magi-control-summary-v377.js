@@ -128,7 +128,10 @@ function practicalConditions(result,order){
   const qAsksHand=asksHandedness(result),min=threshold(result),allEnough=allSelectedAtLeast(result,order,min);
   const handRe=/(?:対右|対左|右投手|左投手|右腕|左腕|左右別|左右の相性|相手投手.{0,12}(?:右|左))/;
   const sampleRe=/(?:母数|サンプル|打席数|打数).{0,24}(?:少な|不足|足りな|蓄積|増え|増や|精査|慎重)|10打数台/;
+  const deadlock=result?.final?.status==='LINEUP_REVIEW_REQUIRED'||result?.final?.deliberationDecision==='DEADLOCK';
   const filtered=unique(raw).filter(s=>{
+    if(/TEAM_REVIEW/.test(s))return false; // A separate evaluation domain, not a batting-order condition.
+    if(deadlock&&/(?:暫定採用|正式採用|ベストオーダーとして採用)/.test(s))return false;
     if(!qAsksHand&&handRe.test(s))return false;
     if(allEnough&&sampleRe.test(s))return false;
     return true;
