@@ -42,6 +42,21 @@ function injectStyle(){
   .magiRecordedDisputeLine{font-size:11px;line-height:1.65;overflow-wrap:anywhere;margin-top:4px;color:#254158}
   .magiRecordedDisputeNote{font-size:11px;line-height:1.65;color:#465e71;margin-top:8px}
   .magiRecordedDisputeOnly{border-top:2px solid #bad7ea;margin-top:12px;padding-top:10px}
+  .magiDeadlockOverview{margin:9px 0 11px;padding:10px 12px;border:1px solid #c7dbe9;border-radius:10px;background:#f4f9fd;font-size:12px;line-height:1.6;color:#133950}
+  .magiDeadlockOverview strong{font-size:13px;color:#0a2c47}
+  .magiDeadlockProposals{display:grid;grid-template-columns:1fr;gap:9px;margin:11px 0 13px}
+  .magiDeadlockProposal{border:1px solid #cbdce7;border-radius:10px;background:#fff;overflow:hidden}
+  .magiDeadlockProposal summary{padding:11px 12px;cursor:pointer;display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:13px;font-weight:900;color:#15374e}
+  .magiDeadlockProposal summary::marker{color:#668da9}
+  .magiDeadlockStatus{font-size:10px;color:#315d72;font-weight:800;line-height:1.45;text-align:right}
+  .magiDeadlockNine{margin:0;padding:1px 10px 10px;list-style:none}
+  .magiDeadlockNine li{display:grid;grid-template-columns:39px minmax(0,1fr) auto;gap:7px;align-items:center;padding:6px 4px;border-bottom:1px solid #edf1f4;font-size:12px}
+  .magiDeadlockNine li:last-child{border-bottom:0}
+  .magiDeadlockNine .slot{font-weight:900;color:#36536b}
+  .magiDeadlockNine .name{font-weight:800;color:#112e44}
+  .magiDeadlockNine .position{font-size:10px;font-weight:700;color:#537087}
+  .magiDeadlockUnverified{font-size:11px;padding:0 12px 10px;line-height:1.55;color:#865515}
+  @media(min-width:740px){.magiDeadlockProposals{grid-template-columns:repeat(3,minmax(0,1fr))}.magiDeadlockProposal summary{min-height:60px}}
   @media(max-width:480px){.magiRecordedDisputeGrid{grid-template-columns:1fr}.magiRecordedDisputePlayer{padding:9px}.magiRecordedDisputeLine{font-size:11px}}
   @media(max-width:430px){
     .magiLineupReasonsTitle{font-size:16px}.magiLineupReasonsOverview{font-size:10.5px}.magiLineupReasonCard{padding:9px 10px}
@@ -422,6 +437,44 @@ function recordedDisputeHtml(entries,e){
       '<div class="magiRecordedDisputeNote">公式戦＋練習第1試合と練習第2試合は別集計。打席数が少ない場合や未経験の打順では位置別の優劣は確定できず、この比較は得点・勝率への因果効果を示しません。</div></section>';
   }).join('');
 }
+// Compare all three verified SECOND proposals without electing a winner.
+// Each defensive assignment is per-proposal, not the final team's lineup.
+function deadlockFullProposalsHtml(r,entries){
+  const comparison=r?.final?.deadlockComparison;
+  if(comparison?.status!=='COMPARISON_ONLY'||comparison?.finalVote!=='1-1-1')return '';
+  const byLabel=new Map(entries.map(e=>[e.key,e.label]));
+  const groups=['melchior','balthasar','casper'].map(key=>{
+    const p=comparison.proposals?.[key];
+    const order=p?.order;
+    if(!Array.isArray(order)||order.length!==9)return null;
+    const source=entries.find(e=>e.key===key);
+    if(!source||!sameOrder(order,source.order))return null;
+    const positions=Array.isArray(p.positions)&&p.positions.length===9?p.positions:[];
+    const safeStatus=p.fieldingStatus==='COMPLETE'
+      ? '守備9位置の実績照合：成立'
+      : '守備配置：未確定';
+    return '<details class="magiDeadlockProposal"'+(key==='balthasar'?' open':'')+'>'+
+      '<summary><span>'+esc(byLabel.get(key)||key)+'の1〜9番</span><span class="magiDeadlockStatus">'+esc(safeStatus)+'</span></summary>'+
+      '<ol class="magiDeadlockNine">'+order.map((name,index)=>{
+        const pos=positions.find(row=>row.slot===index+1&&norm(row.name)===norm(name));
+        return '<li><span class="slot">'+(index+1)+'番</span><span class="name">'+esc(name)+'</span>'+
+          '<span class="position">'+esc(pos?.positionLabel||pos?.position||'守備未確認')+'</span></li>';
+      }).join('')+'</ol>'+
+      (p.fieldingStatus!=='COMPLETE'
+        ?'<div class="magiDeadlockUnverified">この案の9人で標準先発守備を確定できません。守備位置は推測で補いません。</div>':'')+
+      '</details>';
+  });
+  if(groups.some(x=>x===null))return '';
+  const shared=comparison.allNinePlayersShared===true?'3案とも選手9人は共通し、並べる順番が異なります。':'選手9人の組み合わせにも違いがあります。';
+  const same=(comparison.sharedSlots||[]).map(x=>x+'番').join('・');
+  const diff=(comparison.disputedSlots||[]).map(x=>x+'番').join('・');
+  return '<div class="magiDeadlockOverview"><strong>3案を比較（採用オーダーではありません）</strong>'+
+    '<div>'+esc(shared)+'</div>'+
+    '<div><b>同じ打順位置：</b>'+esc(same||'なし')+'</div>'+
+    '<div><b>意見が異なる打順位置：</b>'+esc(diff||'なし')+'</div>'+
+    '<div>各案の守備位置は公式戦・練習第1試合の先発実績による照合です。守備が成立しても打順の優位性は証明されません。</div></div>'+
+    '<div class="magiDeadlockProposals">'+groups.join('')+'</div>';
+}
 // Deadlock must not fabricate a chosen lineup or use the normal 1–9 cards.
 function deadlockDisputeHtml(r){
   if(r?.final?.mode!=='FULL_LINEUP'||r?.final?.status!=='LINEUP_REVIEW_REQUIRED'||
@@ -430,7 +483,8 @@ function deadlockDisputeHtml(r){
   if(entries.length!==3||new Set(entries.map(e=>e.order.map(norm).join('|'))).size!==3)return '';
   return '<div class="magiRecordedDisputeOnly" role="region" aria-label="未決定の打順対立の記録比較">'+
    '<div class="magiLineupReasonsTitle">打順の対立・実記録の比較</div>'+
-   '<div class="magiRecordedDisputeNote">3賢人の全9人案は1対1対1で、最終オーダーは確定していません。以下は争点の記録比較であり、採用打順ではありません。</div>'+
+   '<div class="magiRecordedDisputeNote">3賢人の全9人案は1対1対1で、最終オーダーは確定していません。比較表示は採用打順ではありません。</div>'+
+   deadlockFullProposalsHtml(r,entries)+
    (recordedDisputeHtml(entries,r?.case?.evidence||{})||'<div class="magiRecordedDisputeNote">位置を交換した対立は確認できないか、記録の完全性を確認できません。打順の優劣は判定しません。</div>')+'</div>';
 }
 function renderDeadlock(r){
@@ -581,5 +635,5 @@ new MutationObserver(run).observe(document.documentElement,{childList:true,subtr
 let tries=0;const timer=setInterval(async()=>{tries++;if(await apply().catch(()=>false)||tries>=240)clearInterval(timer)},200);
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',run,{once:true});else run();
 
-window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v423',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml,renderDeadlock,localSlotDisputes,recordedSlotDisputeHtml});
+window.MAGI_LINEUP_REASONS_V415_API=Object.freeze({version:'lineup-reasons-v423',secondEntries,exactSlotSupport,slotAlternatives,selectedSource,sameOrder,metricRank,specificReason,adjacentSwapReviews,localAdjacentSwaps,recordedSlotSample,recordedDisputeCards,recordedDisputeHtml,deadlockDisputeHtml,deadlockFullProposalsHtml,renderDeadlock,localSlotDisputes,recordedSlotDisputeHtml});
 })();
