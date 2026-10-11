@@ -229,6 +229,9 @@ export function recoverSoftPitchingPlanLanguage(result, issues, pitchingPlanCase
 const ALLOWED_FULL_LINEUP_PROSE_ISSUES=new Set([
   'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
   'BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している',
+  'BEST_ORDERで個人出塁率から打順全体の最大化を断定している',
+  'BEST_ORDERでEvidenceにない打順固定を断定している',
+  'BEST_ORDERで候補打順を一律固定と断定している',
   'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している',
   'BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している',
   'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
