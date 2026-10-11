@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: 3ece002c698e9add767c5674ba78bea4fb558fd4
+- State base main SHA: 38cdae49c6a8517f85c026d941af006516d0cd49
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1279,3 +1279,11 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - Existing `lineup-reasons-v415.js` deadlock panel now displays three expandable full nine-player proposals with per-proposal defensive status and positions, the count/identity of agreed and disputed slots, and the original grounded slot-comparison/dated observation panels. Mobile typography is legible and dynamic names are HTML-escaped. When verified comparison is absent it shows only the existing cautious record comparison.
 - Tests `scripts/test-lineup-deadlock-comparison.mjs` require three genuine distinct full orders, no elected lineup, legal separate fielding proof, NO invented defense when packet missing/incomplete, and exact UI output for 27 nine-player rows. CI `magi-full-lineup-context-guard.yml` runs the test and new source syntax guard. No changes to Google Drive originals/CSV, no paid Vercel features and no additional Gemini generations.
 - Acceptance: all PR tests pass; merge and verify exact SHA on Vercel and a full staged Live run. An observed 1-1-1 still means **unresolved**, not a finalized recommended lineup. Browser appearance on authenticated iPhone is not proven merely by CI and remains a separate user-side test.
+
+
+## 2026-10-11: Static browser cache invalidation for deadlock comparison
+
+- PR #193 merged main SHA `38cdae49c6a8517f85c026d941af006516d0cd49` after all three PR checks passed. It implements read-only per-persona nine-player comparison on true 1-1-1 FULL_LINEUP deadlock, never changing the final vote or selecting a winner.
+- A postmerge audit of `index.html` confirmed the linked browser static asset still used `/lineup-reasons-v415.js?v=423`; client API marker likewise reported `lineup-reasons-v423`. Since iPhone Chrome caches script URLs, a new feature can be hidden behind an old cached response even when server code is correct.
+- Change only the script query version to `v=424`, matching the internal client API marker and the full-lineup CI guard. No new API calls or engine changes. Existing HTML script load order and filenames stay unchanged. The original Google Drive data remains untouched.
+- After merge, verify the exact Vercel production SHA and browser bootstrap; user-authenticated iPhone appearance still requires a separate real-device confirmation and should not be inferred from server PREPARE alone.
