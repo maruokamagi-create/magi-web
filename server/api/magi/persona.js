@@ -5,7 +5,7 @@ import { CURRENT_ROSTER, canonicalizePlayerData, playerKey } from './_roster.js'
 import { isFullLineupQuestion, validateFullLineupOrder } from './_full-lineup.js';
 import { classifyLineupGuardIssueList } from './_lineup-guard-issue-codes.js';
 import { assignEvidenceGroundedFielding, buildStandardDefenseEligibility } from './_lineup-fielding.js';
-import { reconcileLineupOrderExplanation, verifiedLineupStats } from './_lineup-order-explanation-reconcile.js';
+import { reconcileLineupOrderExplanation, verifiedLineupStats, verifiedLineupSlotSamples } from './_lineup-order-explanation-reconcile.js';
 import { isPitchingPlanQuestion, validatePitchingPlanOrder } from './_pitching-plan.js';
 import { buildContestedAdjacentSlotEvidence, buildContestedSingleSlotEvidence } from './_lineup-contested-evidence.js';
 
@@ -224,40 +224,72 @@ export function recoverSoftPitchingPlanLanguage(result, issues, pitchingPlanCase
   return true;
 }
 
+// These are independently verified as removable prose assertions. Any roster,
+// numeric, actual-start, order-conflict or unknown guard issue stays fail-closed.
+const ALLOWED_FULL_LINEUP_PROSE_ISSUES=new Set([
+  'BEST_ORDERで打撃数値・打順から得点効率・勝利優位を断定している',
+  'BEST_ORDERでEvidenceにない得点力最大化・勝利接近を推定している',
+  'BEST_ORDERで守備資格・打順から守備安定性や連携効果を推定している',
+  'BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している',
+  'SELECTIONでEvidenceにない成長・育成・負担影響を追加している',
+  'SELECTIONでEvidenceにない依存・役割集中を追加している',
+  'Evidenceの「負担を考慮する必要がある」を、負担の大きさや具体的悪影響の断定へ強めている'
+]);
+
 export function recoverSoftFullLineupLanguage(result, issues, fullLineupCase, caseData=null) {
-  if (!fullLineupCase || !Array.isArray(issues) || !issues.length) return false;
-  const check = validateFullLineupOrder(result?.candidatePlayers);
-  if (!check.ok) return false;
-  const hard = issues.some(issue => /(?:FULL_LINEUP|正式ロスター|ロスター完全一致|対象外|9人の打順構成|candidatePlayers|打順構成エラー|数値.{0,30}(?:一致しない|存在しない)|選手名.{0,30}(?:存在しない|対象外)|supplied CASE\/EVIDENCE.{0,50}(?:値と一致しない|選手.*存在しない))/i.test(String(issue || '')));
-  if (hard) return false;
-  // Unsupported model prose is discarded. Where the CASE supplies a fully
-  // verified fourteen-player current table, restore ONLY its literal numbers.
-  // Never infer from aggregate rates why a player belongs at a specific slot.
-  const verified=verifiedLineupStats(check.order,caseData);
-  const measured=verified?verified.filter(row=>row.metrics.length):[];
-  const facts=measured.map(row=>`${row.slot}番${row.name}：今季通算${row.metrics.join('、')}`);
+  if (!fullLineupCase||!result||result.reviewRequested===true||result.dataConflict===true
+    ||!Array.isArray(issues)||!issues.length
+    ||issues.some(issue=>!ALLOWED_FULL_LINEUP_PROSE_ISSUES.has(String(issue||''))))return false;
+  const check=validateFullLineupOrder(result.candidatePlayers);
+  if(!check.ok)return false;
+  // Source identity and fielding must still pass the SAME exact validators as
+  // the original FULL_LINEUP generation, not a looser recovery-only check.
+  if(personaFullLineupIssues({candidatePlayers:check.order},true,caseData).length)return false;
+  const measured=(verifiedLineupStats(check.order,caseData)||[]).filter(row=>row.metrics.length);
+  const currentFacts=measured.map(row=>`${row.slot}番${row.name}：今季通算${row.metrics.join('、')}`);
+  const recentBlock=caseData?.evidence?.recentSix;
+  const recent=(recentBlock?.status==='COMPLETE'&&Number(recentBlock?.gameCount)===6
+    ?verifiedLineupStats(check.order,{evidence:{allCurrentTeamCheck:recentBlock}}):null)||[];
+  const recentFacts=recent.filter(row=>row.slot<=5&&row.metrics.length)
+    .map(row=>`${row.slot}番${row.name}：直近6試合${row.metrics.join('、')}`);
+  const slotFacts=(verifiedLineupSlotSamples(check.order,caseData)||[])
+    .filter(row=>row.slot<=5).map(row=>`${row.slot}番${row.name}：公式戦・練習第1試合の同打順${row.metrics.join('、')}`);
   const middle=measured.filter(row=>row.slot>=3&&row.slot<=5);
-  const displayed=(middle.length>=2?middle:measured.slice(0,3))
+  const shown=(middle.length>=2?middle:measured.slice(0,3))
     .map(row=>`${row.slot}番${row.name}（${row.metrics.join('、')}）`).join('、');
+  const top=measured.filter(row=>row.slot<=2)
+    .map(row=>`${row.slot}番${row.name}（${row.metrics.filter(x=>x.startsWith('出塁率')||x.startsWith('OPS')).join('、')}）`)
+    .filter(row=>!row.endsWith('（）'));
+  const recorded=slotFacts.slice(0,3).join('。');
   const limitation='今季通算値や守備の起用実績だけで、この打順が得点や勝利に優れるとは判定できません。';
+  const order=check.order.map((name,index)=>`${index+1}番${name}`).join('、');
+  // Before mutating, capture every field for exact rollback. A recovered
+  // explanation is NOT allowed to bypass any Evidence-language check.
+  const previous={...result};
   result.candidatePlayers=check.order;
-  result.judgment='BLUE';
-  // Since the original reasoning was invalid and deleted, a HIGH confidence
-  // for a proven tactical order cannot be preserved.
+  result.judgment=result.judgment==='YELLOW'?'YELLOW':'BLUE';
   result.confidence=result.confidence==='LOW'?'LOW':'MEDIUM';
   result.reviewRequested=false;
   result.reviewReason='';
   result.dataConflict=false;
-  result.facts=facts;
+  result.facts=[...currentFacts,...recentFacts,...slotFacts];
   result.analysis=[];
   result.prediction=[];
-  const order=check.order.map((name,index)=>`${index+1}番${name}`).join('、');
-  result.candidateBasis=`候補順は${order}です。${facts.length?' 今季通算の確認済み記録：'+facts.join('。')+'。':' この回答で比較に使える今季の数値記録は未確認です。'} ${limitation}`;
-  result.primaryReason=displayed
-    ?`確認済みの打撃記録：${displayed}。${limitation} 打順別の実打席成績・相手条件まで照合しない限り、順序の優位性は未確定です。`
-    :`選んだ9人の打順は提示しましたが、比較に必要な今季打撃数値は確認できていません。${limitation}`;
-  result.publicStatement=`候補順は${order}です。${displayed?' 比較できる今季記録は'+displayed+'です。':''} ${limitation} 根拠のない説明は採用しません。`;
-  result.warnings=['説明のうち根拠のない推測は採用していません。',facts.length?'通算成績だけでは打順ごとの優劣は判定できません。':'今季の打撃記録を確認できず、打順ごとの優劣は判定できません。'];
+  result.candidateBasis=`候補順は${order}です。 ${currentFacts.length?'確認済みの今季通算成績：'+currentFacts.join('。')+'。':'今季通算打撃数値は未確認です。'} ${limitation}`;
+  result.primaryReason=shown
+    ?`${top.length===2?'1・2番の出塁率・OPSの記録：'+top.join('、')+'。 ':''}3〜5番の今季通算記録：${shown}。${recentFacts.length?' 直近6試合：'+recentFacts.slice(0,3).join('。')+'。':''}${recorded?' 実際の標準試合打順：'+recorded+'。':''} ${limitation}`
+    :`9人の候補順を提示しましたが、比較に必要な今季打撃数値は確認できていません。${limitation}`;
+  result.publicStatement=`候補順は${order}です。 ${top.length===2?'1・2番は'+top.join('、')+'を比較しました。 ':''}${shown?'3〜5番の通算記録は'+shown+'です。 ':''}${recorded?'公式戦・練習第1試合の同じ打順では'+recorded+'。 ':''}${limitation}`;
+  result.warnings=['元の説明にあった未確認の将来効果は採用していません。','数値差は、打順を変えた際の得点・勝敗の因果効果を示しません。'];
+  const rechecked=[
+    ...validatePersonaOutput(caseData,result,{focused:false}),
+    ...personaFullLineupIssues(result,true,caseData)
+  ];
+  if(rechecked.length){
+    for(const key of Object.keys(result))if(!Object.hasOwn(previous,key))delete result[key];
+    Object.assign(result,previous);
+    return false;
+  }
   return true;
 }
 

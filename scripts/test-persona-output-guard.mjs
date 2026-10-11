@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import { validatePersonaOutput } from '../server/api/magi/_persona-output-guard.js';
 import { recoverSoftFullLineupLanguage } from '../server/api/magi/persona.js';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
-import { reconcileLineupOrderExplanation, verifiedLineupStats } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
+import { reconcileLineupOrderExplanation, verifiedLineupStats, verifiedLineupSlotSamples } from '../server/api/magi/_lineup-order-explanation-reconcile.js';
 import { buildLineupOrderCorrectionContext, personaCorrectionDirective } from '../server/api/magi/persona.js';
 
 const CASE={
@@ -1306,6 +1306,76 @@ test('Soft FULL_LINEUP recovery retains only verified current batting figures an
   assert.equal(recoverSoftFullLineupLanguage(hard,['FULL_LINEUP_STANDARD_DEFENSE: unsupported'],true,c),false);
   assert.equal(recoverSoftFullLineupLanguage(result({candidatePlayers:order}),issue,false,c),false);
   assert.equal(recoverSoftFullLineupLanguage(result({candidatePlayers:[...order.slice(0,8),order[0]]}),issue,true,c),false);
+});
+
+test('Live iPhone fallback: preserve verified current / recent six / standard batting order comparison',()=>{
+  const order=['大野 竜暉','大久保 陽翔','中嶋 玲月','坂田 暉馬','嶋田 栄志','橋向 結都','武澤 大翔','井坂 悠聖','武田 晴琉翔'];
+  const players=CURRENT_ROSTER.map(name=>({name,batting:name==='大野 竜暉'
+    ?{AB:39,AVG:'.385',OBP:'.579',SLG:'.590',OPS:'1.169'}
+    :name==='大久保 陽翔'?{AB:41,AVG:'.293',OBP:'.420',OPS:'.859'}
+    :{AB:36,AVG:'.306',OBP:'.419',OPS:'.835'}}));
+  const recent=CURRENT_ROSTER.map(name=>({name,batting:name==='大野 竜暉'
+    ?{AB:14,AVG:'.357',OBP:'.550',OPS:'1.193'}
+    :{AB:12,AVG:'.250',OBP:'.333',OPS:'.700'}}));
+  const splits=CURRENT_ROSTER.map(name=>({name,slots:name==='大野 竜暉'?[{
+    slot:1,
+    standard:{batting:{PA:'20',AB:'13',H:'5',AVG:'.385',OPS:'1.111'}},
+    challenge:{batting:{PA:'60',AB:'50',H:'50',AVG:'1.000'}}
+  }]:[]}));
+  const c={question:'15試合と直近6試合のベストオーダーを審議',selectionKind:'FULL_LINEUP',mode:'selection',
+    evidence:{selectionKind:'FULL_LINEUP',
+      allCurrentTeamCheck:{status:'COMPLETE',players},
+      recentSix:{status:'COMPLETE',gameCount:6,players:recent},
+      battingOrderSplits:{status:'COMPLETE',players:splits}}};
+  const original=result({persona:'MELCHIOR',candidatePlayers:order,confidence:'HIGH',
+    publicStatement:'上位打線から得点機会を創出できる。'});
+  const recovered=recoverSoftFullLineupLanguage(original,
+    ['BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'],true,c);
+  assert.equal(recovered,true,'verified source-backed soft correction must succeed');
+  assert.deepEqual(original.candidatePlayers,order);
+  assert.equal(original.confidence,'MEDIUM','unverified superiority cannot retain high confidence');
+  assert.match(original.primaryReason,/1・2番の出塁率・OPSの記録/);
+  assert.match(original.primaryReason,/3〜5番の今季通算記録/);
+  assert.match(original.primaryReason,/直近6試合/);
+  assert.match(original.primaryReason,/公式戦・練習第1試合の同打順/);
+  assert.match(original.publicStatement,/打席20、打数13、安打5/);
+  assert.doesNotMatch(JSON.stringify(original),/安打50|打席60|得点機会を創出/,'challenge-only record is never pooled');
+  assert.deepEqual(validatePersonaOutput(c,original,{focused:false}),[]);
+  assert.ok(original.facts.some(f=>f.includes('1番大野 竜暉：直近6試合打数14')));
+  assert.ok(original.facts.some(f=>f.includes('1番大野 竜暉：公式戦・練習第1試合の同打順打席20')));
+  const slot=verifiedLineupSlotSamples(order,c);
+  assert.equal(slot.length,1);
+  assert.equal(slot[0].metrics[0],'打席20');
+  assert.equal(verifiedLineupSlotSamples(order,{evidence:{battingOrderSplits:{...c.evidence.battingOrderSplits,status:'PARTIAL'}}}),null);
+  const invalidPA={...c,evidence:{...c.evidence,battingOrderSplits:{status:'COMPLETE',players:splits.map(p=>p.name==='大野 竜暉'?{...p,slots:[{slot:1,standard:{batting:{PA:4,AB:6,H:3}}}]}:p)}}};
+  assert.equal(verifiedLineupSlotSamples(order,invalidPA),null,'AB over PA never yields verified batting sample');
+  const incompleteRecent={...c,evidence:{...c.evidence,recentSix:{...c.evidence.recentSix,status:'PARTIAL'}}};
+  const draft=result({candidatePlayers:order,confidence:'HIGH',judgment:'BLUE'});
+  assert.equal(recoverSoftFullLineupLanguage(draft,['BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'],true,incompleteRecent),true);
+  assert.ok(!draft.primaryReason.includes('直近6試合'));
+});
+
+test('Live iPhone fallback never clears a model review or hidden hard/mixed conflict',()=>{
+  const order=['大野 竜暉','大久保 陽翔','中嶋 玲月','坂田 暉馬','嶋田 栄志','橋向 結都','武澤 大翔','井坂 悠聖','武田 晴琉翔'];
+  const c={question:'ベストオーダー',selectionKind:'FULL_LINEUP',mode:'selection',evidence:{selectionKind:'FULL_LINEUP'}};
+  for(const issues of [
+    ['BEST_ORDERのcandidatePlayersと打順説明が矛盾している'],
+    ['FULL_LINEUP_STANDARD_DEFENSE: NO_COMPLETE_STANDARD_STARTING_MATCHING'],
+    ['supplied CASE/EVIDENCE の値と一致しない'],
+    ['BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している','数値3 は supplied CASE/EVIDENCE の値と一致しない'],
+    ['未知のエラー条件']
+  ]){
+    const draft=result({candidatePlayers:order,confidence:'HIGH',publicStatement:'不確かな予測を残す。'});
+    const original=JSON.stringify(draft);
+    assert.equal(recoverSoftFullLineupLanguage(draft,issues,true,c),false,issues.join(';'));
+    assert.equal(JSON.stringify(draft),original,'hard or unknown failure must not mutate original draft');
+  }
+  for(const flag of ['reviewRequested','dataConflict']){
+    const draft=result({candidatePlayers:order,[flag]:true,confidence:'HIGH'});
+    const before=JSON.stringify(draft);
+    assert.equal(recoverSoftFullLineupLanguage(draft,['BEST_ORDERで打撃数値・打順から得点機会・安定性を推定している'],true,c),false);
+    assert.equal(JSON.stringify(draft),before);
+  }
 });
 
 test('G-live161-natural-third 3番 starts do not establish certain player selection',()=>{

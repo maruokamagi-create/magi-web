@@ -10,7 +10,7 @@
 
 - Ledger schema: 1
 - State updated: 2026-10-11
-- State base main SHA: 85c6b02ef54296505749dff69c941e09b063d785
+- State base main SHA: e82ec80d4adc6289369c0280a9c846bcd9a24ef8
 - Repository: maruokamagi-create/magi-web
 - Production: magi-web.vercel.app
 - Primary branch: main
@@ -1331,3 +1331,14 @@ Do not restart architectural discovery from memory. Do not ask the user to recon
 - PR #198 merged at main SHA `85c6b02ef54296505749dff69c941e09b063d785` after six PR checks passed. It permanently deactivates the obsolete client-selected 1-1-1 best-order finalizer and requires verified server fielding for the final hero, addressing the user's nine real iPhone screenshots.
 - The postmerge `MAGI Production Browser Bootstrap Smoke` run `38110610414` failed the static `lineup-reasons` asset check because its workflow still looked for the internal API marker `version:'lineup-reasons-v424'` while both real script and index now use **v425**. This is an obsolete smoke expectation; it does not by itself prove a broken browser.
 - Change only that one smoke marker to v425; keep the actual app code, server original-score source map, 15-game CSV, client fail-closed behavior and provider budgets unchanged. After merge, require browser verification on the new exact deployed SHA before declaring completion. An authenticated iPhone screenshot is the separate UI acceptance proof.
+
+
+## 2026-10-11: Keep checked FULL_LINEUP evidence instead of generic repeated Wise Men prose
+
+- The owner reported a real iPhone BEST_ORDER flow that eventually completed PRIMARY, CROSS and SECOND but displayed an identical `記録との照合で不整合を検出しました` rejection from multiple personas, even though the source-backed 15-game rates and starting-position record were available. Do **not** misinterpret the successful previous Production Live E2E as proof that the real iPhone persona drafts were all accepted. Also do **not** claim an upstream Gemini failure without failure logs.
+- Exact current main before this branch: `e82ec80d4adc6289369c0280a9c846bcd9a24ef8`; prior main production run `38110610415` BEST_ORDER PRIMARY/SECOND produced distinguishable structured nine-player orders with concrete season rates and a cited 1st/2nd standard-slot comparison, but real mobile failed-closed public text discarded those arguments. This points to the strict language-guard correction/recovery display path, not necessarily missing original CSV.
+- `recoverSoftFullLineupLanguage` previously interpreted almost any non-regex-hard issue as removable, unconditionally cleared `reviewRequested`/`dataConflict`, zeroed all analyses, and emitted an aggregate-only canned statement WITHOUT checking the corrected text again. In the batch path it was called without its CASE, so no verified current stats could appear there. These are actionable inconsistencies independent of any model-provider speculation.
+- Fix: allow deterministic correction **only** for a small enumerated set of unsupported prose effects, never for numeric mismatch, unknown issue, wrong order, incomplete defense, or a persona's explicit review/conflict. Revalidate the rebuilt answer with the existing `validatePersonaOutput` and the same standard-start `personaFullLineupIssues` guards, rolling back the entire draft on failure. No guard is disabled or removed.
+- When CASE has COMPLETE exact-14 current batting Evidence, recovered text now reports actual numeric evidence for 1st/2nd (.OBP/OPS) and 3rd–5th plus checked recent-six (COMPLETE, exactly six games), and correctly sampled real batting-order slots (COMPLETE exact-14, standard official/practice-game-one only, consistent PA≥AB≥H). Challenge games cannot be mixed. The display expressly says raw batting rates do not prove runs/wins from a chosen order. Missing/partial Evidence is explicitly omitted and never invented. Confidence lowers to at most MEDIUM.
+- The batch path now passes `body.case` to the same recovery, so no separate/unverified approximation is needed. The no-provider regression covers normal/current/recent/actual slot, missing & inconsistent splits, bad names/numeric/structure, explicit review/conflict, and unchanged player nine. Full Lineup Context Guard CI triggers on modified files. No change to GitHub base selection, user Google Drive CSV/PDF files, paid Vercel settings or auth.
+- Acceptance: PR CI must PASS, then review before merge; verify exact production SHA and browser smoke. Avoid extra provider-heavy full runs until this deterministic guard has passed. Actual iPhone quality is a separate acceptance step, and successful CI must not be described as a better game outcome or a conclusive best order.

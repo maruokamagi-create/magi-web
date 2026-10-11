@@ -20,6 +20,10 @@ on:
       - 'final-decision-emphasis-v340.js'
       - 'magi-control-summary-v377.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
+      - 'server/api/magi/persona.js'
+      - 'server/api/magi/persona-batch.js'
+      - 'server/api/magi/_lineup-order-explanation-reconcile.js'
+      - 'scripts/test-persona-output-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
   pull_request:
     paths:
@@ -40,6 +44,10 @@ on:
       - 'final-decision-emphasis-v340.js'
       - 'magi-control-summary-v377.js'
       - 'scripts/test-full-lineup-context-evidence-guard.mjs'
+      - 'server/api/magi/persona.js'
+      - 'server/api/magi/persona-batch.js'
+      - 'server/api/magi/_lineup-order-explanation-reconcile.js'
+      - 'scripts/test-persona-output-guard.mjs'
       - '.github/workflows/magi-full-lineup-context-guard.yml'
 
 jobs:
@@ -100,5 +108,9 @@ jobs:
         run: node scripts/test-lineup-deadlock-comparison.mjs
       - name: Prevent browser from replacing genuine unresolved FULL_LINEUP with invented final
         run: node scripts/test-no-client-lineup-finalizer.mjs
+      - name: Install pinned production runtime dependencies for persona validator tests
+        run: npm install --ignore-scripts --no-audit --no-fund --package-lock=false
+      - name: Check all verified persona-prose recoveries against strict original Evidence
+        run: node scripts/test-persona-output-guard.mjs
       - name: Context leakage regression guard
         run: node scripts/test-full-lineup-context-evidence-guard.mjs
