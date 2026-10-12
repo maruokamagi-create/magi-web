@@ -1,3 +1,4 @@
+import { CURRENT_ROSTER } from './_roster.js';
 const STANDARD_POSITIONS=Object.freeze(['投','捕','一','二','三','遊','左','中','右']);
 const POSITION_LABELS=Object.freeze({投:'投手',捕:'捕手',一:'一塁',二:'二塁',三:'三塁',遊:'遊撃',左:'左翼',中:'中堅',右:'右翼'});
 
@@ -50,6 +51,24 @@ function assignmentDetails(byPosition){
   });
 }
 
+// A legal defense is a one-to-one matching, not nine unrelated position checks.
+function hasFullDefenseMatching(rows,excluded=''){
+  const pools=STANDARD_POSITIONS.map(pos=>rows.filter(r=>r.name!==excluded&&r.positions.includes(pos)).map(r=>r.name))
+    .sort((a,b)=>a.length-b.length);
+  if(pools.some(p=>!p.length))return false;
+  const used=new Set();
+  const visit=i=>{
+    if(i===pools.length)return true;
+    for(const n of pools[i]){
+      if(used.has(n))continue;
+      used.add(n);
+      if(visit(i+1))return true;
+      used.delete(n);
+    }
+    return false;
+  };
+  return visit(0);
+}
 export const LINEUP_STANDARD_POSITIONS=STANDARD_POSITIONS;
 export const LINEUP_POSITION_LABELS=POSITION_LABELS;
 
@@ -68,12 +87,50 @@ export function buildStandardDefenseEligibility(appearanceFielding){
   // A player eligible at two positions can fill only ONE starting assignment.
   const constrainedPositions=Object.fromEntries(Object.entries(byPosition)
     .filter(([,eligible])=>eligible.length<=2));
+  const globallyFeasible=hasFullDefenseMatching(byPlayer);
+  const mandatoryPlayers=globallyFeasible
+    ?byPlayer.filter(row=>!hasFullDefenseMatching(byPlayer,row.name)).map(row=>row.name)
+    :[];
   return {
     rule:'STANDARD_DEFENSE_ONE_TO_ONE_MATCHING',
+    globallyFeasible,
+    mandatoryPlayers,
     positions:[...STANDARD_POSITIONS],
     byPlayer,
     byPosition,
     constrainedPositions
+  };
+}
+
+// Read-only alternatives for an illegal PRIMARY candidate set; no candidate is changed.
+// Only one-player swaps that yield a uniquely confirmed legal fielding assignment
+// are shown. The Wise Man must still pick and justify their own batting order.
+export function buildEvidenceGroundedDefenseReconsideration(names,appearanceFielding){
+  const selected=Array.isArray(names)?names:[];
+  if(String(appearanceFielding?.status||'')!=='COMPLETE'||selected.length!==9
+    ||new Set(selected).size!==9||!selected.every(n=>CURRENT_ROSTER.includes(n)))return null;
+  const records=playerRows(appearanceFielding),registered=new Set(records.map(r=>text(r?.name)));
+  if(records.length!==CURRENT_ROSTER.length||registered.size!==CURRENT_ROSTER.length
+    ||CURRENT_ROSTER.some(n=>!registered.has(n)))return null;
+  const rejected=assignEvidenceGroundedFielding(selected.map((name,i)=>({name,slot:i+1})),appearanceFielding);
+  if(rejected.status!=='UNRESOLVED')return null;
+  const eligible=buildStandardDefenseEligibility(appearanceFielding);
+  if(!eligible?.globallyFeasible)return null;
+  const options=[];
+  for(const add of CURRENT_ROSTER.filter(n=>!selected.includes(n))){
+    for(const remove of selected){
+      const candidates=selected.map(n=>n===remove?add:n);
+      const match=assignEvidenceGroundedFielding(candidates.map((name,i)=>({name,slot:i+1})),appearanceFielding);
+      if(match.status==='COMPLETE')options.push({remove,add});
+    }
+  }
+  return {
+    status:'DEFENSE_RECONSIDERATION_REQUIRED',
+    rejectedReason:rejected.reason,
+    ...(rejected.uncoveredPositions?.length?{uncoveredPositions:rejected.uncoveredPositions}:{}),
+    missingMandatory:eligible.mandatoryPlayers.filter(n=>!selected.includes(n)),
+    onePlayerSwapExamples:options.slice(0,8),
+    instruction:'These possible switches are verified position-coverage alternatives only. They are NOT tactical rankings, batting-order decisions or an automatic repair. Independently reconsider all 14 players, compare batting and dated coaching Evidence, and verify a one-to-one standard defense before finalizing nine. If a valid lineup cannot be grounded, request review rather than invent position experience.'
   };
 }
 
