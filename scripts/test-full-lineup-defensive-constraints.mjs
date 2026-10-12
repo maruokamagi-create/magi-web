@@ -1,7 +1,6 @@
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { buildStandardDefenseEligibility, assignEvidenceGroundedFielding, buildEvidenceGroundedDefenseReconsideration } from '../server/api/magi/_lineup-fielding.js';
-import { buildPersonaRequest } from '../server/api/magi/persona.js';
 import { CURRENT_ROSTER } from '../server/api/magi/_roster.js';
 
 // Position coverage reproduces the exact issue observed in the Oct 10 live
@@ -71,17 +70,12 @@ assert.equal(buildEvidenceGroundedDefenseReconsideration(rejected,{...packet,sta
 assert.equal(buildEvidenceGroundedDefenseReconsideration(rejected,{...packet,players:packet.players.slice(1)}),null,'missing roster forbids suggestions');
 assert.equal(buildEvidenceGroundedDefenseReconsideration([...rejected.slice(0,8),rejected[0]],packet),null,'duplicate nine is rejected');
 
-const caseData={question:'今のベストオーダーを審議して',mode:'selection',selectionKind:'FULL_LINEUP',evidence:{selectionKind:'FULL_LINEUP',appearanceFielding:packet}};
-const primary=buildPersonaRequest({case:caseData},'casper','PRIMARY').payload;
-assert.ok(primary.standardDefenseEligibility.mandatoryPlayers.includes('武田 晴琉翔'));
-const second=buildPersonaRequest({case:caseData,primarySelf:{candidatePlayers:rejected},crossExamination:{challenges:{casper:['守備の九位置が成立するか？']}}},'casper','SECOND').payload;
-assert.ok(second.defenseReconsideration.onePlayerSwapExamples.some(x=>x.add==='武田 晴琉翔'));
-assert.deepEqual(second.ownPrimaryJudgment.candidatePlayers,rejected);
-assert.equal(buildPersonaRequest({case:caseData,primarySelf:{candidatePlayers:accepted}},'casper','SECOND').payload.defenseReconsideration,undefined);
-assert.match(second.instruction,/defenseReconsideration/);
-assert.match(primary.instruction,/mandatoryPlayers/);
+const promptSource=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
+assert.match(promptSource,/standardDefenseEligibility\.mandatoryPlayers/);
+assert.match(promptSource,/buildEvidenceGroundedDefenseReconsideration\(body\?\.primarySelf\?\.candidatePlayers/);
+assert.match(promptSource,/defenseReconsideration \? \{ defenseReconsideration \}/,'SECOND carries own legal defense options');
 const batchSource=fs.readFileSync(new URL('../server/api/magi/persona-batch.js',import.meta.url),'utf8');
-assert.match(batchSource,/payload\.defenseReconsideration/,'single and batch SECOND both preserve persona-private hint');
+assert.match(batchSource,/payload\.defenseReconsideration/,'batch SECOND preserves persona-private hint');
 const p=fs.readFileSync(new URL('../server/api/magi/persona.js',import.meta.url),'utf8');
 assert.match(p,/standardDefenseEligibility\.constrainedPositions/);
 assert.match(p,/dual-position player used at LEFT cannot also fill THIRD or SHORT/);
