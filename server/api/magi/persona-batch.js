@@ -868,6 +868,7 @@ export default async function handler(req, res) {
         instruction: payload.instruction,
         ...(phase === 'SECOND' ? {
           ownPrimaryJudgment: payload.ownPrimaryJudgment || null,
+          ...(payload.defenseReconsideration ? { defenseReconsideration: payload.defenseReconsideration } : {}),
           crossExamination: payload.crossExamination || null,
           ...(Array.isArray(payload.contestedAdjacentSlotEvidence) && payload.contestedAdjacentSlotEvidence.length ? { contestedAdjacentSlotEvidence: payload.contestedAdjacentSlotEvidence } : {}),
           ...(Array.isArray(payload.contestedSingleSlotEvidence) && payload.contestedSingleSlotEvidence.length ? { contestedSingleSlotEvidence: payload.contestedSingleSlotEvidence } : {})
